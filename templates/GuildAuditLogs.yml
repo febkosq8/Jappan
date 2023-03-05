@@ -1,0 +1,110 @@
+#guild.fetchAuditLogs()
+
+GuildAuditLogs {
+  webhooks: Collection(0) [Map] {},
+  integrations: Collection(0) [Map] {},
+  guildScheduledEvents: Collection(0) [Map] {},
+  applicationCommands: Collection(0) [Map] {},
+  entries: Collection(1) [Map] {
+    '1040632628333772881' => GuildAuditLogsEntry {
+      targetType: 'Channel',
+      actionType: 'Update',
+      action: 11,
+      reason: null,
+      executor: [User],
+      changes: [Array],
+      id: '1040632628333772881',
+      extra: null,
+      target: [VoiceChannel]
+    }
+  }
+}
+
+#auditLog.entries (Voice Channel Name Edit)
+
+Collection(1) [Map] {
+  '1040632628333772881' => GuildAuditLogsEntry {
+    targetType: 'Channel',
+    actionType: 'Update',
+    action: 11,
+    reason: null,
+    executor: User {
+      id: '520241872954720287',
+      bot: false,
+      system: false,
+      flags: [UserFlagsBitField],
+      username: 'Dejavu',
+      discriminator: '6146',
+      avatar: '49210feb01381eea685da708032ec5cd',
+      banner: undefined,
+      accentColor: undefined
+    },
+    changes: [ [Object], [Object] ],
+    id: '1040632628333772881',
+    extra: null,
+    target: VoiceChannel {
+      type: 2,
+      guild: [Guild],
+      guildId: '1030918008559898726',
+      parentId: '1030918010879348788',
+      permissionOverwrites: [PermissionOverwriteManager],
+      messages: [MessageManager],
+      nsfw: false,
+      flags: [ChannelFlagsBitField],
+      id: '1032287650176053268',
+      name: 'generalvc2',
+      rawPosition: 1,
+      rtcRegion: null,
+      bitrate: 64000,
+      userLimit: 0,
+      videoQualityMode: null,
+      lastMessageId: '1038612488574476288',
+      rateLimitPerUser: 0
+    }
+  }
+}
+
+#auditLog.entries.map() (Voice Channel - User Moved by 3rd Party)
+
+GuildAuditLogsEntry {
+  targetType: 'User',
+  actionType: 'Update',
+  action: 26,
+  reason: null,
+  executor: User {
+    id: '520241872954720287',
+    bot: false,
+    system: false,
+    flags: UserFlagsBitField { bitfield: 0 },
+    username: 'Dejavu',
+    discriminator: '6146',
+    avatar: '49210feb01381eea685da708032ec5cd',
+    banner: undefined,
+    accentColor: undefined
+  },
+  changes: [],
+  id: '1040646408782499892',
+  extra: {
+    channel: VoiceChannel {
+      type: 2,
+      guild: [Guild],
+      guildId: '1030918008559898726',
+      parentId: '1030918010879348788',
+      permissionOverwrites: [PermissionOverwriteManager],
+      messages: [MessageManager],
+      nsfw: false,
+      flags: [ChannelFlagsBitField],
+      id: '1032287650176053268',
+      name: 'generalvc2',
+      rawPosition: 1,
+      rtcRegion: null,
+      bitrate: 64000,
+      userLimit: 0,
+      videoQualityMode: null,
+      lastMessageId: '1038612488574476288',
+      rateLimitPerUser: 0
+    },
+    count: 3
+  },
+  target: null
+}

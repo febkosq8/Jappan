@@ -1,0 +1,21 @@
+{
+	"recommendations": [
+		"leonardssh.vscord",
+		"adpyke.codesnap",
+		"github.copilot",
+		"github.vscode-pull-request-github",
+		"eamodio.gitlens",
+		"visualstudioexptteam.vscodeintellicode",
+		"visualstudioexptteam.intellicode-api-usage-examples",
+		"ms-vscode.vscode-typescript-next",
+		"ms-vsliveshare.vsliveshare",
+		"mongodb.mongodb-vscode",
+		"monokai.theme-monokai-pro-vscode",
+		"christian-kohler.npm-intellisense",
+		"christian-kohler.path-intellisense",
+		"ms-vscode.powershell",
+		"esbenp.prettier-vscode",
+		"searking.preview-vscode",
+		"tyriar.windows-terminal"
+	]
+}

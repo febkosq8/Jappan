@@ -17,8 +17,8 @@ class ping {
 		}
 		return this.instance;
 	}
-	constructor(client) {
-		this.processCommand(client);
+	constructor() {
+		this.processCommand();
 	}
 
 	getCommand() {
@@ -45,7 +45,7 @@ class ping {
 			.setDMPermission(false)
 			.toJSON();
 	}
-	async execute(interaction, client) {
+	async execute(interaction) {
 		await interaction.deferReply();
 		const pingLoadEmbed = new EmbedBuilder()
 			.setColor(0x0099ff)

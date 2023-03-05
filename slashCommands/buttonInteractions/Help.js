@@ -6,7 +6,7 @@ class Help {
 		}
 		return this.instance;
 	}
-	constructor(client) {}
+	constructor() {}
 	async execute(interaction, client) {
 		require(`../../slashCommands/global/help.js`).getInstance(client).execute(interaction);
 	}

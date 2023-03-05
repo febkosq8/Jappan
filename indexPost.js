@@ -41,9 +41,9 @@ class indexPost {
 		// 	await EventHandler.auditEvent("DEBUG", `Discord Player Debug`, message);
 		// });
 
-		player.events.on("debug", async (queue, message) => {
-			await EventHandler.auditEvent("DEBUG", `Discord Player Debug Event`, message);
-		});
+		// player.events.on("debug", async (queue, message) => {
+		// 	await EventHandler.auditEvent("DEBUG", `Discord Player Debug Event`, message);
+		// });
 
 		player.events.on("error", (queue, error) => {
 			EventHandler.auditEvent(
@@ -277,10 +277,7 @@ class indexPost {
 					guildCommands,
 					testCommands
 				)}/${interaction.commandName}.js`).getInstance(client);
-				const { cType: cmdType } = userInteraction.getDetails();
-				cmdType === "music"
-					? await userInteraction.autocomplete(interaction, player)
-					: await userInteraction.autocomplete(interaction, client);
+				await userInteraction.autocomplete(interaction, client);
 				EventHandler.auditEvent(
 					"INFO",
 					"A autocomplete interaction for : " +
@@ -305,10 +302,7 @@ class indexPost {
 						guildCommands,
 						testCommands
 					)}/${interaction.commandName}.js`).getInstance(client);
-					const { cType: cmdType } = userInteraction.getDetails();
-					cmdType === "music"
-						? await userInteraction.execute(interaction, player)
-						: await userInteraction.execute(interaction, client);
+					await userInteraction.execute(interaction, client);
 					EventHandler.auditEvent(
 						"INFO",
 						"A interaction for : " +

@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder, GuildMember } = require("discord.js");
-const { useQueue, QueryType } = require("discord-player");
+const { useQueue, useMasterPlayer } = require("discord-player");
 const config = require("../../config.json");
 const userPlaylist = require("../../Managers/Schemas/userPlaylistSchema");
 const EventHandler = require("../../Components/EventHandler");
@@ -20,8 +20,8 @@ class playlist {
 		}
 		return this.instance;
 	}
-	constructor(client) {
-		this.processCommand(client);
+	constructor() {
+		this.processCommand();
 	}
 
 	getCommand() {
@@ -105,8 +105,7 @@ class playlist {
 			.toJSON();
 	}
 
-	async autocomplete(interaction, player) {
-		// const query = interaction.options.getString("listname");
+	async autocomplete(interaction) {
 		const focusedValue = interaction.options.getFocused();
 		let rawPlaylistData = await userPlaylist.findOne({
 			userId: interaction.user.id,
@@ -127,7 +126,8 @@ class playlist {
 		}
 		await interaction.respond(returnData);
 	}
-	async execute(interaction, player) {
+	async execute(interaction) {
+		const player = useMasterPlayer();
 		await interaction.deferReply();
 		let type = interaction.options._subcommand;
 		if (type === "add") {

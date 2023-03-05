@@ -1,0 +1,137 @@
+[
+	{
+		"_id": "6367f592d0fc77d3ff96233c",
+		"timeStamp": "2023-01-25T17:04:07.249Z",
+		"userId": "407819516513484801",
+		"username": "Febkosq8",
+		"discriminator": 8685,
+		"queryList": [
+			{
+				"listname": "1",
+				"query": "https://www.youtube.com/playlist?list=PLUSI8zJ8UM4GH-EYz4Q0RPfZv7v8_kRhv",
+				"shuffle": false
+			},
+			{
+				"listname": "2",
+				"query": "https://www.youtube.com/playlist?list=PLUSI8zJ8UM4H6ZGVT4psbs35WnyGLCxMj",
+				"shuffle": true
+			},
+			{
+				"listname": "4",
+				"query": "https://open.spotify.com/playlist/5QUt7UJom3ILd39Vmbk1cu?si=7517913f50a24a34",
+				"shuffle": false
+			},
+			{
+				"listname": "3",
+				"query": "https://www.youtube.com/playlist?list=PLUSI8zJ8UM4Fh-pdmw1PHvT8VKhnkVQEz",
+				"shuffle": true
+			}
+		],
+		"__v": 0
+	},
+	{
+		"_id": "6368004a25454ceb990f2679",
+		"timeStamp": "2022-11-06T18:43:22.991Z",
+		"userId": "444870283224940544",
+		"username": "wilyPsuy",
+		"discriminator": 1010,
+		"queryList": [
+			{
+				"listname": "mySongs",
+				"query": "https://music.youtube.com/playlist?list=PLsq8HiwM2ry0UsRNbdGa9wzInfj_Z2aBx",
+				"shuffle": false
+			}
+		],
+		"__v": 0
+	},
+	{
+		"_id": "636c14f62c1ef97265c7307d",
+		"timeStamp": "2022-12-25T20:29:24.549Z",
+		"userId": "176002676696416257",
+		"username": "Rinzai",
+		"discriminator": 368,
+		"queryList": [
+			{
+				"listname": "Sanctuary",
+				"query": "https://open.spotify.com/playlist/5QUt7UJom3ILd39Vmbk1cu?si=f2cf06a4374b4908",
+				"shuffle": false
+			},
+			{
+				"listname": "Bloody Mary",
+				"query": "https://open.spotify.com/playlist/5QUt7UJom3ILd39Vmbk1cu?si=7517913f50a24a34",
+				"shuffle": false
+			}
+		],
+		"__v": 0
+	},
+	{
+		"_id": "636e67cadefa0ce7bd6e1697",
+		"timeStamp": "2022-12-27T18:12:48.301Z",
+		"userId": "520241872954720287",
+		"username": "Dejavu",
+		"discriminator": 6146,
+		"queryList": [
+			{
+				"listname": "1",
+				"query": "https://www.youtube.com/playlist?list=PLUSI8zJ8UM4GH-EYz4Q0RPfZv7v8_kRhv",
+				"shuffle": true
+			},
+			{
+				"listname": "3",
+				"query": "https://open.spotify.com/playlist/5QUt7UJom3ILd39Vmbk1cu?si=7517913f50a24a34",
+				"shuffle": false
+			}
+		],
+		"__v": 0
+	},
+	{
+		"_id": "638a41535aa8c7bd4cb06813",
+		"timeStamp": "2022-12-02T18:22:42.733Z",
+		"userId": "664861172872249354",
+		"username": "JORDANZORRO",
+		"discriminator": 2446,
+		"queryList": [
+			{
+				"listname": "1",
+				"query": "https://open.spotify.com/playlist/5nLLmRoJrfKZb6QNTxKRX8?si=2ef026513bd24f30",
+				"shuffle": true
+			},
+			{
+				"listname": "2",
+				"query": "https://music.youtube.com/playlist?list=PL6wT0ZkZ0uDsfDtK-YwwmRxSRODz6tZgQ&feature=share",
+				"shuffle": true
+			}
+		],
+		"__v": 0
+	},
+	{
+		"_id": "6396141c347dab271d924861",
+		"timeStamp": "2022-12-11T17:32:12.824Z",
+		"userId": "290033269821407235",
+		"username": "Inconsistent",
+		"discriminator": 3553,
+		"queryList": [
+			{
+				"listname": "agil",
+				"query": "https://open.spotify.com/playlist/6nPH5jqREBWJQ4aSSAcRaN?si=573d30072dd544c7",
+				"shuffle": true
+			}
+		],
+		"__v": 0
+	},
+	{
+		"_id": "63b82c61209cb12237145f5b",
+		"timeStamp": "2023-01-06T14:12:49.854Z",
+		"userId": "729613304435179592",
+		"username": "MeRItoz",
+		"discriminator": 5799,
+		"queryList": [
+			{
+				"listname": "1",
+				"query": "https://www.youtube.com/playlist?list=PLUSI8zJ8UM4GH-EYz4Q0RPfZv7v8_kRhv",
+				"shuffle": true
+			}
+		],
+		"__v": 0
+	}
+]

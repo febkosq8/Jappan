@@ -9,8 +9,7 @@ class BackLeaderboard {
 		}
 		return this.instance;
 	}
-	constructor(client) {}
-	async execute(interaction, client) {
+	async execute(interaction) {
 		const index = interaction.customId.indexOf("|");
 		const triggerUser = interaction.customId.substring(index + 1);
 		if (triggerUser !== interaction.user.id) {

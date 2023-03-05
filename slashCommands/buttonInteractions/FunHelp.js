@@ -13,7 +13,7 @@ class FunHelp {
 	constructor(client) {
 		funFiles = GlobalCommands.getInstance(client).getFunFiles();
 	}
-	async execute(interaction, client) {
+	async execute(interaction) {
 		await interaction.deferReply();
 		let funHelpEmbed = new EmbedBuilder()
 			.setColor(0x0099ff)

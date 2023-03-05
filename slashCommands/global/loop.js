@@ -1,5 +1,5 @@
 const { GuildMember, SlashCommandBuilder } = require("discord.js");
-const { useQueue, QueueRepeatMode } = require("discord-player");
+const { useQueue, QueueRepeatMode, useMasterPlayer } = require("discord-player");
 const config = require("../../config.json");
 const EventHandler = require("../../Components/EventHandler");
 const ClientHandler = require("../../Components/ClientHandler");
@@ -19,8 +19,8 @@ class loop {
 		}
 		return this.instance;
 	}
-	constructor(client) {
-		this.processCommand(client);
+	constructor() {
+		this.processCommand();
 	}
 
 	getCommand() {
@@ -60,7 +60,7 @@ class loop {
 			.setDMPermission(false)
 			.toJSON();
 	}
-	async execute(interaction, player) {
+	async execute(interaction) {
 		await interaction.deferReply();
 		try {
 			if (!(interaction.member instanceof GuildMember) || !interaction.member.voice.channel) {

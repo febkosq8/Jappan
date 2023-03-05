@@ -1,4 +1,6 @@
-const logEvent = require("../Managers/Schemas/logSchema");
+const eventLogSchema = require("../Managers/Schemas/eventLogSchema");
+const debugLogSchema = require("../Managers/Schemas/debugLogSchema");
+const errorLogSchema = require("../Managers/Schemas/errorLogSchema");
 const { yellowBright, bgBlack, cyanBright, redBright, greenBright, white } = require("colorette");
 const DiscordEventHandler = require("./DiscordEventHandler");
 const ClientHandler = require("./ClientHandler");
@@ -22,7 +24,7 @@ class EventHandler {
 		} else if (type === "DM_INFO") {
 			console.log(`[${greenBright(type)}] ${bgBlack(white(desc))}`);
 		} else if (type === "DEBUG") {
-			console.log(`[${yellowBright(type)}] ${bgBlack(white(desc))}`);
+			// console.log(`[${yellowBright(type)}] ${bgBlack(white(desc))}`);
 		} else if (type === "ERROR") {
 			console.log(`[${redBright(type)}] ${bgBlack(white(desc))}`);
 		}
@@ -33,12 +35,18 @@ class EventHandler {
 		try {
 			if ((process.env.botMode === "dev" && config.devLogging === "true") || process.env.botMode === "prod") {
 				if (ClientHandler.getMongoStatus() === 1) {
-					new logEvent(auditData).save();
+					if (type === "LOG" || type === "DM_INFO" || type === "INFO") {
+						new eventLogSchema(auditData).save();
+					} else if (type === "DEBUG") {
+						new debugLogSchema(auditData).save();
+					} else if (type === "ERROR") {
+						new errorLogSchema(auditData).save();
+					}
 				}
 				if (type === "ERROR") {
 					await DiscordEventHandler.sendDiscordErrorEvent(type, desc, event);
 				} else if (type === "DEBUG") {
-					// await DiscordEventHandler.sendDiscordDebugEvent(type, desc, event);
+					await DiscordEventHandler.sendDiscordDebugEvent(type, desc, event);
 				} else if (type === "DM_INFO") {
 					await DiscordEventHandler.sendDiscordDMEvent(event);
 				} else {

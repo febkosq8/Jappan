@@ -18,8 +18,8 @@ class makesay {
 		}
 		return this.instance;
 	}
-	constructor(client) {
-		this.processCommand(client);
+	constructor() {
+		this.processCommand();
 	}
 
 	getCommand() {
@@ -33,7 +33,7 @@ class makesay {
 			id: ClientHandler.getCommandId(this.#name) || this.#id,
 		};
 	}
-	processCommand(client) {
+	processCommand() {
 		this.#name = "doppelganger";
 		this.#desc = "Make a user say something that you want";
 		this.#helpDesc =

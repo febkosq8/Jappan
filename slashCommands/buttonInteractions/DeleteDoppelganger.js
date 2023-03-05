@@ -8,7 +8,7 @@ class DeleteDoppelganger {
 		}
 		return this.instance;
 	}
-	async execute(interaction, client) {
+	async execute(interaction) {
 		interaction.reply({ content: "We are working on purging that message" });
 		const index = interaction.customId.indexOf("|");
 		let triggerData = interaction.customId.substring(index + 1).split("|");

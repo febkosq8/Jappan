@@ -1,10 +1,2 @@
-.github
-.vscode
-assets
 node_modules
-templates
 .env
-config.json
-JappanHerokuLog.bat
-package-lock.json
-Procfile

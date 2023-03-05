@@ -19,8 +19,8 @@ class auditlog {
 		}
 		return this.instance;
 	}
-	constructor(client) {
-		this.processCommand(client);
+	constructor() {
+		this.processCommand();
 	}
 
 	getCommand() {
@@ -65,7 +65,7 @@ class auditlog {
 			.setDMPermission(false)
 			.toJSON();
 	}
-	async execute(interaction, client) {
+	async execute(interaction) {
 		await interaction.deferReply({ ephemeral: true });
 		if (interaction.options._subcommand === "on") {
 			AuditHandler.auditOn(interaction);

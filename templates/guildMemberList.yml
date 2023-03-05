@@ -1,0 +1,290 @@
+{
+  "_id": { "$oid": "6369776df38c687c309b518d" },
+  "timeStamp": { "$date": { "$numberLong": "1669981371075" } },
+  "guildId": "989874805316649031",
+  "guildName": "YTG - Yatagarasu",
+  "levelActive": true,
+  "levelThreshold": "",
+  "levelRoleId": "",
+  "levelRoleName": "",
+  "announceActive": true,
+  "announceChannelId": "989887549914890292",
+  "announceChannelName": "io-log",
+  "memberList": [
+    {
+      "userid": "592863554244444160",
+      "username": "TonY StarK",
+      "discriminator": "5535",
+      "levelStat": { "$numberInt": "39" }
+    },
+    {
+      "userid": "469125856397361153",
+      "username": "HalfRipperMan",
+      "discriminator": "8673",
+      "levelStat": { "$numberInt": "9" }
+    },
+    {
+      "userid": "752503106419294290",
+      "username": "FABN",
+      "discriminator": "4790",
+      "levelStat": { "$numberInt": "0" }
+    },
+    {
+      "userid": "955841347649155103",
+      "username": "FALCON",
+      "discriminator": "9071",
+      "levelStat": { "$numberInt": "2" }
+    },
+    {
+      "userid": "397786689373732874",
+      "username": "MaKkAcHi",
+      "discriminator": "4264",
+      "levelStat": { "$numberInt": "276" }
+    },
+    {
+      "userid": "407819516513484801",
+      "username": "Febkosq8",
+      "discriminator": "8685",
+      "levelStat": { "$numberInt": "29" }
+    },
+    {
+      "userid": "475330257147396111",
+      "username": "KV",
+      "discriminator": "0991",
+      "levelStat": { "$numberInt": "4" }
+    },
+    {
+      "userid": "252354800866295810",
+      "username": "DafuQ",
+      "discriminator": "9998",
+      "levelStat": { "$numberInt": "48" }
+    },
+    {
+      "userid": "557561982992252949",
+      "username": "Astroi",
+      "discriminator": "5688",
+      "levelStat": { "$numberInt": "167" }
+    },
+    {
+      "userid": "654040135733739541",
+      "username": "Nawafka",
+      "discriminator": "0312",
+      "levelStat": { "$numberInt": "10" }
+    },
+    {
+      "userid": "601421472380092447",
+      "username": "TN13Gaming™",
+      "discriminator": "3422",
+      "levelStat": { "$numberInt": "0" }
+    },
+    {
+      "userid": "622412123422851073",
+      "username": "RADiiii",
+      "discriminator": "0632",
+      "levelStat": { "$numberInt": "44" }
+    },
+    {
+      "userid": "347298506807181313",
+      "username": "MithDevil",
+      "discriminator": "8209",
+      "levelStat": { "$numberInt": "137" }
+    },
+    {
+      "userid": "998951935828824065",
+      "username": "RAFI",
+      "discriminator": "1728",
+      "levelStat": { "$numberInt": "0" }
+    },
+    {
+      "userid": "713958960541073439",
+      "username": "ANITIN",
+      "discriminator": "6566",
+      "levelStat": { "$numberInt": "0" }
+    },
+    {
+      "userid": "754017165908246590",
+      "username": "ERIC GAMING YT !",
+      "discriminator": "5058",
+      "levelStat": { "$numberInt": "1" }
+    },
+    {
+      "userid": "702137602089943100",
+      "username": "𝐙𝐨𝐫𝐨",
+      "discriminator": "8354",
+      "levelStat": { "$numberInt": "0" }
+    },
+    {
+      "userid": "839100064970309703",
+      "username": "L0RD R0BiNH00D",
+      "discriminator": "7086",
+      "levelStat": { "$numberInt": "2" }
+    },
+    {
+      "userid": "916946743504015400",
+      "username": "ZedeX",
+      "discriminator": "2364",
+      "levelStat": { "$numberInt": "3" }
+    },
+    {
+      "userid": "752878082632712224",
+      "username": "Sp3",
+      "discriminator": "7500",
+      "levelStat": { "$numberInt": "33" }
+    },
+    {
+      "userid": "456710297902907393",
+      "username": "ASES Limitless",
+      "discriminator": "0946",
+      "levelStat": { "$numberInt": "2" }
+    },
+    {
+      "userid": "797480874408804354",
+      "username": "Sak3n_",
+      "discriminator": "7694",
+      "levelStat": { "$numberInt": "0" }
+    },
+    {
+      "userid": "303813989950029825",
+      "username": "MindfuQ",
+      "discriminator": "6611",
+      "levelStat": { "$numberInt": "56" }
+    },
+    {
+      "userid": "495107441017618432",
+      "username": "WhizzMan",
+      "discriminator": "7867",
+      "levelStat": { "$numberInt": "37" }
+    },
+    {
+      "userid": "263245780519747584",
+      "username": "EP1CGOKU",
+      "discriminator": "9666",
+      "levelStat": { "$numberInt": "0" }
+    },
+    {
+      "userid": "699620580948836423",
+      "username": "LEVI",
+      "discriminator": "6558",
+      "levelStat": { "$numberInt": "0" }
+    },
+    {
+      "userid": "640389572018176015",
+      "username": "H00man",
+      "discriminator": "1231",
+      "levelStat": { "$numberInt": "1" }
+    },
+    {
+      "userid": "811116035587047425",
+      "username": "Slapeee",
+      "discriminator": "2207",
+      "levelStat": { "$numberInt": "0" }
+    },
+    {
+      "userid": "117138547865157632",
+      "username": "Skye",
+      "discriminator": "7301",
+      "levelStat": { "$numberInt": "91" }
+    },
+    {
+      "userid": "586250665534292038",
+      "username": "H Λ Z E",
+      "discriminator": "8699",
+      "levelStat": { "$numberInt": "0" }
+    },
+    {
+      "userid": "707239639467163669",
+      "username": "xp4t",
+      "discriminator": "0027",
+      "levelStat": { "$numberInt": "0" }
+    },
+    {
+      "userid": "761837311524339712",
+      "username": "NopeMeansNope",
+      "discriminator": "8129",
+      "levelStat": { "$numberInt": "2" }
+    },
+    {
+      "userid": "695296795655536770",
+      "username": "MrZ leshivu",
+      "discriminator": "9016",
+      "levelStat": { "$numberInt": "0" }
+    },
+    {
+      "userid": "757931427600793630",
+      "username": "FLΛKΣ",
+      "discriminator": "3604",
+      "levelStat": { "$numberInt": "0" }
+    },
+    {
+      "userid": "176002676696416257",
+      "username": "Rinzai",
+      "discriminator": "0368",
+      "levelStat": { "$numberInt": "4" }
+    },
+    {
+      "userid": "515182095916728330",
+      "username": "kaizoku",
+      "discriminator": "7666",
+      "levelStat": { "$numberInt": "0" }
+    },
+    {
+      "userid": "342274087889928192",
+      "username": "Parzival",
+      "discriminator": "0731",
+      "levelStat": { "$numberInt": "0" }
+    },
+    {
+      "userid": "580441661792976916",
+      "username": "WALKER | YT",
+      "discriminator": "8896",
+      "levelStat": { "$numberInt": "17" }
+    },
+    {
+      "userid": "496543428524376065",
+      "username": "ASES ANDY",
+      "discriminator": "8111",
+      "levelStat": { "$numberInt": "70" }
+    },
+    {
+      "userid": "195606138144817152",
+      "username": "Trollmeisterrr.",
+      "discriminator": "1855",
+      "levelStat": { "$numberInt": "49" }
+    },
+    {
+      "userid": "570988529111531540",
+      "username": "LucI",
+      "discriminator": "8161",
+      "levelStat": { "$numberInt": "20" }
+    },
+    {
+      "userid": "719440518399918131",
+      "username": "PAIN",
+      "discriminator": "4046",
+      "levelStat": { "$numberInt": "0" }
+    },
+    {
+      "userid": "295395003944009730",
+      "username": "xGqD_",
+      "discriminator": "6936",
+      "levelStat": { "$numberInt": "0" }
+    },
+    {
+      "userid": "772731699221102603",
+      "username": "Deckuf",
+      "discriminator": "2191",
+      "levelStat": { "$numberInt": "1" }
+    },
+    {
+      "userid": "701418059428003842",
+      "username": "Darko",
+      "discriminator": "7520",
+      "levelStat": { "$numberInt": "0" }
+    }
+  ],
+  "__v": { "$numberInt": "0" },
+  "auditActive": true,
+  "auditChannelId": "989874806906302476",
+  "auditChannelName": "audit-log"
+}
+

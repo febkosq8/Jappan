@@ -1,0 +1,12 @@
+{
+	"botName": "Jappan",
+	"botpfp": "https://cdn.discordapp.com/attachments/789247082888298548/1030598635693539498/pfp2.png",
+	"botWebsite": "https://www.febkosq8.me/Jappan",
+	"about": "I am a simple discord bot made to make someone's life easier",
+	"prefix": "?",
+	"serverPort": "8080",
+	"activity": "your weird playlist",
+	"activityType": 2,
+	"status": "online",
+	"devLogging": "false"
+}

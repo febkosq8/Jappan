@@ -17,8 +17,8 @@ class queue {
 		}
 		return this.instance;
 	}
-	constructor(client) {
-		this.processCommand(client);
+	constructor() {
+		this.processCommand();
 	}
 
 	getCommand() {
@@ -45,7 +45,7 @@ class queue {
 			.setDMPermission(false)
 			.toJSON();
 	}
-	async execute(interaction, player) {
+	async execute(interaction) {
 		await interaction.deferReply();
 		if (!(interaction.member instanceof GuildMember) || !interaction.member.voice.channel) {
 			return void interaction.editReply({
@@ -73,23 +73,27 @@ class queue {
 			let currQueue = queue.tracks.toArray();
 			let queueLength = currQueue.length;
 			let loopMode = queue.repeatMode;
+			let maxSongs = queueLength > 50 ? 50 : queueLength;
+			let queueTracks = "`No songs in queue`";
 			loopMode =
 				loopMode === QueueRepeatMode.TRACK
 					? ":repeat_one: Track"
 					: loopMode === QueueRepeatMode.QUEUE
 					? ":repeat: Queue"
 					: ":arrow_forward: Off";
-			currQueue = queueLength > 50 ? currQueue.slice(0, 50) : currQueue;
-			let tracks = currQueue.map((track, idx) => `${++idx}: **${track.title}**`).join("\n");
-			if (queueLength > 50) {
-				tracks += `\nand ${queueLength - 50} more...`;
-			}
-			let descString = ``;
 			if (queueLength > 0) {
-				descString += `${tracks}`;
-			} else {
-				descString += `\`No songs in queue\``;
+				currQueue = queueLength > maxSongs ? currQueue.slice(0, maxSongs) : currQueue;
+				queueTracks = currQueue.map((track, idx) => `${++idx}: **${track.title}**`).join("\n");
+				while (queueTracks.length > 1000) {
+					maxSongs--;
+					currQueue = queueLength > maxSongs ? currQueue.slice(0, maxSongs) : currQueue;
+					queueTracks = currQueue.map((track, idx) => `${++idx}: **${track.title}**`).join("\n");
+				}
+				if (queueLength > maxSongs) {
+					queueTracks += `\nand ${queueLength - maxSongs} more...`;
+				}
 			}
+
 			let queueEmbed = new EmbedBuilder()
 				.setColor("LightGrey")
 				.setAuthor({
@@ -111,7 +115,7 @@ class queue {
 					},
 					{
 						name: ":notes: Queue",
-						value: descString,
+						value: queueTracks,
 						inline: false,
 					}
 				);

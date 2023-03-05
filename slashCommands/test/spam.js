@@ -17,8 +17,8 @@ class clear {
 		}
 		return this.instance;
 	}
-	constructor(client) {
-		this.processCommand(client);
+	constructor() {
+		this.processCommand();
 	}
 
 	getCommand() {
@@ -48,7 +48,7 @@ class clear {
 			.setDMPermission(false)
 			.toJSON();
 	}
-	async execute(interaction, client) {
+	async execute(interaction) {
 		await interaction.deferReply();
 		let count = interaction.options.get("count").value;
 		for (let i = 1; i <= count; i++) {
