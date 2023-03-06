@@ -13,7 +13,7 @@ class GeneralHelp {
 	constructor(client) {
 		generalFiles = GlobalCommands.getInstance(client).getGeneralFiles();
 	}
-	async execute(interaction, client) {
+	async execute(interaction) {
 		await interaction.deferReply();
 		let generalHelpEmbed = new EmbedBuilder()
 			.setColor(0x0099ff)

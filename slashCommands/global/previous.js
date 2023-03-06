@@ -1,7 +1,7 @@
-const { GuildMember, SlashCommandBuilder } = require("discord.js");
+const { SlashCommandBuilder } = require("discord.js");
 const config = require("../../config.json");
-const { useQueue, useHistory } = require("discord-player");
 const ClientHandler = require("../../Components/ClientHandler");
+const PlayerHandler = require("../../Components/PlayerHandler");
 
 class previous {
 	#command;
@@ -18,8 +18,8 @@ class previous {
 		}
 		return this.instance;
 	}
-	constructor(client) {
-		this.processCommand(client);
+	constructor() {
+		this.processCommand();
 	}
 
 	getCommand() {
@@ -46,41 +46,8 @@ class previous {
 			.setDMPermission(false)
 			.toJSON();
 	}
-	async execute(interaction, player) {
-		await interaction.deferReply();
-		if (!(interaction.member instanceof GuildMember) || !interaction.member.voice.channel) {
-			return void interaction.editReply({
-				content: "You are not in a voice channel!",
-				ephemeral: true,
-			});
-		}
-
-		if (
-			interaction.guild.members.me.voice.channelId &&
-			interaction.member.voice.channelId !== interaction.guild.members.me.voice.channelId
-		) {
-			return void interaction.editReply({
-				content: "You are not in my voice channel!",
-				ephemeral: true,
-			});
-		}
-		const queue = useQueue(interaction.guild.id);
-		if (!queue || !queue.currentTrack) {
-			await interaction.editReply({
-				content: ":x: | No music is being played!",
-			});
-			return;
-		}
-		const history = useHistory(interaction.guild.id);
-		if (!history?.previousTrack) {
-			return interaction.editReply({
-				content: `:x: | We found no tracks in history!`,
-			});
-		}
-		await history.previous();
-		await interaction.editReply({
-			content: ":arrow_backward: | Going back a song in the queue history",
-		});
+	async execute(interaction) {
+		await PlayerHandler.previousGuildPlayer(interaction);
 	}
 }
 module.exports = previous;

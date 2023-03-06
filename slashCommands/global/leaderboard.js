@@ -19,8 +19,8 @@ class leaderboard {
 		}
 		return this.instance;
 	}
-	constructor(client) {
-		this.processCommand(client);
+	constructor() {
+		this.processCommand();
 	}
 
 	getCommand() {
@@ -47,7 +47,7 @@ class leaderboard {
 			.setDMPermission(false)
 			.toJSON();
 	}
-	async execute(interaction, client) {
+	async execute(interaction) {
 		await interaction.deferReply();
 		LevelHandler.fetchLeaderboard(interaction);
 	}

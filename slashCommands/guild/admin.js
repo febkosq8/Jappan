@@ -23,8 +23,8 @@ class admin {
 		}
 		return this.instance;
 	}
-	constructor(client) {
-		this.processCommand(client);
+	constructor() {
+		this.processCommand();
 	}
 
 	getCommand() {
@@ -196,7 +196,6 @@ class admin {
 		// console.log(interaction.options.data[0].options[0].options[1].value); //choice2 value : yes
 		await interaction.deferReply({ ephemeral: true });
 		let option = interaction.options._group;
-		let clientId = await ClientHandler.getClientId();
 		if (process.env.botAdmin.includes(interaction.member.id)) {
 			if (option === "guild") {
 				let choice = interaction.options._subcommand;

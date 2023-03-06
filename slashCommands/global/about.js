@@ -18,8 +18,8 @@ class about {
 		}
 		return this.instance;
 	}
-	constructor(client) {
-		this.processCommand(client);
+	constructor() {
+		this.processCommand();
 	}
 
 	getCommand() {
@@ -46,7 +46,7 @@ class about {
 			.setDMPermission(false)
 			.toJSON();
 	}
-	async execute(interaction, client) {
+	async execute(interaction) {
 		await interaction.deferReply();
 		const butttonLabelList = [
 			{ key: "Ping", value: "Ping Stats" },

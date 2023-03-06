@@ -13,7 +13,7 @@ class LevelHelp {
 	constructor(client) {
 		levelFiles = GlobalCommands.getInstance(client).getLevelFiles();
 	}
-	async execute(interaction, client) {
+	async execute(interaction) {
 		await interaction.deferReply();
 		let levelHelpEmbed = new EmbedBuilder()
 			.setColor(0x0099ff)

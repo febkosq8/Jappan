@@ -1,4 +1,11 @@
-const { GuildMember, SlashCommandBuilder } = require("discord.js");
+const {
+	GuildMember,
+	SlashCommandBuilder,
+	ActionRowBuilder,
+	ButtonBuilder,
+	ButtonStyle,
+	EmbedBuilder,
+} = require("discord.js");
 const config = require("../../config.json");
 const { useQueue } = require("discord-player");
 const ClientHandler = require("../../Components/ClientHandler");
@@ -17,8 +24,8 @@ class nowplaying {
 		}
 		return this.instance;
 	}
-	constructor(client) {
-		this.processCommand(client);
+	constructor() {
+		this.processCommand();
 	}
 
 	getCommand() {
@@ -45,7 +52,7 @@ class nowplaying {
 			.setDMPermission(false)
 			.toJSON();
 	}
-	async execute(interaction, player) {
+	async execute(interaction) {
 		await interaction.deferReply();
 		if (!(interaction.member instanceof GuildMember) || !interaction.member.voice.channel) {
 			interaction.editReply({
@@ -65,6 +72,25 @@ class nowplaying {
 			});
 			return;
 		}
+
+		const butttonLabelList = [
+			{ key: "PlayerQueue", value: "Current Queue", style: ButtonStyle.Primary },
+			{ key: "PlayerPrevious", value: "⏮️ Previous", style: ButtonStyle.Secondary },
+			{ key: "PlayerPause", value: "⏯️ Toggle Pause", style: ButtonStyle.Secondary },
+			{ key: "PlayerSkip", value: "⏭️ Skip", style: ButtonStyle.Secondary },
+			{ key: "PlayerStop", value: "⏹️ Stop", style: ButtonStyle.Danger },
+		];
+
+		let buttonRow = new ActionRowBuilder();
+		for (let i = 0; i < butttonLabelList.length; i++) {
+			buttonRow.addComponents(
+				new ButtonBuilder()
+					.setCustomId(butttonLabelList[i].key)
+					.setLabel(butttonLabelList[i].value)
+					.setStyle(butttonLabelList[i].style)
+			);
+		}
+
 		const queue = useQueue(interaction.guild.id);
 		if (!queue) {
 			await interaction.followUp({
@@ -75,20 +101,23 @@ class nowplaying {
 		const currentTrack = queue.currentTrack;
 		const progress = queue.node.createProgressBar();
 		const perc = queue.node.getTimestamp();
+		const nowPlayingEmbed = new EmbedBuilder()
+			.setColor(0xffffff)
+			.setTitle("Now Playing")
+			.setAuthor({
+				name: config.botName,
+				iconURL: config.botpfp,
+				url: config.botWebsite,
+			})
+			.setFields({
+				name: "\u200b",
+				value: progress,
+			})
+			.setDescription(`:musical_note: | **${currentTrack.title}** | ${perc.progress} %`)
+			.setTimestamp();
 		await interaction.followUp({
-			embeds: [
-				{
-					title: "Now Playing",
-					description: `:musical_note: | **${currentTrack.title}** | ${perc.progress} %`,
-					fields: [
-						{
-							name: "\u200b",
-							value: progress,
-						},
-					],
-					color: 0xffffff,
-				},
-			],
+			embeds: [nowPlayingEmbed],
+			components: [buttonRow],
 		});
 	}
 }

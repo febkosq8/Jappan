@@ -18,8 +18,8 @@ class clear {
 		}
 		return this.instance;
 	}
-	constructor(client) {
-		this.processCommand(client);
+	constructor() {
+		this.processCommand();
 	}
 
 	getCommand() {
@@ -73,7 +73,7 @@ class clear {
 			.setDMPermission(false)
 			.toJSON();
 	}
-	async execute(interaction, client) {
+	async execute(interaction) {
 		await interaction.deferReply({ ephemeral: true });
 		let type = interaction.options._subcommand;
 		if (type === "channel") {

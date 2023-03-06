@@ -13,7 +13,7 @@ class ModHelp {
 	constructor(client) {
 		modFiles = GlobalCommands.getInstance(client).getModFiles();
 	}
-	async execute(interaction, client) {
+	async execute(interaction) {
 		await interaction.deferReply();
 		let musicHelpEmbed = new EmbedBuilder()
 			.setColor(0x0099ff)

@@ -1,7 +1,7 @@
-const { GuildMember, SlashCommandBuilder } = require("discord.js");
+const { SlashCommandBuilder } = require("discord.js");
 const config = require("../../config.json");
-const { useQueue } = require("discord-player");
 const ClientHandler = require("../../Components/ClientHandler");
+const PlayerHandler = require("../../Components/PlayerHandler");
 
 class pause {
 	#command;
@@ -18,8 +18,8 @@ class pause {
 		}
 		return this.instance;
 	}
-	constructor(client) {
-		this.processCommand(client);
+	constructor() {
+		this.processCommand();
 	}
 
 	getCommand() {
@@ -46,38 +46,8 @@ class pause {
 			.setDMPermission(false)
 			.toJSON();
 	}
-	async execute(interaction, player) {
-		await interaction.deferReply();
-		if (!(interaction.member instanceof GuildMember) || !interaction.member.voice.channel) {
-			return void interaction.editReply({
-				content: "You are not in a voice channel!",
-				ephemeral: true,
-			});
-		}
-
-		if (
-			interaction.guild.members.me.voice.channelId &&
-			interaction.member.voice.channelId !== interaction.guild.members.me.voice.channelId
-		) {
-			return void interaction.editReply({
-				content: "You are not in my voice channel!",
-				ephemeral: true,
-			});
-		}
-		const queue = useQueue(interaction.guild.id);
-		if (!queue || !queue.currentTrack) {
-			await interaction.editReply({
-				content: ":x: | No music is being played!",
-			});
-			return;
-		}
-
-		const newPauseState = !queue.node.isPaused();
-
-		queue.node.setPaused(newPauseState);
-		await interaction.editReply({
-			content: newPauseState ? ":pause_button: | Paused player" : ":arrow_forward: | Resumed player",
-		});
+	async execute(interaction) {
+		await PlayerHandler.pauseGuildPlayer(interaction);
 	}
 }
 module.exports = pause;

@@ -1,7 +1,7 @@
-const { GuildMember, SlashCommandBuilder } = require("discord.js");
+const { SlashCommandBuilder } = require("discord.js");
 const config = require("../../config.json");
 const ClientHandler = require("../../Components/ClientHandler");
-const { useQueue } = require("discord-player");
+const PlayerHandler = require("../../Components/PlayerHandler");
 class stop {
 	#command;
 	#name;
@@ -17,8 +17,8 @@ class stop {
 		}
 		return this.instance;
 	}
-	constructor(client) {
-		this.processCommand(client);
+	constructor() {
+		this.processCommand();
 	}
 
 	getCommand() {
@@ -45,37 +45,8 @@ class stop {
 			.setDMPermission(false)
 			.toJSON();
 	}
-	async execute(interaction, player) {
-		await interaction.deferReply();
-		if (!(interaction.member instanceof GuildMember) || !interaction.member.voice.channel) {
-			await interaction.editReply({
-				content: "You are not in a voice channel!",
-				ephemeral: true,
-			});
-			return;
-		}
-
-		if (
-			interaction.guild.members.me.voice.channelId &&
-			interaction.member.voice.channelId !== interaction.guild.members.me.voice.channelId
-		) {
-			await interaction.editReply({
-				content: "You are not in my voice channel!",
-				ephemeral: true,
-			});
-			return;
-		}
-
-		const queue = useQueue(interaction.guild.id);
-		if (!queue) {
-			await interaction.followUp({
-				content: ":x: | No music is being played!",
-			});
-			return;
-		}
-
-		queue.delete();
-		await interaction.followUp({ content: "🛑 | Stopped the player!" });
+	async execute(interaction) {
+		await PlayerHandler.stopGuildPlayer(interaction);
 	}
 }
 module.exports = stop;

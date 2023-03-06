@@ -23,8 +23,8 @@ class test {
 		}
 		return this.instance;
 	}
-	constructor(client) {
-		this.processCommand(client);
+	constructor() {
+		this.processCommand();
 	}
 
 	getCommand() {
@@ -51,11 +51,11 @@ class test {
 			.setDMPermission(false)
 			.toJSON();
 	}
-	async execute(interaction, player) {
-		const player1 = useMasterPlayer();
+	async execute(interaction) {
+		const player = useMasterPlayer();
 		let filePath = `${__dirname}/../../assets/Music/dieForYou.mp3`;
 		await interaction.deferReply();
-		await player1.play(interaction.member.voice.channel, filePath, {
+		await player.play(interaction.member.voice.channel, filePath, {
 			searchEngine: QueryType.FILE,
 			nodeOptions: {
 				metadata: interaction.channel,

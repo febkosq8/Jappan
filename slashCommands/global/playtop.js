@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, GuildMember } = require("discord.js");
-const { useQueue, QueryType } = require("discord-player");
+const { useQueue, useMasterPlayer } = require("discord-player");
 const config = require("../../config.json");
 const EventHandler = require("../../Components/EventHandler");
 const ClientHandler = require("../../Components/ClientHandler");
@@ -18,8 +18,8 @@ class playtop {
 		}
 		return this.instance;
 	}
-	constructor(client) {
-		this.processCommand(client);
+	constructor() {
+		this.processCommand();
 	}
 
 	getCommand() {
@@ -54,7 +54,8 @@ class playtop {
 			.setDMPermission(false)
 			.toJSON();
 	}
-	async autocomplete(interaction, player) {
+	async autocomplete(interaction) {
+		const player = useMasterPlayer();
 		const query = interaction.options.getString("query");
 		const result = await player.search(query);
 
@@ -65,7 +66,8 @@ class playtop {
 		result.tracks.slice(0, 6).map((track) => returnData.push({ name: track.title, value: track.url }));
 		await interaction.respond(returnData);
 	}
-	async execute(interaction, player) {
+	async execute(interaction) {
+		const player = useMasterPlayer();
 		await interaction.deferReply();
 		try {
 			if (!(interaction.member instanceof GuildMember) || !interaction.member.voice.channel) {

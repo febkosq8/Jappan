@@ -17,8 +17,8 @@ class volume {
 		}
 		return this.instance;
 	}
-	constructor(client) {
-		this.processCommand(client);
+	constructor() {
+		this.processCommand();
 	}
 
 	getCommand() {
@@ -53,7 +53,7 @@ class volume {
 			.setDMPermission(false)
 			.toJSON();
 	}
-	async execute(interaction, player) {
+	async execute(interaction) {
 		await interaction.deferReply();
 		if (!(interaction.member instanceof GuildMember) || !interaction.member.voice.channel) {
 			await interaction.editReply({

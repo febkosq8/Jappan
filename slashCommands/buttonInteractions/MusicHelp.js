@@ -13,7 +13,7 @@ class MusicHelp {
 	constructor(client) {
 		musicFiles = GlobalCommands.getInstance(client).getMusicFiles();
 	}
-	async execute(interaction, client) {
+	async execute(interaction) {
 		await interaction.deferReply();
 		let musicHelpEmbed = new EmbedBuilder()
 			.setColor(0x0099ff)

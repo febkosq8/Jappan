@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, GuildMember } = require("discord.js");
-const { Player } = require("discord-player");
+const { useMasterPlayer, useQueue } = require("discord-player");
 const config = require("../../config.json");
 const EventHandler = require("../../Components/EventHandler");
 const ClientHandler = require("../../Components/ClientHandler");
@@ -27,8 +27,8 @@ class soundboard {
 		}
 		return this.instance;
 	}
-	constructor(client) {
-		this.processCommand(client);
+	constructor() {
+		this.processCommand();
 	}
 
 	getCommand() {
@@ -42,7 +42,7 @@ class soundboard {
 			id: ClientHandler.getCommandId(this.#name) || this.#id,
 		};
 	}
-	processCommand(client) {
+	processCommand() {
 		this.#name = "soundboard";
 		this.#desc = "Play a set of sounds from the list";
 		this.#helpDesc =
@@ -70,29 +70,8 @@ class soundboard {
 			.setDMPermission(false)
 			.toJSON();
 	}
-	async execute(interaction, client) {
-		const player = new Player(client);
-		player.events.on("error", (queue, error) => {
-			EventHandler.auditEvent(
-				"ERROR",
-				`[${queue.guild.name}] Discord Player General error emitted from the queue: ${error.message}`,
-				error
-			);
-		});
-		player.events.on("playerError", (queue, error) => {
-			EventHandler.auditEvent(
-				"ERROR",
-				`[${queue.guild.name}] Discord Player error emitted from the connection: ${error.message}`,
-				error
-			);
-		});
-		player.events.on("connectionError", (queue, error) => {
-			EventHandler.auditEvent(
-				"ERROR",
-				`[${queue.guild.name}] Discord Player Connection error emitted from the connection: ${error.message}`,
-				error
-			);
-		});
+	async execute(interaction) {
+		const player = useMasterPlayer();
 		await interaction.deferReply({ ephemeral: false });
 		let type = interaction.options.getString("voiceclip");
 		let query = this.voiceClips.find((clip) => Object.keys(clip)[0] === type)?.[type];
@@ -116,14 +95,28 @@ class soundboard {
 			const searchResult = await player.search(query);
 
 			if (!searchResult.hasTracks()) {
-				interaction.editReply(`We didn't find that track!`);
+				interaction.editReply(`We didn't find that sound clip!`);
 				return;
 			} else {
-				await player.play(interaction.member.voice.channel, searchResult, {
-					nodeOptions: {
-						metadata: interaction.channel,
-					},
-				});
+				let queue = useQueue(interaction.guild.id);
+				if (!queue) {
+					await player.play(interaction.member.voice.channel, searchResult, {
+						nodeOptions: {
+							metadata: interaction.channel,
+							bufferingTimeout: 15000,
+							leaveOnStop: true,
+							leaveOnStopCooldown: 5000,
+							leaveOnEnd: true,
+							leaveOnEndCooldown: 15000,
+							leaveOnEmpty: true,
+							leaveOnEmptyCooldown: 300000,
+							skipOnNoStream: true,
+						},
+					});
+				} else {
+					queue.insertTrack(searchResult.tracks[0], 0);
+					queue.node.skip();
+				}
 				await interaction.followUp({
 					content: `⏱ | Loading your voice clip`,
 				});
