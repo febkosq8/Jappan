@@ -39,7 +39,7 @@ class makesay {
 		this.#helpDesc =
 			"Clones the target user and makes them say something that you want. The target user will be sent a notification (If thier DM is open) that they have been cloned and will be given the option to delete the cloned message.";
 		this.#cType = "fun";
-		this.#id = "1050518908186140792";
+		this.#id = "1083507845984682078";
 
 		this.#command = new SlashCommandBuilder()
 			.setName(this.#name)

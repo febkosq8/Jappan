@@ -41,7 +41,7 @@ class playlist {
 		this.#helpDesc =
 			"</playlist add:__id__> : Add a playlist for music playback. Takes a listname, the search query, shuffle mode (Overridable during playback) for input. Once set you can use the listname, to play that particular playlist anywhere.\n</playlist play:__id__> : You can play your registered playlist using its name.\n</playlist check:__id__> : Get a list of all the playlists that you have registered currently.";
 		this.#cType = "music";
-		this.#id = "1038883451597750272";
+		this.#id = "1083507846433480711";
 
 		this.#command = new SlashCommandBuilder()
 			.setName(this.#name)
@@ -129,10 +129,10 @@ class playlist {
 	async execute(interaction) {
 		const player = useMasterPlayer();
 		await interaction.deferReply();
-		let type = interaction.options._subcommand;
+		let type = interaction.options.getSubcommand();
 		if (type === "add") {
 			let query = interaction.options.get("query").value;
-			const searchResult = await player.search(query);
+			const searchResult = await player.search(query, { requestedBy: interaction.user });
 			if (!searchResult.hasTracks()) {
 				interaction.editReply(`Playlist creation failed as we found no tracks for ${query}!`);
 				return;
@@ -257,7 +257,7 @@ class playlist {
 								ephemeral: true,
 							});
 						}
-						let searchResult = await player.search(query);
+						let searchResult = await player.search(query, { requestedBy: interaction.user });
 						if (!searchResult.hasTracks()) {
 							interaction.editReply(`We found no tracks for ${query}!`);
 							return;

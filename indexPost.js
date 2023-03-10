@@ -51,6 +51,7 @@ class indexPost {
 				`[${queue.guild.name}] Discord Player General error emitted from the queue: ${error.message}`,
 				error
 			);
+			EventHandler.auditEvent("DEBUG", `[${queue.guild.name}] Follow-up queue`, queue);
 		});
 		player.events.on("playerError", (queue, error) => {
 			EventHandler.auditEvent(
@@ -58,6 +59,7 @@ class indexPost {
 				`[${queue.guild.name}] Discord Player error emitted from the connection: ${error.message}`,
 				error
 			);
+			EventHandler.auditEvent("DEBUG", `[${queue.guild.name}] Follow-up queue`, queue);
 		});
 		player.events.on("connectionError", (queue, error) => {
 			EventHandler.auditEvent(

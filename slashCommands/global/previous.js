@@ -38,7 +38,7 @@ class previous {
 		this.#desc = "Play the previous song in the queue";
 		this.#helpDesc = "Go back a song in the queue history";
 		this.#cType = "music";
-		this.#id = "1032296352316657669";
+		this.#id = "1083507846433480713";
 
 		this.#command = new SlashCommandBuilder()
 			.setName(this.#name)

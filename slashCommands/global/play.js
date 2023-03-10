@@ -39,7 +39,7 @@ class play {
 		this.#helpDesc =
 			"Play a song/playlist. New songs are added to the end of the queue. \nWill disconnect after 5 minutes of inactivity.";
 		this.#cType = "music";
-		this.#id = "1032296352316657671";
+		this.#id = "1083507846433480710";
 
 		this.#command = new SlashCommandBuilder()
 			.setName(this.#name)
@@ -90,7 +90,7 @@ class play {
 			}
 
 			const query = interaction.options.getString("query");
-			const searchResult = await player.search(query);
+			const searchResult = await player.search(query, { requestedBy: interaction.user });
 
 			if (!searchResult.hasTracks()) {
 				await interaction.editReply(`We found no tracks for ${query}!`);

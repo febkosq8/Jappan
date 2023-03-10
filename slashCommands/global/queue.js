@@ -37,7 +37,7 @@ class queue {
 		this.#desc = "View the queue of songs added currently";
 		this.#helpDesc = "View the current songs queue";
 		this.#cType = "music";
-		this.#id = "1032296352316657673";
+		this.#id = "1083507846806777988";
 
 		this.#command = new SlashCommandBuilder()
 			.setName(this.#name)

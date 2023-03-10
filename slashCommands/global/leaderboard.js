@@ -39,7 +39,7 @@ class leaderboard {
 		this.#desc = "Show the leaderboard for this server";
 		this.#helpDesc = "Show the leaderboard for a server";
 		this.#cType = "level";
-		this.#id = "1037556895638102026";
+		this.#id = "1083507845984682080";
 
 		this.#command = new SlashCommandBuilder()
 			.setName(this.#name)

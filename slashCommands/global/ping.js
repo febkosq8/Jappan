@@ -37,7 +37,7 @@ class ping {
 		this.#desc = "Get latency information about the bot";
 		this.#helpDesc = "Get latency information about the bot";
 		this.#cType = "general";
-		this.#id = "1032296352316657670";
+		this.#id = "1083507846433480709";
 
 		this.#command = new SlashCommandBuilder()
 			.setName(this.#name)

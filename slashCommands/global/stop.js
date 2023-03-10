@@ -37,7 +37,7 @@ class stop {
 		this.#desc = "Stop the queue and leave the voice channel";
 		this.#helpDesc = "Stop playing songs from the queue and leave the voice channel";
 		this.#cType = "music";
-		this.#id = "1032296352371196019";
+		this.#id = "1083507846806777993";
 
 		this.#command = new SlashCommandBuilder()
 			.setName(this.#name)

@@ -6,6 +6,7 @@ const LevelHandler = require("../../Components/LevelHandler");
 const ClientHandler = require("../../Components/ClientHandler");
 const AuditHandler = require("../../Components/AuditHandler");
 const DatabaseManager = require("../../Managers/DatabaseManager");
+const guildListSchema = require("../../Managers/Schemas/guildListSchema");
 const fs = require("node:fs");
 
 class test {
@@ -52,24 +53,14 @@ class test {
 			.toJSON();
 	}
 	async execute(interaction) {
-		const player = useMasterPlayer();
-		let filePath = `${__dirname}/../../assets/Music/dieForYou.mp3`;
 		await interaction.deferReply();
-		await player.play(interaction.member.voice.channel, filePath, {
-			searchEngine: QueryType.FILE,
-			nodeOptions: {
-				metadata: interaction.channel,
-				bufferingTimeout: 15000,
-				leaveOnStop: true,
-				leaveOnStopCooldown: 5000,
-				leaveOnEnd: true,
-				leaveOnEndCooldown: 15000,
-				leaveOnEmpty: true,
-				leaveOnEmptyCooldown: 300000,
-				skipOnNoStream: true,
-			},
-		});
-		interaction.editReply("Playing");
+		await guildListSchema.updateMany(
+			{},
+			{
+				$unset: { warnAuditChannelID: "" },
+			}
+		);
+		await interaction.editReply("ok done");
 	}
 }
 module.exports = test;

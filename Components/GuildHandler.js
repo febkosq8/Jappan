@@ -20,6 +20,11 @@ class GuildHandler {
 				auditActive: false,
 				auditChannelId: "",
 				auditChannelName: "",
+				warnTimeoutThreshold: -1,
+				warnTimeoutDuration: -1,
+				warnBanThreshold: -1,
+				warnAuditChannelId: "",
+				warnAuditChannelName: "",
 				memberList: [],
 			};
 			new guildList(guildData).save();
@@ -29,9 +34,11 @@ class GuildHandler {
 		let status = await guildList.updateMany(
 			{},
 			{
-				auditActive: false,
-				auditChannelId: "",
-				auditChannelName: "",
+				warnTimeoutThreshold: -1,
+				warnTimeoutDuration: -1,
+				warnBanThreshold: -1,
+				warnAuditChannelId: "",
+				warnAuditChannelName: "",
 			}
 		);
 		return status;

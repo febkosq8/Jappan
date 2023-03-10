@@ -37,7 +37,7 @@ class help {
 		this.#desc = "List all available commands";
 		this.#helpDesc = "List all available commands";
 		this.#cType = "general";
-		this.#id = "1032296352316657665";
+		this.#id = "1083507845984682079";
 
 		this.#command = new SlashCommandBuilder()
 			.setName(this.#name)

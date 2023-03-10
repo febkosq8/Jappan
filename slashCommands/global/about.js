@@ -38,7 +38,7 @@ class about {
 		this.#desc = "Get to know more about this bot";
 		this.#helpDesc = "Get to know more about this bot";
 		this.#cType = "general";
-		this.#id = "1032296352316657664";
+		this.#id = "1083507845984682075";
 
 		this.#command = new SlashCommandBuilder()
 			.setName(this.#name)

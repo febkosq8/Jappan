@@ -39,7 +39,7 @@ class playtop {
 		this.#helpDesc =
 			"Place a song to the top of the song queue so that this song is played after the current one has ended. \nWill disconnect after 5 minutes of inactivity.";
 		this.#cType = "music";
-		this.#id = "1032296352316657672";
+		this.#id = "1083507846433480712";
 
 		this.#command = new SlashCommandBuilder()
 			.setName(this.#name)
@@ -87,7 +87,7 @@ class playtop {
 				});
 			}
 			const query = interaction.options.getString("query");
-			const searchResult = await player.search(query);
+			const searchResult = await player.search(query, { requestedBy: interaction.user });
 
 			if (!searchResult.hasTracks()) {
 				interaction.editReply(`We found no tracks for ${query}!`);

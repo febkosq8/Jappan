@@ -43,7 +43,7 @@ class admin {
 		this.#desc = "Admin Commands";
 		this.#helpDesc = "Admin Commands";
 		this.#cType = "admin";
-		this.#id = "1040456255715676252";
+		this.#id = "1083507815777308683";
 
 		this.#command = new SlashCommandBuilder()
 			.setName(this.#name)
@@ -188,7 +188,7 @@ class admin {
 		// console.log(interaction.options.data[0].name); //option : guild
 		// console.log(interaction.options._group); //option : guild
 		// console.log(interaction.options.data[0].options[0].name); //choice : kickguild
-		// console.log(interaction.options._subcommand); //choice : kickguild
+		// console.log(interaction.options.getSubcommand()); //choice : kickguild
 		// console.log(interaction.options.data[0].options[0].options); //choices
 		// console.log(interaction.options.data[0].options[0].options[0].name); //choice1 name : guildid
 		// console.log(interaction.options.data[0].options[0].options[0].value); //choice1 value : 123
@@ -198,7 +198,7 @@ class admin {
 		let option = interaction.options._group;
 		if (process.env.botAdmin.includes(interaction.member.id)) {
 			if (option === "guild") {
-				let choice = interaction.options._subcommand;
+				let choice = interaction.options.getSubcommand();
 				if (choice === "guildlist") {
 					await AdminHandler.adminGuildList(interaction);
 				} else if (choice === "selfkick") {
@@ -211,14 +211,14 @@ class admin {
 					await AdminHandler.adminGetInviteGuild(interaction);
 				}
 			} else if (option === "deploy") {
-				let choice = interaction.options._subcommand;
+				let choice = interaction.options.getSubcommand();
 				if (choice === "checkdeploy") {
 					await AdminHandler.adminCheckDeploy(interaction);
 				} else if (choice === "redeploy") {
 					await AdminHandler.adminRedeploy(interaction, client);
 				}
 			} else if (option === "bot") {
-				let choice = interaction.options._subcommand;
+				let choice = interaction.options.getSubcommand();
 				if (choice === "checkvoice") {
 					await AdminHandler.adminCheckVoice(interaction, client);
 				} else if (choice === "destroyclient") {

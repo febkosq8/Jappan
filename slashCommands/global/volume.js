@@ -37,7 +37,7 @@ class volume {
 		this.#desc = "Change the output volume";
 		this.#helpDesc = "Change the output volume";
 		this.#cType = "music";
-		this.#id = "1032296352371196021";
+		this.#id = "1083507846806777994";
 
 		this.#command = new SlashCommandBuilder()
 			.setName(this.#name)

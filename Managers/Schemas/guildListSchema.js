@@ -14,6 +14,11 @@ const guildListSchema = new Schema({
 	auditActive: Boolean,
 	auditChannelId: String,
 	auditChannelName: String,
+	warnTimeoutThreshold: Number,
+	warnTimeoutDuration: Number,
+	warnBanThreshold: Number,
+	warnAuditChannelId: String,
+	warnAuditChannelName: String,
 	memberList: Object,
 });
 

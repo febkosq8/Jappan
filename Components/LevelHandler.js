@@ -1,4 +1,4 @@
-const guildList = require("../Managers/Schemas/guildListSchema");
+const guildListSchema = require("../Managers/Schemas/guildListSchema");
 const EventHandler = require("../Components/EventHandler");
 const GuildHandler = require("../Components/GuildHandler");
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
@@ -23,7 +23,7 @@ class LevelHandler {
 				}
 			});
 			if (highBotRole.position > levelRole.position && levelRole.editable) {
-				await guildList.findOneAndUpdate(
+				await guildListSchema.findOneAndUpdate(
 					{ guildId: guildId },
 					{
 						$set: {
@@ -45,7 +45,7 @@ class LevelHandler {
 			return 1;
 		} else {
 			//Level On with no role and threshold
-			await guildList.findOneAndUpdate(
+			await guildListSchema.findOneAndUpdate(
 				{ guildId: guildId },
 				{
 					$set: {
@@ -62,7 +62,7 @@ class LevelHandler {
 		}
 	}
 	static async levelOff(guildId) {
-		await guildList.findOneAndUpdate(
+		await guildListSchema.findOneAndUpdate(
 			{ guildId: guildId },
 			{
 				$set: {
@@ -76,7 +76,7 @@ class LevelHandler {
 		);
 	}
 	static async checkLevelStatus(interaction) {
-		let rawGuildData = await guildList.findOne({
+		let rawGuildData = await guildListSchema.findOne({
 			guildId: interaction.guildId,
 		});
 		let levelEmbed = new EmbedBuilder()
@@ -129,7 +129,7 @@ class LevelHandler {
 					"."
 			)
 			.setTimestamp();
-		let rawGuildData = await guildList.findOne({
+		let rawGuildData = await guildListSchema.findOne({
 			guildId: interaction.guildId,
 		});
 		if (rawGuildData) {
@@ -168,7 +168,7 @@ class LevelHandler {
 		}
 	}
 	static async getLeaderboardEmbed(interaction, newPage) {
-		let rawGuildData = await guildList.findOne({
+		let rawGuildData = await guildListSchema.findOne({
 			guildId: interaction.guildId,
 		});
 		let levelDescr;
@@ -237,7 +237,7 @@ class LevelHandler {
 		return levelEmbed;
 	}
 	static async checkGuildMessage(message) {
-		let levelStatus = await guildList.findOne({
+		let levelStatus = await guildListSchema.findOne({
 			guildId: message.guildId,
 		});
 		if (levelStatus) {
@@ -256,7 +256,7 @@ class LevelHandler {
 		this.awardLevelStatMember(message.guild, message.author, statMessage, "message", message);
 	}
 	static async checkGuildInteraction(interaction) {
-		let levelStatus = await guildList.findOne({
+		let levelStatus = await guildListSchema.findOne({
 			guildId: interaction.guildId,
 		});
 		if (levelStatus) {
@@ -280,7 +280,7 @@ class LevelHandler {
 		this.awardLevelStatMember(interaction.guild, interaction.user, statMessage, "interaction", interaction);
 	}
 	static async checkGuildVoice(state, type, timeStamp) {
-		let levelStatus = await guildList.findOne({
+		let levelStatus = await guildListSchema.findOne({
 			guildId: state.guild.id,
 		});
 		if (levelStatus && !state.member.user.bot) {
@@ -335,7 +335,7 @@ class LevelHandler {
 	}
 	static async awardLevelStatMember(guild, guildMember, statPoints, type, instance) {
 		try {
-			let guildDetail = await guildList.findOne({
+			let guildDetail = await guildListSchema.findOne({
 				guildId: guild.id,
 			});
 			let memberList = guildDetail?.memberList;
@@ -343,11 +343,11 @@ class LevelHandler {
 			let statMessage = statPoints;
 			if (memberExists != -1) {
 				//Member Exist
-				statMessage = memberList[memberExists].levelStat + statMessage;
-				memberList[memberExists].levelStat = statMessage;
+				memberList[memberExists].levelStat ??= 0; //If levelStat is undefined, set it to 0
+				memberList[memberExists].levelStat += statMessage;
 				memberList[memberExists].username = guildMember.username;
 				memberList[memberExists].discriminator = guildMember.discriminator;
-				await guildList.findOneAndUpdate(
+				await guildListSchema.findOneAndUpdate(
 					{ guildId: guild.id },
 					{
 						$set: {
@@ -364,9 +364,10 @@ class LevelHandler {
 					username: guildMember.username,
 					discriminator: guildMember.discriminator,
 					levelStat: statMessage,
+					warnStat: 0,
 				};
 				memberList.push(guildUser);
-				await guildList.findOneAndUpdate(
+				await guildListSchema.findOneAndUpdate(
 					{ guildId: guild.id },
 					{
 						$set: {
@@ -472,7 +473,7 @@ class LevelHandler {
 		}
 	}
 	static async cleanGuildMember(threshold) {
-		let rawGuildData = await guildList.find();
+		let rawGuildData = await guildListSchema.find();
 		let count = 0;
 		rawGuildData.forEach(async (guild) => {
 			let memberList = guild.memberList;
@@ -484,7 +485,7 @@ class LevelHandler {
 					count++;
 				}
 			});
-			await guildList.findOneAndUpdate(
+			await guildListSchema.findOneAndUpdate(
 				{ guildId: guild.guildId },
 				{
 					$set: {

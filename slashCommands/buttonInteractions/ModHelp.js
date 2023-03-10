@@ -23,7 +23,7 @@ class ModHelp {
 				iconURL: config.botpfp,
 				url: config.botWebsite,
 			})
-			.setDescription("Moderator Commands : Requires Moderator Permissions in Server")
+			.setDescription("Moderator Commands : Requires **Manage Guild** Permissions in Server")
 			.addFields(
 				...modFiles.map((file) => {
 					return {

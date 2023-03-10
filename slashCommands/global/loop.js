@@ -40,7 +40,7 @@ class loop {
 		(this.#helpDesc =
 			"Set the bot to repeat the queue in various loop modes. \n**Options**\nOff - Default mode with no loop active\nTrack - Loops  the current track\nQueue - Loops  the current queue\nAutoplay - Play related songs automatically based on your existing queue"),
 			(this.#cType = "music");
-		this.#id = "1032296352316657666";
+		this.#id = "1083507845984682083";
 
 		this.#command = new SlashCommandBuilder()
 			.setName(this.#name)

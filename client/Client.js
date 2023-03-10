@@ -6,7 +6,7 @@ module.exports = class extends Client {
 			intents: [
 				GatewayIntentBits.Guilds,
 				GatewayIntentBits.GuildMembers,
-				GatewayIntentBits.GuildBans,
+				GatewayIntentBits.GuildModeration,
 				GatewayIntentBits.GuildInvites,
 				GatewayIntentBits.GuildVoiceStates,
 				GatewayIntentBits.GuildPresences,

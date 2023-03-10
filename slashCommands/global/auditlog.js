@@ -40,7 +40,7 @@ class auditlog {
 		this.#helpDesc =
 			"Keeps track of various events in the channel the moderator specifies.\nEvents supported : `Message Deleted/Edited`, `Invite Create/Revoke`\n`Member Join/Leave`, `Role Given/Removed`, `Nickname Change`\n`Member Banned/Unbanned`, `Timeouts`, `Channel Created/Deleted/Updated`\n`Role Created/Deleted/Updated`, `Voice Channel Joined/Left/Changed`\n`User Profile Update`\n</auditlog check:__id__> : Check the current status of the audit log\n</auditlog off:__id__> : Turn off the audit feature\n</auditlog on:__id__> : Turn on the audit feature";
 		this.#cType = "mod";
-		this.#id = "1040455617111937087";
+		this.#id = "1083507845984682076";
 
 		this.#command = new SlashCommandBuilder()
 			.setName(this.#name)
@@ -67,9 +67,9 @@ class auditlog {
 	}
 	async execute(interaction) {
 		await interaction.deferReply({ ephemeral: true });
-		if (interaction.options._subcommand === "on") {
+		if (interaction.options.getSubcommand() === "on") {
 			AuditHandler.auditOn(interaction);
-		} else if (interaction.options._subcommand === "off") {
+		} else if (interaction.options.getSubcommand() === "off") {
 			await AuditHandler.auditOff(interaction.guildId);
 			await AuditHandler.checkAuditStatus(interaction);
 		} else {

@@ -39,7 +39,7 @@ class clear {
 		this.#helpDesc =
 			"</clear channel:__id__> : Clear messages from a particular channel (User / Count Optional. Cannot delete messages older than 14 days)\n</clear user:__id__> :  Clear messages belonging to a particular user. Will try to delete from every channel type except **FORUM**. (Max Limit per call : 100)";
 		this.#cType = "mod";
-		this.#id = "1038633862701514754";
+		this.#id = "1083507845984682077";
 
 		this.#command = new SlashCommandBuilder()
 			.setName(this.#name)
@@ -75,7 +75,7 @@ class clear {
 	}
 	async execute(interaction) {
 		await interaction.deferReply({ ephemeral: true });
-		let type = interaction.options._subcommand;
+		let type = interaction.options.getSubcommand();
 		if (type === "channel") {
 			await ClearHandler.clearChannelMessages(interaction);
 		} else if (type === "user") {

@@ -39,7 +39,7 @@ class memberannounce {
 		this.#helpDesc =
 			"Announcement feature when a user joins / leaves a server\n</memberannounce check:__id__> : Check the status of the member announcement system\n</memberannounce off:__id__> : Turn off the member announcement system\n</memberannounce on:__id__> : Turn on the member announcement system. Takes in a text channel as input.";
 		this.#cType = "mod";
-		this.#id = "1040073209975947354";
+		this.#id = "1083507846433480706";
 
 		this.#command = new SlashCommandBuilder()
 			.setName(this.#name)
@@ -62,9 +62,9 @@ class memberannounce {
 	}
 	async execute(interaction) {
 		await interaction.deferReply({ ephemeral: true });
-		if (interaction.options._subcommand === "on") {
+		if (interaction.options.getSubcommand() === "on") {
 			AnnounceHandler.announceOn(interaction);
-		} else if (interaction.options._subcommand === "off") {
+		} else if (interaction.options.getSubcommand() === "off") {
 			await AnnounceHandler.announceOff(interaction.guildId);
 			await AnnounceHandler.checkMemberAnnouncementStatus(interaction);
 		} else {

@@ -48,7 +48,7 @@ class soundboard {
 		this.#helpDesc =
 			"Play's the user selected sound to the voice channel that the user is in. Will override any other sounds that are playing.";
 		this.#cType = "fun";
-		this.#id = "1050047698000171078";
+		this.#id = "1083507846806777992";
 
 		this.#command = new SlashCommandBuilder()
 			.setName(this.#name)
@@ -92,7 +92,7 @@ class soundboard {
 					ephemeral: true,
 				});
 			}
-			const searchResult = await player.search(query);
+			const searchResult = await player.search(query, { requestedBy: interaction.user });
 
 			if (!searchResult.hasTracks()) {
 				interaction.editReply(`We didn't find that sound clip!`);

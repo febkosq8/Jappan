@@ -40,7 +40,7 @@ class level {
 		this.#helpDesc =
 			"Awards users with points for activity through messages, interactions or voice channels. Awards user with a role once they hit the specified threshold (Optional)\n</level check:__id__> : Check the status of the leveling system\n</level off:__id__> : Turn off the leveling system\n</level on:__id__> : Turn on the leveling system (Threshold & Role Optional)";
 		this.#cType = "mod";
-		this.#id = "1037274552998309970";
+		this.#id = "1083507845984682081";
 
 		this.#command = new SlashCommandBuilder()
 			.setName(this.#name)
@@ -70,7 +70,7 @@ class level {
 	}
 	async execute(interaction) {
 		await interaction.deferReply({ ephemeral: true });
-		if (interaction.options._subcommand === "on") {
+		if (interaction.options.getSubcommand() === "on") {
 			let status = await LevelHandler.levelOn(interaction);
 			if (status === 2) {
 				await LevelHandler.checkLevelStatus(interaction);
@@ -83,7 +83,7 @@ class level {
 					`:bangbang: Could not turn on the Leveling system, as the given role has more hierarchy than me`
 				);
 			}
-		} else if (interaction.options._subcommand === "off") {
+		} else if (interaction.options.getSubcommand() === "off") {
 			await LevelHandler.levelOff(interaction.guildId);
 			await LevelHandler.checkLevelStatus(interaction);
 		} else {

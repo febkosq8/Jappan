@@ -38,7 +38,7 @@ class shuffle {
 		this.#desc = "Shuffle the queue";
 		this.#helpDesc = "Shuffle the current queue";
 		this.#cType = "music";
-		this.#id = "1032296352371196017";
+		this.#id = "1083507846806777990";
 
 		this.#command = new SlashCommandBuilder()
 			.setName(this.#name)

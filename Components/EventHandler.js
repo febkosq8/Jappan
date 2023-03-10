@@ -38,7 +38,7 @@ class EventHandler {
 					if (type === "LOG" || type === "DM_INFO" || type === "INFO") {
 						new eventLogSchema(auditData).save();
 					} else if (type === "DEBUG") {
-						new debugLogSchema(auditData).save();
+						// new debugLogSchema(auditData).save();
 					} else if (type === "ERROR") {
 						new errorLogSchema(auditData).save();
 					}
@@ -46,7 +46,7 @@ class EventHandler {
 				if (type === "ERROR") {
 					await DiscordEventHandler.sendDiscordErrorEvent(type, desc, event);
 				} else if (type === "DEBUG") {
-					await DiscordEventHandler.sendDiscordDebugEvent(type, desc, event);
+					// await DiscordEventHandler.sendDiscordDebugEvent(type, desc, event);
 				} else if (type === "DM_INFO") {
 					await DiscordEventHandler.sendDiscordDMEvent(event);
 				} else {

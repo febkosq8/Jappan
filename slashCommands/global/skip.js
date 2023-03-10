@@ -37,7 +37,7 @@ class skip {
 		this.#desc = "Skip this song";
 		this.#helpDesc = "Skip the currently playing song";
 		this.#cType = "music";
-		this.#id = "1032296352371196018";
+		this.#id = "1083507846806777991";
 
 		this.#command = new SlashCommandBuilder()
 			.setName(this.#name)

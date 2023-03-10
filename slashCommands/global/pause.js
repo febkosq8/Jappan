@@ -38,7 +38,7 @@ class pause {
 		this.#desc = "Toggle pause for the current queue";
 		this.#helpDesc = "Pause or resume the player";
 		this.#cType = "music";
-		this.#id = "1032296352316657669";
+		this.#id = "1083507846433480708";
 
 		this.#command = new SlashCommandBuilder()
 			.setName(this.#name)

@@ -44,7 +44,7 @@ class nowplaying {
 		this.#desc = "Get the song that is currently playing";
 		this.#helpDesc = "Get the song that is currently playing";
 		this.#cType = "music";
-		this.#id = "1032296352316657668";
+		this.#id = "1083507846433480707";
 
 		this.#command = new SlashCommandBuilder()
 			.setName(this.#name)
@@ -101,6 +101,10 @@ class nowplaying {
 		const currentTrack = queue.currentTrack;
 		const progress = queue.node.createProgressBar();
 		const perc = queue.node.getTimestamp();
+		let requestedByString = currentTrack.requestedBy.username + "#" + currentTrack.requestedBy.discriminator;
+		if (!requestedByString) {
+			requestedByString = "Someone";
+		}
 		const nowPlayingEmbed = new EmbedBuilder()
 			.setColor(0xffffff)
 			.setTitle("Now Playing")
@@ -113,7 +117,8 @@ class nowplaying {
 				name: "\u200b",
 				value: progress,
 			})
-			.setDescription(`:musical_note: | **${currentTrack.title}** | ${perc.progress} %`)
+			.setDescription(`:musical_note: | **${currentTrack.title}** | **${perc.progress} %**`)
+			.setFooter({ text: `Song requested by ${requestedByString}` })
 			.setTimestamp();
 		await interaction.followUp({
 			embeds: [nowPlayingEmbed],

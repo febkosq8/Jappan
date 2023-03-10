@@ -37,7 +37,7 @@ class remove {
 		this.#desc = "Remove a song from the queue";
 		this.#helpDesc = "Remove a song from the queue";
 		this.#cType = "music";
-		this.#id = "1032296352371196015";
+		this.#id = "1083507846806777989";
 
 		this.#command = new SlashCommandBuilder()
 			.setName(this.#name)

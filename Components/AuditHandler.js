@@ -478,7 +478,11 @@ class AuditHandler {
 					roleString = await Promise.all(
 						oldMember._roles.map(async (role) => {
 							let currRole = await ClientHandler.getClientGuildRole(oldMember.guild.id, role);
-							return `${currRole}`;
+							if (currRole) {
+								return `${currRole}`;
+							} else {
+								return `@${role}`;
+							}
 						})
 					);
 					roleString = roleString.join(" ");
@@ -514,14 +518,22 @@ class AuditHandler {
 					let oldRoles = await Promise.all(
 						oldMember._roles.map(async (role) => {
 							let currRole = await ClientHandler.getClientGuildRole(oldMember.guild.id, role);
-							return `${currRole}`;
+							if (currRole) {
+								return `${currRole}`;
+							} else {
+								return `@${role}`;
+							}
 						})
 					);
 					oldRoles = oldRoles.join(" ");
 					let newRoles = await Promise.all(
 						newMember._roles.map(async (role) => {
 							let currRole = await ClientHandler.getClientGuildRole(newMember.guild.id, role);
-							return `${currRole}`;
+							if (currRole) {
+								return `${currRole}`;
+							} else {
+								return `@${role}`;
+							}
 						})
 					);
 					newRoles = newRoles.join(" ");
