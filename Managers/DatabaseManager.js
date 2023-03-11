@@ -5,7 +5,6 @@ require("dotenv").config();
 class DatabaseManager {
 	static async init() {
 		let dbURL = process.env.DB_URL;
-		mongoose.set("strictQuery", false);
 		mongoose.connect(dbURL).catch((error) => {
 			console.log("ERROR : Failed to connect to MongoDB instance");
 			console.log(error);

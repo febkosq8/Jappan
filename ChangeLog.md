@@ -1,3 +1,11 @@
+## v1.3.8
+
+- discord-player, equalizer & extractor version bump
+- Switched to discord-player usePlayer() 
+- Added ffmpeg-static to fix early track end bug
+
+#
+
 ## v1.3.7
 
 - Added requestedBy in /nowplaying

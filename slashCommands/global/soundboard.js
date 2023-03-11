@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, GuildMember } = require("discord.js");
-const { useMasterPlayer, useQueue } = require("discord-player");
+const { useMasterPlayer, useQueue, usePlayer } = require("discord-player");
 const config = require("../../config.json");
 const EventHandler = require("../../Components/EventHandler");
 const ClientHandler = require("../../Components/ClientHandler");
@@ -115,7 +115,8 @@ class soundboard {
 					});
 				} else {
 					queue.insertTrack(searchResult.tracks[0], 0);
-					queue.node.skip();
+					const guildPlayerNode = usePlayer(interaction.guild.id);
+					guildPlayerNode.skip();
 				}
 				await interaction.followUp({
 					content: `⏱ | Loading your voice clip`,

@@ -41,14 +41,14 @@ class indexPost {
 		// 	await EventHandler.auditEvent("DEBUG", `Discord Player Debug`, message);
 		// });
 
-		player.events.on("debug", async (queue, message) => {
-			await EventHandler.auditEvent("DEBUG", `Discord Player Debug Event`, message);
-		});
+		// player.events.on("debug", async (queue, message) => {
+		// 	await EventHandler.auditEvent("DEBUG", `Discord Player Debug Event`, message);
+		// });
 
 		player.events.on("error", (queue, error) => {
 			EventHandler.auditEvent(
 				"DEBUG",
-				`[${queue.guild.name}] Discord Player General error emitted from the queue: ${error.message}`,
+				`[${queue.guild.name}] Discord Player Queue error emitted from the queue: ${error.message}`,
 				error
 			);
 			EventHandler.auditEvent("DEBUG", `[${queue.guild.name}] Follow-up queue`, queue);
@@ -61,15 +61,11 @@ class indexPost {
 			);
 			EventHandler.auditEvent("DEBUG", `[${queue.guild.name}] Follow-up queue`, queue);
 		});
-		player.events.on("connectionError", (queue, error) => {
-			EventHandler.auditEvent(
-				"ERROR",
-				`[${queue.guild.name}] Discord Player Connection error emitted from the connection: ${error.message}`,
-				error
-			);
-		});
 		player.events.on("playerStart", (queue, track) => {
 			queue.metadata.send(`▶ | Started playing: **${track.title}**`);
+		});
+		player.events.on("playerSkip", (queue, track) => {
+			queue.metadata.send(`:warning: Skipping : **${track.title}** due to an issue!`);
 		});
 		player.events.on("audioTrackAdd", (queue, track) => {
 			queue.metadata.send(`:musical_note: | Track **${track.title}** queued`);
@@ -295,7 +291,7 @@ class indexPost {
 						" / " +
 						interaction.user.id
 				);
-			} else {
+			} else if (interaction.isChatInputCommand()) {
 				try {
 					LevelHandler.checkGuildInteraction(interaction);
 					const userInteraction = require(`${getRootPath(

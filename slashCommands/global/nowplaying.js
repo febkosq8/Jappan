@@ -7,7 +7,7 @@ const {
 	EmbedBuilder,
 } = require("discord.js");
 const config = require("../../config.json");
-const { useQueue } = require("discord-player");
+const { useQueue, usePlayer } = require("discord-player");
 const ClientHandler = require("../../Components/ClientHandler");
 class nowplaying {
 	#command;
@@ -91,16 +91,16 @@ class nowplaying {
 			);
 		}
 
-		const queue = useQueue(interaction.guild.id);
-		if (!queue) {
+		const guildPlayerNode = usePlayer(interaction.guild.id);
+		if (!guildPlayerNode?.queue) {
 			await interaction.followUp({
 				content: ":x: | No music is being played!",
 			});
 			return;
 		}
-		const currentTrack = queue.currentTrack;
-		const progress = queue.node.createProgressBar();
-		const perc = queue.node.getTimestamp();
+		const currentTrack = guildPlayerNode.queue.currentTrack;
+		const progress = guildPlayerNode.createProgressBar();
+		const perc = guildPlayerNode.getTimestamp();
 		let requestedByString = currentTrack.requestedBy.username + "#" + currentTrack.requestedBy.discriminator;
 		if (!requestedByString) {
 			requestedByString = "Someone";

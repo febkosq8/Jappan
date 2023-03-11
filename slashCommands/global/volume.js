@@ -1,7 +1,7 @@
 const { GuildMember, SlashCommandBuilder } = require("discord.js");
 const config = require("../../config.json");
 const ClientHandler = require("../../Components/ClientHandler");
-const { useQueue } = require("discord-player");
+const { usePlayer } = require("discord-player");
 class volume {
 	#command;
 	#name;
@@ -73,8 +73,8 @@ class volume {
 			});
 			return;
 		}
-		const queue = useQueue(interaction.guild.id);
-		if (!queue) {
+		const guildPlayerNode = usePlayer(interaction.guild.id);
+		if (!guildPlayerNode.isPlaying()) {
 			await interaction.followUp({
 				content: ":x: | No music is being played!",
 			});
@@ -82,7 +82,7 @@ class volume {
 		}
 
 		var volume = interaction.options.getInteger("volume");
-		const success = queue.node.setVolume(volume);
+		const success = guildPlayerNode.setVolume(volume);
 
 		await interaction.followUp({
 			content: success ? `🔊 | Volume set to ${volume}!` : ":x: | Something went wrong!",

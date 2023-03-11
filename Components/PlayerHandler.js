@@ -1,7 +1,6 @@
-const EventHandler = require("./EventHandler");
 const { GuildMember, EmbedBuilder } = require("discord.js");
 const config = require("../config.json");
-const { useQueue, useHistory, QueueRepeatMode } = require("discord-player");
+const { useQueue, usePlayer, QueueRepeatMode } = require("discord-player");
 
 class PlayerHandler {
 	static async queueGuildPlayer(interaction) {
@@ -86,17 +85,16 @@ class PlayerHandler {
 				ephemeral: true,
 			});
 		}
-		const queue = useQueue(interaction.guild.id);
-		if (!queue || !queue.currentTrack) {
-			await interaction.editReply({
+
+		const guildPlayerNode = usePlayer(interaction.guild.id);
+		if (!guildPlayerNode?.queue) {
+			await interaction.followUp({
 				content: ":x: | No music is being played!",
 			});
 			return;
 		}
-
-		const newPauseState = !queue.node.isPaused();
-
-		queue.node.setPaused(newPauseState);
+		const newPauseState = !guildPlayerNode.isPaused();
+		guildPlayerNode.setPaused(newPauseState);
 		await interaction.editReply({
 			content: newPauseState ? ":pause_button: | Paused player" : ":arrow_forward: | Resumed player",
 		});
@@ -120,14 +118,14 @@ class PlayerHandler {
 				ephemeral: true,
 			});
 		}
-		const queue = useQueue(interaction.guild.id);
-		if (!queue || !queue.currentTrack) {
-			await interaction.editReply({
+		const guildPlayerNode = usePlayer(interaction.guild.id);
+		if (!guildPlayerNode?.queue) {
+			await interaction.followUp({
 				content: ":x: | No music is being played!",
 			});
 			return;
 		}
-		const history = useHistory(interaction.guild.id);
+		const history = guildPlayerNode.queue.history;
 		if (!history?.previousTrack) {
 			return interaction.editReply({
 				content: `:x: | We found no tracks in history!`,
@@ -157,15 +155,15 @@ class PlayerHandler {
 				ephemeral: true,
 			});
 		}
-		const queue = useQueue(interaction.guild.id);
-		if (!queue) {
+		const guildPlayerNode = usePlayer(interaction.guild.id);
+		if (!guildPlayerNode?.queue) {
 			interaction.followUp({
 				content: ":x: | No music is being played!",
 			});
 			return;
 		}
-		const currentTrack = queue.currentTrack;
-		const success = queue.node.skip();
+		const currentTrack = guildPlayerNode.queue.currentTrack;
+		const success = guildPlayerNode.skip();
 		await interaction.followUp({
 			content: success ? `✅ | Skipped **${currentTrack}**!` : ":x: | Something went wrong!",
 		});

@@ -1,6 +1,12 @@
 const { EmbedBuilder, SlashCommandBuilder } = require("discord.js");
 const { QueryType } = require("discord-player");
-const { useMasterPlayer } = require("discord-player");
+const {
+	useMasterPlayer,
+	useMetadata,
+	onBeforeCreateStream,
+	onAfterCreateStream,
+	useTimeline,
+} = require("discord-player");
 const mongoose = require("mongoose");
 const LevelHandler = require("../../Components/LevelHandler");
 const ClientHandler = require("../../Components/ClientHandler");
@@ -54,13 +60,24 @@ class test {
 	}
 	async execute(interaction) {
 		await interaction.deferReply();
-		await guildListSchema.updateMany(
-			{},
-			{
-				$unset: { warnAuditChannelID: "" },
-			}
+		// const [getMetadata, setMetadata] = useMetadata(interaction.guildId);
+		// let currentMetadata = getMetadata();
+		const obj2 = useMetadata(interaction.guildId);
+		// console.log(obj2);
+		// setMetadata(interaction.channel);
+		// currentMetadata = getMetadata();
+		const { timestamp, volume, paused, pause, resume, setVolume, setPosition } = useTimeline(interaction.guildId);
+
+		interaction.followUp(
+			`Current progress : (${timestamp.current.label} / ${timestamp.total.label}) : ${timestamp.progress}%`
 		);
-		await interaction.editReply("ok done");
+		interaction.followUp(`Current volume : ${volume}`);
+		interaction.followUp(`Player paused : ${paused}`);
+		pause();
+		resume();
+		setVolume(200);
+		// await setPosition(184000);
+		// await interaction.editReply(timestamp.current.label + " / " + timestamp.total.label);
 	}
 }
 module.exports = test;
