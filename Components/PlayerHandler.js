@@ -1,8 +1,24 @@
 const { GuildMember, EmbedBuilder } = require("discord.js");
 const config = require("../config.json");
-const { useQueue, usePlayer, QueueRepeatMode } = require("discord-player");
+const { useQueue, usePlayer, useMasterPlayer, QueueRepeatMode } = require("discord-player");
 
 class PlayerHandler {
+	static async playGuildPlayer(interaction, searchResult) {
+		const player = useMasterPlayer();
+		await player.play(interaction.member.voice.channel, searchResult, {
+			nodeOptions: {
+				metadata: interaction.channel,
+				bufferingTimeout: 15000,
+				leaveOnStop: true,
+				leaveOnStopCooldown: 5000,
+				leaveOnEnd: true,
+				leaveOnEndCooldown: 15000,
+				leaveOnEmpty: true,
+				leaveOnEmptyCooldown: 300000,
+				skipOnNoStream: true,
+			},
+		});
+	}
 	static async queueGuildPlayer(interaction) {
 		await interaction.deferReply();
 		let queue = useQueue(interaction.guild.id);

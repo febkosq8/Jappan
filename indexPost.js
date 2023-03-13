@@ -37,13 +37,17 @@ class indexPost {
 		const EventHandler = require("./Components/EventHandler");
 		const DiscordEventHandler = require("./Components/DiscordEventHandler");
 
+		let playerDebugState = false;
+
 		// player.on("debug", async (message) => {
 		// 	await EventHandler.auditEvent("DEBUG", `Discord Player Debug`, message);
 		// });
 
-		// player.events.on("debug", async (queue, message) => {
-		// 	await EventHandler.auditEvent("DEBUG", `Discord Player Debug Event`, message);
-		// });
+		player.events.on("debug", async (queue, message) => {
+			if (playerDebugState) {
+				await EventHandler.auditEvent("DEBUG", `Discord Player Debug Event`, message);
+			}
+		});
 
 		player.events.on("error", (queue, error) => {
 			EventHandler.auditEvent(
@@ -113,6 +117,9 @@ class indexPost {
 		client.on("inviteDelete", async (invite) => {
 			AuditHandler.auditEventInvite(invite, "inviteDelete");
 		});
+		client.on("guildAuditLogEntryCreate", async (event, guild) => {
+			AuditHandler.auditEventGuildAuditEntryCreate(event, guild);
+		});
 		client.on("messageCreate", async (message) => {
 			if (message.author.bot) return;
 			if (!message.guild) {
@@ -167,6 +174,23 @@ class indexPost {
 				}
 				if (command === "unDeployGuild") {
 					deployHandler.unDeployGuildCommands(message);
+				}
+				if (command === "playerDebug") {
+					if (process.env.botAdmin.includes(message.author.id)) {
+						playerDebugState = !playerDebugState;
+						EventHandler.auditEvent("NOTICE", `PlayerDebugState was toggled to ${playerDebugState}`);
+						message.reply(`:white_check_mark: PlayerDebugState was toggled to ${playerDebugState}`);
+					} else {
+						EventHandler.auditEvent(
+							"NOTICE",
+							"User : (" +
+								message.author.username +
+								"/" +
+								message.author.id +
+								") tried accessing playerDebug command and was rejected access."
+						);
+						message.reply(`:no_entry: You've yeed your last haw. Time to pay for your sins.:imp:`);
+					}
 				}
 				if (command === "ping") {
 					message.reply("Loading old style ping data").then(async (msg) => {

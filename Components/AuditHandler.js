@@ -1069,6 +1069,39 @@ class AuditHandler {
 			});
 		}
 	}
+	static async auditEventGuildAuditEntryCreate(event, guild) {
+		let status = await this.getGuildAuditStatus(guild.id);
+		if (status) {
+			let auditEntryEmbed = new EmbedBuilder()
+				.setTitle(`Audit Log Entry`)
+				.setFooter({ text: "Log ID  : " + event.id })
+				.setColor("DarkGreen")
+				.addFields(
+					{ name: "Action triggered by", value: `${event.executor}` },
+					{ name: "Target type", value: `${event.targetType}` },
+					{ name: "Action type", value: `${event.actionType}` },
+					{ name: "Target", value: `${event.target}` }
+				)
+				.setTimestamp();
+			if (event.reason) {
+				auditEntryEmbed.addFields({ name: "Reason", value: `${event.reason}` });
+			}
+			if (event.changes) {
+				event.changes.forEach((e) => {
+					if (!e.old && !e.new) {
+						return;
+					}
+					let oldVal = e.old ? e.old : `\`NONE\``;
+					let newVal = e.new ? e.new : `\`NONE\``;
+					auditEntryEmbed.addFields({
+						name: "Changed",
+						value: `\`${e.key}\` changed from \`${oldVal}\` to  \`${newVal}\``,
+					});
+				});
+			}
+			this.postAuditEvent(auditEntryEmbed, guild);
+		}
+	}
 }
 
 module.exports = AuditHandler;

@@ -2,6 +2,7 @@ const { SlashCommandBuilder, GuildMember } = require("discord.js");
 const { useMasterPlayer, useQueue, usePlayer } = require("discord-player");
 const config = require("../../config.json");
 const EventHandler = require("../../Components/EventHandler");
+const PlayerHandler = require("../../Components/PlayerHandler");
 const ClientHandler = require("../../Components/ClientHandler");
 class soundboard {
 	#command;
@@ -100,22 +101,13 @@ class soundboard {
 			} else {
 				let queue = useQueue(interaction.guild.id);
 				if (!queue) {
-					await player.play(interaction.member.voice.channel, searchResult, {
-						nodeOptions: {
-							metadata: interaction.channel,
-							bufferingTimeout: 15000,
-							leaveOnStop: true,
-							leaveOnStopCooldown: 5000,
-							leaveOnEnd: true,
-							leaveOnEndCooldown: 15000,
-							leaveOnEmpty: true,
-							leaveOnEmptyCooldown: 300000,
-							skipOnNoStream: true,
-						},
-					});
+					await PlayerHandler.playGuildPlayer(interaction, searchResult);
 				} else {
-					queue.insertTrack(searchResult.tracks[0], 0);
+					const currentTrack = queue.currentTrack;
 					const guildPlayerNode = usePlayer(interaction.guild.id);
+					const currTimeStamp = guildPlayerNode.getTimestamp().current.value;
+					queue.insertTrack(searchResult.tracks[0], 0);
+					queue.insertTrack(currentTrack, 1); // Add here timestamp to seek to
 					guildPlayerNode.skip();
 				}
 				await interaction.followUp({

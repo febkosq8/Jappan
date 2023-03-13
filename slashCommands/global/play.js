@@ -2,6 +2,7 @@ const { SlashCommandBuilder, GuildMember } = require("discord.js");
 const { useMasterPlayer } = require("discord-player");
 const config = require("../../config.json");
 const EventHandler = require("../../Components/EventHandler");
+const PlayerHandler = require("../../Components/PlayerHandler");
 const ClientHandler = require("../../Components/ClientHandler");
 class play {
 	#command;
@@ -96,19 +97,7 @@ class play {
 				await interaction.editReply(`We found no tracks for ${query}!`);
 				return;
 			} else {
-				await player.play(interaction.member.voice.channel, searchResult, {
-					nodeOptions: {
-						metadata: interaction.channel,
-						bufferingTimeout: 15000,
-						leaveOnStop: true,
-						leaveOnStopCooldown: 5000,
-						leaveOnEnd: true,
-						leaveOnEndCooldown: 15000,
-						leaveOnEmpty: true,
-						leaveOnEmptyCooldown: 300000,
-						skipOnNoStream: true,
-					},
-				});
+				await PlayerHandler.playGuildPlayer(interaction, searchResult);
 			}
 
 			await interaction.followUp({

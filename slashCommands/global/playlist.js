@@ -3,6 +3,7 @@ const { useQueue, useMasterPlayer } = require("discord-player");
 const config = require("../../config.json");
 const userPlaylist = require("../../Managers/Schemas/userPlaylistSchema");
 const EventHandler = require("../../Components/EventHandler");
+const PlayerHandler = require("../../Components/PlayerHandler");
 const ClientHandler = require("../../Components/ClientHandler");
 
 class playlist {
@@ -265,19 +266,7 @@ class playlist {
 							if (shuffle) {
 								searchResult._data.tracks = searchResult.tracks.sort((a, b) => 0.5 - Math.random());
 							}
-							await player.play(interaction.member.voice.channel, searchResult, {
-								nodeOptions: {
-									metadata: interaction.channel,
-									bufferingTimeout: 15000,
-									leaveOnStop: true,
-									leaveOnStopCooldown: 5000,
-									leaveOnEnd: true,
-									leaveOnEndCooldown: 15000,
-									leaveOnEmpty: true,
-									leaveOnEmptyCooldown: 300000,
-									skipOnNoStream: true,
-								},
-							});
+							await PlayerHandler.playGuildPlayer(interaction, searchResult);
 							const queue = useQueue(interaction.guild.id);
 							if (loop) {
 								queue.setRepeatMode(2);

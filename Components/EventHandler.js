@@ -23,6 +23,8 @@ class EventHandler {
 			console.log(`[${greenBright(type)}] ${bgBlack(white(desc))}`);
 		} else if (type === "DM_INFO") {
 			console.log(`[${greenBright(type)}] ${bgBlack(white(desc))}`);
+		} else if (type === "NOTICE") {
+			console.log(`[${greenBright(type)}] ${bgBlack(white(desc))}`);
 		} else if (type === "DEBUG") {
 			console.log(`[${yellowBright(type)}] ${bgBlack(white(desc))}`);
 		} else if (type === "ERROR") {
@@ -35,7 +37,7 @@ class EventHandler {
 		try {
 			if ((process.env.botMode === "dev" && config.devLogging === "true") || process.env.botMode === "prod") {
 				if (ClientHandler.getMongoStatus() === 1) {
-					if (type === "LOG" || type === "DM_INFO" || type === "INFO") {
+					if (type === "LOG" || type === "DM_INFO" || type === "INFO" || type === "NOTICE") {
 						new eventLogSchema(auditData).save();
 					} else if (type === "DEBUG") {
 						// new debugLogSchema(auditData).save();

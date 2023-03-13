@@ -2,6 +2,7 @@ const { SlashCommandBuilder, GuildMember } = require("discord.js");
 const { useQueue, useMasterPlayer } = require("discord-player");
 const config = require("../../config.json");
 const EventHandler = require("../../Components/EventHandler");
+const PlayerHandler = require("../../Components/PlayerHandler");
 const ClientHandler = require("../../Components/ClientHandler");
 class playtop {
 	#command;
@@ -95,21 +96,9 @@ class playtop {
 			} else {
 				let queue = useQueue(interaction.guild.id);
 				if (!queue) {
+					await PlayerHandler.playGuildPlayer(interaction, searchResult);
 					await interaction.followUp({
 						content: `⏱ | Loading your track`,
-					});
-					await player.play(interaction.member.voice.channel, searchResult, {
-						nodeOptions: {
-							metadata: interaction.channel,
-							bufferingTimeout: 15000,
-							leaveOnStop: true,
-							leaveOnStopCooldown: 5000,
-							leaveOnEnd: true,
-							leaveOnEndCooldown: 15000,
-							leaveOnEmpty: true,
-							leaveOnEmptyCooldown: 300000,
-							skipOnNoStream: true,
-						},
 					});
 				} else {
 					queue.insertTrack(searchResult.tracks[0], 0);

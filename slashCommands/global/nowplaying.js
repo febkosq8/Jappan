@@ -113,6 +113,7 @@ class nowplaying {
 				iconURL: config.botpfp,
 				url: config.botWebsite,
 			})
+			.setThumbnail(currentTrack.thumbnail)
 			.setFields({
 				name: "\u200b",
 				value: progress,
