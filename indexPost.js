@@ -16,7 +16,10 @@ class indexPost {
 
 		//Discord Player
 		const { Player } = require("discord-player");
-		const player = new Player(client);
+		const player = new Player(client, {
+			autoRegisterExtractor: false,
+		});
+		await player.extractors.loadDefault();
 
 		//Slash Commands
 		const GlobalCommands = require("./Components/GlobalCommands");
@@ -52,18 +55,16 @@ class indexPost {
 		player.events.on("error", (queue, error) => {
 			EventHandler.auditEvent(
 				"DEBUG",
-				`[${queue.guild.name}] Discord Player Queue error emitted from the queue: ${error.message}`,
+				`[${queue.guild.name}] Discord Player Queue error emitted for [${queue.currentTrack.title}] from the queue: ${error.message}`,
 				error
 			);
-			EventHandler.auditEvent("DEBUG", `[${queue.guild.name}] Follow-up queue`, queue);
 		});
 		player.events.on("playerError", (queue, error) => {
 			EventHandler.auditEvent(
 				"DEBUG",
-				`[${queue.guild.name}] Discord Player error emitted from the connection: ${error.message}`,
+				`[${queue.guild.name}] Discord Player error emitted for [${queue.currentTrack.title}] from the connection: ${error.message}`,
 				error
 			);
-			EventHandler.auditEvent("DEBUG", `[${queue.guild.name}] Follow-up queue`, queue);
 		});
 		player.events.on("playerStart", (queue, track) => {
 			queue.metadata.send(`▶ | Started playing: **${track.title}**`);
@@ -188,6 +189,24 @@ class indexPost {
 								"/" +
 								message.author.id +
 								") tried accessing playerDebug command and was rejected access."
+						);
+						message.reply(`:no_entry: You've yeed your last haw. Time to pay for your sins.:imp:`);
+					}
+				}
+				if (command === "playerDeps") {
+					if (process.env.botAdmin.includes(message.author.id)) {
+						EventHandler.auditEvent("NOTICE", `playerDeps being logged to console`);
+						let playerDeps = player.scanDeps();
+						console.log(playerDeps);
+						message.reply(`:white_check_mark: playerDeps attached below\n` + playerDeps);
+					} else {
+						EventHandler.auditEvent(
+							"NOTICE",
+							"User : (" +
+								message.author.username +
+								"/" +
+								message.author.id +
+								") tried accessing playerDeps command and was rejected access."
 						);
 						message.reply(`:no_entry: You've yeed your last haw. Time to pay for your sins.:imp:`);
 					}

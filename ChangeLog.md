@@ -1,3 +1,12 @@
+## v1.4.0
+
+- discord.js, @discordjs/voice version bump
+- Better Error handling
+- Better handling for event GuildAuditEntryCreate from AuditHandler
+- Discord Player loads the extractors manually
+
+#
+
 ## v1.3.9
 
 - discord.js, @discordjs/voice version bump

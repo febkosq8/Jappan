@@ -20,6 +20,8 @@ Built using [Discord.js v14.8.0](https://github.com/discordjs/discord.js), [Disc
 
 - This is not supposed to be a definitive guide on how to build a discord bot.
 
+- The `.env` and `config.json` files are not provided by design, to discourage people to not use this as a clone and use bot repo.
+
 - This repository is to showcase the ways to implement various commands/packages (discord.js, discord-player, etc).
 
 - Most of the implementation should be fairly simple to understand. Feel free to drop me a DM on Discord : Febkosq8#8685, to clarify doubt's.

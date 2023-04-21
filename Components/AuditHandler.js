@@ -1091,12 +1091,21 @@ class AuditHandler {
 					if (!e.old && !e.new) {
 						return;
 					}
-					let oldVal = e.old ? e.old : `\`NONE\``;
-					let newVal = e.new ? e.new : `\`NONE\``;
-					auditEntryEmbed.addFields({
-						name: "Changed",
-						value: `\`${e.key}\` changed from \`${oldVal}\` to  \`${newVal}\``,
-					});
+					if (e.key === "$add" || e.key === "$remove") {
+						let oldVal = e.old ? e.old[0].name : `\`NONE\``;
+						let newVal = e.new ? e.new[0].name : `\`NONE\``;
+						auditEntryEmbed.addFields({
+							name: "Changed",
+							value: `\`${e.key}\` changed from \`${oldVal}\` to  \`${newVal}\``,
+						});
+					} else {
+						let oldVal = e.old ? e.old : `\`NONE\``;
+						let newVal = e.new ? e.new : `\`NONE\``;
+						auditEntryEmbed.addFields({
+							name: "Changed",
+							value: `\`${e.key}\` changed from \`${oldVal}\` to  \`${newVal}\``,
+						});
+					}
 				});
 			}
 			this.postAuditEvent(auditEntryEmbed, guild);
