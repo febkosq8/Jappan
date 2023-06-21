@@ -286,7 +286,7 @@ class playlist {
 					} catch (error) {
 						EventHandler.auditEvent("ERROR", "Failed to execute player play command with Error : " + error, error);
 						interaction.followUp({
-							content: "There was an error trying to execute that command: " + error.message,
+							content: ":warning: We failed to execute that command because of an error",
 						});
 					}
 				} else {

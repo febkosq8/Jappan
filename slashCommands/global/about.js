@@ -62,6 +62,7 @@ class about {
 			);
 		}
 		buttonRow.addComponents(
+			new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel("Status Updates").setURL("https://discord.gg/3mRbVCjvmz"),
 			new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel("Website").setURL("https://www.febkosq8.me/Jappan")
 		);
 		const uptime = await ClientHandler.getClientUptime();

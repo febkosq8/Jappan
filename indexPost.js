@@ -16,9 +16,7 @@ class indexPost {
 
 		//Discord Player
 		const { Player } = require("discord-player");
-		const player = new Player(client, {
-			autoRegisterExtractor: false,
-		});
+		const player = new Player(client);
 		await player.extractors.loadDefault();
 
 		//Slash Commands
@@ -145,81 +143,83 @@ class indexPost {
 			}
 			if (message.content.startsWith(prefix)) {
 				const args = message.content.slice(prefix.length).trim().split(/ +/g);
-				const command = args.shift();
-				EventHandler.auditEvent(
-					"INFO",
-					"A instance of : " +
-						command +
-						" with args : " +
-						args +
-						" was triggered in Guild : " +
-						message.guild.name +
-						" / " +
-						message.guild.id +
-						" by User : " +
-						message.author.username +
-						"#" +
-						message.author.discriminator +
-						" / " +
-						message.author.id
-				);
+				if (args != ``) {
+					const command = args.shift();
+					EventHandler.auditEvent(
+						"INFO",
+						"A instance of : " +
+							command +
+							" with args : " +
+							args +
+							" was triggered in Guild : " +
+							message.guild.name +
+							" / " +
+							message.guild.id +
+							" by User : " +
+							message.author.username +
+							"#" +
+							message.author.discriminator +
+							" / " +
+							message.author.id
+					);
 
-				if (command === "deploy") {
-					deployHandler.deployGuildCommands(message);
-				}
-				if (command === "testDeploy") {
-					deployHandler.deployTestCommands(message);
-				}
-				if (command === "unDeployGlobal") {
-					deployHandler.unDeployGlobalCommands(message);
-				}
-				if (command === "unDeployGuild") {
-					deployHandler.unDeployGuildCommands(message);
-				}
-				if (command === "playerDebug") {
-					if (process.env.botAdmin.includes(message.author.id)) {
-						playerDebugState = !playerDebugState;
-						EventHandler.auditEvent("NOTICE", `PlayerDebugState was toggled to ${playerDebugState}`);
-						message.reply(`:white_check_mark: PlayerDebugState was toggled to ${playerDebugState}`);
-					} else {
-						EventHandler.auditEvent(
-							"NOTICE",
-							"User : (" +
-								message.author.username +
-								"/" +
-								message.author.id +
-								") tried accessing playerDebug command and was rejected access."
-						);
-						message.reply(`:no_entry: You've yeed your last haw. Time to pay for your sins.:imp:`);
+					if (command === "deploy") {
+						deployHandler.deployGuildCommands(message);
 					}
-				}
-				if (command === "playerDeps") {
-					if (process.env.botAdmin.includes(message.author.id)) {
-						EventHandler.auditEvent("NOTICE", `playerDeps being logged to console`);
-						let playerDeps = player.scanDeps();
-						console.log(playerDeps);
-						message.reply(`:white_check_mark: playerDeps attached below\n` + playerDeps);
-					} else {
-						EventHandler.auditEvent(
-							"NOTICE",
-							"User : (" +
-								message.author.username +
-								"/" +
-								message.author.id +
-								") tried accessing playerDeps command and was rejected access."
-						);
-						message.reply(`:no_entry: You've yeed your last haw. Time to pay for your sins.:imp:`);
+					if (command === "testDeploy") {
+						deployHandler.deployTestCommands(message);
 					}
-				}
-				if (command === "ping") {
-					message.reply("Loading old style ping data").then(async (msg) => {
-						msg.delete();
-						message.reply(
-							`:robot: Latency is ${msg.createdTimestamp - message.createdTimestamp}ms. API Latency is ${Math.round(
-								client.ws.ping
-							)}ms.`
-						);
-					});
+					if (command === "unDeployGlobal") {
+						deployHandler.unDeployGlobalCommands(message);
+					}
+					if (command === "unDeployGuild") {
+						deployHandler.unDeployGuildCommands(message);
+					}
+					if (command === "playerDebug") {
+						if (process.env.botAdmin.includes(message.author.id)) {
+							playerDebugState = !playerDebugState;
+							EventHandler.auditEvent("NOTICE", `PlayerDebugState was toggled to ${playerDebugState}`);
+							message.reply(`:white_check_mark: PlayerDebugState was toggled to ${playerDebugState}`);
+						} else {
+							EventHandler.auditEvent(
+								"NOTICE",
+								"User : (" +
+									message.author.username +
+									"/" +
+									message.author.id +
+									") tried accessing playerDebug command and was rejected access."
+							);
+							message.reply(`:no_entry: You've yeed your last haw. Time to pay for your sins.:imp:`);
+						}
+					}
+					if (command === "playerDeps") {
+						if (process.env.botAdmin.includes(message.author.id)) {
+							EventHandler.auditEvent("NOTICE", `playerDeps being logged to console`);
+							let playerDeps = player.scanDeps();
+							console.log(playerDeps);
+							message.reply(`:white_check_mark: playerDeps attached below\n` + playerDeps);
+						} else {
+							EventHandler.auditEvent(
+								"NOTICE",
+								"User : (" +
+									message.author.username +
+									"/" +
+									message.author.id +
+									") tried accessing playerDeps command and was rejected access."
+							);
+							message.reply(`:no_entry: You've yeed your last haw. Time to pay for your sins.:imp:`);
+						}
+					}
+					if (command === "ping") {
+						message.reply("Loading old style ping data").then(async (msg) => {
+							msg.delete();
+							message.reply(
+								`:robot: Latency is ${msg.createdTimestamp - message.createdTimestamp}ms. API Latency is ${Math.round(
+									client.ws.ping
+								)}ms.`
+							);
+						});
+					}
 				}
 			}
 		});
@@ -319,21 +319,6 @@ class indexPost {
 					testCommands
 				)}/${interaction.commandName}.js`).getInstance(client);
 				await userInteraction.autocomplete(interaction, client);
-				EventHandler.auditEvent(
-					"INFO",
-					"A autocomplete interaction for : " +
-						interaction.commandName +
-						" was triggered in Guild : " +
-						interaction.member.guild.name +
-						" / " +
-						interaction.member.guild.id +
-						" by User : " +
-						interaction.user.username +
-						"#" +
-						interaction.user.discriminator +
-						" / " +
-						interaction.user.id
-				);
 			} else if (interaction.isChatInputCommand()) {
 				try {
 					LevelHandler.checkGuildInteraction(interaction);
@@ -366,7 +351,7 @@ class indexPost {
 						error
 					);
 					interaction.followUp({
-						content: "There was an error trying to execute that command!",
+						content: ":warning: We failed to execute that command because of an error",
 					});
 				}
 			}

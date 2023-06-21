@@ -19,11 +19,16 @@ class AdminHandler {
 			})
 			.then(async () => {
 				let guildList = [];
-				interaction.client.guilds.cache.forEach((guild) => {
+				const clientId = await ClientHandler.getClientId();
+				await interaction.client.guilds.cache.forEach((guild) => {
+					const currGuildBotRole = guild.members.cache
+						.get(clientId)
+						.roles.cache.find((role) => role.permissions.has(PermissionFlagsBits.Administrator));
 					let tGuild = {
 						name: guild.name,
 						id: guild.id,
 						memberSize: guild.memberCount,
+						admin: currGuildBotRole?.permissions?.has(PermissionFlagsBits.Administrator),
 					};
 					guildList.push([tGuild]);
 				});
@@ -40,7 +45,13 @@ class AdminHandler {
 						...guildList.map((gld) => {
 							return {
 								name: "Guild Name : " + gld[0].name,
-								value: "Guild ID : " + gld[0].id + "\n" + "Member Count : " + gld[0].memberSize,
+								value:
+									"Guild ID : " +
+									gld[0].id +
+									"\nMember Count : " +
+									gld[0].memberSize +
+									"\nAdmin Role : " +
+									(gld[0].admin ? ":white_check_mark:" : ":no_entry_sign:"),
 							};
 						})
 					);

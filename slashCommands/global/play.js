@@ -58,13 +58,14 @@ class play {
 	async autocomplete(interaction) {
 		const player = useMasterPlayer();
 		const query = interaction.options.getString("query");
-		const result = await player.search(query);
-
 		let returnData = [];
-		if (result.playlist) {
-			returnData.push({ name: result.playlist.title + " | Playlist", value: query });
+		if (query) {
+			const result = await player.search(query);
+			if (result.playlist) {
+				returnData.push({ name: result.playlist.title + " | Playlist", value: query });
+			}
+			result.tracks.slice(0, 6).map((track) => returnData.push({ name: track.title, value: track.url }));
 		}
-		result.tracks.slice(0, 6).map((track) => returnData.push({ name: track.title, value: track.url }));
 		await interaction.respond(returnData);
 	}
 	async execute(interaction) {
@@ -106,7 +107,7 @@ class play {
 		} catch (error) {
 			EventHandler.auditEvent("ERROR", "Failed to execute player play command with Error : " + error, error);
 			interaction.followUp({
-				content: "There was an error trying to execute that command: " + error.message,
+				content: ":warning: We failed to execute that command because of an error",
 			});
 		}
 	}

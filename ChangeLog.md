@@ -1,4 +1,13 @@
-## v1.4.0
+## v1.4.1
+
+- Dockerize the bot to fix song skipping issue when hosted on heroku
+- discord.js, @discord-player, etc version bump
+- Better Error handling for all music commands
+- Better logic for checking if a prefixMessage actually contains a argument
+- Now checking if the Bot has Admin Permissions in Admin ListGuild command
+- Discord Player loads the extractors automatically (Reverted the last change)
+
+### v1.4.0
 
 - discord.js, @discord-player version bump
 - Better Error handling

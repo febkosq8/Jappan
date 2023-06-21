@@ -110,7 +110,7 @@ class playtop {
 		} catch (error) {
 			EventHandler.auditEvent("ERROR", "Failed to execute player playtop command with Error : " + error, error);
 			interaction.followUp({
-				content: "There was an error trying to execute that command: " + error.message,
+				content: ":warning: We failed to execute that command because of an error",
 			});
 		}
 	}
