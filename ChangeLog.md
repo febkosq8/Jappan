@@ -7,6 +7,8 @@
 - Now checking if the Bot has Admin Permissions in Admin ListGuild command
 - Discord Player loads the extractors automatically (Reverted the last change)
 
+#
+
 ### v1.4.0
 
 - discord.js, @discord-player version bump
