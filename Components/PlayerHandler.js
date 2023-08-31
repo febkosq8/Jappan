@@ -1,10 +1,10 @@
 const { GuildMember, EmbedBuilder } = require("discord.js");
 const config = require("../config.json");
-const { useQueue, usePlayer, useMasterPlayer, QueueRepeatMode } = require("discord-player");
+const { useQueue, usePlayer, useMainPlayer, QueueRepeatMode } = require("discord-player");
 
 class PlayerHandler {
 	static async playGuildPlayer(interaction, searchResult) {
-		const player = useMasterPlayer();
+		const player = useMainPlayer();
 		await player.play(interaction.member.voice.channel, searchResult, {
 			nodeOptions: {
 				metadata: interaction.channel,
@@ -75,7 +75,7 @@ class PlayerHandler {
 						name: ":notes: Queue",
 						value: queueTracks,
 						inline: false,
-					}
+					},
 				);
 			await interaction.editReply({
 				embeds: [queueEmbed],

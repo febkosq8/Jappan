@@ -30,7 +30,7 @@ class FunHelp {
 						name: `</${file.name}:${file.id}>`,
 						value: file.helpDesc.replaceAll("__id__", file.id),
 					};
-				})
+				}),
 			);
 		interaction.editReply({ embeds: [funHelpEmbed] });
 	}

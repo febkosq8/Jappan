@@ -58,12 +58,12 @@ class about {
 				new ButtonBuilder()
 					.setCustomId(butttonLabelList[i].key)
 					.setLabel(butttonLabelList[i].value)
-					.setStyle(ButtonStyle.Primary)
+					.setStyle(ButtonStyle.Primary),
 			);
 		}
 		buttonRow.addComponents(
 			new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel("Status Updates").setURL("https://discord.gg/3mRbVCjvmz"),
-			new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel("Website").setURL("https://www.febkosq8.me/Jappan")
+			new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel("Website").setURL("https://www.febkosq8.me/Jappan"),
 		);
 		const uptime = await ClientHandler.getClientUptime();
 		const owner = await ClientHandler.getClientUser("407819516513484801");
@@ -101,7 +101,7 @@ class about {
 				{
 					name: "Know More",
 					value: "Interact below",
-				}
+				},
 			);
 		await interaction.editReply({
 			embeds: [aboutEmbed],

@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder, GuildMember } = require("discord.js");
-const { useQueue, useMasterPlayer } = require("discord-player");
+const { useQueue, useMainPlayer } = require("discord-player");
 const config = require("../../config.json");
 const userPlaylist = require("../../Managers/Schemas/userPlaylistSchema");
 const EventHandler = require("../../Components/EventHandler");
@@ -52,28 +52,28 @@ class playlist {
 					.setName("add")
 					.setDescription("Add a new playlist to use later")
 					.addStringOption((option) =>
-						option.setName("listname").setDescription("Name for this playlist").setRequired(true)
+						option.setName("listname").setDescription("Name for this playlist").setRequired(true),
 					)
 					.addStringOption((option) =>
 						option
 							.setName("query")
 							.setDescription("Link of the playlist or Search Query for the song")
-							.setRequired(true)
+							.setRequired(true),
 					)
 					.addBooleanOption((option) =>
 						option
 							.setName("shuffle")
 							.setDescription(
-								"Choose if the playlist should be shuffled on playback. Can be overridden during playback."
+								"Choose if the playlist should be shuffled on playback. Can be overridden during playback.",
 							)
-							.setRequired(true)
+							.setRequired(true),
 					)
 					.addBooleanOption((option) =>
 						option
 							.setName("loop")
 							.setDescription("Choose if the playlist should be looped on playback. Can be overridden during playback.")
-							.setRequired(true)
-					)
+							.setRequired(true),
+					),
 			)
 			.addSubcommand((group) =>
 				group
@@ -84,23 +84,23 @@ class playlist {
 							.setName("listname")
 							.setDescription("Name for the saved playlist")
 							.setRequired(true)
-							.setAutocomplete(true)
+							.setAutocomplete(true),
 					)
 					.addBooleanOption((option) =>
 						option
 							.setName("shuffle")
 							.setDescription("Shuffle the playlist (Optional : Will use server value if not provided)")
-							.setRequired(false)
+							.setRequired(false),
 					)
 					.addBooleanOption((option) =>
 						option
 							.setName("loop")
 							.setDescription("Looped the playback (Optional : Will use server value if not provided)")
-							.setRequired(false)
-					)
+							.setRequired(false),
+					),
 			)
 			.addSubcommand((group) =>
-				group.setName("check").setDescription("Get a list of playlist that you have saved currently")
+				group.setName("check").setDescription("Get a list of playlist that you have saved currently"),
 			)
 			.setDMPermission(false)
 			.toJSON();
@@ -128,7 +128,7 @@ class playlist {
 		await interaction.respond(returnData);
 	}
 	async execute(interaction) {
-		const player = useMasterPlayer();
+		const player = useMainPlayer();
 		await interaction.deferReply();
 		let type = interaction.options.getSubcommand();
 		if (type === "add") {
@@ -175,7 +175,7 @@ class playlist {
 								discriminator: interaction.user.discriminator,
 								queryList: queryListData,
 							},
-						}
+						},
 					);
 				} else {
 					playlistData = {

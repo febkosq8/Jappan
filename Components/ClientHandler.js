@@ -166,7 +166,7 @@ class ClientHandler {
 			if (preferences) {
 				returnChannel = returnGuild.channels.cache.find(
 					(channel) =>
-						channel.type === 0 && preferences.some((preference) => !!channel.name.match(new RegExp(`${preference}`)))
+						channel.type === 0 && preferences.some((preference) => !!channel.name.match(new RegExp(`${preference}`))),
 				);
 			}
 			if (!returnChannel) {
@@ -177,7 +177,7 @@ class ClientHandler {
 					(channel) =>
 						channel.isTextBased() &&
 						channel.type === 0 &&
-						channel.permissionsFor(returnGuild.members.me).has(PermissionFlagsBits.SendMessages)
+						channel.permissionsFor(returnGuild.members.me).has(PermissionFlagsBits.SendMessages),
 				);
 			}
 			return returnChannel;

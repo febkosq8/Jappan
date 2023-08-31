@@ -61,7 +61,7 @@ class help {
 				new ButtonBuilder()
 					.setCustomId(butttonLabelList[i].key)
 					.setLabel(butttonLabelList[i].value)
-					.setStyle(ButtonStyle.Primary)
+					.setStyle(ButtonStyle.Primary),
 			);
 		}
 

@@ -52,22 +52,22 @@ class clear {
 						option
 							.setName("count")
 							.setDescription("Number of messages (Not older than 14 days) to delete (Optional)")
-							.setRequired(false)
+							.setRequired(false),
 					)
 					.addUserOption((option) =>
 						option
 							.setName("username")
 							.setDescription("Messages of which User to be deleted (Optional)")
-							.setRequired(false)
-					)
+							.setRequired(false),
+					),
 			)
 			.addSubcommand((group) =>
 				group
 					.setName("user")
 					.setDescription("Delete messages from this guild")
 					.addUserOption((option) =>
-						option.setName("username").setDescription("Messages of which User to be deleted").setRequired(true)
-					)
+						option.setName("username").setDescription("Messages of which User to be deleted").setRequired(true),
+					),
 			)
 			.setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
 			.setDMPermission(false)

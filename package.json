@@ -1,6 +1,6 @@
 {
 	"name": "jappan",
-	"version": "1.4.1",
+	"version": "1.4.2",
 	"description": "A simple discord bot made to make someone's life easier",
 	"main": "index.js",
 	"scripts": {
@@ -18,22 +18,21 @@
 	],
 	"author": "Febkosq8",
 	"dependencies": {
-		"@discord-player/equalizer": "0.2.1",
-		"@discord-player/extractor": "4.3.1",
-		"@discord-player/utils": "0.2.1",
+		"@discord-player/equalizer": "0.2.2",
+		"@discord-player/extractor": "4.4.2-dev.1",
+		"@discord-player/utils": "0.2.2",
 		"@discordjs/voice": "0.16.0",
-		"@ffmpeg-installer/ffmpeg": "1.1.0",
-		"axios": "1.4.0",
+		"axios": "1.5.0",
 		"colorette": "2.0.20",
-		"discord-player": "6.5.0",
-		"discord.js": "14.11.0",
+		"discord-player": "6.6.3-dev.0",
+		"discord.js": "14.13.0",
 		"dotenv": "16.3.1",
-		"mongoose": "7.3.0",
-		"opusscript": "0.0.8",
+		"mediaplex": "0.0.6",
+		"mongoose": "7.5.0",
 		"play-dl": "1.9.6",
-		"prettier": "2.8.8"
+		"prettier": "3.0.3"
 	},
 	"devDependencies": {
-		"nodemon": "2.0.22"
+		"nodemon": "3.0.1"
 	}
 }

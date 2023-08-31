@@ -53,7 +53,7 @@ class AdminHandler {
 									"\nAdmin Role : " +
 									(gld[0].admin ? ":white_check_mark:" : ":no_entry_sign:"),
 							};
-						})
+						}),
 					);
 				interaction.editReply({
 					content: "",
@@ -79,7 +79,7 @@ class AdminHandler {
 							.setDescription(
 								"There has been a technical issue and the bot need's to remove itself from " +
 									guild.name +
-									" . Please invite the bot again later. Apologies for the inconvenience."
+									" . Please invite the bot again later. Apologies for the inconvenience.",
 							)
 							.setTimestamp();
 						let postChannel = await ClientHandler.getClientGuildPostChannel(guild.id, [
@@ -99,7 +99,7 @@ class AdminHandler {
 										guild.id +
 										" with Error : " +
 										error.message,
-									error
+									error,
 								);
 							});
 						guild
@@ -109,7 +109,7 @@ class AdminHandler {
 								EventHandler.auditEvent(
 									"ERROR",
 									"There was an error while leaving the Guild ID : " + guild.id + " with Error : " + err.message,
-									error
+									error,
 								);
 							});
 					}
@@ -145,7 +145,7 @@ class AdminHandler {
 				.setTitle("Bot Kick Initaited")
 				.setDescription(
 					config.botName +
-						" admin has decided to remove the bot from this server. Apologies for the inconvenience.\nPlease contact the developer for more info."
+						" admin has decided to remove the bot from this server. Apologies for the inconvenience.\nPlease contact the developer for more info.",
 				)
 				.setTimestamp();
 			await interaction
@@ -173,7 +173,7 @@ class AdminHandler {
 										guild.id +
 										" with Error : " +
 										error.message,
-									error
+									error,
 								);
 							});
 						guild
@@ -191,7 +191,7 @@ class AdminHandler {
 								EventHandler.auditEvent(
 									"ERROR",
 									"There was an error while leaving the Guild ID : " + guild.id + " with Error : " + error.message,
-									error
+									error,
 								);
 							});
 					}
@@ -243,7 +243,7 @@ class AdminHandler {
 									guild.id +
 									" with Error : " +
 									error.message,
-								error
+								error,
 							);
 						});
 				}
@@ -292,7 +292,7 @@ class AdminHandler {
 						{
 							name: "Bot ID :",
 							value: data.application_id,
-						}
+						},
 					);
 				count++;
 				interaction.followUp({ embeds: [cmdEmbed], ephemeral: true });
@@ -330,7 +330,7 @@ class AdminHandler {
 						{
 							name: "Guild ID :",
 							value: data.guild_id,
-						}
+						},
 					);
 				count++;
 				interaction.followUp({ embeds: [cmdEmbed], ephemeral: true });
@@ -352,7 +352,7 @@ class AdminHandler {
 				.setTitle("Redeploy Global Commands")
 				.setTimestamp()
 				.setDescription(
-					":gear::tools: The global commands re-deployment process has been initated. Please wait :timer:"
+					":gear::tools: The global commands re-deployment process has been initated. Please wait :timer:",
 				);
 			let successAckEmbed = new EmbedBuilder()
 				.setColor("Orange")
@@ -466,7 +466,7 @@ class AdminHandler {
 						{
 							name: "Server Mute :",
 							value: sMute,
-						}
+						},
 					);
 				interaction.followUp({
 					embeds: [voiceEmbed],
@@ -513,7 +513,7 @@ class AdminHandler {
 			let threshold = interaction.options.get("threshold").value;
 			let result = await LevelHandler.cleanGuildMember(threshold);
 			interaction.editReply(
-				`:white_check_mark: Cleaned-up a total of : ` + result + ` members matching the threshold.`
+				`:white_check_mark: Cleaned-up a total of : ` + result + ` members matching the threshold.`,
 			);
 		} else {
 			interaction.editReply(`:no_entry: Confirm code verification failed.`);
@@ -550,7 +550,7 @@ class AdminHandler {
 					{
 						name: "Guild Name :",
 						value: guild.name,
-					}
+					},
 				);
 			let invites = await guild.invites.fetch();
 			if (invites.size > 0) {

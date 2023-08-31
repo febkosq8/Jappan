@@ -43,7 +43,7 @@ class clear {
 			.setName(this.#name)
 			.setDescription(config.botName + " : " + this.#desc)
 			.addNumberOption((option) =>
-				option.setName("count").setDescription("Number of messages to spam").setRequired(true)
+				option.setName("count").setDescription("Number of messages to spam").setRequired(true),
 			)
 			.setDMPermission(false)
 			.toJSON();

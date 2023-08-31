@@ -19,7 +19,7 @@ class DeployHandler {
 		try {
 			let buttonRow = new ActionRowBuilder();
 			buttonRow.addComponents(
-				new ButtonBuilder().setCustomId("Help").setLabel("Help Docs").setStyle(ButtonStyle.Primary)
+				new ButtonBuilder().setCustomId("Help").setLabel("Help Docs").setStyle(ButtonStyle.Primary),
 			);
 
 			let welcomeEmbed = new EmbedBuilder()
@@ -47,7 +47,7 @@ class DeployHandler {
 					{
 						name: "Moderator Tools",
 						value: "Tools to help manage and moderate a server",
-					}
+					},
 				)
 				.setFooter({
 					text: "Refer our help to learn more",
@@ -72,7 +72,7 @@ class DeployHandler {
 					message.reply("Guild commands deployed in " + message.guild.name);
 					EventHandler.auditEvent(
 						"INFO",
-						"Successfully registered " + data.length + " guild commands in " + message.guild.name
+						"Successfully registered " + data.length + " guild commands in " + message.guild.name,
 					);
 				})
 				.catch((error) => {
@@ -80,7 +80,7 @@ class DeployHandler {
 					EventHandler.auditEvent(
 						"ERROR",
 						"Failed to register guild commands in " + message.guild.name + " with Error : " + error,
-						error
+						error,
 					);
 				});
 		} else {
@@ -90,7 +90,7 @@ class DeployHandler {
 					message.author.username +
 					"/" +
 					message.author.id +
-					") tried accessing deploy command and was rejected access."
+					") tried accessing deploy command and was rejected access.",
 			);
 			message.reply(`:no_entry: You've yeed your last haw. Time to pay for your sins.:imp:`);
 		}
@@ -108,7 +108,7 @@ class DeployHandler {
 					message.reply("Test commands deployed in " + message.guild.name);
 					EventHandler.auditEvent(
 						"INFO",
-						"Successfully registered " + data.length + " test commands in " + message.guild.name
+						"Successfully registered " + data.length + " test commands in " + message.guild.name,
 					);
 				})
 				.catch((error) => {
@@ -116,7 +116,7 @@ class DeployHandler {
 					EventHandler.auditEvent(
 						"ERROR",
 						"Failed to register test commands in " + message.guild.name + " with Error : " + error,
-						error
+						error,
 					);
 				});
 		} else {
@@ -126,7 +126,7 @@ class DeployHandler {
 					message.author.username +
 					"/" +
 					message.author.id +
-					") tried accessing test deploy command and was rejected access."
+					") tried accessing test deploy command and was rejected access.",
 			);
 			message.reply(`:no_entry: You've yeed your last haw. Time to pay for your sins.:imp:`);
 		}
@@ -146,7 +146,7 @@ class DeployHandler {
 					EventHandler.auditEvent(
 						"ERROR",
 						"Failed to unregister global commands in " + message.guild.name + " with Error : " + error,
-						error
+						error,
 					);
 				});
 		} else {
@@ -156,7 +156,7 @@ class DeployHandler {
 					message.author.username +
 					"/" +
 					message.author.id +
-					") tried accessing unDeployGlobal command and was rejected access"
+					") tried accessing unDeployGlobal command and was rejected access",
 			);
 			message.reply(`:no_entry: You've yeed your last haw. Time to pay for your sins.:imp:`);
 		}
@@ -177,7 +177,7 @@ class DeployHandler {
 					EventHandler.auditEvent(
 						"ERROR",
 						"Failed to unregister guild commands in " + message.guild.name + " with Error : " + error,
-						error
+						error,
 					);
 				});
 		} else {
@@ -187,7 +187,7 @@ class DeployHandler {
 					message.author.username +
 					"/" +
 					message.author.id +
-					") tried accessing unDeployGuild command and was rejected access"
+					") tried accessing unDeployGuild command and was rejected access",
 			);
 			message.reply(`:no_entry: You've yeed your last haw. Time to pay for your sins.:imp:`);
 		}

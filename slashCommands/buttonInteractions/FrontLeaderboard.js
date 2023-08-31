@@ -48,7 +48,7 @@ class FrontLeaderboard {
 					new ButtonBuilder()
 						.setCustomId(butttonLabelList[i].key)
 						.setLabel(butttonLabelList[i].value)
-						.setStyle(ButtonStyle.Primary)
+						.setStyle(ButtonStyle.Primary),
 				);
 			}
 			interaction.update({

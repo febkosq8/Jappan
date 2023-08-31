@@ -21,7 +21,7 @@ class AnnounceHandler {
 						announceChannelName: channel.name,
 						timeStamp: new Date().toISOString(),
 					},
-				}
+				},
 			);
 			await this.checkMemberAnnouncementStatus(interaction);
 		} else {
@@ -41,7 +41,7 @@ class AnnounceHandler {
 					announceChannelName: "",
 					timeStamp: new Date().toISOString(),
 				},
-			}
+			},
 		);
 	}
 	static async checkMemberAnnouncementStatus(interaction) {
@@ -63,7 +63,7 @@ class AnnounceHandler {
 					name: "Member Announcement Feature",
 					value: `:green_circle: **ON**`,
 				},
-				{ name: "Announcement Channel", value: `${channel}` }
+				{ name: "Announcement Channel", value: `${channel}` },
 			);
 		} else {
 			memberAnnounceEmbed.addFields({
@@ -95,7 +95,7 @@ class AnnounceHandler {
 							`${member.user}` +
 								" just " +
 								(type === "guildMemberAdd" ? "joined :tada: " : "left :melting_face: ") +
-								`**${member.guild.name}**`
+								`**${member.guild.name}**`,
 						);
 					let announceChannel = await ClientHandler.getClientChannel(rawGuildData?.announceChannelId);
 					if (announceChannel) {
@@ -116,7 +116,7 @@ class AnnounceHandler {
 					EventHandler.auditEvent(
 						"ERROR",
 						"Failed to send member status update for Guild ID : " + member.guild.id + " with Error : " + error,
-						error
+						error,
 					);
 				}
 			}

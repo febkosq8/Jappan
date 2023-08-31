@@ -53,14 +53,14 @@ class level {
 						option
 							.setName("threshold")
 							.setDescription("Threshold for characters to trigger a role add (Optional)")
-							.setRequired(false)
+							.setRequired(false),
 					)
 					.addRoleOption((option) =>
 						option
 							.setName("role")
 							.setDescription("Role to assign once a user reaches the threshold (Optional)")
-							.setRequired(false)
-					)
+							.setRequired(false),
+					),
 			)
 			.addSubcommand((group) => group.setName("off").setDescription("Turn off the leveling system"))
 			.addSubcommand((group) => group.setName("check").setDescription("Check the status of the leveling system"))
@@ -76,11 +76,11 @@ class level {
 				await LevelHandler.checkLevelStatus(interaction);
 			} else if (status === 1) {
 				interaction.editReply(
-					`:bangbang: We cant turn on the Leveling system as you did not provide both threshold and role.`
+					`:bangbang: We cant turn on the Leveling system as you did not provide both threshold and role.`,
 				);
 			} else if (status === 0) {
 				interaction.editReply(
-					`:bangbang: Could not turn on the Leveling system, as the given role has more hierarchy than me`
+					`:bangbang: Could not turn on the Leveling system, as the given role has more hierarchy than me`,
 				);
 			}
 		} else if (interaction.options.getSubcommand() === "off") {

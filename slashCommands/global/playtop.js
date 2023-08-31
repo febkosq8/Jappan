@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, GuildMember } = require("discord.js");
-const { useQueue, useMasterPlayer } = require("discord-player");
+const { useQueue, useMainPlayer } = require("discord-player");
 const config = require("../../config.json");
 const EventHandler = require("../../Components/EventHandler");
 const PlayerHandler = require("../../Components/PlayerHandler");
@@ -50,13 +50,13 @@ class playtop {
 					.setName("query")
 					.setDescription("The playlist / song you want to play")
 					.setRequired(true)
-					.setAutocomplete(true)
+					.setAutocomplete(true),
 			)
 			.setDMPermission(false)
 			.toJSON();
 	}
 	async autocomplete(interaction) {
-		const player = useMasterPlayer();
+		const player = useMainPlayer();
 		const query = interaction.options.getString("query");
 		const result = await player.search(query);
 
@@ -68,7 +68,7 @@ class playtop {
 		await interaction.respond(returnData);
 	}
 	async execute(interaction) {
-		const player = useMasterPlayer();
+		const player = useMainPlayer();
 		await interaction.deferReply();
 		try {
 			if (!(interaction.member instanceof GuildMember) || !interaction.member.voice.channel) {
@@ -103,7 +103,7 @@ class playtop {
 				} else {
 					queue.insertTrack(searchResult.tracks[0], 0);
 					await interaction.editReply(
-						`:musical_note: | Added ${searchResult.tracks[0].title} to the top of the queue!`
+						`:musical_note: | Added ${searchResult.tracks[0].title} to the top of the queue!`,
 					);
 				}
 			}

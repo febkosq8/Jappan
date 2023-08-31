@@ -42,7 +42,7 @@ class play {
 			.setName(this.#name)
 			.setDescription(config.botName + " : " + this.#desc)
 			.addStringOption((option) =>
-				option.setName("query").setDescription("The playlist / song you want to play").setRequired(true)
+				option.setName("query").setDescription("The playlist / song you want to play").setRequired(true),
 			)
 			.setDMPermission(false)
 			.toJSON();

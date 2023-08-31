@@ -1,4 +1,17 @@
-## v1.4.1
+## v1.4.2
+
+- discord.js, @discord-player, etc version bump (Jumped to dev branch for discord-player)
+- Switched to useMainPlayer from UseMasterPlayer for discord-player
+- Switched to mediaplex from opusscript
+- We no longer send the send on interaction fail event
+- AdminGuildList now also checks if bot has Admin role
+- Removed ffmpeg from npm and changed it to docker
+- Fixed AuditHandler throwing error when missing some data
+- Play autocomplete now truncates the response if over 100 characters
+
+#
+
+### v1.4.1
 
 - Dockerize the bot to fix song skipping issue when hosted on heroku
 - discord.js, @discord-player, etc version bump

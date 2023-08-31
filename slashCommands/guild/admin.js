@@ -53,7 +53,7 @@ class admin {
 					.setName("guild")
 					.setDescription("Guild Commands")
 					.addSubcommand((subcommand) =>
-						subcommand.setName("guildlist").setDescription("Get a list of guild's the bot is currently in")
+						subcommand.setName("guildlist").setDescription("Get a list of guild's the bot is currently in"),
 					)
 					.addSubcommand((subcommand) =>
 						subcommand
@@ -63,49 +63,49 @@ class admin {
 								option
 									.setName("confirmcode")
 									.setDescription("Confirmation Code to process the request")
-									.setRequired(true)
-							)
+									.setRequired(true),
+							),
 					)
 					.addSubcommand((subcommand) =>
 						subcommand
 							.setName("kickguild")
 							.setDescription("Kick the bot from a guild")
 							.addStringOption((option) =>
-								option.setName("guildid").setDescription("Guild ID to kick").setRequired(true)
+								option.setName("guildid").setDescription("Guild ID to kick").setRequired(true),
 							)
 							.addStringOption((option) =>
 								option
 									.setName("confirmcode")
 									.setDescription("Confirmation Code to process the request")
-									.setRequired(true)
-							)
+									.setRequired(true),
+							),
 					)
 					.addSubcommand((subcommand) =>
 						subcommand
 							.setName("messageguild")
 							.setDescription("Send a message to a guild")
 							.addStringOption((option) =>
-								option.setName("guildid").setDescription("Guild ID to message").setRequired(true)
+								option.setName("guildid").setDescription("Guild ID to message").setRequired(true),
 							)
 							.addStringOption((option) =>
-								option.setName("message").setDescription("Message to post in the guild").setRequired(true)
-							)
+								option.setName("message").setDescription("Message to post in the guild").setRequired(true),
+							),
 					)
 					.addSubcommand((subcommand) =>
 						subcommand
 							.setName("getinviteguild")
 							.setDescription("Get a invite link to a guild")
 							.addStringOption((option) =>
-								option.setName("guildid").setDescription("Guild ID to get Invite for").setRequired(true)
-							)
-					)
+								option.setName("guildid").setDescription("Guild ID to get Invite for").setRequired(true),
+							),
+					),
 			)
 			.addSubcommandGroup((group) =>
 				group
 					.setName("deploy")
 					.setDescription("Deployment Commands")
 					.addSubcommand((subcommand) =>
-						subcommand.setName("checkdeploy").setDescription("Check deployment status of global and guild commands")
+						subcommand.setName("checkdeploy").setDescription("Check deployment status of global and guild commands"),
 					)
 					.addSubcommand((subcommand) =>
 						subcommand
@@ -115,16 +115,16 @@ class admin {
 								option
 									.setName("confirmcode")
 									.setDescription("Confirmation Code to process the request")
-									.setRequired(true)
-							)
-					)
+									.setRequired(true),
+							),
+					),
 			)
 			.addSubcommandGroup((group) =>
 				group
 					.setName("bot")
 					.setDescription("Bot Commands")
 					.addSubcommand((subcommand) =>
-						subcommand.setName("checkvoice").setDescription("Check voice connection status of the bot")
+						subcommand.setName("checkvoice").setDescription("Check voice connection status of the bot"),
 					)
 					.addSubcommand((subcommand) =>
 						subcommand
@@ -134,8 +134,8 @@ class admin {
 								option
 									.setName("confirmcode")
 									.setDescription("Confirmation Code to process the request")
-									.setRequired(true)
-							)
+									.setRequired(true),
+							),
 					)
 					.addSubcommand((subcommand) =>
 						subcommand
@@ -145,8 +145,8 @@ class admin {
 								option
 									.setName("confirmcode")
 									.setDescription("Confirmation Code to process the request")
-									.setRequired(true)
-							)
+									.setRequired(true),
+							),
 					)
 					.addSubcommand((subcommand) =>
 						subcommand
@@ -156,8 +156,8 @@ class admin {
 								option
 									.setName("confirmcode")
 									.setDescription("Confirmation Code to process the request")
-									.setRequired(true)
-							)
+									.setRequired(true),
+							),
 					)
 					.addSubcommand((subcommand) =>
 						subcommand
@@ -167,18 +167,18 @@ class admin {
 								option
 									.setName("threshold")
 									.setDescription("Amount of threshold to clean member's based upon")
-									.setRequired(true)
+									.setRequired(true),
 							)
 							.addStringOption((option) =>
 								option
 									.setName("confirmcode")
 									.setDescription("Confirmation Code to process the request")
-									.setRequired(true)
-							)
+									.setRequired(true),
+							),
 					)
 					.addSubcommand((subcommand) =>
-						subcommand.setName("backupmongo").setDescription("Backup the mongodb collection locally")
-					)
+						subcommand.setName("backupmongo").setDescription("Backup the mongodb collection locally"),
+					),
 			)
 			.setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
 			.setDMPermission(false)
@@ -244,10 +244,10 @@ class admin {
 					option +
 					" / " +
 					interaction.options.data[0].options[0].name +
-					" command and was rejected access."
+					" command and was rejected access.",
 			);
 			interaction.editReply(
-				`:no_entry: You've yeed your last haw. Time to pay for your sins.:imp: :chart_with_upwards_trend:`
+				`:no_entry: You've yeed your last haw. Time to pay for your sins.:imp: :chart_with_upwards_trend:`,
 			);
 		}
 	}

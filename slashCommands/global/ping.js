@@ -62,7 +62,7 @@ class ping {
 				{
 					name: ":satellite: API Latency :",
 					value: "Loading",
-				}
+				},
 			);
 
 		const msg = await interaction.editReply({
@@ -88,7 +88,7 @@ class ping {
 				{
 					name: ":satellite: API Latency :",
 					value: apiPing + " ms",
-				}
+				},
 			);
 		await interaction.editReply({
 			embeds: [pingEmbed],

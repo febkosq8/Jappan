@@ -48,7 +48,7 @@ class volume {
 					.setDescription("Volume number between 0 - 200")
 					.setMinValue(0)
 					.setMaxValue(200)
-					.setRequired(true)
+					.setRequired(true),
 			)
 			.setDMPermission(false)
 			.toJSON();

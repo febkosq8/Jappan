@@ -87,7 +87,7 @@ class nowplaying {
 				new ButtonBuilder()
 					.setCustomId(butttonLabelList[i].key)
 					.setLabel(butttonLabelList[i].value)
-					.setStyle(butttonLabelList[i].style)
+					.setStyle(butttonLabelList[i].style),
 			);
 		}
 

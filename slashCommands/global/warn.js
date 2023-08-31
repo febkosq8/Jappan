@@ -60,7 +60,7 @@ class warn {
 							.setName("timeout")
 							.setDescription("Warn threshold for Timeout (-1 to disable)")
 							.setMinValue(-1)
-							.setRequired(true)
+							.setRequired(true),
 					)
 					.addNumberOption((option) =>
 						option
@@ -70,50 +70,50 @@ class warn {
 								{ name: "1 Hour", value: 1 },
 								{ name: "12 Hour", value: 12 },
 								{ name: "1 Day", value: 24 },
-								{ name: "1 Week", value: 168 }
+								{ name: "1 Week", value: 168 },
 							)
-							.setRequired(true)
+							.setRequired(true),
 					)
 					.addNumberOption((option) =>
 						option
 							.setName("ban")
 							.setDescription("Warn threshold for Ban (-1 to disable)")
 							.setMinValue(-1)
-							.setRequired(true)
+							.setRequired(true),
 					)
 					.addChannelOption((option) =>
-						option.setName("channel").setDescription("Audit Channel for warning(s)").setRequired(true)
-					)
+						option.setName("channel").setDescription("Audit Channel for warning(s)").setRequired(true),
+					),
 			)
 			.addSubcommand((group) =>
 				group
 					.setName("issue")
 					.setDescription("Issue a warning to a user")
 					.addUserOption((option) =>
-						option.setName("user").setDescription("User to trigger the warning").setRequired(true)
+						option.setName("user").setDescription("User to trigger the warning").setRequired(true),
 					)
 					.addStringOption((option) =>
-						option.setName("reason").setDescription("Reason for the warning").setRequired(false)
-					)
+						option.setName("reason").setDescription("Reason for the warning").setRequired(false),
+					),
 			)
 			.addSubcommand((group) =>
 				group
 					.setName("check")
 					.setDescription("Check the current threshold settings / warning count for a user")
 					.addUserOption((option) =>
-						option.setName("user").setDescription("User to check the warning count").setRequired(false)
-					)
+						option.setName("user").setDescription("User to check the warning count").setRequired(false),
+					),
 			)
 			.addSubcommand((group) =>
 				group
 					.setName("override")
 					.setDescription("Override the warning count for a user")
 					.addUserOption((option) =>
-						option.setName("user").setDescription("User to set the warning count").setRequired(true)
+						option.setName("user").setDescription("User to set the warning count").setRequired(true),
 					)
 					.addNumberOption((option) =>
-						option.setName("count").setDescription("New warn count for the user").setMinValue(0).setRequired(true)
-					)
+						option.setName("count").setDescription("New warn count for the user").setMinValue(0).setRequired(true),
+					),
 			)
 			.setDMPermission(false)
 			.setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)

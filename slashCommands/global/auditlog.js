@@ -54,12 +54,12 @@ class auditlog {
 							.setName("channel")
 							.setDescription("Channel to send the audit event log to")
 							.addChannelTypes(ChannelType.GuildText)
-							.setRequired(true)
-					)
+							.setRequired(true),
+					),
 			)
 			.addSubcommand((group) => group.setName("off").setDescription("Turn off the audit log system"))
 			.addSubcommand((group) =>
-				group.setName("check").setDescription("Check the status of the audit log system for this server")
+				group.setName("check").setDescription("Check the status of the audit log system for this server"),
 			)
 			.setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
 			.setDMPermission(false)

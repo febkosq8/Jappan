@@ -18,7 +18,7 @@ class GuildCommands {
 	processGuildCommands(client) {
 		const guildCommandFiles = fs.readdirSync("./slashCommands/guild").filter((file) => file.endsWith(".js"));
 		this.#guildCommands = guildCommandFiles.map((file) =>
-			require(`../slashCommands/guild/${file}`).getInstance(client).getCommand()
+			require(`../slashCommands/guild/${file}`).getInstance(client).getCommand(),
 		);
 	}
 }

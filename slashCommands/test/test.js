@@ -1,7 +1,7 @@
 const { EmbedBuilder, SlashCommandBuilder } = require("discord.js");
 const { QueryType } = require("discord-player");
 const {
-	useMasterPlayer,
+	useMainPlayer,
 	useMetadata,
 	onBeforeCreateStream,
 	onAfterCreateStream,
@@ -69,7 +69,7 @@ class test {
 		const { timestamp, volume, paused, pause, resume, setVolume, setPosition } = useTimeline(interaction.guildId);
 
 		interaction.followUp(
-			`Current progress : (${timestamp.current.label} / ${timestamp.total.label}) : ${timestamp.progress}%`
+			`Current progress : (${timestamp.current.label} / ${timestamp.total.label}) : ${timestamp.progress}%`,
 		);
 		interaction.followUp(`Current volume : ${volume}`);
 		interaction.followUp(`Player paused : ${paused}`);

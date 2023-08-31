@@ -21,7 +21,7 @@ class WarnHandler {
 					warnAuditChannelName: channel.name,
 					timeStamp: new Date().toISOString(),
 				},
-			}
+			},
 		);
 	}
 
@@ -58,7 +58,7 @@ class WarnHandler {
 						memberList: memberList,
 						timeStamp: new Date().toISOString(),
 					},
-				}
+				},
 			);
 		} else {
 			//Member Does Not Exist
@@ -78,7 +78,7 @@ class WarnHandler {
 						memberList: memberList,
 						timeStamp: new Date().toISOString(),
 					},
-				}
+				},
 			);
 		}
 		if (rawGuildData.warnAuditChannelId != "") {
@@ -94,7 +94,7 @@ class WarnHandler {
 								warnAuditChannelName: "",
 								timeStamp: new Date().toISOString(),
 							},
-						}
+						},
 					);
 					await postChannel.send({
 						content:
@@ -129,7 +129,7 @@ class WarnHandler {
 						{
 							name: "Warning Issued By :",
 							value: `${interaction.user}`,
-						}
+						},
 					);
 				await auditChannel.send({
 					embeds: [warnTriggerEmbed],
@@ -204,7 +204,7 @@ class WarnHandler {
 					{
 						name: "Audit Channel",
 						value: `${auditChannel}`,
-					}
+					},
 				);
 
 			await interaction.editReply({
@@ -233,7 +233,7 @@ class WarnHandler {
 					{
 						name: "Current Warn Count",
 						value: `${currentWarnCount}`,
-					}
+					},
 				);
 
 			await interaction.editReply({
@@ -263,7 +263,7 @@ class WarnHandler {
 						memberList: memberList,
 						timeStamp: new Date().toISOString(),
 					},
-				}
+				},
 			);
 		} else {
 			//Member Does Not Exist
@@ -283,7 +283,7 @@ class WarnHandler {
 						memberList: memberList,
 						timeStamp: new Date().toISOString(),
 					},
-				}
+				},
 			);
 		}
 		// await interaction.editReply(`Warn count for ${warnUser} has been now set to \`${newWarnCount}\``);

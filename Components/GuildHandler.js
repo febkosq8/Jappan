@@ -39,7 +39,7 @@ class GuildHandler {
 				warnBanThreshold: -1,
 				warnAuditChannelId: "",
 				warnAuditChannelName: "",
-			}
+			},
 		);
 		return status;
 	}

@@ -43,7 +43,7 @@ class remove {
 			.setName(this.#name)
 			.setDescription(config.botName + " : " + this.#desc)
 			.addIntegerOption((option) =>
-				option.setName("number").setDescription("The queue number you want to remove").setRequired(true)
+				option.setName("number").setDescription("The queue number you want to remove").setRequired(true),
 			)
 			.setDMPermission(false)
 			.toJSON();

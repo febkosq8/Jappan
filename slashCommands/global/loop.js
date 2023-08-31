@@ -1,5 +1,5 @@
 const { GuildMember, SlashCommandBuilder } = require("discord.js");
-const { useQueue, QueueRepeatMode, useMasterPlayer } = require("discord-player");
+const { useQueue, QueueRepeatMode, useMainPlayer } = require("discord-player");
 const config = require("../../config.json");
 const EventHandler = require("../../Components/EventHandler");
 const ClientHandler = require("../../Components/ClientHandler");
@@ -54,8 +54,8 @@ class loop {
 						{ name: "Off", value: QueueRepeatMode.OFF },
 						{ name: "Track", value: QueueRepeatMode.TRACK },
 						{ name: "Queue", value: QueueRepeatMode.QUEUE },
-						{ name: "Autoplay", value: QueueRepeatMode.AUTOPLAY }
-					)
+						{ name: "Autoplay", value: QueueRepeatMode.AUTOPLAY },
+					),
 			)
 			.setDMPermission(false)
 			.toJSON();

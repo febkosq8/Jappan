@@ -21,7 +21,7 @@ class AuditHandler {
 						auditChannelName: channel.name,
 						timeStamp: new Date().toISOString(),
 					},
-				}
+				},
 			);
 
 			await this.checkAuditStatus(interaction);
@@ -42,7 +42,7 @@ class AuditHandler {
 					auditChannelName: "",
 					timeStamp: new Date().toISOString(),
 				},
-			}
+			},
 		);
 	}
 	static async checkAuditStatus(interaction) {
@@ -64,7 +64,7 @@ class AuditHandler {
 					name: "Audit Log Feature",
 					value: `:green_circle: **ON**`,
 				},
-				{ name: "Log Channel", value: `${channel}` }
+				{ name: "Log Channel", value: `${channel}` },
 			);
 		} else {
 			memberAnnounceEmbed.addFields({
@@ -116,7 +116,7 @@ class AuditHandler {
 				type: AuditLogEvent.MemberMove,
 			});
 			const auditEntry = fetchedLogs.entries.find(
-				(a) => a.extra.channel.id === oldState.channelId && Date.now() - a.createdTimestamp < 20000
+				(a) => a.extra.channel.id === oldState.channelId && Date.now() - a.createdTimestamp < 20000,
 			);
 			const executor = auditEntry?.executor ? auditEntry?.executor : "Someone";
 			let voiceUser = oldState.member;
@@ -163,7 +163,7 @@ class AuditHandler {
 							name: "To VC",
 							value: `${newChannel}` + " : " + `\`${newChannel.id}\``,
 							inline: true,
-						}
+						},
 					)
 					.setColor("Greyple");
 				post = 1;
@@ -231,7 +231,7 @@ class AuditHandler {
 					(a) =>
 						a?.target?.id === message?.author?.id &&
 						a?.extra?.channel?.id === message?.channel?.id &&
-						Date.now() - a.createdTimestamp < 20000
+						Date.now() - a.createdTimestamp < 20000,
 				);
 				const executor = auditEntry?.executor ? auditEntry?.executor : "Someone";
 
@@ -268,7 +268,7 @@ class AuditHandler {
 						{
 							name: "Creation Timestamp",
 							value: `<t:${timeStamp}:R>`,
-						}
+						},
 					)
 					.setFooter({ text: "Message ID  : " + message.id });
 
@@ -301,7 +301,7 @@ class AuditHandler {
 				(a) =>
 					a.target.id === messages.first().author.id &&
 					a.extra.channel.id === messages.first().channel.id &&
-					Date.now() - a.createdTimestamp < 20000
+					Date.now() - a.createdTimestamp < 20000,
 			);
 			const executor = auditEntry?.executor ? auditEntry?.executor : "Someone";
 			let messageDeleteEmbed = new EmbedBuilder()
@@ -318,7 +318,7 @@ class AuditHandler {
 					{
 						name: "Channel",
 						value: `${messages.first().channel}` + " : " + `\`${messages.first().channel.id}\``,
-					}
+					},
 				);
 			this.postAuditEvent(messageDeleteEmbed, messages.first().guild);
 		}
@@ -401,7 +401,7 @@ class AuditHandler {
 						{
 							name: "Update Timestamp",
 							value: newTimeStamp ? `<t:${newTimeStamp}:R>` : "`Not provided`",
-						}
+						},
 					)
 					.setFooter({ text: "Message ID  : " + newMessage.id });
 				this.postAuditEvent(messageUpdateEmbed, newMessage.guild);
@@ -424,7 +424,7 @@ class AuditHandler {
 				let createdTimestamp = Math.floor(invite.createdTimestamp / 1000);
 				let expiresTimestamp = invite._expiresTimestamp / 1000;
 				let user = await ClientHandler.getClientUser(invite.inviterId);
-				let avatar = user.displayAvatarURL();
+				let avatar = user?.displayAvatarURL();
 				inviteEmbed
 					.setColor("Aqua")
 					.setAuthor({
@@ -444,7 +444,7 @@ class AuditHandler {
 						{
 							name: "Max number of Uses",
 							value: invite.maxUses ? `${invite.maxUses}` : "Unlimited",
-						}
+						},
 					);
 			} else if (type === "inviteDelete") {
 				inviteEmbed
@@ -483,7 +483,7 @@ class AuditHandler {
 							} else {
 								return `@${role}`;
 							}
-						})
+						}),
 					);
 					roleString = roleString.join(" ");
 				}
@@ -511,7 +511,7 @@ class AuditHandler {
 							name: "New Nickname",
 							value: newMember.nickname ? `\`${newMember.nickname}\`` : `\`${oldMember.user.username}\``,
 							inline: true,
-						}
+						},
 					);
 				}
 				if (oldMember._roles.join("") !== newMember._roles.join("")) {
@@ -523,7 +523,7 @@ class AuditHandler {
 							} else {
 								return `@${role}`;
 							}
-						})
+						}),
 					);
 					oldRoles = oldRoles.join(" ");
 					let newRoles = await Promise.all(
@@ -534,7 +534,7 @@ class AuditHandler {
 							} else {
 								return `@${role}`;
 							}
-						})
+						}),
 					);
 					newRoles = newRoles.join(" ");
 					if (!oldRoles) {
@@ -551,7 +551,7 @@ class AuditHandler {
 						{
 							name: "New Roles",
 							value: `${newRoles}`,
-						}
+						},
 					);
 				}
 				if (oldMember.communicationDisabledUntilTimestamp !== newMember.communicationDisabledUntilTimestamp) {
@@ -560,7 +560,7 @@ class AuditHandler {
 						type: AuditLogEvent.MemberUpdate,
 					});
 					const auditEntry = fetchedLogs?.entries?.find(
-						(a) => a?.target?.id === oldMember?.user?.id && Date.now() - a.createdTimestamp < 20000
+						(a) => a?.target?.id === oldMember?.user?.id && Date.now() - a.createdTimestamp < 20000,
 					);
 					if (newMember.communicationDisabledUntilTimestamp > oldMember.communicationDisabledUntilTimestamp) {
 						let timeStamp = Math.floor(newMember.communicationDisabledUntilTimestamp / 1000);
@@ -571,8 +571,8 @@ class AuditHandler {
 							},
 							{
 								name: "Action initated by",
-								value: `${auditEntry.executor}`,
-							}
+								value: auditEntry?.executor ? `${auditEntry.executor}` : "Unknown",
+							},
 						);
 					} else if (oldMember.communicationDisabledUntilTimestamp && !newMember.communicationDisabledUntilTimestamp) {
 						let timeStamp = Math.floor(oldMember.communicationDisabledUntilTimestamp / 1000);
@@ -583,8 +583,8 @@ class AuditHandler {
 							},
 							{
 								name: "Action initated by",
-								value: `${auditEntry.executor}`,
-							}
+								value: auditEntry?.executor ? `${auditEntry.executor}` : "Unknown",
+							},
 						);
 					}
 				}
@@ -609,7 +609,7 @@ class AuditHandler {
 					type: AuditLogEvent.MemberBanAdd,
 				});
 				const auditEntry = fetchedLogs?.entries?.find(
-					(a) => a?.target?.id === ban?.user?.id && Date.now() - a.createdTimestamp < 20000
+					(a) => a?.target?.id === ban?.user?.id && Date.now() - a.createdTimestamp < 20000,
 				);
 				banEmbed.setDescription(`${ban.user}` + " was **BANNED**").addFields(
 					{
@@ -619,7 +619,7 @@ class AuditHandler {
 					{
 						name: "Banned by",
 						value: auditEntry?.executor ? `${auditEntry?.executor}` : "No Reason",
-					}
+					},
 				);
 			} else if (type === "guildBanRemove") {
 				const fetchedLogs = await ban.guild.fetchAuditLogs({
@@ -627,7 +627,7 @@ class AuditHandler {
 					type: AuditLogEvent.MemberBanRemove,
 				});
 				const auditEntry = fetchedLogs.entries.find(
-					(a) => a.target.id === ban.user.id && Date.now() - a.createdTimestamp < 20000
+					(a) => a.target.id === ban.user.id && Date.now() - a.createdTimestamp < 20000,
 				);
 				banEmbed.setDescription(`${ban.user}` + " was **UN-BANNED**").addFields({
 					name: "Un-Banned by",
@@ -668,7 +668,7 @@ class AuditHandler {
 					type: AuditLogEvent.ChannelCreate,
 				});
 				const auditEntry = fetchedLogs?.entries?.find(
-					(a) => a?.target?.id === oldChannel.id && Date.now() - a.createdTimestamp < 20000
+					(a) => a?.target?.id === oldChannel.id && Date.now() - a.createdTimestamp < 20000,
 				);
 				channelEmbed.setColor("DarkGreen").addFields(
 					{
@@ -678,7 +678,7 @@ class AuditHandler {
 					{
 						name: "Created by",
 						value: auditEntry?.executor ? `${auditEntry?.executor}` : "Someone",
-					}
+					},
 				);
 			} else if (type === "channelDelete") {
 				const fetchedLogs = await oldChannel.guild.fetchAuditLogs({
@@ -686,7 +686,7 @@ class AuditHandler {
 					type: AuditLogEvent.ChannelDelete,
 				});
 				const auditEntry = fetchedLogs?.entries?.find(
-					(a) => a?.target?.id === oldChannel.id && Date.now() - a.createdTimestamp < 20000
+					(a) => a?.target?.id === oldChannel.id && Date.now() - a.createdTimestamp < 20000,
 				);
 				channelEmbed.setColor("Red").addFields(
 					{
@@ -696,7 +696,7 @@ class AuditHandler {
 					{
 						name: "Deleted by",
 						value: auditEntry?.executor ? `${auditEntry?.executor}` : "Someone",
-					}
+					},
 				);
 			} else if (type === "channelUpdate") {
 				let fetchedLogs = await oldChannel.guild.fetchAuditLogs({
@@ -704,7 +704,7 @@ class AuditHandler {
 					type: AuditLogEvent.ChannelUpdate,
 				});
 				let auditEntry = fetchedLogs?.entries?.find(
-					(a) => a?.target?.id === oldChannel.id && Date.now() - a.createdTimestamp < 20000
+					(a) => a?.target?.id === oldChannel.id && Date.now() - a.createdTimestamp < 20000,
 				);
 				if (!auditEntry) {
 					fetchedLogs = await oldChannel.guild.fetchAuditLogs({
@@ -712,7 +712,7 @@ class AuditHandler {
 						type: AuditLogEvent.ChannelOverwriteCreate,
 					});
 					auditEntry = fetchedLogs?.entries?.find(
-						(a) => a?.target?.id === oldChannel.id && Date.now() - a.createdTimestamp < 20000
+						(a) => a?.target?.id === oldChannel.id && Date.now() - a.createdTimestamp < 20000,
 					);
 				}
 				if (!auditEntry) {
@@ -721,7 +721,7 @@ class AuditHandler {
 						type: AuditLogEvent.ChannelOverwriteUpdate,
 					});
 					auditEntry = fetchedLogs?.entries?.find(
-						(a) => a?.target?.id === oldChannel.id && Date.now() - a.createdTimestamp < 20000
+						(a) => a?.target?.id === oldChannel.id && Date.now() - a.createdTimestamp < 20000,
 					);
 				}
 				if (!auditEntry) {
@@ -730,7 +730,7 @@ class AuditHandler {
 						type: AuditLogEvent.ChannelOverwriteDelete,
 					});
 					auditEntry = fetchedLogs?.entries?.find(
-						(a) => a?.target?.id === oldChannel.id && Date.now() - a.createdTimestamp < 20000
+						(a) => a?.target?.id === oldChannel.id && Date.now() - a.createdTimestamp < 20000,
 					);
 				}
 				channelEmbed.setColor("Yellow").addFields({
@@ -860,7 +860,7 @@ class AuditHandler {
 									newString +=
 										`${currTarget}` + "\n\n**DENY** : " + newDenyRole + "\n**ALLOW** : " + newAllowRole + "\n\n";
 								}
-							})
+							}),
 						);
 					} else {
 						await Promise.all(
@@ -880,7 +880,7 @@ class AuditHandler {
 									oldString += `${currTarget}` + "\n\n**NONE**";
 									newString += `${currTarget}` + "\n\n**DENY** : " + denyRole + "\n**ALLOW** : " + allowRole + "\n\n";
 								}
-							})
+							}),
 						);
 					}
 					channelEmbed.addFields(
@@ -893,7 +893,7 @@ class AuditHandler {
 							name: "New permissions",
 							value: `${newString}`,
 							inline: true,
-						}
+						},
 					);
 				}
 				channelEmbed.addFields({
@@ -939,7 +939,7 @@ class AuditHandler {
 						{
 							name: "New name",
 							value: `${newRole.name}`,
-						}
+						},
 					);
 				}
 				if (oldRole.color !== newRole.color) {
@@ -951,7 +951,7 @@ class AuditHandler {
 						{
 							name: "New color",
 							value: `#${newRole.color.toString(16)}`,
-						}
+						},
 					);
 				}
 				if (oldRole.hoist !== newRole.hoist) {
@@ -969,7 +969,7 @@ class AuditHandler {
 						{
 							name: "New position",
 							value: `${newRole.rawPosition}`,
-						}
+						},
 					);
 				}
 				if (oldRole.mentionable !== newRole.mentionable) {
@@ -989,7 +989,7 @@ class AuditHandler {
 						{
 							name: "New permissions",
 							value: `${newPerms}`,
-						}
+						},
 					);
 				}
 			}
@@ -1019,7 +1019,7 @@ class AuditHandler {
 					name: "New username",
 					value: `${newUser.username}`,
 					inline: true,
-				}
+				},
 			);
 		}
 		if (oldUser.discriminator !== newUser.discriminator) {
@@ -1034,7 +1034,7 @@ class AuditHandler {
 					name: "New discriminator",
 					value: `${newUser.discriminator}`,
 					inline: true,
-				}
+				},
 			);
 		}
 		if (oldUser.avatar !== newUser.avatar) {
@@ -1052,7 +1052,7 @@ class AuditHandler {
 						name: "New avatar (Attached)",
 						value: `[Link](${newAvatar})`,
 						inline: true,
-					}
+					},
 				)
 				.setImage(newAvatar);
 		}
@@ -1072,6 +1072,14 @@ class AuditHandler {
 	static async auditEventGuildAuditEntryCreate(event, guild) {
 		let status = await this.getGuildAuditStatus(guild.id);
 		if (status) {
+			let auditTarget = event.target;
+			if (typeof auditTarget === "object" && auditTarget) {
+				if (auditTarget?.id) {
+					auditTarget = await ClientHandler.getClientUser(auditTarget.id);
+				} else {
+					auditTarget = "Unknown";
+				}
+			}
 			let auditEntryEmbed = new EmbedBuilder()
 				.setTitle(`Audit Log Entry`)
 				.setFooter({ text: "Log ID  : " + event.id })
@@ -1080,7 +1088,10 @@ class AuditHandler {
 					{ name: "Action triggered by", value: `${event.executor}` },
 					{ name: "Target type", value: `${event.targetType}` },
 					{ name: "Action type", value: `${event.actionType}` },
-					{ name: "Target", value: `${event.target}` }
+					{
+						name: "Target",
+						value: `${auditTarget}`,
+					},
 				)
 				.setTimestamp();
 			if (event.reason) {

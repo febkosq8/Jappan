@@ -45,10 +45,10 @@ class makesay {
 			.setName(this.#name)
 			.setDescription(config.botName + " : " + this.#desc)
 			.addUserOption((option) =>
-				option.setName("user").setDescription("The user that will be saying the particular message").setRequired(true)
+				option.setName("user").setDescription("The user that will be saying the particular message").setRequired(true),
 			)
 			.addStringOption((option) =>
-				option.setName("content").setDescription("The message that you want the user to say").setRequired(true)
+				option.setName("content").setDescription("The message that you want the user to say").setRequired(true),
 			)
 			.setDMPermission(false)
 			.toJSON();
@@ -90,7 +90,7 @@ class makesay {
 				new ButtonBuilder()
 					.setCustomId(butttonLabelList[i].key)
 					.setLabel(butttonLabelList[i].value)
-					.setStyle(ButtonStyle.Danger)
+					.setStyle(ButtonStyle.Danger),
 			);
 		}
 		const dmEmbed = new EmbedBuilder()
@@ -103,7 +103,7 @@ class makesay {
 			})
 			.setDescription(
 				"This command posts a fake message with your name and profile picture and is intended to be used for fun." +
-					"\nIf you find the content of the message offensive, You can delete the message and warn the user who did this by clicking the button below."
+					"\nIf you find the content of the message offensive, You can delete the message and warn the user who did this by clicking the button below.",
 			)
 			.setFields(
 				{
@@ -113,14 +113,14 @@ class makesay {
 				{
 					name: "Location ",
 					value: `${interaction.guild}` + " | " + `${interaction.channel}`,
-				}
+				},
 			);
 		targetUser.send({ embeds: [dmEmbed], components: [buttonRow] }).catch((error) => {
 			if (error.code !== 50007) {
 				EventHandler.auditEvent(
 					"ERROR",
 					"Failed to send the doppelganger DM to User ID :" + targetUser.id + " with Error : " + error.message,
-					error
+					error,
 				);
 			}
 		});

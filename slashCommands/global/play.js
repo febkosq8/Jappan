@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, GuildMember } = require("discord.js");
-const { useMasterPlayer } = require("discord-player");
+const { useMainPlayer } = require("discord-player");
 const config = require("../../config.json");
 const EventHandler = require("../../Components/EventHandler");
 const PlayerHandler = require("../../Components/PlayerHandler");
@@ -50,18 +50,21 @@ class play {
 					.setName("query")
 					.setDescription("The playlist / song you want to play")
 					.setRequired(true)
-					.setAutocomplete(true)
+					.setAutocomplete(true),
 			)
 			.setDMPermission(false)
 			.toJSON();
 	}
 	async autocomplete(interaction) {
-		const player = useMasterPlayer();
+		const player = useMainPlayer();
 		const query = interaction.options.getString("query");
 		let returnData = [];
 		if (query) {
-			const result = await player.search(query);
+			let result = await player.search(query);
 			if (result.playlist) {
+				if (result.playlist.title.length > 100) {
+					result.playlist.title = result.playlist.title.substring(0, 90) + "..(truncated)..";
+				}
 				returnData.push({ name: result.playlist.title + " | Playlist", value: query });
 			}
 			result.tracks.slice(0, 6).map((track) => returnData.push({ name: track.title, value: track.url }));
@@ -69,7 +72,7 @@ class play {
 		await interaction.respond(returnData);
 	}
 	async execute(interaction) {
-		const player = useMasterPlayer();
+		const player = useMainPlayer();
 		await interaction.deferReply();
 		try {
 			if (!(interaction.member instanceof GuildMember) || !interaction.member.voice.channel) {

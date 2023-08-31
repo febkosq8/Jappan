@@ -56,7 +56,7 @@ class ClearHandler {
 			EventHandler.auditEvent(
 				"ERROR",
 				"There was an error while clearing messages in Guild ID : " + interaction.guildId + " with Error : " + error,
-				error
+				error,
 			);
 		}
 	}
@@ -72,7 +72,7 @@ class ClearHandler {
 				if (channel[1].type != 4 && channel[1].type != 13 && channel[1].type != 15) {
 					channelMessages = await channel[1]?.messages?.fetch({ limit: 100 });
 					messagesLength += channelMessages?.filter(
-						(m) => m.author.id === user.id && interaction.id !== m.interaction?.id
+						(m) => m.author.id === user.id && interaction.id !== m.interaction?.id,
 					).size;
 					channelMessages?.forEach((message) => {
 						if (interaction.id !== message.interaction?.id) {
@@ -102,7 +102,7 @@ class ClearHandler {
 					interaction.guildId +
 					" with Error : " +
 					error,
-				error
+				error,
 			);
 		}
 	}

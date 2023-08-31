@@ -22,7 +22,7 @@ client.login(token).then(() => {
 		"Connected to Discord servers using " +
 			(token ? "token" : "config token") +
 			" with Bot Mode : " +
-			process.env.botMode
+			process.env.botMode,
 	);
 });
 
@@ -53,7 +53,7 @@ process.on("uncaughtException", function (error) {
 	EventHandler.auditEvent(
 		"ERROR",
 		"Caught a Exception (Current Count : " + errorCount + ") that was not handled properly",
-		error
+		error,
 	);
 	if (errorCount > 5) {
 		EventHandler.auditEvent("ERROR", "5 Uncaught Exceptions have occured, exiting process in 5 seconds");

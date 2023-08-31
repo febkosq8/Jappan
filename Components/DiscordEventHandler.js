@@ -26,7 +26,7 @@ class DiscordEventHandler {
 				{
 					name: "Description",
 					value: desc,
-				}
+				},
 			);
 		if (event) {
 			eventEmbed.addFields({
@@ -63,7 +63,7 @@ class DiscordEventHandler {
 				{
 					name: "Content",
 					value: message.content,
-				}
+				},
 			);
 		let webhookClient = new WebhookClient({
 			url: process.env.discordDmWebhook,
@@ -94,7 +94,7 @@ class DiscordEventHandler {
 				{
 					name: "Description",
 					value: desc,
-				}
+				},
 			);
 		if (event) {
 			debugEmbed.addFields({
@@ -131,7 +131,7 @@ class DiscordEventHandler {
 				{
 					name: "Description",
 					value: desc,
-				}
+				},
 			);
 		if (event) {
 			errorEmbed.addFields({

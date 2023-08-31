@@ -54,14 +54,14 @@ class indexPost {
 			EventHandler.auditEvent(
 				"DEBUG",
 				`[${queue.guild.name}] Discord Player Queue error emitted for [${queue.currentTrack.title}] from the queue: ${error.message}`,
-				error
+				error,
 			);
 		});
 		player.events.on("playerError", (queue, error) => {
 			EventHandler.auditEvent(
 				"DEBUG",
 				`[${queue.guild.name}] Discord Player error emitted for [${queue.currentTrack.title}] from the connection: ${error.message}`,
-				error
+				error,
 			);
 		});
 		player.events.on("playerStart", (queue, track) => {
@@ -81,7 +81,7 @@ class indexPost {
 		});
 		player.events.on("emptyChannel", (queue) => {
 			queue.metadata.send(
-				":warning: | Nobody has been active in the voice channel for the past 5 minutes , Adios :cowboy:"
+				":warning: | Nobody has been active in the voice channel for the past 5 minutes , Adios :cowboy:",
 			);
 		});
 		player.events.on("emptyQueue", (queue) => {
@@ -133,7 +133,7 @@ class indexPost {
 						" / " +
 						message.author.id +
 						")",
-					message
+					message,
 				);
 				return;
 			}
@@ -160,7 +160,7 @@ class indexPost {
 							"#" +
 							message.author.discriminator +
 							" / " +
-							message.author.id
+							message.author.id,
 					);
 
 					if (command === "deploy") {
@@ -187,7 +187,7 @@ class indexPost {
 									message.author.username +
 									"/" +
 									message.author.id +
-									") tried accessing playerDebug command and was rejected access."
+									") tried accessing playerDebug command and was rejected access.",
 							);
 							message.reply(`:no_entry: You've yeed your last haw. Time to pay for your sins.:imp:`);
 						}
@@ -205,7 +205,7 @@ class indexPost {
 									message.author.username +
 									"/" +
 									message.author.id +
-									") tried accessing playerDeps command and was rejected access."
+									") tried accessing playerDeps command and was rejected access.",
 							);
 							message.reply(`:no_entry: You've yeed your last haw. Time to pay for your sins.:imp:`);
 						}
@@ -215,8 +215,8 @@ class indexPost {
 							msg.delete();
 							message.reply(
 								`:robot: Latency is ${msg.createdTimestamp - message.createdTimestamp}ms. API Latency is ${Math.round(
-									client.ws.ping
-								)}ms.`
+									client.ws.ping,
+								)}ms.`,
 							);
 						});
 					}
@@ -289,7 +289,7 @@ class indexPost {
 								"#" +
 								interaction.user.discriminator +
 								" / " +
-								interaction.user.id
+								interaction.user.id,
 						);
 					} else {
 						EventHandler.auditEvent(
@@ -301,14 +301,14 @@ class indexPost {
 								"#" +
 								interaction.user.discriminator +
 								" / " +
-								interaction.user.id
+								interaction.user.id,
 						);
 					}
 				} catch (error) {
 					EventHandler.auditEvent(
 						"ERROR",
 						"An button interaction for : " + interaction.customId + " has failed to execute with Error : " + error,
-						error
+						error,
 					);
 				}
 			} else if (interaction.isAutocomplete()) {
@@ -316,7 +316,7 @@ class indexPost {
 					interaction.commandName,
 					globalCommands,
 					guildCommands,
-					testCommands
+					testCommands,
 				)}/${interaction.commandName}.js`).getInstance(client);
 				await userInteraction.autocomplete(interaction, client);
 			} else if (interaction.isChatInputCommand()) {
@@ -326,7 +326,7 @@ class indexPost {
 						interaction.commandName,
 						globalCommands,
 						guildCommands,
-						testCommands
+						testCommands,
 					)}/${interaction.commandName}.js`).getInstance(client);
 					await userInteraction.execute(interaction, client);
 					EventHandler.auditEvent(
@@ -342,13 +342,13 @@ class indexPost {
 							"#" +
 							interaction.user.discriminator +
 							" / " +
-							interaction.user.id
+							interaction.user.id,
 					);
 				} catch (error) {
 					EventHandler.auditEvent(
 						"ERROR",
 						"An interaction for : " + interaction.commandName + " has failed to execute with Error : " + error,
-						error
+						error,
 					);
 					interaction.followUp({
 						content: ":warning: We failed to execute that command because of an error",

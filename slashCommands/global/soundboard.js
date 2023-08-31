@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, GuildMember } = require("discord.js");
-const { useMasterPlayer, useQueue, usePlayer } = require("discord-player");
+const { useMainPlayer, useQueue, usePlayer } = require("discord-player");
 const config = require("../../config.json");
 const EventHandler = require("../../Components/EventHandler");
 const PlayerHandler = require("../../Components/PlayerHandler");
@@ -65,14 +65,14 @@ class soundboard {
 						{ name: "MC Miyuki RAP", value: "mcmiyuki" },
 						{ name: "Punish me daddy ft. Dafuq", value: "punishmedad" },
 						{ name: "Chad bg music", value: "chadbg" },
-						{ name: "But Why ft. Mukesh", value: "butwhy" }
-					)
+						{ name: "But Why ft. Mukesh", value: "butwhy" },
+					),
 			)
 			.setDMPermission(false)
 			.toJSON();
 	}
 	async execute(interaction) {
-		const player = useMasterPlayer();
+		const player = useMainPlayer();
 		await interaction.deferReply({ ephemeral: false });
 		let type = interaction.options.getString("voiceclip");
 		let query = this.voiceClips.find((clip) => Object.keys(clip)[0] === type)?.[type];

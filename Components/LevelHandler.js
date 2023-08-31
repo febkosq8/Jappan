@@ -34,7 +34,7 @@ class LevelHandler {
 							levelRoleName: levelRole.name,
 							timeStamp: new Date().toISOString(),
 						},
-					}
+					},
 				);
 				return 2;
 			} else {
@@ -56,7 +56,7 @@ class LevelHandler {
 						levelRoleName: "",
 						timeStamp: new Date().toISOString(),
 					},
-				}
+				},
 			);
 			return 2;
 		}
@@ -72,7 +72,7 @@ class LevelHandler {
 					levelRoleName: "",
 					timeStamp: new Date().toISOString(),
 				},
-			}
+			},
 		);
 	}
 	static async checkLevelStatus(interaction) {
@@ -105,7 +105,7 @@ class LevelHandler {
 					name: "Stat Threshold",
 					value: `**${rawGuildData?.levelThreshold}**`,
 				},
-				{ name: "Award Role", value: `${role}` }
+				{ name: "Award Role", value: `${role}` },
 			);
 		}
 		await interaction.editReply({
@@ -126,7 +126,7 @@ class LevelHandler {
 					interaction.member.guild.name +
 					" doesn't have the leveling system enabled.\nPlease ask a moderator to enable leveling system in " +
 					interaction.member.guild.name +
-					"."
+					".",
 			)
 			.setTimestamp();
 		let rawGuildData = await guildListSchema.findOne({
@@ -149,7 +149,7 @@ class LevelHandler {
 						new ButtonBuilder()
 							.setCustomId(butttonLabelList[i].key)
 							.setLabel(butttonLabelList[i].value)
-							.setStyle(ButtonStyle.Primary)
+							.setStyle(ButtonStyle.Primary),
 					);
 				}
 				await interaction.editReply({
@@ -196,7 +196,7 @@ class LevelHandler {
 					return `${m.username}#${m.discriminator} : ${m.levelStat}`;
 				}
 				return `${user} : ${m.levelStat}`;
-			})
+			}),
 		);
 		if (memberArray.length === 0) {
 			memberArray = [":x: No member stat's were found :x:"];
@@ -355,7 +355,7 @@ class LevelHandler {
 							memberList: memberList,
 							timeStamp: new Date().toISOString(),
 						},
-					}
+					},
 				);
 			} else {
 				//Member Does Not Exist
@@ -375,7 +375,7 @@ class LevelHandler {
 							memberList: memberList,
 							timeStamp: new Date().toISOString(),
 						},
-					}
+					},
 				);
 			}
 
@@ -410,7 +410,7 @@ class LevelHandler {
 								guildDetail?.guildId +
 								" with Error : " +
 								error,
-							error
+							error,
 						);
 					}
 				} else if (type === "message" && !hasRole && statMessage > guildDetail?.levelThreshold) {
@@ -432,7 +432,7 @@ class LevelHandler {
 								guildDetail.guildId +
 								" with Error : " +
 								error,
-							error
+							error,
 						);
 					}
 				} else if (type === "interaction" && !hasRole && statMessage > guildDetail.levelThreshold) {
@@ -454,7 +454,7 @@ class LevelHandler {
 								guildDetail.guildId +
 								" with Error : " +
 								error,
-							error
+							error,
 						);
 					}
 				}
@@ -468,7 +468,7 @@ class LevelHandler {
 					guildMember.id +
 					" with Error : " +
 					error,
-				error
+				error,
 			);
 		}
 	}
@@ -491,7 +491,7 @@ class LevelHandler {
 					$set: {
 						memberList: newMemberList,
 					},
-				}
+				},
 			);
 		});
 		return count;

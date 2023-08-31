@@ -49,12 +49,16 @@ class memberannounce {
 					.setName("on")
 					.setDescription("Turn on the member announcement system")
 					.addChannelOption((option) =>
-						option.setName("channel").setDescription("Channel").addChannelTypes(ChannelType.GuildText).setRequired(true)
-					)
+						option
+							.setName("channel")
+							.setDescription("Channel")
+							.addChannelTypes(ChannelType.GuildText)
+							.setRequired(true),
+					),
 			)
 			.addSubcommand((group) => group.setName("off").setDescription("Turn off the member announcement system"))
 			.addSubcommand((group) =>
-				group.setName("check").setDescription("Check the status of the member announcement system")
+				group.setName("check").setDescription("Check the status of the member announcement system"),
 			)
 			.setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
 			.setDMPermission(false)
