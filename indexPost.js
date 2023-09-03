@@ -52,15 +52,15 @@ class indexPost {
 
 		player.events.on("error", (queue, error) => {
 			EventHandler.auditEvent(
-				"DEBUG",
-				`[${queue.guild.name}] Discord Player Queue error emitted for [${queue.currentTrack.title}] from the queue: ${error.message}`,
+				"ERROR",
+				`[${queue?.guild?.name}] Discord Player Queue error emitted for [${queue?.currentTrack?.title}] from the queue: ${error?.message}`,
 				error,
 			);
 		});
 		player.events.on("playerError", (queue, error) => {
 			EventHandler.auditEvent(
 				"DEBUG",
-				`[${queue.guild.name}] Discord Player error emitted for [${queue.currentTrack.title}] from the connection: ${error.message}`,
+				`[${queue?.guild?.name}] Discord Player error emitted for [${queue?.currentTrack?.title}] from the connection: ${error?.message}`,
 				error,
 			);
 		});
@@ -312,22 +312,20 @@ class indexPost {
 					);
 				}
 			} else if (interaction.isAutocomplete()) {
-				const userInteraction = require(`${getRootPath(
-					interaction.commandName,
-					globalCommands,
-					guildCommands,
-					testCommands,
-				)}/${interaction.commandName}.js`).getInstance(client);
+				const userInteraction = require(
+					`${getRootPath(interaction.commandName, globalCommands, guildCommands, testCommands)}/${
+						interaction.commandName
+					}.js`,
+				).getInstance(client);
 				await userInteraction.autocomplete(interaction, client);
 			} else if (interaction.isChatInputCommand()) {
 				try {
 					LevelHandler.checkGuildInteraction(interaction);
-					const userInteraction = require(`${getRootPath(
-						interaction.commandName,
-						globalCommands,
-						guildCommands,
-						testCommands,
-					)}/${interaction.commandName}.js`).getInstance(client);
+					const userInteraction = require(
+						`${getRootPath(interaction.commandName, globalCommands, guildCommands, testCommands)}/${
+							interaction.commandName
+						}.js`,
+					).getInstance(client);
 					await userInteraction.execute(interaction, client);
 					EventHandler.auditEvent(
 						"INFO",

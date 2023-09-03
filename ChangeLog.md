@@ -1,6 +1,6 @@
 ## v1.4.2
 
-- discord.js, @discord-player, etc version bump (Jumped to dev branch for discord-player)
+- discord.js, @discord-player, etc version bump
 - Switched to useMainPlayer from UseMasterPlayer for discord-player
 - Switched to mediaplex from opusscript
 - We no longer send the send on interaction fail event
