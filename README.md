@@ -12,7 +12,7 @@ Currently features Music Playback, Fun Commands, Leveling System & Moderation To
 
 - Checkout our own [website](https://jappan.febkosq8.me) for more info including features, status updates, team.
 
-Built using [Discord.js v14.14.1](https://github.com/discordjs/discord.js), [Discord-Player v6.6.7](https://github.com/Androz2091/discord-player), [Node.js v21.5.0](https://nodejs.org/en/) and hosted on [Heroku](https://www.heroku.com/).
+Built using [Discord.js v14.14.1](https://github.com/discordjs/discord.js), [Discord-Player v6.6.7](https://github.com/Androz2091/discord-player), [Node.js v20.10.0](https://nodejs.org/en/) and hosted on [Heroku](https://www.heroku.com/).
 
 #
 

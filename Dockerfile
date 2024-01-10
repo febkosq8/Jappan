@@ -1,5 +1,5 @@
 # Use a Node.js base image with a specific version
-FROM node:21.5.0-bullseye
+FROM node:20.10.0-bullseye
 
 # Set the working directory inside the container
 WORKDIR /
