@@ -63,6 +63,10 @@ process.on("uncaughtException", function (error) {
 	}
 });
 
+process.on("unhandledRejection", (error) => {
+	EventHandler.auditEvent("ERROR", "Caught a unhandled rejection", error);
+});
+
 process.on("SIGTERM", (signal) => {
 	EventHandler.auditEvent("LOG", "Bot process " + `${process.pid}` + " has received a SIGTERM signal");
 	process.exit(0);

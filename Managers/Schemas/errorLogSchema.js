@@ -6,7 +6,7 @@ const errorLogSchema = new Schema({
 	envMode: String,
 	eventType: String,
 	desc: String,
-	event: Object,
+	event: String,
 });
 
 module.exports = model("ErrorLog", errorLogSchema);

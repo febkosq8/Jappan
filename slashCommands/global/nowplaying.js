@@ -101,7 +101,7 @@ class nowplaying {
 		const currentTrack = guildPlayerNode.queue.currentTrack;
 		const progress = guildPlayerNode.createProgressBar();
 		const perc = guildPlayerNode.getTimestamp();
-		let requestedByString = currentTrack.requestedBy.username + "#" + currentTrack.requestedBy.discriminator;
+		let requestedByString = currentTrack.requestedBy.username;
 		if (!requestedByString) {
 			requestedByString = "Someone";
 		}

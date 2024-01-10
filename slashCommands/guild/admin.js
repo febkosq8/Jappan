@@ -1,12 +1,10 @@
 const config = require("../../config.json");
 require("dotenv").config();
-const GlobalCommands = require("../../Components/GlobalCommands");
-const { REST, Routes, EmbedBuilder, SlashCommandBuilder, PermissionFlagsBits } = require("discord.js");
+const { SlashCommandBuilder, PermissionFlagsBits } = require("discord.js");
 const EventHandler = require("../../Components/EventHandler");
 const ClientHandler = require("../../Components/ClientHandler");
 const AdminHandler = require("../../Components/AdminHandler");
-var token = ClientHandler.getToken();
-let confirmCode = "";
+const DiscordEventHandler = require("../../Components/DiscordEventHandler");
 
 class admin {
 	#command;
@@ -54,6 +52,17 @@ class admin {
 					.setDescription("Guild Commands")
 					.addSubcommand((subcommand) =>
 						subcommand.setName("guildlist").setDescription("Get a list of guild's the bot is currently in"),
+					)
+					.addSubcommand((subcommand) =>
+						subcommand
+							.setName("getchannel")
+							.setDescription("Get a channel from a guild using id")
+							.addStringOption((option) =>
+								option.setName("guildid").setDescription("Guild id to get channel from").setRequired(true),
+							)
+							.addStringOption((option) =>
+								option.setName("channelid").setDescription("Channel id to get").setRequired(true),
+							),
 					)
 					.addSubcommand((subcommand) =>
 						subcommand
@@ -125,6 +134,25 @@ class admin {
 					.setDescription("Bot Commands")
 					.addSubcommand((subcommand) =>
 						subcommand.setName("checkvoice").setDescription("Check voice connection status of the bot"),
+					)
+					.addSubcommand((subcommand) =>
+						subcommand.setName("getstates").setDescription("Get the current status of the bot"),
+					)
+					.addSubcommand((subcommand) =>
+						subcommand
+							.setName("updatedebug")
+							.setDescription("Update the debug logs status of the bot")
+							.addBooleanOption((option) =>
+								option.setName("newstatus").setDescription("New status of the debug logs").setRequired(true),
+							),
+					)
+					.addSubcommand((subcommand) =>
+						subcommand
+							.setName("updatepingdev")
+							.setDescription("Update the ping dev on logs")
+							.addBooleanOption((option) =>
+								option.setName("newstatus").setDescription("New status of the ping dev").setRequired(true),
+							),
 					)
 					.addSubcommand((subcommand) =>
 						subcommand
@@ -209,6 +237,15 @@ class admin {
 					await AdminHandler.adminGuildMessage(interaction);
 				} else if (choice === "getinviteguild") {
 					await AdminHandler.adminGetInviteGuild(interaction);
+				} else if (choice === "getchannel") {
+					const guildID = interaction.options.get("guildid").value;
+					const channelID = interaction.options.get("channelid").value;
+					const guild = client.guilds.cache.get(guildID);
+					const channel = guild.channels.cache.get(channelID);
+					await interaction.editReply({
+						content: `Channel name : ${channel.name}`,
+						ephemeral: true,
+					});
 				}
 			} else if (option === "deploy") {
 				let choice = interaction.options.getSubcommand();
@@ -231,6 +268,27 @@ class admin {
 					await AdminHandler.adminCleanMemberList(interaction);
 				} else if (choice === "backupmongo") {
 					await AdminHandler.adminBackupMongoDB(interaction);
+				} else if (choice === "updatedebug") {
+					const newStatus = interaction.options.get("newstatus").value;
+					await EventHandler.setDebugState(newStatus);
+					await interaction.editReply({
+						content: "Debug state updated to : " + newStatus,
+						ephemeral: true,
+					});
+				} else if (choice === "updatepingdev") {
+					const newStatus = interaction.options.get("newstatus").value;
+					await DiscordEventHandler.setPingDevState(newStatus);
+					await interaction.editReply({
+						content: "Ping Dev state updated to : " + newStatus,
+						ephemeral: true,
+					});
+				} else if (choice === "getstates") {
+					const currDebugState = await EventHandler.getDebugState();
+					const currPingDevState = await DiscordEventHandler.getPingDevState();
+					await interaction.editReply({
+						content: "Debug state : " + currDebugState + "\nPing Dev state : " + currPingDevState,
+						ephemeral: true,
+					});
 				}
 			}
 		} else {

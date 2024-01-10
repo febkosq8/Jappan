@@ -49,7 +49,6 @@ class WarnHandler {
 			memberList[memberExists].warnStat += 1;
 			newWarnCount = memberList[memberExists].warnStat;
 			memberList[memberExists].username = warnUser.username;
-			memberList[memberExists].discriminator = warnUser.discriminator;
 			await guildListSchema.findOneAndUpdate(
 				{ guildId: interaction.guild.id },
 				{
@@ -65,7 +64,6 @@ class WarnHandler {
 			let guildUser = {
 				userid: warnUser.id,
 				username: warnUser.username,
-				discriminator: warnUser.discriminator,
 				levelStat: 0,
 				warnStat: 1,
 			};
@@ -254,7 +252,6 @@ class WarnHandler {
 			memberList[memberExists].warnStat ??= 0; //If warnStat is undefined, set it to 0
 			memberList[memberExists].warnStat = newWarnCount;
 			memberList[memberExists].username = warnUser.username;
-			memberList[memberExists].discriminator = warnUser.discriminator;
 			await guildListSchema.findOneAndUpdate(
 				{ guildId: interaction.guild.id },
 				{
@@ -270,7 +267,6 @@ class WarnHandler {
 			let guildUser = {
 				userid: warnUser.id,
 				username: warnUser.username,
-				discriminator: warnUser.discriminator,
 				levelStat: 0,
 				warnStat: newWarnCount,
 			};

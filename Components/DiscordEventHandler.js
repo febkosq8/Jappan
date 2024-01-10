@@ -3,7 +3,14 @@ const config = require("../config.json");
 const { EmbedBuilder, WebhookClient } = require("discord.js");
 const ClientHandler = require("./ClientHandler");
 require("dotenv").config();
+let pingDevState = false;
 class DiscordEventHandler {
+	static async getPingDevState() {
+		return pingDevState;
+	}
+	static async setPingDevState(state) {
+		pingDevState = state ?? true;
+	}
 	static async sendDiscordEvent(type, desc, event) {
 		let eventEmbed = new EmbedBuilder()
 			.setColor("Green")
@@ -139,11 +146,14 @@ class DiscordEventHandler {
 				value: event.toString(),
 			});
 		}
-		let devRole = await ClientHandler.getClientGuildRole("520238382140358678", "1039624543532220467");
+		let devRole;
+		if (pingDevState) {
+			devRole = await ClientHandler.getClientGuildRole("520238382140358678", "1039624543532220467");
+		}
 		let webhookClient = new WebhookClient({
 			url: process.env.discordErrorWebhook,
 		});
-		webhookClient.send({ content: `${devRole}`, embeds: [errorEmbed] });
+		webhookClient.send({ content: pingDevState ? `${devRole}` : `Ping disabled`, embeds: [errorEmbed] });
 	}
 }
 module.exports = DiscordEventHandler;

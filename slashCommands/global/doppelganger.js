@@ -74,7 +74,7 @@ class makesay {
 		let avatar = targetUser.displayAvatarURL();
 		let messageSent = await finalWebhook.send({
 			content: messageContent,
-			username: guildTargetUser.nickname || targetUser.username,
+			username: guildTargetUser.nickname || guildTargetUser.user.globalName || targetUser.username,
 			avatarURL: avatar,
 		});
 		const butttonLabelList = [

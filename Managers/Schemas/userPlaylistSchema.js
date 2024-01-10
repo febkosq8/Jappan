@@ -4,7 +4,6 @@ const userPlaylistSchema = new Schema({
 	timeStamp: Date,
 	userId: String,
 	username: String,
-	discriminator: Number,
 	queryList: Object,
 });
 

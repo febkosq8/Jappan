@@ -7,15 +7,23 @@ const ClientHandler = require("./ClientHandler");
 var pjson = require("../package.json");
 const config = require("../config.json");
 require("dotenv").config();
+let debugState = true;
 class EventHandler {
+	static async getDebugState() {
+		return debugState;
+	}
+
+	static async setDebugState(state) {
+		debugState = state ?? false;
+	}
 	static async auditEvent(type, desc, event) {
 		let auditData = {
-			timeStamp: new Date().toISOString(),
+			timeStamp: Date.now(),
 			botVersion: pjson.version,
 			envMode: process.env.botMode,
 			eventType: type,
-			desc: desc,
-			event: event,
+			desc,
+			event: event ?? JSON.stringify(event),
 		};
 		if (type === "LOG") {
 			console.log(`[${cyanBright(type)}] ${bgBlack(white(desc))}`);
@@ -25,13 +33,13 @@ class EventHandler {
 			console.log(`[${greenBright(type)}] ${bgBlack(white(desc))}`);
 		} else if (type === "NOTICE") {
 			console.log(`[${greenBright(type)}] ${bgBlack(white(desc))}`);
-		} else if (type === "DEBUG") {
-			console.log(`[${yellowBright(type)}] ${bgBlack(white(desc))}`);
+		} else if (type === "DEBUG" && debugState) {
+			console.log(`[${yellowBright(type)}] | ${yellowBright(auditData.timeStamp)} | ${bgBlack(white(desc))}`);
 		} else if (type === "ERROR") {
 			console.log(`[${redBright(type)}] ${bgBlack(white(desc))}`);
 		}
 
-		if (event && type !== "DM_INFO") {
+		if (event && !["DM_INFO", "DEBUG"].includes(type)) {
 			console.log(event);
 		}
 		try {
@@ -39,8 +47,8 @@ class EventHandler {
 				if (ClientHandler.getMongoStatus() === 1) {
 					if (type === "LOG" || type === "DM_INFO" || type === "INFO" || type === "NOTICE") {
 						new eventLogSchema(auditData).save();
-					} else if (type === "DEBUG") {
-						// new debugLogSchema(auditData).save();
+					} else if (type === "DEBUG" && debugState) {
+						new debugLogSchema(auditData).save();
 					} else if (type === "ERROR") {
 						new errorLogSchema(auditData).save();
 					}
@@ -48,7 +56,9 @@ class EventHandler {
 				if (type === "ERROR") {
 					await DiscordEventHandler.sendDiscordErrorEvent(type, desc, event);
 				} else if (type === "DEBUG") {
-					// await DiscordEventHandler.sendDiscordDebugEvent(type, desc, event);
+					if (debugState) {
+						await DiscordEventHandler.sendDiscordDebugEvent(type, desc, event);
+					}
 				} else if (type === "DM_INFO") {
 					await DiscordEventHandler.sendDiscordDMEvent(event);
 				} else {

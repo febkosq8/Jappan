@@ -172,7 +172,6 @@ class playlist {
 							$set: {
 								timeStamp: new Date().toISOString(),
 								username: interaction.user.username,
-								discriminator: interaction.user.discriminator,
 								queryList: queryListData,
 							},
 						},
@@ -182,7 +181,6 @@ class playlist {
 						timeStamp: new Date().toISOString(),
 						userId: interaction.user.id,
 						username: interaction.user.username,
-						discriminator: interaction.user.discriminator,
 						queryList: [
 							{
 								listname: listname,
@@ -306,13 +304,10 @@ class playlist {
 				});
 			} else {
 				let avatar = interaction.user.displayAvatarURL();
-				let playlistEmbed = new EmbedBuilder()
-					.setColor("DarkGold")
-					.setTitle("Registered user playlist")
-					.setAuthor({
-						name: rawPlaylistData.username + "#" + rawPlaylistData.discriminator,
-						iconURL: avatar,
-					});
+				let playlistEmbed = new EmbedBuilder().setColor("DarkGold").setTitle("Registered user playlist").setAuthor({
+					name: rawPlaylistData.username,
+					iconURL: avatar,
+				});
 				rawPlaylistData.queryList.map((entry) => {
 					playlistEmbed.addFields({
 						name: "Listname : " + `${entry.listname}`,

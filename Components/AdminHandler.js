@@ -20,6 +20,7 @@ class AdminHandler {
 			.then(async () => {
 				let guildList = [];
 				const clientId = await ClientHandler.getClientId();
+				let temp = 1;
 				await interaction.client.guilds.cache.forEach((guild) => {
 					const currGuildBotRole = guild.members.cache
 						.get(clientId)
@@ -28,36 +29,43 @@ class AdminHandler {
 						name: guild.name,
 						id: guild.id,
 						memberSize: guild.memberCount,
+						joinedAt: guild.joinedTimestamp,
+						ownerId: guild.ownerId,
 						admin: currGuildBotRole?.permissions?.has(PermissionFlagsBits.Administrator),
 					};
 					guildList.push([tGuild]);
 				});
-				let adminGuildEmbed = new EmbedBuilder()
-					.setColor("Orange")
-					.setAuthor({
-						name: config.botName + " : Guild List",
-						iconURL: config.botpfp,
-						url: config.botWebsite,
-					})
-					.setTitle("Total Guild's found : " + guildList.length)
-					.setTimestamp()
-					.addFields(
-						...guildList.map((gld) => {
-							return {
-								name: "Guild Name : " + gld[0].name,
-								value:
-									"Guild ID : " +
-									gld[0].id +
-									"\nMember Count : " +
-									gld[0].memberSize +
-									"\nAdmin Role : " +
-									(gld[0].admin ? ":white_check_mark:" : ":no_entry_sign:"),
-							};
-						}),
-					);
+				guildList.sort((a, b) => {
+					return a[0].joinedAt - b[0].joinedAt;
+				});
+				let embedArray = [];
+				const embedPages = Math.ceil(guildList.length / 20);
+				for (let i = 0; i < embedPages; i++) {
+					const guilds = guildList.slice(i * 20, i * 20 + 20);
+					let adminGuildEmbedPage = new EmbedBuilder()
+						.setColor("Orange")
+						.setAuthor({
+							name: config.botName + " : Guild List",
+							iconURL: config.botpfp,
+							url: config.botWebsite,
+						})
+						.setTitle(`Total Guild's found : ${guildList.length}\nPage : ${i + 1} / ${embedPages}`)
+						.setTimestamp();
+					for (let guild of guilds) {
+						adminGuildEmbedPage.addFields({
+							name: `Guild Name : ${guild[0].name}`,
+							value: `Guild ID : ${guild[0].id}\nMember Count : ${guild[0].memberSize}\nJoined at : <t:${Math.floor(
+								guild[0].joinedAt / 1000,
+							)}:R>\nOwner : ${await ClientHandler.getClientUser(guild[0].ownerId)}\nAdmin Role : ${
+								guild[0].admin ? ":white_check_mark:" : ":no_entry_sign:"
+							}`,
+						});
+					}
+					embedArray.push(adminGuildEmbedPage);
+				}
 				interaction.editReply({
 					content: "",
-					embeds: [adminGuildEmbed],
+					embeds: embedArray,
 					ephemeral: true,
 				});
 			});

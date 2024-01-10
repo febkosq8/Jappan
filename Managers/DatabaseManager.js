@@ -2,6 +2,9 @@ const mongoose = require("mongoose");
 const fs = require("fs");
 const EventHandler = require("../Components/EventHandler");
 require("dotenv").config();
+let disconnectTimeout = setTimeout(async () => {
+	EventHandler.auditEvent("ERROR", "MongoDB instance has not connected : " + mongoose.connection.readyState);
+}, 10000);
 class DatabaseManager {
 	static async init() {
 		let dbURL = process.env.DB_URL;
@@ -10,11 +13,18 @@ class DatabaseManager {
 			console.log(error);
 		});
 		mongoose.connection.on("open", () => {
+			clearTimeout(disconnectTimeout);
 			EventHandler.auditEvent("LOG", "Successfully connected to MongoDB instance : " + mongoose.connection.readyState);
 		});
 		mongoose.connection.on("disconnected", () => {
-			let error = new Error("NO INFO ON DISCONNECTION");
-			EventHandler.auditEvent("ERROR", "MongoDB instance has disconnected : " + mongoose.connection.readyState, error);
+			disconnectTimeout = setTimeout(async () => {
+				let error = new Error("NO INFO ON DISCONNECTION");
+				EventHandler.auditEvent(
+					"ERROR",
+					"MongoDB instance has disconnected : " + mongoose.connection.readyState,
+					error,
+				);
+			}, 60000);
 		});
 	}
 	static async backupMongo() {

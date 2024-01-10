@@ -87,7 +87,7 @@ class AnnounceHandler {
 					let announceEmbed = new EmbedBuilder()
 						.setColor(type === "guildMemberAdd" ? "Aqua" : "DarkRed")
 						.setAuthor({
-							name: member.user.username + "#" + member.user.discriminator,
+							name: member.user.username,
 							iconURL: avatar,
 						})
 						.setTimestamp()

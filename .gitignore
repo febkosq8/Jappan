@@ -11,3 +11,4 @@ Procfile
 Aptfile
 heroku.yml
 .dockerignore
+docker.help

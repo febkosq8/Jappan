@@ -193,7 +193,7 @@ class LevelHandler {
 			memberList.map(async (m) => {
 				let user = await ClientHandler.getClientUser(m.userid);
 				if (!user) {
-					return `${m.username}#${m.discriminator} : ${m.levelStat}`;
+					return `${m.username} : ${m.levelStat}`;
 				}
 				return `${user} : ${m.levelStat}`;
 			}),
@@ -283,7 +283,7 @@ class LevelHandler {
 		let levelStatus = await guildListSchema.findOne({
 			guildId: state.guild.id,
 		});
-		if (levelStatus && !state.member.user.bot) {
+		if (levelStatus && !state?.member?.user?.bot) {
 			if (levelStatus?.levelActive) {
 				if (type === "join") {
 					this.analyzeVoiceJoin(state, timeStamp);
@@ -329,7 +329,7 @@ class LevelHandler {
 			diff = Math.round(diff * 0.25); //1 min = 0.25 points
 			diff = 1;
 			if (diff > 0) {
-				this.awardLevelStatMember(state.guild, state.member.user, diff, "voice", state);
+				this.awardLevelStatMember(state?.guild, state?.member?.user, diff, "voice", state);
 			}
 		}
 	}
@@ -346,7 +346,6 @@ class LevelHandler {
 				memberList[memberExists].levelStat ??= 0; //If levelStat is undefined, set it to 0
 				memberList[memberExists].levelStat += statMessage;
 				memberList[memberExists].username = guildMember.username;
-				memberList[memberExists].discriminator = guildMember.discriminator;
 				await guildListSchema.findOneAndUpdate(
 					{ guildId: guild.id },
 					{
@@ -362,7 +361,6 @@ class LevelHandler {
 				let guildUser = {
 					userid: guildMember.id,
 					username: guildMember.username,
-					discriminator: guildMember.discriminator,
 					levelStat: statMessage,
 					warnStat: 0,
 				};

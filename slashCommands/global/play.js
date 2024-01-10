@@ -65,9 +65,13 @@ class play {
 				if (result.playlist.title.length > 100) {
 					result.playlist.title = result.playlist.title.substring(0, 90) + "..(truncated)..";
 				}
-				returnData.push({ name: result.playlist.title + " | Playlist", value: query });
+				let name = result.playlist.title + " | Playlist";
+				if (name.length > 100) {
+					name = name.substring(0, 90) + "..(truncated)..";
+				}
+				returnData.push({ name, value: query });
 			}
-			result.tracks.slice(0, 6).map((track) => returnData.push({ name: track.title, value: track.url }));
+			result.tracks.slice(0, 6).map((track) => returnData.push({ name: track.description, value: track.url }));
 		}
 		await interaction.respond(returnData);
 	}

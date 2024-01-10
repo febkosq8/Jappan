@@ -31,7 +31,7 @@ class DeleteDoppelganger {
 		triggerUser.send({
 			content:
 				`${interaction.user}` +
-				" didn't like that your used `/doppelganger` on them." +
+				" didn't like that you used `/doppelganger` on them." +
 				"\n They requested me to delete that message" +
 				(message ? " (||" + message.content + "||)" : ""),
 			files: ["https://media.giphy.com/media/97SMZqrK8WQy6kQ4JM/giphy.gif"],

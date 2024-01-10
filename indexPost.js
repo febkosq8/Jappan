@@ -16,7 +16,9 @@ class indexPost {
 
 		//Discord Player
 		const { Player } = require("discord-player");
-		const player = new Player(client);
+		const player = new Player(client, {
+			skipFFmpeg: false, //TODO: Remove this when new version of discord-player is released
+		});
 		await player.extractors.loadDefault();
 
 		//Slash Commands
@@ -36,7 +38,6 @@ class indexPost {
 		const DeployHandler = require("./Components/DeployHandler");
 		const deployHandler = new DeployHandler(client);
 		const EventHandler = require("./Components/EventHandler");
-		const DiscordEventHandler = require("./Components/DiscordEventHandler");
 
 		let playerDebugState = false;
 
@@ -46,7 +47,7 @@ class indexPost {
 
 		player.events.on("debug", async (queue, message) => {
 			if (playerDebugState) {
-				await EventHandler.auditEvent("DEBUG", `Discord Player Debug Event`, message);
+				console.log(`DP Debug : ${message}`);
 			}
 		});
 
@@ -67,8 +68,10 @@ class indexPost {
 		player.events.on("playerStart", (queue, track) => {
 			queue.metadata.send(`▶ | Started playing: **${track.title}**`);
 		});
-		player.events.on("playerSkip", (queue, track) => {
-			queue.metadata.send(`:warning: Skipping : **${track.title}** due to an issue!`);
+		player.events.on("playerSkip", (queue, track, reason) => {
+			if (["ERR_NO_STREAM"].includes(reason)) {
+				queue.metadata.send(`:warning: Skipping : **${track.title}** due to an issue !`);
+			}
 		});
 		player.events.on("audioTrackAdd", (queue, track) => {
 			queue.metadata.send(`:musical_note: | Track **${track.title}** queued`);
@@ -128,8 +131,6 @@ class indexPost {
 						message.content +
 						" from User : (" +
 						message.author.username +
-						"#" +
-						message.author.discriminator +
 						" / " +
 						message.author.id +
 						")",
@@ -143,7 +144,16 @@ class indexPost {
 			}
 			if (message.content.startsWith(prefix)) {
 				const args = message.content.slice(prefix.length).trim().split(/ +/g);
-				if (args != ``) {
+				const commandsList = [
+					"deploy",
+					"testDeploy",
+					"unDeployGlobal",
+					"unDeployGuild",
+					"playerDebug",
+					"playerDeps",
+					"ping",
+				];
+				if (commandsList.includes(args[0])) {
 					const command = args.shift();
 					EventHandler.auditEvent(
 						"INFO",
@@ -157,8 +167,6 @@ class indexPost {
 							message.guild.id +
 							" by User : " +
 							message.author.username +
-							"#" +
-							message.author.discriminator +
 							" / " +
 							message.author.id,
 					);
@@ -286,8 +294,6 @@ class indexPost {
 								interaction.member.guild.id +
 								" by User : " +
 								interaction.user.username +
-								"#" +
-								interaction.user.discriminator +
 								" / " +
 								interaction.user.id,
 						);
@@ -298,8 +304,6 @@ class indexPost {
 								interaction.customId +
 								" was triggered by User : " +
 								interaction.user.username +
-								"#" +
-								interaction.user.discriminator +
 								" / " +
 								interaction.user.id,
 						);
@@ -337,8 +341,6 @@ class indexPost {
 							interaction.member.guild.id +
 							" by User : " +
 							interaction.user.username +
-							"#" +
-							interaction.user.discriminator +
 							" / " +
 							interaction.user.id,
 					);
