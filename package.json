@@ -6,8 +6,7 @@
 	"scripts": {
 		"start": "node index.js",
 		"dev": "nodemon index.js",
-		"prettier": "prettier --write .",
-		"test": "echo \"Error: no test specified\" && exit 1"
+		"prettier": "prettier --write ."
 	},
 	"keywords": [
 		"discord",
@@ -17,17 +16,17 @@
 	],
 	"author": "Febkosq8",
 	"dependencies": {
-		"@discord-player/equalizer": "0.2.2-dev",
+		"@discord-player/equalizer": "0.2.3",
 		"@discord-player/extractor": "4.4.6",
-		"@discord-player/utils": "0.1.0-dev.3",
+		"@discord-player/utils": "0.2.2",
 		"@discordjs/voice": "0.16.1",
-		"axios": "1.6.2",
+		"axios": "1.6.5",
 		"colorette": "2.0.20",
 		"discord-player": "6.6.7",
 		"discord.js": "14.14.1",
 		"dotenv": "16.3.1",
 		"mediaplex": "0.0.9",
-		"mongoose": "8.0.3",
+		"mongoose": "8.0.4",
 		"youtube-ext": "1.1.16"
 	},
 	"devDependencies": {
