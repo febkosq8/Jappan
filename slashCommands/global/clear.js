@@ -1,4 +1,4 @@
-const { PermissionFlagsBits, SlashCommandBuilder } = require("discord.js");
+const { PermissionFlagsBits, SlashCommandBuilder, InteractionContextType } = require("discord.js");
 const config = require("../../config.json");
 const ClearHandler = require("../../Components/ClearHandler");
 const ClientHandler = require("../../Components/ClientHandler");
@@ -70,7 +70,7 @@ class clear {
 					),
 			)
 			.setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
-			.setDMPermission(false)
+			.setContexts([InteractionContextType.Guild])
 			.toJSON();
 	}
 	async execute(interaction) {

@@ -59,6 +59,13 @@ class ClientHandler {
 	static async getClient() {
 		return this.client;
 	}
+	static async getClientVoiceRegions(pure = false) {
+		return this.client
+			.fetchVoiceRegions()
+			.then((regions) =>
+				regions.filter((region) => !region.deprecated).map((region) => (pure ? region.toJSON() : region.id)),
+			);
+	}
 	static getMongoStatus() {
 		return mongoose.connection.readyState;
 	}
@@ -106,7 +113,6 @@ class ClientHandler {
 	}
 	static async destroyClient() {
 		this.client.destroy();
-		console.log(this.client);
 	}
 	static async getClientId() {
 		return this.client.user.id;

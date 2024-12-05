@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, GuildMember } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder, GuildMember, InteractionContextType } = require("discord.js");
 const { useQueue, useMainPlayer } = require("discord-player");
 const config = require("../../config.json");
 const userPlaylist = require("../../Managers/Schemas/userPlaylistSchema");
@@ -102,30 +102,32 @@ class playlist {
 			.addSubcommand((group) =>
 				group.setName("check").setDescription("Get a list of playlist that you have saved currently"),
 			)
-			.setDMPermission(false)
+			.setContexts([InteractionContextType.Guild])
 			.toJSON();
 	}
 
 	async autocomplete(interaction) {
-		const focusedValue = interaction.options.getFocused();
-		let rawPlaylistData = await userPlaylist.findOne({
-			userId: interaction.user.id,
-		});
-		let returnData = [];
-		if (rawPlaylistData) {
-			rawPlaylistData.queryList
-				.sort((a, b) => a.listname.localeCompare(b.listname))
-				.forEach((entry) => {
-					if (!focusedValue) {
-						returnData.push({ name: entry.listname, value: entry.listname });
-					} else {
-						if (entry.listname.toLowerCase().includes(focusedValue.toLowerCase())) {
+		try {
+			const focusedValue = interaction.options.getFocused();
+			let rawPlaylistData = await userPlaylist.findOne({
+				userId: interaction.user.id,
+			});
+			let returnData = [];
+			if (rawPlaylistData) {
+				rawPlaylistData.queryList
+					.sort((a, b) => a.listname.localeCompare(b.listname))
+					.forEach((entry) => {
+						if (!focusedValue) {
 							returnData.push({ name: entry.listname, value: entry.listname });
+						} else {
+							if (entry.listname.toLowerCase().includes(focusedValue.toLowerCase())) {
+								returnData.push({ name: entry.listname, value: entry.listname });
+							}
 						}
-					}
-				});
-		}
-		await interaction.respond(returnData);
+					});
+			}
+			await interaction.respond(returnData);
+		} catch (error) {}
 	}
 	async execute(interaction) {
 		const player = useMainPlayer();
@@ -135,7 +137,7 @@ class playlist {
 			let query = interaction.options.get("query").value;
 			const searchResult = await player.search(query, { requestedBy: interaction.user });
 			if (!searchResult.hasTracks()) {
-				interaction.editReply(`Playlist creation failed as we found no tracks for ${query}!`);
+				interaction.editReply(`Playlist creation failed as we found no tracks for '${query}' !`);
 				return;
 			} else {
 				let listname = interaction.options.get("listname").value;
@@ -170,7 +172,6 @@ class playlist {
 						{ userId: interaction.user.id },
 						{
 							$set: {
-								timeStamp: new Date().toISOString(),
 								username: interaction.user.username,
 								queryList: queryListData,
 							},
@@ -178,7 +179,6 @@ class playlist {
 					);
 				} else {
 					playlistData = {
-						timeStamp: new Date().toISOString(),
 						userId: interaction.user.id,
 						username: interaction.user.username,
 						queryList: [
@@ -227,8 +227,12 @@ class playlist {
 				if (newLoop) {
 					loop = newLoop.value;
 				}
-				rawPlaylistData.queryList.some((entry) => {
-					if (entry.listname === listname) {
+				rawPlaylistData.queryList.forEach((entry) => {
+					if (
+						entry.listname === listname ||
+						entry.listname.toLowerCase() === listname.toLowerCase() ||
+						entry.listname.includes(listname)
+					) {
 						query = entry.query;
 						if (!newShuffle) {
 							shuffle = entry.shuffle;
@@ -258,29 +262,27 @@ class playlist {
 						}
 						let searchResult = await player.search(query, { requestedBy: interaction.user });
 						if (!searchResult.hasTracks()) {
-							interaction.editReply(`We found no tracks for ${query}!`);
+							interaction.editReply(`We found no tracks for '${query}' !`);
 							return;
 						} else {
 							if (shuffle) {
 								searchResult._data.tracks = searchResult.tracks.sort((a, b) => 0.5 - Math.random());
 							}
-							await PlayerHandler.playGuildPlayer(interaction, searchResult);
-							const queue = useQueue(interaction.guild.id);
-							if (loop) {
-								queue.setRepeatMode(2);
+							let paramString = "";
+							if (shuffle && loop) {
+								paramString += "looped & shuffled";
+							} else if (shuffle) {
+								paramString += "shuffled";
+							} else if (loop) {
+								paramString += "looped";
 							}
+							await PlayerHandler.playGuildPlayer({
+								interaction,
+								searchResult,
+								repeatMode: loop ? 2 : 0,
+								replyText: `⏱ | Loading your ${paramString} playlist`,
+							});
 						}
-						let paramString = "";
-						if (shuffle && loop) {
-							paramString += "looped & shuffled";
-						} else if (shuffle) {
-							paramString += "shuffled";
-						} else if (loop) {
-							paramString += "looped";
-						}
-						await interaction.followUp({
-							content: `⏱ | Loading your ` + paramString + ` playlist`,
-						});
 					} catch (error) {
 						EventHandler.auditEvent("ERROR", "Failed to execute player play command with Error : " + error, error);
 						interaction.followUp({

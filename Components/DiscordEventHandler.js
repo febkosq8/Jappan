@@ -3,7 +3,7 @@ const config = require("../config.json");
 const { EmbedBuilder, WebhookClient } = require("discord.js");
 const ClientHandler = require("./ClientHandler");
 require("dotenv").config();
-let pingDevState = false;
+let pingDevState = true;
 class DiscordEventHandler {
 	static async getPingDevState() {
 		return pingDevState;

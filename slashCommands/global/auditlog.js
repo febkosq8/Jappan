@@ -1,4 +1,4 @@
-const { PermissionFlagsBits, ChannelType, SlashCommandBuilder } = require("discord.js");
+const { PermissionFlagsBits, ChannelType, SlashCommandBuilder, InteractionContextType } = require("discord.js");
 const config = require("../../config.json");
 //GuildLevel
 const AuditHandler = require("../../Components/AuditHandler");
@@ -55,6 +55,12 @@ class auditlog {
 							.setDescription("Channel to send the audit event log to")
 							.addChannelTypes(ChannelType.GuildText)
 							.setRequired(true),
+					)
+					.addBooleanOption((option) =>
+						option
+							.setName("fullverbosity")
+							.setDescription("Enable to log all events even if missing sufficient details.")
+							.setRequired(false),
 					),
 			)
 			.addSubcommand((group) => group.setName("off").setDescription("Turn off the audit log system"))
@@ -62,7 +68,7 @@ class auditlog {
 				group.setName("check").setDescription("Check the status of the audit log system for this server"),
 			)
 			.setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
-			.setDMPermission(false)
+			.setContexts([InteractionContextType.Guild])
 			.toJSON();
 	}
 	async execute(interaction) {

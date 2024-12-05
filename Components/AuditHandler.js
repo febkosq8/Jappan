@@ -7,6 +7,8 @@ const config = require("../config.json");
 class AuditHandler {
 	static async auditOn(interaction) {
 		let channel = await interaction.options.getChannel("channel");
+		let fullVerbosity = (await interaction.options.getBoolean("fullverbosity")) ?? false;
+		console.log({ fullVerbosity });
 		let guild = await interaction.guild;
 		let perms = guild.members.me
 			.permissionsIn(channel)
@@ -19,7 +21,7 @@ class AuditHandler {
 						auditActive: true,
 						auditChannelId: channel.id,
 						auditChannelName: channel.name,
-						timeStamp: new Date().toISOString(),
+						auditFullVerbosity: fullVerbosity,
 					},
 				},
 			);
@@ -40,7 +42,7 @@ class AuditHandler {
 					auditActive: false,
 					auditChannelId: "",
 					auditChannelName: "",
-					timeStamp: new Date().toISOString(),
+					auditFullVerbosity: false,
 				},
 			},
 		);
@@ -62,8 +64,12 @@ class AuditHandler {
 				let channel = await ClientHandler.getClientChannel(rawGuildData?.auditChannelId);
 				memberAnnounceEmbed.addFields(
 					{
-						name: "Audit Log Feature",
+						name: "Audit Events Logging",
 						value: `:green_circle: **ON**`,
+					},
+					{
+						name: "Full Verbosity",
+						value: rawGuildData.auditFullVerbosity ? `:green_circle: **ON**` : `:red_circle: **OFF**`,
 					},
 					{ name: "Log Channel", value: `${channel}` },
 				);
@@ -82,10 +88,40 @@ class AuditHandler {
 		}
 	}
 	static async getGuildAuditStatus(guildId) {
-		const rawGuildData = await guildList.findOne({
-			guildId: guildId,
-		});
-		return rawGuildData?.auditActive;
+		try {
+			const isMongoAlive = await ClientHandler.getMongoStatus();
+			if (isMongoAlive === 0) {
+				EventHandler.auditEvent("DEBUG", "Skipped getGuildAuditStatus since Mongo is down", {
+					currMongoStatus: isMongoAlive,
+				});
+				return false;
+			}
+			const rawGuildData = await guildList.findOne({
+				guildId: guildId,
+			});
+			if (rawGuildData?.auditActive) {
+				const channel = await ClientHandler.getClientChannel(rawGuildData?.auditChannelId);
+				const guild = await ClientHandler.getClientGuild(guildId);
+				const channelPerms = guild.members.me
+					.permissionsIn(channel)
+					.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages]);
+				if (!channel || !channelPerms) {
+					this.auditOff(guildId);
+					return { state: false };
+				}
+				const botPerms = guild.members.me.permissions.has(PermissionFlagsBits.Administrator);
+				if (!botPerms) {
+					this.auditOff(guildId);
+					return { state: false };
+				}
+				return { state: true, fullVerbosity: rawGuildData.auditFullVerbosity };
+			}
+			return { state: false };
+		} catch (error) {
+			EventHandler.auditEvent("ERROR", "FATAL Error in getGuildAuditStatus", error);
+			EventHandler.auditEvent("DEBUG", "Error in getGuildAuditStatus", { error, debug: { guildId } });
+			return false;
+		}
 	}
 	static async postAuditEvent(embedObject, guild, extraMessage) {
 		try {
@@ -93,10 +129,17 @@ class AuditHandler {
 				guildId: guild.id,
 			});
 			if (rawGuildData?.auditActive) {
-				let channel = await ClientHandler.getClientChannel(rawGuildData?.auditChannelId);
-				if (!channel) {
-					let postChannel = await ClientHandler.getClientGuildPostChannel(guild.id, ["general"]);
-					if (postChannel) {
+				const channel = await ClientHandler.getClientChannel(rawGuildData?.auditChannelId);
+				const channelPerms = guild.members.me
+					.permissionsIn(channel)
+					.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages]);
+
+				if (!channel || !channelPerms) {
+					const postChannel = await ClientHandler.getClientGuildPostChannel(guild.id, ["general"]);
+					const postChannelPerms = guild.members.me
+						.permissionsIn(postChannel)
+						.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages]);
+					if (postChannel && postChannelPerms) {
 						postChannel.send({
 							content:
 								":warning: The channel `#" +
@@ -123,7 +166,7 @@ class AuditHandler {
 		try {
 			let status = await this.getGuildAuditStatus(oldState.guild.id);
 			let post = 0;
-			if (status) {
+			if (status.state) {
 				const fetchedLogs = await oldState.guild.fetchAuditLogs({
 					limit: 1,
 					type: AuditLogEvent.MemberMove,
@@ -243,7 +286,7 @@ class AuditHandler {
 	static async auditEventMessageDelete(message) {
 		try {
 			let status = await this.getGuildAuditStatus(message.guild.id);
-			if (status) {
+			if (status.state) {
 				let timeStamp = Math.floor(message.createdTimestamp / 1000);
 				const fetchedLogs = await message.guild.fetchAuditLogs({
 					limit: 6,
@@ -257,19 +300,22 @@ class AuditHandler {
 				);
 				const executor = auditEntry?.executor ? auditEntry?.executor : "Someone";
 
-				let messageContent;
+				let messageContent = ``;
 				let messageEmbed;
 				let messageDeleteEmbed;
-				if (message?.content) {
+				if (message.partial && !status.fullVerbosity) {
+					return;
+				}
+				if (message?.content?.length > 0) {
 					messageContent =
-						message?.content.length > 1024
-							? message?.content.slice(0, 800) + "...\n`CONTENT WAS TRUNCATED`"
-							: message?.content;
-				} else if (message?.embeds?.length > 0) {
-					messageContent = "`A copy of the deleted Embed will be sent along with this Log`";
+						message?.content.length > 1024 ? message?.content.slice(0, 800) + "...\n`TRUNCATED`" : message?.content;
+				}
+				if (message?.embeds?.length > 0) {
+					messageContent = `${messageContent}\n\`A copy of the deleted Embed will be sent along with this Log\``;
 					messageEmbed = message.embeds[0];
-				} else {
-					messageContent = "`Discord didn't provide this info`";
+				}
+				if (message.partial && !message?.content?.length && !message?.embeds?.length) {
+					messageContent = "`Missed cache and Discord didn't provide this info`";
 				}
 				messageDeleteEmbed = new EmbedBuilder()
 					.setColor("DarkRed")
@@ -281,7 +327,7 @@ class AuditHandler {
 							name: "Author",
 							value: message.author
 								? `${message.author}` + " : " + `\`${message.author.id}\``
-								: "`Discord didn't provide this info`",
+								: "`Missed cache and Discord didn't provide this info`",
 						},
 						{
 							name: "Channel",
@@ -303,7 +349,11 @@ class AuditHandler {
 				}
 				this.postAuditEvent(messageDeleteEmbed, message.guild);
 				if (messageEmbed) {
-					this.postAuditEvent(messageEmbed, message.guild, "**Follow-Up** : Deleted Message");
+					this.postAuditEvent(
+						messageEmbed,
+						message.guild,
+						`**Follow-Up** : Deleted Message Embed for Message ID : ${message.id}`,
+					);
 				}
 			}
 		} catch (error) {
@@ -317,16 +367,16 @@ class AuditHandler {
 	static async auditEventMessageBulkDelete(messages) {
 		try {
 			let status = await this.getGuildAuditStatus(messages.first().guild.id);
-			if (status) {
+			if (status.state) {
 				const fetchedLogs = await messages.first().guild.fetchAuditLogs({
 					limit: 6,
 					type: AuditLogEvent.MessageBulkDelete,
 				});
 				const auditEntry = fetchedLogs.entries.find(
 					(a) =>
-						a.target.id === messages.first().author.id &&
-						a.extra.channel.id === messages.first().channel.id &&
-						Date.now() - a.createdTimestamp < 20000,
+						a?.target?.id === messages?.first()?.author?.id &&
+						a?.extra?.channel?.id === messages?.first()?.channel?.id &&
+						Date.now() - a?.createdTimestamp < 20000,
 				);
 				const executor = auditEntry?.executor ? auditEntry?.executor : "Someone";
 				let messageDeleteEmbed = new EmbedBuilder()
@@ -359,10 +409,13 @@ class AuditHandler {
 		try {
 			let status = await this.getGuildAuditStatus(oldMessage.guild.id);
 			if (
-				status &&
+				status.state &&
 				!oldMessage.flags.has("Loading") &&
 				newMessage.author !== (await ClientHandler.getClientBotUser())
 			) {
+				if (newMessage.partial) {
+					newMessage = await newMessage.fetch();
+				}
 				let messageChange = false;
 				let oldEmbed = oldMessage.embeds[0];
 				let newEmbed = newMessage.embeds[0];
@@ -381,20 +434,20 @@ class AuditHandler {
 				if (messageChange) {
 					let oldTimeStamp = Math.floor(newMessage.createdTimestamp / 1000);
 					let newTimeStamp = Math.floor(newMessage.editedTimestamp / 1000);
-					let oldMessageContent;
+					let oldMessageContent = ``;
 					let oldMessageEmbed;
-					if (oldMessage?.content) {
+					if (oldMessage?.content?.length > 0) {
 						oldMessageContent =
 							oldMessage?.content.length > 1024
-								? oldMessage?.content.slice(0, 800) + "...\n`CONTENT WAS TRUNCATED`"
+								? oldMessage?.content.slice(0, 800) + "...\n`TRUNCATED`"
 								: oldMessage?.content;
-					} else {
-						oldMessageContent =
-							"`No message content was found but a copy of the Embed will be sent along with this Log`";
+					}
+					if (oldMessage?.embeds?.length > 0) {
+						oldMessageContent = "`A copy of the updated Embed will be sent along with this Log`";
 						oldMessageEmbed = oldMessage.embeds[0];
-						if (!oldMessageEmbed) {
-							oldMessageContent = "`Discord didn't provide this info`";
-						}
+					}
+					if (oldMessage.partial && !oldMessage?.content?.length && !oldMessage?.embeds?.length) {
+						oldMessageContent = "`Missed cache and Discord didn't provide this info`";
 					}
 					let newMessageContent;
 					let newMessageEmbed;
@@ -444,10 +497,18 @@ class AuditHandler {
 						.setFooter({ text: "Message ID  : " + newMessage.id });
 					this.postAuditEvent(messageUpdateEmbed, newMessage.guild);
 					if (oldMessageEmbed) {
-						this.postAuditEvent(oldMessageEmbed, newMessage.guild, "**Follow-Up** : Old Embed");
+						this.postAuditEvent(
+							oldMessageEmbed,
+							newMessage.guild,
+							`**Follow-Up** : Old Embed for Message ID : ${newMessage.id}`,
+						);
 					}
 					if (newMessageEmbed) {
-						this.postAuditEvent(newMessageEmbed, newMessage.guild, "**Follow-Up** : New Embed");
+						this.postAuditEvent(
+							newMessageEmbed,
+							newMessage.guild,
+							`**Follow-Up** : New Embed for Message ID : ${newMessage.id}`,
+						);
 					}
 				}
 			}
@@ -462,7 +523,7 @@ class AuditHandler {
 	static async auditEventInvite(invite, type) {
 		try {
 			let status = await this.getGuildAuditStatus(invite.guild.id);
-			if (status) {
+			if (status.state) {
 				let inviteEmbed = new EmbedBuilder()
 					.setTimestamp()
 					.setFields({ name: "Invite Code", value: invite.code }, { name: "Channel", value: `${invite.channel}` });
@@ -515,7 +576,7 @@ class AuditHandler {
 	static async auditEventGuildMember(oldMember, newMember, type) {
 		try {
 			let status = await this.getGuildAuditStatus(oldMember.guild.id);
-			if (status) {
+			if (status.state) {
 				let avatar = oldMember.user.displayAvatarURL();
 				let memberEmbed = new EmbedBuilder()
 					.setAuthor({
@@ -659,7 +720,7 @@ class AuditHandler {
 	static async auditEventMemberBan(ban, type) {
 		try {
 			let status = await this.getGuildAuditStatus(ban.guild.id);
-			if (status) {
+			if (status.state) {
 				let avatar = ban.user.displayAvatarURL();
 				let banEmbed = new EmbedBuilder()
 					.setAuthor({
@@ -683,7 +744,7 @@ class AuditHandler {
 						},
 						{
 							name: "Banned by",
-							value: auditEntry?.executor ? `${auditEntry?.executor}` : "No Reason",
+							value: auditEntry?.executor ? `${auditEntry?.executor}` : "Details not available",
 						},
 					);
 				} else if (type === "guildBanRemove") {
@@ -696,7 +757,7 @@ class AuditHandler {
 					);
 					banEmbed.setDescription(`${ban.user}` + " was **UN-BANNED**").addFields({
 						name: "Un-Banned by",
-						value: auditEntry?.executor ? `${auditEntry?.executor}` : "No Reason",
+						value: auditEntry?.executor ? `${auditEntry?.executor}` : "Details not available",
 					});
 				}
 				this.postAuditEvent(banEmbed, ban.guild);
@@ -712,7 +773,7 @@ class AuditHandler {
 	static async auditEventChannel(oldChannel, newChannel, type) {
 		try {
 			let status = await this.getGuildAuditStatus(oldChannel.guild.id);
-			if (status) {
+			if (status.state) {
 				let channelEmbed = new EmbedBuilder()
 					.setAuthor({
 						name: config.botName,
@@ -987,7 +1048,7 @@ class AuditHandler {
 	static async auditEventRoles(oldRole, newRole, type) {
 		try {
 			let status = await this.getGuildAuditStatus(oldRole.guild.id);
-			if (status) {
+			if (status.state) {
 				let roleEmbed = new EmbedBuilder()
 					.setAuthor({
 						name: config.botName,
@@ -1133,7 +1194,7 @@ class AuditHandler {
 			if (changeCount !== 0) {
 				client.guilds.cache.forEach(async (guild) => {
 					let status = await this.getGuildAuditStatus(guild.id);
-					if (status) {
+					if (status.state) {
 						let memberList = await guild.members.fetch();
 						let ifMember = memberList.find((member) => member.user.id === oldUser.id);
 						if (ifMember) {
@@ -1153,10 +1214,13 @@ class AuditHandler {
 	static async auditEventGuildAuditEntryCreate(event, guild) {
 		try {
 			let status = await this.getGuildAuditStatus(guild.id);
-			if (status) {
+			if (status.state) {
 				let auditTarget = event?.target;
 				if (!auditTarget) {
 					auditTarget = "Unknown";
+				}
+				if (event.actionType == "Delete" && !!event.target) {
+					auditTarget = event.target.name;
 				}
 				let auditEntryEmbed = new EmbedBuilder()
 					.setTitle(`Audit Log Entry`)
@@ -1177,23 +1241,32 @@ class AuditHandler {
 				}
 				if (event.changes) {
 					event.changes.forEach((e) => {
-						if (!e.old && !e.new) {
-							return;
-						}
-						if (e.key === "$add" || e.key === "$remove") {
-							let oldVal = e.old ? e.old[0].name : `\`NONE\``;
-							let newVal = e.new ? e.new[0].name : `\`NONE\``;
-							auditEntryEmbed.addFields({
-								name: "Changed",
-								value: `\`${e.key}\` changed from \`${oldVal}\` to  \`${newVal}\``,
-							});
-						} else {
-							let oldVal = e.old ? e.old : `\`NONE\``;
-							let newVal = e.new ? e.new : `\`NONE\``;
-							auditEntryEmbed.addFields({
-								name: "Changed",
-								value: `\`${e.key}\` changed from \`${oldVal}\` to  \`${newVal}\``,
-							});
+						if ((e.old !== undefined && e.old !== null) || (e.new !== undefined && e.new !== null)) {
+							if (e.key === "$add" || e.key === "$remove") {
+								let oldVal = e.old !== undefined && e.old !== null ? e.old[0].name : `\`NONE\``;
+								let newVal = e.new !== undefined && e.new !== null ? e.new[0].name : `\`NONE\``;
+								auditEntryEmbed.addFields({
+									name: "Changed",
+									value: `\`${e.key}\` changed from \`${oldVal}\` to  \`${newVal}\``,
+								});
+							} else {
+								let oldVal =
+									e.old !== undefined && e.old !== null
+										? typeof e.old === "string"
+											? e.old
+											: JSON.stringify(e.old)
+										: `\`NONE\``;
+								let newVal =
+									e.new !== undefined && e.new !== null
+										? typeof e.new === "string"
+											? e.new
+											: JSON.stringify(e.new)
+										: `\`NONE\``;
+								auditEntryEmbed.addFields({
+									name: "Changed",
+									value: `\`${e.key}\` changed from \`${oldVal}\` to  \`${newVal}\``,
+								});
+							}
 						}
 					});
 				}

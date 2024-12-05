@@ -19,7 +19,6 @@ class WarnHandler {
 					warnBanThreshold: ban,
 					warnAuditChannelId: channel.id,
 					warnAuditChannelName: channel.name,
-					timeStamp: new Date().toISOString(),
 				},
 			},
 		);
@@ -55,7 +54,6 @@ class WarnHandler {
 					$set: {
 						guildName: interaction.guild.name,
 						memberList: memberList,
-						timeStamp: new Date().toISOString(),
 					},
 				},
 			);
@@ -74,7 +72,6 @@ class WarnHandler {
 					$set: {
 						guildName: interaction.guild.name,
 						memberList: memberList,
-						timeStamp: new Date().toISOString(),
 					},
 				},
 			);
@@ -90,7 +87,6 @@ class WarnHandler {
 							$set: {
 								warnAuditChannelId: "",
 								warnAuditChannelName: "",
-								timeStamp: new Date().toISOString(),
 							},
 						},
 					);
@@ -258,7 +254,6 @@ class WarnHandler {
 					$set: {
 						guildName: interaction.guild.name,
 						memberList: memberList,
-						timeStamp: new Date().toISOString(),
 					},
 				},
 			);
@@ -277,12 +272,11 @@ class WarnHandler {
 					$set: {
 						guildName: interaction.guild.name,
 						memberList: memberList,
-						timeStamp: new Date().toISOString(),
 					},
 				},
 			);
 		}
-		// await interaction.editReply(`Warn count for ${warnUser} has been now set to \`${newWarnCount}\``);
+		await interaction.editReply(`Warn count for ${warnUser} has been now set to \`${newWarnCount}\``);
 	}
 }
 

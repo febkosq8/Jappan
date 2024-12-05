@@ -1,4 +1,4 @@
-const { GuildMember, SlashCommandBuilder } = require("discord.js");
+const { GuildMember, SlashCommandBuilder, InteractionContextType } = require("discord.js");
 const config = require("../../config.json");
 const ClientHandler = require("../../Components/ClientHandler");
 const { usePlayer } = require("discord-player");
@@ -50,7 +50,7 @@ class volume {
 					.setMaxValue(200)
 					.setRequired(true),
 			)
-			.setDMPermission(false)
+			.setContexts([InteractionContextType.Guild])
 			.toJSON();
 	}
 	async execute(interaction) {

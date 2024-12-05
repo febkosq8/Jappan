@@ -1,4 +1,4 @@
-const { GuildMember, SlashCommandBuilder } = require("discord.js");
+const { GuildMember, SlashCommandBuilder, InteractionContextType } = require("discord.js");
 const { useQueue, QueueRepeatMode, useMainPlayer } = require("discord-player");
 const config = require("../../config.json");
 const EventHandler = require("../../Components/EventHandler");
@@ -57,7 +57,7 @@ class loop {
 						{ name: "Autoplay", value: QueueRepeatMode.AUTOPLAY },
 					),
 			)
-			.setDMPermission(false)
+			.setContexts([InteractionContextType.Guild])
 			.toJSON();
 	}
 	async execute(interaction) {
@@ -92,8 +92,8 @@ class loop {
 				loopMode === QueueRepeatMode.TRACK
 					? ":repeat_one:"
 					: loopMode === QueueRepeatMode.QUEUE
-					? ":repeat:"
-					: ":arrow_forward:";
+						? ":repeat:"
+						: ":arrow_forward:";
 
 			return void interaction.followUp({
 				content: `${mode} | Updated loop mode!`,

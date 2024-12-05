@@ -32,7 +32,6 @@ class LevelHandler {
 							levelThreshold: threshold.value,
 							levelRoleId: levelRole.id,
 							levelRoleName: levelRole.name,
-							timeStamp: new Date().toISOString(),
 						},
 					},
 				);
@@ -54,7 +53,6 @@ class LevelHandler {
 						levelThreshold: "",
 						levelRoleId: "",
 						levelRoleName: "",
-						timeStamp: new Date().toISOString(),
 					},
 				},
 			);
@@ -70,7 +68,6 @@ class LevelHandler {
 					levelThreshold: "",
 					levelRoleId: "",
 					levelRoleName: "",
-					timeStamp: new Date().toISOString(),
 				},
 			},
 		);
@@ -352,7 +349,6 @@ class LevelHandler {
 						$set: {
 							guildName: guild.name,
 							memberList: memberList,
-							timeStamp: new Date().toISOString(),
 						},
 					},
 				);
@@ -371,7 +367,6 @@ class LevelHandler {
 						$set: {
 							guildName: guild.name,
 							memberList: memberList,
-							timeStamp: new Date().toISOString(),
 						},
 					},
 				);

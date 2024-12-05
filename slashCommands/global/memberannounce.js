@@ -1,4 +1,4 @@
-const { PermissionFlagsBits, ChannelType, SlashCommandBuilder } = require("discord.js");
+const { PermissionFlagsBits, ChannelType, SlashCommandBuilder, InteractionContextType } = require("discord.js");
 const config = require("../../config.json");
 const AnnounceHandler = require("../../Components/AnnounceHandler");
 const ClientHandler = require("../../Components/ClientHandler");
@@ -61,7 +61,7 @@ class memberannounce {
 				group.setName("check").setDescription("Check the status of the member announcement system"),
 			)
 			.setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
-			.setDMPermission(false)
+			.setContexts([InteractionContextType.Guild])
 			.toJSON();
 	}
 	async execute(interaction) {

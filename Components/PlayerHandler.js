@@ -1,13 +1,26 @@
-const { GuildMember, EmbedBuilder } = require("discord.js");
+const { GuildMember, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const config = require("../config.json");
 const { useQueue, usePlayer, useMainPlayer, QueueRepeatMode } = require("discord-player");
-
+const ClientHandler = require("./ClientHandler");
+const EventHandler = require("./EventHandler");
+require("dotenv").config();
+const isPlayerDisabled = process.env.isPlayerDisabled === "true";
 class PlayerHandler {
-	static async playGuildPlayer(interaction, searchResult) {
+	static async playGuildPlayer({ interaction, searchResult, repeatMode = 0, replyText }) {
+		if (isPlayerDisabled) {
+			return await interaction.editReply({
+				content:
+					":warning: Music commands are currently disabled due to a technical issue.\nCheck our discord server for status updates.",
+			});
+		}
 		const player = useMainPlayer();
 		await player.play(interaction.member.voice.channel, searchResult, {
 			nodeOptions: {
-				metadata: interaction.channel,
+				metadata: {
+					channel: interaction.channel,
+					pendingMessages: [],
+					message: await interaction.fetchReply(),
+				},
 				bufferingTimeout: 15000,
 				leaveOnStop: true,
 				leaveOnStopCooldown: 5000,
@@ -16,13 +29,18 @@ class PlayerHandler {
 				leaveOnEmpty: true,
 				leaveOnEmptyCooldown: 300000,
 				skipOnNoStream: true,
+				repeatMode,
 			},
+			requestedBy: interaction.user,
+		});
+		await interaction.editReply({
+			content: replyText ?? `⏱ | Loading your ${searchResult.playlist ? "playlist" : "track"}`,
 		});
 	}
 	static async queueGuildPlayer(interaction) {
 		await interaction.deferReply();
-		let queue = useQueue(interaction.guild.id);
-		if (!queue) {
+		let queue = useQueue();
+		if (!queue && !queue.currentTrack) {
 			interaction.followUp({
 				content: ":x: | No music is being played!",
 			});
@@ -37,8 +55,8 @@ class PlayerHandler {
 				loopMode === QueueRepeatMode.TRACK
 					? ":repeat_one: Track"
 					: loopMode === QueueRepeatMode.QUEUE
-					? ":repeat: Queue"
-					: ":arrow_forward: Off";
+						? ":repeat: Queue"
+						: ":arrow_forward: Off";
 			if (queueLength > 0) {
 				currQueue = queueLength > maxSongs ? currQueue.slice(0, maxSongs) : currQueue;
 				queueTracks = currQueue.map((track, idx) => `${++idx}: **${track.title}**`).join("\n");
@@ -64,11 +82,16 @@ class PlayerHandler {
 					{
 						name: ":musical_note: Now Playing",
 						value: queue.currentTrack.title,
-						inline: true,
+						inline: false,
 					},
 					{
 						name: "Loop Mode",
 						value: loopMode,
+						inline: true,
+					},
+					{
+						name: "Requested by",
+						value: `${queue.currentTrack.requestedBy}`,
 						inline: true,
 					},
 					{
@@ -102,7 +125,7 @@ class PlayerHandler {
 			});
 		}
 
-		const guildPlayerNode = usePlayer(interaction.guild.id);
+		const guildPlayerNode = usePlayer();
 		if (!guildPlayerNode?.queue) {
 			await interaction.followUp({
 				content: ":x: | No music is being played!",
@@ -134,7 +157,7 @@ class PlayerHandler {
 				ephemeral: true,
 			});
 		}
-		const guildPlayerNode = usePlayer(interaction.guild.id);
+		const guildPlayerNode = usePlayer();
 		if (!guildPlayerNode?.queue) {
 			await interaction.followUp({
 				content: ":x: | No music is being played!",
@@ -171,7 +194,7 @@ class PlayerHandler {
 				ephemeral: true,
 			});
 		}
-		const guildPlayerNode = usePlayer(interaction.guild.id);
+		const guildPlayerNode = usePlayer();
 		if (!guildPlayerNode?.queue) {
 			interaction.followUp({
 				content: ":x: | No music is being played!",
@@ -205,7 +228,7 @@ class PlayerHandler {
 			});
 			return;
 		}
-		const queue = useQueue(interaction.guild.id);
+		const queue = useQueue();
 		if (!queue) {
 			await interaction.followUp({
 				content: ":x: | No music is being played!",
@@ -214,6 +237,87 @@ class PlayerHandler {
 		}
 		queue.delete();
 		await interaction.followUp({ content: "🛑 | Stopped the player!" });
+		return;
+	}
+	static async nowPlayingQueue(guildID) {
+		const butttonLabelList = [
+			{ key: "PlayerQueue", value: "Current Queue", style: ButtonStyle.Primary },
+			{ key: "PlayerPrevious", value: "⏮️ Previous", style: ButtonStyle.Secondary },
+			{ key: "PlayerPause", value: "⏯️ Toggle Pause", style: ButtonStyle.Secondary },
+			{ key: "PlayerSkip", value: "⏭️ Skip", style: ButtonStyle.Secondary },
+			{ key: "PlayerStop", value: "⏹️ Stop", style: ButtonStyle.Danger },
+		];
+
+		let buttonRow = new ActionRowBuilder();
+		for (let i = 0; i < butttonLabelList.length; i++) {
+			buttonRow.addComponents(
+				new ButtonBuilder()
+					.setCustomId(butttonLabelList[i].key)
+					.setLabel(butttonLabelList[i].value)
+					.setStyle(butttonLabelList[i].style),
+			);
+		}
+
+		const guildPlayerNode = usePlayer(guildID);
+		const currentTrack = guildPlayerNode?.queue?.currentTrack;
+		if (!guildPlayerNode?.queue || !currentTrack) {
+			return null;
+		}
+		const progress = guildPlayerNode.createProgressBar();
+		const perc = guildPlayerNode.getTimestamp();
+		const nowPlayingEmbed = new EmbedBuilder()
+			.setColor(0xffffff)
+			.setTitle("Now Playing")
+			.setAuthor({
+				name: config.botName,
+				iconURL: config.botpfp,
+				url: config.botWebsite,
+			})
+			.setThumbnail(currentTrack.thumbnail)
+			.setFields(
+				{
+					name: "\u200b",
+					value: progress,
+				},
+				{ name: "Next", value: `${guildPlayerNode?.queue?.tracks?.toArray()?.[0]?.description ?? "Nothing"}` },
+				{ name: "Queue size", value: `${guildPlayerNode.queue.getSize()}` },
+			)
+			.setDescription(`:musical_note: | **${currentTrack.title}** | **${perc.progress} %**`)
+			.setFooter({ text: `Song requested by ${currentTrack.requestedBy.username ?? "Someone"}` })
+			.setTimestamp();
+		return {
+			embeds: [nowPlayingEmbed],
+			components: [buttonRow],
+		};
+	}
+	static async processQueueMessages(player) {
+		const allActiveQueues = player.queues.cache
+			.filter((queue) => queue?.metadata?.pendingMessages?.length > 0)
+			.map((queue) => queue.metadata);
+		for (const queue of allActiveQueues) {
+			const { pendingMessages, message, nowPlaying } = queue;
+			// console.log({ pendingMessages, nowPlaying });
+			if (pendingMessages.length > 0) {
+				await message.edit(pendingMessages[0]);
+				queue.pendingMessages.shift();
+			}
+		}
+	}
+	static async handleShutdown() {
+		const client = await ClientHandler.getClient();
+		const activePlayerGuilds = client.guilds.cache.filter((guild) => !!guild?.members?.me?.voice?.channelId);
+		if (activePlayerGuilds.size > 0) {
+			EventHandler.auditEvent("NOTICE", `Bot is active in total ${activePlayerGuilds.size} guild(s)`);
+			await Promise.all(
+				activePlayerGuilds.map(async (guild) => {
+					const queue = useQueue(guild.id);
+					if (queue) {
+						await queue.metadata.message.edit(`:warning: Bot is restarting, please re-queue in few seconds.`);
+						queue.delete();
+					}
+				}),
+			);
+		}
 		return;
 	}
 }

@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require("discord.js");
+const { SlashCommandBuilder, InteractionContextType } = require("discord.js");
 const config = require("../config.json");
 
 class play {
@@ -44,7 +44,7 @@ class play {
 			.addStringOption((option) =>
 				option.setName("query").setDescription("The playlist / song you want to play").setRequired(true),
 			)
-			.setDMPermission(false)
+			.setContexts([InteractionContextType.Guild])
 			.toJSON();
 	}
 	async execute(interaction, player) {}

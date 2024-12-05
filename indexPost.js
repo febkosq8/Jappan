@@ -1,3 +1,6 @@
+const ChannelHandler = require("./Components/ChannelHandler");
+const PlayerHandler = require("./Components/PlayerHandler");
+
 class indexPost {
 	static async init(client) {
 		//Client
@@ -15,11 +18,88 @@ class indexPost {
 		require("dotenv").config();
 
 		//Discord Player
-		const { Player } = require("discord-player");
-		const player = new Player(client, {
-			skipFFmpeg: false, //TODO: Remove this when new version of discord-player is released
+		const { Player, useMainPlayer } = require("discord-player");
+		const { YoutubeiExtractor } = require("discord-player-youtubei");
+		let playerDebugState = process.env.defaultPlayerDebugState === "true";
+		const player = new Player(client, { skipFFmpeg: false });
+		player.on("debug", async (message) => {
+			if (playerDebugState) {
+				console.log(`DP Debug : ${message}`);
+			}
 		});
-		await player.extractors.loadDefault();
+		player.events.on("debug", async (queue, message) => {
+			if (playerDebugState) {
+				console.log(`DP Queue Debug : ${message}`);
+			}
+		});
+		player.events.on("error", (queue, error) => {
+			EventHandler.auditEvent(
+				"ERROR",
+				`[${queue?.guild?.name}] Discord Player Queue error emitted ${queue.currentTrack ? `for [${queue.currentTrack.title}] from the queue` : ``}: ${error?.message}`,
+				error,
+			);
+		});
+		player.events.on("playerError", (queue, error) => {
+			EventHandler.auditEvent(
+				"DEBUG",
+				`[${queue?.guild?.name}] Discord Player error emitted ${queue.currentTrack ? `for [${queue?.currentTrack?.title}] from the connection` : ``}: ${error?.message}`,
+				error,
+			);
+		});
+		player.events.on("playerStart", async (queue, track) => {
+			if (playerDebugState) {
+				console.log(`Guild : ${queue?.guild?.name} emitted PlayerStart for ${track.title}`);
+			}
+			queue.metadata.pendingMessages.push(`▶ | Started playing: **${track.title}**`);
+		});
+		player.events.on("playerSkip", async (queue, track, reason) => {
+			if (playerDebugState) {
+				console.log(`Guild : ${queue?.guild?.name} emitted PlayerSkip with reason : ${reason}`);
+			}
+			if (["ERR_NO_STREAM"].includes(reason)) {
+				queue.metadata.pendingMessages.push(`:warning: Skipping : **${track.title}** due to an issue !`);
+			}
+		});
+		player.events.on("audioTrackAdd", async (queue, track) => {
+			if (playerDebugState) {
+				console.log(`Guild : ${queue.guild.name} emitted audioTrackAdd for ${track.title}`);
+			}
+			queue.metadata.pendingMessages.push(`:musical_note: | Track **${track.title}** queued`);
+		});
+		player.events.on("audioTracksAdd", async (queue, track) => {
+			if (playerDebugState) {
+				console.log(`Guild : ${queue.guild.name} emitted audioTracksAdd`);
+			}
+			queue.metadata.pendingMessages.push(`🎶 | Multiple Track's queued`);
+		});
+		player.events.on("disconnect", async (queue) => {
+			if (playerDebugState) {
+				console.log(`Guild : ${queue.guild.name} emitted disconnect`);
+			}
+			queue.metadata.pendingMessages.push(":x::warning: | My job here is done, leaving now!");
+		});
+		player.events.on("emptyChannel", async (queue) => {
+			if (playerDebugState) {
+				console.log(`Guild : ${queue.guild.name} emitted emptyChannel`);
+			}
+			queue.metadata.pendingMessages.push(
+				":warning: | Nobody has been active in the voice channel for the past 5 minutes , Adios :cowboy:",
+			);
+		});
+		player.events.on("emptyQueue", async (queue) => {
+			if (playerDebugState) {
+				console.log(`Guild : ${queue.guild.name} emitted emptyQueue`);
+			}
+			queue.metadata.pendingMessages.push("✅ | Queue finished!");
+		});
+		process.nextTick(async () => {
+			await player.extractors.register(YoutubeiExtractor);
+			await player.extractors.loadDefault((ext) => !["YouTubeExtractor"].includes(ext));
+			// await player.extractors.loadDefault();
+			setInterval(() => {
+				PlayerHandler.processQueueMessages(player);
+			}, 3000);
+		});
 
 		//Slash Commands
 		const GlobalCommands = require("./Components/GlobalCommands");
@@ -38,58 +118,6 @@ class indexPost {
 		const DeployHandler = require("./Components/DeployHandler");
 		const deployHandler = new DeployHandler(client);
 		const EventHandler = require("./Components/EventHandler");
-
-		let playerDebugState = false;
-
-		// player.on("debug", async (message) => {
-		// 	await EventHandler.auditEvent("DEBUG", `Discord Player Debug`, message);
-		// });
-
-		player.events.on("debug", async (queue, message) => {
-			if (playerDebugState) {
-				console.log(`DP Debug : ${message}`);
-			}
-		});
-
-		player.events.on("error", (queue, error) => {
-			EventHandler.auditEvent(
-				"ERROR",
-				`[${queue?.guild?.name}] Discord Player Queue error emitted for [${queue?.currentTrack?.title}] from the queue: ${error?.message}`,
-				error,
-			);
-		});
-		player.events.on("playerError", (queue, error) => {
-			EventHandler.auditEvent(
-				"DEBUG",
-				`[${queue?.guild?.name}] Discord Player error emitted for [${queue?.currentTrack?.title}] from the connection: ${error?.message}`,
-				error,
-			);
-		});
-		player.events.on("playerStart", (queue, track) => {
-			queue.metadata.send(`▶ | Started playing: **${track.title}**`);
-		});
-		player.events.on("playerSkip", (queue, track, reason) => {
-			if (["ERR_NO_STREAM"].includes(reason)) {
-				queue.metadata.send(`:warning: Skipping : **${track.title}** due to an issue !`);
-			}
-		});
-		player.events.on("audioTrackAdd", (queue, track) => {
-			queue.metadata.send(`:musical_note: | Track **${track.title}** queued`);
-		});
-		player.events.on("audioTracksAdd", (queue, track) => {
-			queue.metadata.send(`🎶 | Multiple Track's queued`);
-		});
-		player.events.on("disconnect", (queue) => {
-			queue.metadata.send(":x::warning: | My job here is done, leaving now!");
-		});
-		player.events.on("emptyChannel", (queue) => {
-			queue.metadata.send(
-				":warning: | Nobody has been active in the voice channel for the past 5 minutes , Adios :cowboy:",
-			);
-		});
-		player.events.on("emptyQueue", (queue) => {
-			queue.metadata.send("✅ | Queue finished!");
-		});
 
 		client.on("guildCreate", async (guild) => {
 			EventHandler.auditEvent("INFO", "Bot added to new guild : " + guild.name);
@@ -125,7 +153,7 @@ class indexPost {
 		client.on("messageCreate", async (message) => {
 			if (message.author.bot) return;
 			if (!message.guild) {
-				EventHandler.auditEvent(
+				return EventHandler.auditEvent(
 					"DM_INFO",
 					"Bot recieved a new DM message : " +
 						message.content +
@@ -136,11 +164,9 @@ class indexPost {
 						")",
 					message,
 				);
-				return;
 			}
 			if (!message.content.startsWith(prefix)) {
-				LevelHandler.checkGuildMessage(message);
-				return;
+				return LevelHandler.checkGuildMessage(message);
 			}
 			if (message.content.startsWith(prefix)) {
 				const args = message.content.slice(prefix.length).trim().split(/ +/g);
@@ -240,7 +266,7 @@ class indexPost {
 			AuditHandler.auditEventMessageBulkDelete(messages);
 		});
 		client.on("messageUpdate", async (oldMessage, newMessage) => {
-			if (oldMessage.guildId) {
+			if (oldMessage.guildId && newMessage.guildId) {
 				AuditHandler.auditEventMessageUpdate(oldMessage, newMessage);
 			}
 		});
@@ -272,6 +298,7 @@ class indexPost {
 			} else if (oldState.channelId == null) {
 				LevelHandler.checkGuildVoice(oldState, "join", timeStamp);
 			}
+			ChannelHandler.handleVoiceChange(oldState, newState);
 			if (!oldState.member.user.bot) {
 				AuditHandler.auditEventVoiceChannel(oldState, newState);
 			}
@@ -281,7 +308,11 @@ class indexPost {
 				try {
 					const index = interaction.customId.indexOf("|");
 					const command = index === -1 ? interaction.customId : interaction.customId.substring(0, index);
-					require(`./slashCommands/buttonInteractions/${command}.js`).getInstance(client).execute(interaction, client);
+					const buttonInteraction = require(`./slashCommands/buttonInteractions/${command}.js`).getInstance(client);
+					await useMainPlayer().context.provide(
+						{ guild: interaction.guild },
+						async () => await buttonInteraction.execute(interaction, client),
+					);
 					if (interaction.member?.guild?.name) {
 						LevelHandler.checkGuildInteraction(interaction);
 						EventHandler.auditEvent(
@@ -330,7 +361,10 @@ class indexPost {
 							interaction.commandName
 						}.js`,
 					).getInstance(client);
-					await userInteraction.execute(interaction, client);
+					await useMainPlayer().context.provide(
+						{ guild: interaction.guild },
+						async () => await userInteraction.execute(interaction, client),
+					);
 					EventHandler.auditEvent(
 						"INFO",
 						"A interaction for : " +

@@ -8,6 +8,7 @@ var pjson = require("../package.json");
 const config = require("../config.json");
 require("dotenv").config();
 let debugState = true;
+let tempEvents = [];
 class EventHandler {
 	static async getDebugState() {
 		return debugState;
@@ -18,12 +19,11 @@ class EventHandler {
 	}
 	static async auditEvent(type, desc, event) {
 		let auditData = {
-			timeStamp: Date.now(),
 			botVersion: pjson.version,
 			envMode: process.env.botMode,
 			eventType: type,
 			desc,
-			event: event ?? JSON.stringify(event),
+			event: event,
 		};
 		if (type === "LOG") {
 			console.log(`[${cyanBright(type)}] ${bgBlack(white(desc))}`);
@@ -34,7 +34,7 @@ class EventHandler {
 		} else if (type === "NOTICE") {
 			console.log(`[${greenBright(type)}] ${bgBlack(white(desc))}`);
 		} else if (type === "DEBUG" && debugState) {
-			console.log(`[${yellowBright(type)}] | ${yellowBright(auditData.timeStamp)} | ${bgBlack(white(desc))}`);
+			console.log(`[${yellowBright(type)}] ${bgBlack(white(desc))}`);
 		} else if (type === "ERROR") {
 			console.log(`[${redBright(type)}] ${bgBlack(white(desc))}`);
 		}
@@ -44,15 +44,14 @@ class EventHandler {
 		}
 		try {
 			if ((process.env.botMode === "dev" && config.devLogging === "true") || process.env.botMode === "prod") {
-				if (ClientHandler.getMongoStatus() === 1) {
-					if (type === "LOG" || type === "DM_INFO" || type === "INFO" || type === "NOTICE") {
-						new eventLogSchema(auditData).save();
-					} else if (type === "DEBUG" && debugState) {
-						new debugLogSchema(auditData).save();
-					} else if (type === "ERROR") {
-						new errorLogSchema(auditData).save();
-					}
+				if (type === "LOG" || type === "DM_INFO" || type === "INFO" || type === "NOTICE") {
+					this.logConsoleEvent(type, desc, event);
+				} else if (type === "DEBUG" && debugState) {
+					new debugLogSchema(auditData).save();
+				} else if (type === "ERROR") {
+					new errorLogSchema(auditData).save();
 				}
+
 				if (type === "ERROR") {
 					await DiscordEventHandler.sendDiscordErrorEvent(type, desc, event);
 				} else if (type === "DEBUG") {
@@ -67,6 +66,33 @@ class EventHandler {
 			}
 		} catch (error) {
 			console.log(error);
+		}
+	}
+	static async logConsoleEvent(type, desc, event) {
+		const timestamp = Date.now();
+		const currPush = !!event ? { type, desc, event, timestamp } : { type, desc, timestamp };
+		if (ClientHandler.getMongoStatus()) {
+			const currentDate = new Date().toISOString().slice(0, 10);
+			let currPushArray = [];
+			if (tempEvents.length > 0) {
+				currPushArray.push(...tempEvents);
+				tempEvents = [];
+			}
+			currPushArray.push(currPush);
+			await eventLogSchema.findOneAndUpdate(
+				{ date: currentDate, botVersion: process.env.npm_package_version, envMode: process.env.botMode },
+				{
+					$setOnInsert: {
+						botVersion: process.env.npm_package_version,
+						envMode: process.env.botMode,
+						date: currentDate,
+					},
+					$push: { events: currPushArray },
+				},
+				{ upsert: true },
+			);
+		} else {
+			tempEvents.push(currPush);
 		}
 	}
 }

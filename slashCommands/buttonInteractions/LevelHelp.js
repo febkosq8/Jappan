@@ -28,7 +28,7 @@ class LevelHelp {
 				...levelFiles.map((file) => {
 					return {
 						name: `</${file.name}:${file.id}>`,
-						value: file.helpDesc.replaceAll("__id__", file.id),
+						value: file.helpDesc.replace(/__id__/g, file.id),
 					};
 				}),
 			);

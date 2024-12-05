@@ -1,4 +1,4 @@
-const { PermissionFlagsBits, SlashCommandBuilder } = require("discord.js");
+const { PermissionFlagsBits, SlashCommandBuilder, InteractionContextType } = require("discord.js");
 const config = require("../../config.json");
 const axios = require("axios");
 
@@ -45,7 +45,7 @@ class clear {
 			.addNumberOption((option) =>
 				option.setName("count").setDescription("Number of messages to spam").setRequired(true),
 			)
-			.setDMPermission(false)
+			.setContexts([InteractionContextType.Guild])
 			.toJSON();
 	}
 	async execute(interaction) {

@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, GuildMember } = require("discord.js");
+const { SlashCommandBuilder, GuildMember, InteractionContextType } = require("discord.js");
 const { useMainPlayer, useQueue, usePlayer } = require("discord-player");
 const config = require("../../config.json");
 const EventHandler = require("../../Components/EventHandler");
@@ -68,7 +68,7 @@ class soundboard {
 						{ name: "But Why ft. Mukesh", value: "butwhy" },
 					),
 			)
-			.setDMPermission(false)
+			.setContexts([InteractionContextType.Guild])
 			.toJSON();
 	}
 	async execute(interaction) {
@@ -101,18 +101,18 @@ class soundboard {
 			} else {
 				let queue = useQueue(interaction.guild.id);
 				if (!queue) {
-					await PlayerHandler.playGuildPlayer(interaction, searchResult);
+					await PlayerHandler.playGuildPlayer({
+						interaction,
+						searchResult,
+						replyText: `⏱ | Loading your voice clip`,
+					});
 				} else {
 					const currentTrack = queue.currentTrack;
 					const guildPlayerNode = usePlayer(interaction.guild.id);
-					const currTimeStamp = guildPlayerNode.getTimestamp().current.value;
 					queue.insertTrack(searchResult.tracks[0], 0);
 					queue.insertTrack(currentTrack, 1); // Add here timestamp to seek to
 					guildPlayerNode.skip();
 				}
-				await interaction.followUp({
-					content: `⏱ | Loading your voice clip`,
-				});
 			}
 		} catch (error) {
 			EventHandler.auditEvent("ERROR", "Failed to execute soundboard command with Error : " + error, error);

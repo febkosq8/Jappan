@@ -1,4 +1,4 @@
-const { GuildMember, SlashCommandBuilder } = require("discord.js");
+const { GuildMember, SlashCommandBuilder, InteractionContextType } = require("discord.js");
 const config = require("../../config.json");
 const { useQueue } = require("discord-player");
 const ClientHandler = require("../../Components/ClientHandler");
@@ -45,7 +45,7 @@ class remove {
 			.addIntegerOption((option) =>
 				option.setName("number").setDescription("The queue number you want to remove").setRequired(true),
 			)
-			.setDMPermission(false)
+			.setContexts([InteractionContextType.Guild])
 			.toJSON();
 	}
 	async execute(interaction) {

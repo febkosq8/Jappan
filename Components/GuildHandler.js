@@ -2,12 +2,8 @@ const guildList = require("../Managers/Schemas/guildListSchema");
 
 class GuildHandler {
 	static async initGuild(guildId, guildName) {
-		let guildFound = await guildList.findOne({
-			guildId: guildId,
-		});
-		if (!guildFound) {
+		if (!(await guildList.exists({ guildId: guildId }))) {
 			let guildData = {
-				timeStamp: new Date().toISOString(),
 				guildId: guildId,
 				guildName: guildName,
 				levelActive: true,
@@ -20,25 +16,29 @@ class GuildHandler {
 				auditActive: false,
 				auditChannelId: "",
 				auditChannelName: "",
+				auditFullVerbosity: false,
 				warnTimeoutThreshold: -1,
 				warnTimeoutDuration: -1,
 				warnBanThreshold: -1,
 				warnAuditChannelId: "",
 				warnAuditChannelName: "",
 				memberList: [],
+				regionWatchMembers: [],
 			};
 			new guildList(guildData).save();
 		}
+	}
+	static getGuildPreferences(guildId) {
+		return guildList.findOne({ guildId }).lean();
+	}
+	static updateGuildPreferences(guildId, updateObject) {
+		return guildList.updateOne({ guildId }, updateObject).lean();
 	}
 	static async updateGuild() {
 		let status = await guildList.updateMany(
 			{},
 			{
-				warnTimeoutThreshold: -1,
-				warnTimeoutDuration: -1,
-				warnBanThreshold: -1,
-				warnAuditChannelId: "",
-				warnAuditChannelName: "",
+				regionWatchMembers: [],
 			},
 		);
 		return status;

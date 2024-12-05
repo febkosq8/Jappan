@@ -1,4 +1,4 @@
-const { PermissionFlagsBits, SlashCommandBuilder } = require("discord.js");
+const { PermissionFlagsBits, SlashCommandBuilder, InteractionContextType } = require("discord.js");
 const config = require("../../config.json");
 //GuildLevel
 const LevelHandler = require("../../Components/LevelHandler");
@@ -65,7 +65,7 @@ class level {
 			.addSubcommand((group) => group.setName("off").setDescription("Turn off the leveling system"))
 			.addSubcommand((group) => group.setName("check").setDescription("Check the status of the leveling system"))
 			.setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
-			.setDMPermission(false)
+			.setContexts([InteractionContextType.Guild])
 			.toJSON();
 	}
 	async execute(interaction) {

@@ -1,14 +1,8 @@
-const {
-	GuildMember,
-	SlashCommandBuilder,
-	ActionRowBuilder,
-	ButtonBuilder,
-	ButtonStyle,
-	EmbedBuilder,
-} = require("discord.js");
+const { GuildMember, SlashCommandBuilder, EmbedBuilder, InteractionContextType } = require("discord.js");
 const config = require("../../config.json");
-const { useQueue, usePlayer } = require("discord-player");
+const { usePlayer } = require("discord-player");
 const ClientHandler = require("../../Components/ClientHandler");
+const PlayerHandler = require("../../Components/PlayerHandler");
 class nowplaying {
 	#command;
 	#name;
@@ -49,82 +43,58 @@ class nowplaying {
 		this.#command = new SlashCommandBuilder()
 			.setName(this.#name)
 			.setDescription(config.botName + " : " + this.#desc)
-			.setDMPermission(false)
+			.setContexts([InteractionContextType.Guild])
 			.toJSON();
 	}
 	async execute(interaction) {
 		await interaction.deferReply();
 		if (!(interaction.member instanceof GuildMember) || !interaction.member.voice.channel) {
-			interaction.editReply({
+			return interaction.editReply({
 				content: "You are not in a voice channel!",
 				ephemeral: true,
 			});
-			return;
 		}
-
 		if (
 			interaction.guild.members.me.voice.channelId &&
 			interaction.member.voice.channelId !== interaction.guild.members.me.voice.channelId
 		) {
-			interaction.editReply({
+			return interaction.editReply({
 				content: "You are not in my voice channel!",
 				ephemeral: true,
 			});
-			return;
 		}
-
-		const butttonLabelList = [
-			{ key: "PlayerQueue", value: "Current Queue", style: ButtonStyle.Primary },
-			{ key: "PlayerPrevious", value: "⏮️ Previous", style: ButtonStyle.Secondary },
-			{ key: "PlayerPause", value: "⏯️ Toggle Pause", style: ButtonStyle.Secondary },
-			{ key: "PlayerSkip", value: "⏭️ Skip", style: ButtonStyle.Secondary },
-			{ key: "PlayerStop", value: "⏹️ Stop", style: ButtonStyle.Danger },
-		];
-
-		let buttonRow = new ActionRowBuilder();
-		for (let i = 0; i < butttonLabelList.length; i++) {
-			buttonRow.addComponents(
-				new ButtonBuilder()
-					.setCustomId(butttonLabelList[i].key)
-					.setLabel(butttonLabelList[i].value)
-					.setStyle(butttonLabelList[i].style),
-			);
-		}
-
-		const guildPlayerNode = usePlayer(interaction.guild.id);
-		if (!guildPlayerNode?.queue) {
-			await interaction.followUp({
+		const nowPlayingEmbedData = await PlayerHandler.nowPlayingQueue(interaction.guild.id);
+		let interval;
+		if (!nowPlayingEmbedData) {
+			return interaction.editReply({
 				content: ":x: | No music is being played!",
 			});
-			return;
 		}
-		const currentTrack = guildPlayerNode.queue.currentTrack;
-		const progress = guildPlayerNode.createProgressBar();
-		const perc = guildPlayerNode.getTimestamp();
-		let requestedByString = currentTrack.requestedBy.username;
-		if (!requestedByString) {
-			requestedByString = "Someone";
-		}
-		const nowPlayingEmbed = new EmbedBuilder()
-			.setColor(0xffffff)
-			.setTitle("Now Playing")
-			.setAuthor({
-				name: config.botName,
-				iconURL: config.botpfp,
-				url: config.botWebsite,
-			})
-			.setThumbnail(currentTrack.thumbnail)
-			.setFields({
-				name: "\u200b",
-				value: progress,
-			})
-			.setDescription(`:musical_note: | **${currentTrack.title}** | **${perc.progress} %**`)
-			.setFooter({ text: `Song requested by ${requestedByString}` })
-			.setTimestamp();
-		await interaction.followUp({
-			embeds: [nowPlayingEmbed],
-			components: [buttonRow],
-		});
+		const guildPlayerNode = usePlayer(interaction.guild.id);
+		interval = setInterval(async () => {
+			let nowPlayingEmbedData = await PlayerHandler.nowPlayingQueue(interaction.guild.id);
+			if (!nowPlayingEmbedData || !guildPlayerNode?.queue || !guildPlayerNode.queue.metadata.nowPlaying) {
+				clearInterval(interval);
+				interval = undefined;
+				nowPlayingEmbedData = {
+					embeds: [
+						new EmbedBuilder()
+							.setColor(0xffffff)
+							.setTitle("We ran out of music")
+							.setAuthor({
+								name: config.botName,
+								iconURL: config.botpfp,
+								url: config.botWebsite,
+							})
+							.setDescription(`Start a new queue`)
+							.setTimestamp(),
+					],
+				};
+			}
+			guildPlayerNode.queue.metadata.nowPlaying.edit(nowPlayingEmbedData);
+		}, 30000);
+		const reply = await interaction.followUp(nowPlayingEmbedData);
+		guildPlayerNode.queue.metadata.nowPlaying = reply;
 	}
 }
 module.exports = nowplaying;

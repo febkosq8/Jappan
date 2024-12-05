@@ -1,4 +1,12 @@
-## v1.4.3
+## v1.4.4
+
+- discord.js, @discord-player, etc version bump
+- Now using discord-player context aware hooks
+- AuditHandler - Better error handling
+- Dockerfile now starts using `node index.js` so that SIGNALS are properly handled
+- When bot get a shutdown signal will now clear queue and send a message to inform the user of the restart
+
+### v1.4.3
 
 - discord.js, @discord-player, etc version bump
 - Prefix commands only gets triggered after a pre check
@@ -17,7 +25,6 @@
 
 ## v1.4.2
 
-- discord.js, @discord-player, etc version bump
 - discord.js, @discord-player, etc version bump
 - Switched to useMainPlayer from UseMasterPlayer for discord-player
 - Switched to mediaplex from opusscript

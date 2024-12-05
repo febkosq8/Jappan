@@ -1,5 +1,5 @@
 # Use a Node.js base image with a specific version
-FROM node:20.10.0-bullseye
+FROM node:22.12.0-bullseye
 
 # Set the working directory inside the container
 WORKDIR /
@@ -20,4 +20,4 @@ RUN npm install
 COPY . .
 
 # Define the command to start the Node.js application
-CMD [ "npm", "start" ]
+CMD [ "node", "index.js" ]

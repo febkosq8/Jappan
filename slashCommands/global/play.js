@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, GuildMember } = require("discord.js");
+const { SlashCommandBuilder, GuildMember, InteractionContextType } = require("discord.js");
 const { useMainPlayer } = require("discord-player");
 const config = require("../../config.json");
 const EventHandler = require("../../Components/EventHandler");
@@ -52,28 +52,34 @@ class play {
 					.setRequired(true)
 					.setAutocomplete(true),
 			)
-			.setDMPermission(false)
+			.setContexts([InteractionContextType.Guild])
 			.toJSON();
 	}
 	async autocomplete(interaction) {
-		const player = useMainPlayer();
-		const query = interaction.options.getString("query");
-		let returnData = [];
-		if (query) {
-			let result = await player.search(query);
-			if (result.playlist) {
-				if (result.playlist.title.length > 100) {
-					result.playlist.title = result.playlist.title.substring(0, 90) + "..(truncated)..";
+		try {
+			const player = useMainPlayer();
+			const query = interaction.options.getString("query");
+			let returnData = [];
+			if (query) {
+				let result = await player.search(query);
+				if (result.playlist) {
+					if (result.playlist.title.length > 100) {
+						result.playlist.title = result.playlist.title.substring(0, 90) + "...";
+					}
+					let name = result.playlist.title + " | Playlist";
+					if (name.length > 100) {
+						name = name.substring(0, 90) + "...";
+					}
+					returnData.push({ name, value: query });
+				} else {
+					returnData = result.tracks.slice(0, 6).map((track) => ({
+						name: track.description.length > 100 ? track.description.substring(0, 90) + "..." : track.description,
+						value: track.url,
+					}));
 				}
-				let name = result.playlist.title + " | Playlist";
-				if (name.length > 100) {
-					name = name.substring(0, 90) + "..(truncated)..";
-				}
-				returnData.push({ name, value: query });
 			}
-			result.tracks.slice(0, 6).map((track) => returnData.push({ name: track.description, value: track.url }));
-		}
-		await interaction.respond(returnData);
+			await interaction.respond(returnData);
+		} catch (error) {}
 	}
 	async execute(interaction) {
 		const player = useMainPlayer();
@@ -99,18 +105,15 @@ class play {
 			}
 
 			const query = interaction.options.getString("query");
-			const searchResult = await player.search(query, { requestedBy: interaction.user });
-
-			if (!searchResult.hasTracks()) {
-				await interaction.editReply(`We found no tracks for ${query}!`);
-				return;
-			} else {
-				await PlayerHandler.playGuildPlayer(interaction, searchResult);
-			}
-
-			await interaction.followUp({
-				content: `⏱ | Loading your ${searchResult.playlist ? "playlist" : "track"}`,
+			const searchResult = await player.search(query, {
+				requestedBy: interaction.user,
+				fallbackSearchEngine: "youtubeSearch",
 			});
+			if (!searchResult.hasTracks()) {
+				return await interaction.editReply(`We found no tracks for '${query}' !`);
+			} else {
+				await PlayerHandler.playGuildPlayer({ interaction, searchResult });
+			}
 		} catch (error) {
 			EventHandler.auditEvent("ERROR", "Failed to execute player play command with Error : " + error, error);
 			interaction.followUp({

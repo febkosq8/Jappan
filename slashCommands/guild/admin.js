@@ -1,6 +1,6 @@
 const config = require("../../config.json");
 require("dotenv").config();
-const { SlashCommandBuilder, PermissionFlagsBits } = require("discord.js");
+const { SlashCommandBuilder, PermissionFlagsBits, InteractionContextType } = require("discord.js");
 const EventHandler = require("../../Components/EventHandler");
 const ClientHandler = require("../../Components/ClientHandler");
 const AdminHandler = require("../../Components/AdminHandler");
@@ -209,7 +209,7 @@ class admin {
 					),
 			)
 			.setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
-			.setDMPermission(false)
+			.setContexts([InteractionContextType.Guild])
 			.toJSON();
 	}
 	async execute(interaction, client) {

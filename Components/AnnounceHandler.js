@@ -19,7 +19,6 @@ class AnnounceHandler {
 						announceActive: true,
 						announceChannelId: channel.id,
 						announceChannelName: channel.name,
-						timeStamp: new Date().toISOString(),
 					},
 				},
 			);
@@ -39,7 +38,6 @@ class AnnounceHandler {
 					announceActive: false,
 					announceChannelId: "",
 					announceChannelName: "",
-					timeStamp: new Date().toISOString(),
 				},
 			},
 		);

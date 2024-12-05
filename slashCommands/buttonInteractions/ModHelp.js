@@ -15,7 +15,7 @@ class ModHelp {
 	}
 	async execute(interaction) {
 		await interaction.deferReply();
-		let musicHelpEmbed = new EmbedBuilder()
+		let modHelpEmbed = new EmbedBuilder()
 			.setColor(0x0099ff)
 			.setTitle("Find help regarding " + config.botName + " here")
 			.setAuthor({
@@ -28,11 +28,11 @@ class ModHelp {
 				...modFiles.map((file) => {
 					return {
 						name: `</${file.name}:${file.id}>`,
-						value: file.helpDesc.replaceAll("__id__", file.id),
+						value: file.helpDesc.replace(/__id__/g, file.id),
 					};
 				}),
 			);
-		interaction.editReply({ embeds: [musicHelpEmbed] });
+		interaction.editReply({ embeds: [modHelpEmbed] });
 	}
 }
 module.exports = ModHelp;

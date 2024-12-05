@@ -1,4 +1,11 @@
-const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require("discord.js");
+const {
+	SlashCommandBuilder,
+	ActionRowBuilder,
+	ButtonBuilder,
+	ButtonStyle,
+	EmbedBuilder,
+	InteractionContextType,
+} = require("discord.js");
 const config = require("../../config.json");
 const EventHandler = require("../../Components/EventHandler");
 const ClientHandler = require("../../Components/ClientHandler");
@@ -50,7 +57,7 @@ class makesay {
 			.addStringOption((option) =>
 				option.setName("content").setDescription("The message that you want the user to say").setRequired(true),
 			)
-			.setDMPermission(false)
+			.setContexts([InteractionContextType.Guild])
 			.toJSON();
 	}
 	async execute(interaction, client) {

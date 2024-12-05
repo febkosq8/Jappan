@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, GuildMember } = require("discord.js");
+const { SlashCommandBuilder, GuildMember, InteractionContextType } = require("discord.js");
 const { useQueue, useMainPlayer } = require("discord-player");
 const config = require("../../config.json");
 const EventHandler = require("../../Components/EventHandler");
@@ -52,20 +52,35 @@ class playtop {
 					.setRequired(true)
 					.setAutocomplete(true),
 			)
-			.setDMPermission(false)
+			.setContexts([InteractionContextType.Guild])
 			.toJSON();
 	}
 	async autocomplete(interaction) {
-		const player = useMainPlayer();
-		const query = interaction.options.getString("query");
-		const result = await player.search(query);
-
-		let returnData = [];
-		if (result.playlist) {
-			returnData.push({ name: result.playlist.title + " | Playlist", value: query });
-		}
-		result.tracks.slice(0, 6).map((track) => returnData.push({ name: track.title, value: track.url }));
-		await interaction.respond(returnData);
+		try {
+			const player = useMainPlayer();
+			const query = interaction.options.getString("query");
+			let returnData = [];
+			if (query) {
+				let result = await player.search(query);
+				if (result.playlist) {
+					if (result.playlist.title.length > 100) {
+						result.playlist.title = result.playlist.title.substring(0, 90) + "...";
+					}
+					let name = result.playlist.title + " | Playlist";
+					if (name.length > 100) {
+						name = name.substring(0, 90) + "...";
+					}
+					returnData.push({ name, value: query });
+				}
+				result.tracks.slice(0, 6).map((track) =>
+					returnData.push({
+						name: track.description.length > 100 ? track.description.substring(0, 90) + "..." : track.description,
+						value: track.url,
+					}),
+				);
+			}
+			await interaction.respond(returnData);
+		} catch (error) {}
 	}
 	async execute(interaction) {
 		const player = useMainPlayer();
@@ -91,15 +106,12 @@ class playtop {
 			const searchResult = await player.search(query, { requestedBy: interaction.user });
 
 			if (!searchResult.hasTracks()) {
-				interaction.editReply(`We found no tracks for ${query}!`);
+				interaction.editReply(`We found no tracks for '${query}' !`);
 				return;
 			} else {
 				let queue = useQueue(interaction.guild.id);
 				if (!queue) {
-					await PlayerHandler.playGuildPlayer(interaction, searchResult);
-					await interaction.followUp({
-						content: `⏱ | Loading your track`,
-					});
+					await PlayerHandler.playGuildPlayer({ interaction, searchResult });
 				} else {
 					queue.insertTrack(searchResult.tracks[0], 0);
 					await interaction.editReply(

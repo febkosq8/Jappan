@@ -56,7 +56,7 @@ class AdminHandler {
 							name: `Guild Name : ${guild[0].name}`,
 							value: `Guild ID : ${guild[0].id}\nMember Count : ${guild[0].memberSize}\nJoined at : <t:${Math.floor(
 								guild[0].joinedAt / 1000,
-							)}:R>\nOwner : ${await ClientHandler.getClientUser(guild[0].ownerId)}\nAdmin Role : ${
+							)}:R>\nOwner : ${await ClientHandler.getClientUser(guild[0].ownerId)} | ${guild[0].ownerId}\nAdmin Role : ${
 								guild[0].admin ? ":white_check_mark:" : ":no_entry_sign:"
 							}`,
 						});
@@ -64,10 +64,12 @@ class AdminHandler {
 					embedArray.push(adminGuildEmbedPage);
 				}
 				interaction.editReply({
-					content: "",
-					embeds: embedArray,
+					content: `Guild data for #${guildList.length} guilds loaded successfully.`,
 					ephemeral: true,
 				});
+				for (let embed of embedArray) {
+					await interaction.followUp({ embeds: [embed], ephemeral: true });
+				}
 			});
 	}
 	static async adminSelfKick(interaction) {

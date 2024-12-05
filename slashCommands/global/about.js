@@ -1,4 +1,11 @@
-const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require("discord.js");
+const {
+	SlashCommandBuilder,
+	ActionRowBuilder,
+	ButtonBuilder,
+	ButtonStyle,
+	EmbedBuilder,
+	InteractionContextType,
+} = require("discord.js");
 var pjson = require("../../package.json");
 const config = require("../../config.json");
 const ClientHandler = require("../../Components/ClientHandler");
@@ -43,7 +50,7 @@ class about {
 		this.#command = new SlashCommandBuilder()
 			.setName(this.#name)
 			.setDescription(config.botName + " : " + this.#desc)
-			.setDMPermission(false)
+			.setContexts([InteractionContextType.Guild])
 			.toJSON();
 	}
 	async execute(interaction) {

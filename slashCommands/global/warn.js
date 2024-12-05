@@ -4,6 +4,7 @@ const {
 	EmbedBuilder,
 	GuildMember,
 	ChatInputCommandInteraction,
+	InteractionContextType,
 } = require("discord.js");
 const config = require("../../config.json");
 const WarnHandler = require("../../Components/WarnHandler");
@@ -115,8 +116,8 @@ class warn {
 						option.setName("count").setDescription("New warn count for the user").setMinValue(0).setRequired(true),
 					),
 			)
-			.setDMPermission(false)
 			.setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+			.setContexts([InteractionContextType.Guild])
 			.toJSON();
 	}
 

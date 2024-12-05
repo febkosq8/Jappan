@@ -1,5 +1,6 @@
 let errorCount = 0;
 const Discord = require("discord.js");
+const { ActivityType, PresenceUpdateStatus } = require("discord.js");
 const ClientConfig = require("./client/Client");
 const client = new ClientConfig();
 client.commands = new Discord.Collection();
@@ -10,6 +11,7 @@ require("dotenv").config();
 const indexPost = require("./indexPost");
 const EventHandler = require("./Components/EventHandler");
 const ClientHandler = require("./Components/ClientHandler");
+const PlayerHandler = require("./Components/PlayerHandler");
 ClientHandler.setClient(client);
 
 //Bot Config
@@ -27,15 +29,16 @@ client.login(token).then(() => {
 });
 
 client.on("ready", function (readyClient) {
-	EventHandler.auditEvent("LOG", "Bot @ v" + pjson.version + " is now ready to recieve requests");
+	EventHandler.auditEvent("LOG", "Bot @ v" + pjson.version + " is now ready to receive requests");
 	client.user.setPresence({
 		activities: [
 			{
-				name: config.activity,
-				type: config.activityType,
+				name: "Existential crisis",
+				type: ActivityType.Playing,
+				state: `on ${client.guilds.cache.size} servers & ${client.users.cache.size} users`,
 			},
 		],
-		status: config.status,
+		status: PresenceUpdateStatus.Online,
 	});
 	indexPost.init(readyClient);
 });
@@ -59,15 +62,16 @@ process.on("uncaughtException", function (error) {
 		EventHandler.auditEvent("ERROR", "5 Uncaught Exceptions have occured, exiting process in 5 seconds");
 		setInterval(() => {
 			process.exit(1);
-		}, 5000);
+		}, 2000);
 	}
 });
 
 process.on("unhandledRejection", (error) => {
-	EventHandler.auditEvent("ERROR", "Caught a unhandled rejection", error);
+	EventHandler.auditEvent("DEBUG", `Caught a unhandled rejection of type ${typeof error}`, error);
 });
 
-process.on("SIGTERM", (signal) => {
+process.on("SIGTERM", async (signal) => {
 	EventHandler.auditEvent("LOG", "Bot process " + `${process.pid}` + " has received a SIGTERM signal");
+	await PlayerHandler.handleShutdown();
 	process.exit(0);
 });

@@ -1,4 +1,4 @@
-const { EmbedBuilder, SlashCommandBuilder } = require("discord.js");
+const { EmbedBuilder, SlashCommandBuilder, InteractionContextType } = require("discord.js");
 const config = require("../../config.json");
 
 class Ping {
@@ -41,7 +41,7 @@ class Ping {
 		this.#command = new SlashCommandBuilder()
 			.setName(this.#name)
 			.setDescription(config.botName + " : " + this.#desc)
-			.setDMPermission(false)
+			.setContexts([InteractionContextType.Guild])
 			.toJSON();
 	}
 	async execute(interaction) {

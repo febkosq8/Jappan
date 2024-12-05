@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require("discord.js");
+const { SlashCommandBuilder, InteractionContextType } = require("discord.js");
 const config = require("../../config.json");
 const ClientHandler = require("../../Components/ClientHandler");
 const PlayerHandler = require("../../Components/PlayerHandler");
@@ -42,7 +42,7 @@ class skip {
 		this.#command = new SlashCommandBuilder()
 			.setName(this.#name)
 			.setDescription(config.botName + " : " + this.#desc)
-			.setDMPermission(false)
+			.setContexts([InteractionContextType.Guild])
 			.toJSON();
 	}
 	async execute(interaction) {
