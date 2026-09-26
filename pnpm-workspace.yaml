@@ -1,2 +1,6 @@
+minimumReleaseAge: 1440 # min 1 day
+minimumReleaseAgeStrict: true # block releases that are too new
 allowBuilds:
+  bufferutil: true
   esbuild: true
+  zlib-sync: true

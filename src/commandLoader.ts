@@ -1,27 +1,19 @@
 import { readdir } from "node:fs/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { join } from "node:path";
-import { ChatInputCommandInteraction, Collection, SlashCommandBuilder } from "discord.js";
+import { Collection } from "discord.js";
 
+import { isBotCommand } from "./helpers/command.js";
 import { logger } from "./logger.js";
 
-export interface BotCommand {
-	readonly data: SlashCommandBuilder;
-	readonly execute: (interaction: ChatInputCommandInteraction) => Promise<void>;
-}
+export type { BotCommand } from "./helpers/command.js";
+import type { BotCommand } from "./helpers/command.js";
 
 type CommandModule = {
 	readonly default?: unknown;
 };
 
-function isBotCommand(value: unknown): value is BotCommand {
-	if (!value || typeof value !== "object") {
-		return false;
-	}
-
-	const command = value as Partial<BotCommand>;
-	return command.data instanceof SlashCommandBuilder && typeof command.execute === "function";
-}
+let loadedCommands: Collection<string, BotCommand> | undefined;
 
 export async function loadCommands(): Promise<Collection<string, BotCommand>> {
 	const commandDirectory = fileURLToPath(new URL("./commands", import.meta.url));
@@ -50,6 +42,15 @@ export async function loadCommands(): Promise<Collection<string, BotCommand>> {
 		commands.set(commandModule.default.data.name, commandModule.default);
 	}
 
+	loadedCommands = commands;
 	logger.info("COMMANDS", "Commands loaded", { count: commands.size });
-	return commands;
+	return loadedCommands;
+}
+
+export function getCommands(): Collection<string, BotCommand> {
+	if (!loadedCommands) {
+		throw new Error("Commands have not been loaded");
+	}
+
+	return loadedCommands;
 }
