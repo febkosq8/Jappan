@@ -196,17 +196,43 @@ async function awardLevelingPoints({
 
 	const rewardRole = await guild.roles.fetch(roleId);
 	const botMember = await guild.members.fetchMe();
-	if (
-		!rewardRole ||
-		rewardRole.managed ||
-		!botMember.permissions.has(PermissionFlagsBits.ManageRoles) ||
-		!member.manageable ||
-		botMember.roles.highest.comparePositionTo(rewardRole) <= 0
-	) {
+	if (!rewardRole) {
 		await disableLevelingReward({
 			guild,
 			roleId,
-			reason: !rewardRole ? "the configured role no longer exists" : "the bot can no longer assign the configured role",
+			reason: "the configured role no longer exists",
+		});
+		return;
+	}
+	if (rewardRole.managed) {
+		await disableLevelingReward({
+			guild,
+			roleId,
+			reason: "the configured role is managed by a Discord integration",
+		});
+		return;
+	}
+	if (!botMember.permissions.has(PermissionFlagsBits.ManageRoles)) {
+		await disableLevelingReward({
+			guild,
+			roleId,
+			reason: "the bot lacks the guild-level Manage Roles permission",
+		});
+		return;
+	}
+	if (botMember.roles.highest.comparePositionTo(rewardRole) <= 0) {
+		await disableLevelingReward({
+			guild,
+			roleId,
+			reason: "the configured role is at or above the bot's highest role",
+		});
+		return;
+	}
+	if (!member.manageable) {
+		logger.warn("DISCORD", "Skipped leveling reward for an unmanageable member", {
+			guildId: guild.id,
+			userId: user.id,
+			roleId,
 		});
 		return;
 	}
