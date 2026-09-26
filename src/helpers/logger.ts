@@ -54,11 +54,11 @@ export function writeLog(level: LogLevel, category: LogCategory, message: string
 	const categoryLabel = categoryColors[category](bold(category));
 	const timestampLabel = timestamp ? `[${timestamp}] ` : "";
 	const output = `${timestampLabel}[${label}] [${categoryLabel}] ${message}${formatDetails(details)}`;
+	const consoleLevel = level === "success" ? "log" : level;
 
-	if (level === "error") {
-		console.error(output);
-		return;
+	if (level === "error" && details) {
+		console[consoleLevel](output, details);
+	} else {
+		console[consoleLevel](output);
 	}
-
-	console.log(output);
 }
