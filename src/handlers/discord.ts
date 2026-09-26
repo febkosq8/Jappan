@@ -2,7 +2,7 @@ import { Events, InteractionType } from "discord.js";
 import type { Interaction } from "discord.js";
 
 import { getClient } from "../bot.js";
-import { getCommands } from "../services/commandLoader.js";
+import { getCommands, setRegisteredCommandIds } from "../services/commandLoader.js";
 import { logger } from "../services/logger.js";
 import { handleAutocomplete } from "./autocomplete.js";
 import { handleSlashCommand } from "./slashCommand.js";
@@ -21,7 +21,10 @@ export function registerDiscordHandlers(): void {
 	client.once(Events.ClientReady, async (readyClient) => {
 		try {
 			logger.info("SLASH_COMMANDS", `Starting to update #${commands.size} Application (/) commands`);
-			await readyClient.application.commands.set(commands.map((command) => command.data.toJSON()));
+			const registeredCommands = await readyClient.application.commands.set(
+				commands.map((command) => command.data.toJSON()),
+			);
+			setRegisteredCommandIds(registeredCommands);
 			logger.success("SLASH_COMMANDS", `#${commands.size} Application (/) commands updated`);
 		} catch (error: unknown) {
 			const message = error instanceof Error ? error.message : String(error);

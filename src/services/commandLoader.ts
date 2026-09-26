@@ -2,6 +2,7 @@ import { join } from "node:path";
 import { readdir } from "node:fs/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { Collection } from "discord.js";
+import type { ApplicationCommand } from "discord.js";
 
 import { isBotCommand } from "../helpers/command.js";
 import { logger } from "./logger.js";
@@ -14,6 +15,7 @@ type CommandModule = {
 };
 
 let loadedCommands: Collection<string, BotCommand> | undefined;
+let registeredCommandIds: Collection<string, string> | undefined;
 
 export async function loadCommands(): Promise<Collection<string, BotCommand>> {
 	const commandDirectory = fileURLToPath(new URL("../commands", import.meta.url));
@@ -53,4 +55,12 @@ export function getCommands(): Collection<string, BotCommand> {
 	}
 
 	return loadedCommands;
+}
+
+export function setRegisteredCommandIds(commands: Collection<string, ApplicationCommand>): void {
+	registeredCommandIds = new Collection(commands.map((command) => [command.name, command.id]));
+}
+
+export function getCommandId(name: string): string | undefined {
+	return registeredCommandIds?.get(name);
 }
