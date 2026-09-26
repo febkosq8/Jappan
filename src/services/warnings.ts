@@ -1,6 +1,7 @@
 import type { GuildDocument } from "../models/guild.js";
-import GuildMemberStateModel, { type GuildMemberStateDocument } from "../models/guildMemberState.js";
+import type { GuildMemberStateDocument } from "../models/guildMemberState.js";
 import { getGuildSettings } from "./guild.js";
+import { getGuildMemberState, getOrCreateGuildMemberState } from "./guildMemberState.js";
 
 export async function setWarningSettings(
 	guildId: string,
@@ -23,7 +24,7 @@ export async function getWarningSettings(guildId: string, guildName: string): Pr
 }
 
 export async function getWarningCount(guildId: string, userId: string): Promise<number> {
-	const state = await GuildMemberStateModel.findOne({ guildId, userId }).exec();
+	const state = await getGuildMemberState(guildId, userId);
 	return state?.warnings.count ?? 0;
 }
 
@@ -32,14 +33,9 @@ export async function issueWarning(
 	userId: string,
 	username: string,
 ): Promise<GuildMemberStateDocument> {
-	let state = await GuildMemberStateModel.findOne({ guildId, userId }).exec();
-	if (!state) {
-		state = await GuildMemberStateModel.create({ guildId, userId, username, warnings: { count: 1 } });
-	} else {
-		state.username = username;
-		state.warnings.count += 1;
-		await state.save();
-	}
+	const state = await getOrCreateGuildMemberState(guildId, userId, username);
+	state.warnings.count += 1;
+	await state.save();
 	return state;
 }
 
@@ -49,13 +45,8 @@ export async function overrideWarningCount(
 	username: string,
 	count: number,
 ): Promise<GuildMemberStateDocument> {
-	let state = await GuildMemberStateModel.findOne({ guildId, userId }).exec();
-	if (!state) {
-		state = await GuildMemberStateModel.create({ guildId, userId, username, warnings: { count } });
-	} else {
-		state.username = username;
-		state.warnings.count = count;
-		await state.save();
-	}
+	const state = await getOrCreateGuildMemberState(guildId, userId, username);
+	state.warnings.count = count;
+	await state.save();
 	return state;
 }

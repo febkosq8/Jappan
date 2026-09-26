@@ -29,11 +29,10 @@ export async function handleAutocompleteInteraction({
 	try {
 		await command.autocomplete(interaction);
 	} catch (error: unknown) {
-		const message = error instanceof Error ? error.message : String(error);
 		logger.error("AUTOCOMPLETE", "Application command autocomplete failed", {
 			command: interaction.commandName,
 			user: `${interaction.user.tag} <${interaction.user.id}>`,
-			message,
+			error,
 		});
 
 		if (!interaction.responded) {

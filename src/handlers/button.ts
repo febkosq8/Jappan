@@ -31,11 +31,10 @@ export async function handleButtonInteraction({
 			durationMs: Math.round(performance.now() - startedAt),
 		});
 	} catch (error: unknown) {
-		const message = error instanceof Error ? error.message : String(error);
 		logger.error("BUTTONS", "Button interaction failed", {
 			customId: interaction.customId,
 			user: `${interaction.user.tag} <${interaction.user.id}>`,
-			message,
+			error,
 		});
 		if (!interaction.replied && !interaction.deferred) {
 			await interaction.reply({ content: "There was an error handling this button.", flags: MessageFlags.Ephemeral });

@@ -8,6 +8,7 @@ import { logger } from "../services/logger.js";
 import { handleAutocompleteInteraction } from "./autocomplete.js";
 import { handleButtonInteraction } from "./button.js";
 import { handleSlashCommandInteraction } from "./slashCommand.js";
+import { handleMemberJoinAnnouncement, handleMemberLeaveAnnouncement } from "../services/memberAnnouncement.js";
 
 export function registerDiscordHandlers(): void {
 	const client = getClient();
@@ -35,8 +36,7 @@ export function registerDiscordHandlers(): void {
 			setRegisteredCommandIds(registeredCommands);
 			logger.success("SLASH_COMMANDS", `#${commands.size} Application (/) commands updated`);
 		} catch (error: unknown) {
-			const message = error instanceof Error ? error.message : String(error);
-			logger.error("SLASH_COMMANDS", "Failed to update Application (/) commands", { message });
+			logger.error("SLASH_COMMANDS", "Failed to update Application (/) commands", { error });
 		}
 	});
 
@@ -82,4 +82,19 @@ export function registerDiscordHandlers(): void {
 	});
 
 	logger.success("DISCORD", "Event handlers registered");
+}
+
+export function registerExtendedDiscordHandlers(): void {
+	const client = getClient();
+	const config = getConfig();
+
+	client.on(Events.GuildMemberAdd, (member) => {
+		void handleMemberJoinAnnouncement(member, config);
+	});
+
+	client.on(Events.GuildMemberRemove, (member) => {
+		void handleMemberLeaveAnnouncement(member, config);
+	});
+
+	logger.success("DISCORD", "Extended event handlers registered");
 }

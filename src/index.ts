@@ -27,7 +27,6 @@ export async function startBot(): Promise<void> {
 }
 
 startBot().catch((error: unknown) => {
-	const message = error instanceof Error ? error.message : String(error);
-	logger.error("BOT", "Startup failed", { message });
+	logger.error("BOT", "Startup failed", { error });
 	void handleShutdown("STARTUP_FAILURE", 1);
 });

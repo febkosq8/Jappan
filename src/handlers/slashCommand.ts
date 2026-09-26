@@ -59,12 +59,11 @@ export async function handleSlashCommandInteraction({
 			durationMs: Math.round(performance.now() - startedAt),
 		});
 	} catch (error: unknown) {
-		const message = error instanceof Error ? error.message : String(error);
 		logger.error("SLASH_COMMANDS", "Application (/) command failed", {
 			command: interaction.commandName,
 			user: `${interaction.user.tag} <${interaction.user.id}>`,
 			durationMs: Math.round(performance.now() - startedAt),
-			message,
+			error,
 		});
 
 		if (interaction.replied || interaction.deferred) {

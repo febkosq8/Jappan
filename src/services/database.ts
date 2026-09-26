@@ -30,7 +30,7 @@ class DatabaseManager {
 		});
 		mongoose.connection.on("error", (error: Error) => {
 			if (this.hasConnected) {
-				logger.error("DATABASE", "MongoDB connection error", { message: error.message });
+				logger.error("DATABASE", "MongoDB connection error", { error });
 			}
 		});
 		mongoose.connection.on("disconnected", () => {
@@ -54,7 +54,7 @@ class DatabaseManager {
 			} catch (error: unknown) {
 				logger.error("DATABASE", "MongoDB index synchronization failed", {
 					model: modelName,
-					message: error instanceof Error ? error.message : String(error),
+					error,
 				});
 			}
 		}
@@ -98,8 +98,7 @@ class DatabaseManager {
 				})
 				.catch((error: unknown) => {
 					this.connectionPromise = undefined;
-					const message = error instanceof Error ? error.message : String(error);
-					logger.error("DATABASE", "MongoDB connection failed", { message });
+					logger.error("DATABASE", "MongoDB connection failed", { error });
 					throw error;
 				});
 		}

@@ -1,6 +1,6 @@
 import { Client, GatewayIntentBits, Partials } from "discord.js";
 
-import { registerDiscordHandlers } from "./handlers/discord.js";
+import { registerDiscordHandlers, registerExtendedDiscordHandlers } from "./handlers/discord.js";
 import { loadButtons } from "./services/buttonLoader.js";
 import { loadCommands } from "./services/commandLoader.js";
 import { getConfig } from "./services/config.js";
@@ -33,6 +33,7 @@ export async function startBot(): Promise<void> {
 	await loadCommands();
 	await loadButtons();
 	registerDiscordHandlers();
+	registerExtendedDiscordHandlers();
 
 	logger.info("DISCORD", "Connecting to Discord");
 	await client.login(getConfig("DISCORD_TOKEN"));
