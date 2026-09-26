@@ -83,6 +83,12 @@ const command: BotCommand = {
 		.addStringOption((option) =>
 			option.setName("user-id").setDescription("Only delete messages sent by this Discord user ID").setRequired(false),
 		)
+		.addStringOption((option) =>
+			option
+				.setName("text")
+				.setDescription("Only delete messages containing this text (case-sensitive)")
+				.setRequired(false),
+		)
 		.setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
 		.setContexts([InteractionContextType.Guild]),
 	execute: async ({ interaction, config }) => {
@@ -95,6 +101,7 @@ const command: BotCommand = {
 		const selectedChannel = interaction.options.getChannel("channel");
 		const targetUser = interaction.options.getUser("username");
 		const targetUserId = targetUser?.id ?? interaction.options.getString("user-id")?.trim();
+		const targetText = interaction.options.getString("text")?.trim();
 		const count = Math.floor(interaction.options.getNumber("count") ?? 200);
 		if (count < 1) {
 			await interaction.editReply("Count must be at least 1.");
@@ -283,6 +290,7 @@ const command: BotCommand = {
 					.filter(
 						(message) =>
 							(!targetUserId || message.author.id === targetUserId) &&
+							(!targetText || message.content.includes(targetText)) &&
 							message.interactionMetadata?.id !== interaction.id,
 					)
 					.slice(0, Math.max(0, count - progressState.deletedMessages))
