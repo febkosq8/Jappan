@@ -1,20 +1,7 @@
-import GuildModel, { type GuildDocument } from "../models/guild.js";
+import type { GuildDocument } from "../models/guild.js";
+import { getGuildSettings } from "./guild.js";
 
 export type MemberAnnouncementEvent = "in" | "out" | "both";
-
-async function getGuildSettings(guildId: string, guildName: string): Promise<GuildDocument> {
-	let guild = await GuildModel.findOne().where("guildId", guildId).exec();
-	if (!guild) {
-		guild = await GuildModel.create({ guildId, guildName });
-	}
-
-	if (guild.guildName !== guildName) {
-		guild.guildName = guildName;
-		await guild.save();
-	}
-
-	return guild;
-}
 
 export async function setMemberAnnouncement(
 	guildId: string,

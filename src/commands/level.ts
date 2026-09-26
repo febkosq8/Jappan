@@ -1,0 +1,119 @@
+import {
+	EmbedBuilder,
+	InteractionContextType,
+	MessageFlags,
+	PermissionFlagsBits,
+	roleMention,
+	SlashCommandBuilder,
+} from "discord.js";
+
+import type { BotCommand, BotCommandData } from "../helpers/command.js";
+import type { Config } from "../services/config.js";
+import { getLevelingStatus, setLeveling } from "../services/leveling.js";
+
+const commandData = {
+	name: "level",
+	description: "Control the leveling feature for this server",
+	category: "level",
+	isDBDependant: true,
+	requiredBotPermissions: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages],
+} satisfies BotCommandData;
+
+function createStatusEmbed(
+	guildName: string,
+	enabled: boolean,
+	threshold: number | null,
+	roleId: string | null,
+	config: Config,
+): EmbedBuilder {
+	return new EmbedBuilder()
+		.setColor(enabled ? "Green" : "Red")
+		.setTitle("Leveling Settings")
+		.setDescription(`**${guildName}**`)
+		.setAuthor({ name: `${config.BOT_NAME} : Leveling Status`, iconURL: config.BOT_PFP, url: config.BOT_WEBSITE })
+		.addFields(
+			{ name: "LEVELING", value: enabled ? "✅ Enabled" : "❌ Disabled", inline: false },
+			{
+				name: "ROLE REWARD",
+				value: threshold && roleId ? `✅ ${roleMention(roleId)} at ${threshold} points` : "Not configured",
+				inline: false,
+			},
+		)
+		.setTimestamp();
+}
+
+const command: BotCommand = {
+	commandData,
+	data: new SlashCommandBuilder()
+		.setName(commandData.name)
+		.setDescription(commandData.description)
+		.addSubcommand((subcommand) =>
+			subcommand
+				.setName("on")
+				.setDescription("Turn on the leveling system")
+				.addIntegerOption((option) =>
+					option
+						.setName("threshold")
+						.setDescription("Points required for the reward role")
+						.setMinValue(1)
+						.setRequired(true),
+				)
+				.addRoleOption((option) =>
+					option.setName("role").setDescription("Role awarded at the threshold").setRequired(true),
+				),
+		)
+		.addSubcommand((subcommand) => subcommand.setName("off").setDescription("Turn off the leveling system"))
+		.addSubcommand((subcommand) => subcommand.setName("check").setDescription("Check the leveling status"))
+		.setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+		.setContexts([InteractionContextType.Guild]),
+	execute: async ({ interaction, config }) => {
+		await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+		if (!interaction.guild) {
+			await interaction.editReply("This command can only be used in a guild.");
+			return;
+		}
+
+		if (interaction.options.getSubcommand() === "on") {
+			const threshold = interaction.options.getInteger("threshold", true);
+			const role = interaction.options.getRole("role", true);
+			const botMember = await interaction.guild.members.fetchMe();
+			const selectedRole = await interaction.guild.roles.fetch(role.id);
+			if (!selectedRole) {
+				await interaction.editReply(`The selected reward role ${roleMention(role.id)} could not be found.`);
+				return;
+			}
+			if (selectedRole.managed) {
+				await interaction.editReply(
+					`The selected reward role ${roleMention(role.id)} is managed by an integration and cannot be assigned by this bot.`,
+				);
+				return;
+			}
+			if (botMember.roles.highest.comparePositionTo(selectedRole) <= 0) {
+				await interaction.editReply(
+					`The selected reward role ${roleMention(role.id)} is at or above my highest role. Choose a lower role.`,
+				);
+				return;
+			}
+			await setLeveling(interaction.guild.id, interaction.guild.name, true, threshold, role.id);
+		}
+
+		if (interaction.options.getSubcommand() === "off") {
+			await setLeveling(interaction.guild.id, interaction.guild.name, false, null, null);
+		}
+
+		const status = await getLevelingStatus(interaction.guild.id, interaction.guild.name);
+		await interaction.editReply({
+			embeds: [
+				createStatusEmbed(
+					status.guildName,
+					status.leveling.enabled,
+					status.leveling.threshold ?? null,
+					status.leveling.roleId ?? null,
+					config,
+				),
+			],
+		});
+	},
+};
+
+export default command;
