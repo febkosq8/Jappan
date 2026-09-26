@@ -1,26 +1,44 @@
 export interface Config {
+	readonly ENVIRONMENT: string;
 	readonly DISCORD_TOKEN: string;
+	readonly BOT_NAME: string;
+	readonly BOT_PFP: string;
+	readonly BOT_WEBSITE: string;
 }
 
 let loadedConfig: Config | undefined;
 
-const configTemplate = {
-	DISCORD_TOKEN: undefined as string | undefined,
-} as const;
+const configTemplate: Partial<Record<keyof Config, string>> = {
+	ENVIRONMENT: "PRODUCTION",
+	BOT_NAME: "Jappan",
+	BOT_PFP: "https://jappan.febkosq8.me/assets/Profile-FDHZtz5Q.png",
+	BOT_WEBSITE: "https://jappan.febkosq8.me",
+};
 
-function readConfigValue(name: keyof typeof configTemplate): string | undefined {
+function readConfigValue(name: keyof Config, required = false): string {
 	const value = process.env[name]?.trim();
+	if (value) {
+		return value;
+	}
 
-	return value || configTemplate[name];
+	const defaultValue = configTemplate[name];
+	if (defaultValue !== undefined) {
+		return defaultValue;
+	} else if (required) {
+		throw new Error(`${name} is required`);
+	}
+
+	throw new Error(`${name} has no value or default`);
 }
 
 export function loadConfig(): Config {
-	const DISCORD_TOKEN = readConfigValue("DISCORD_TOKEN");
-	if (!DISCORD_TOKEN || DISCORD_TOKEN.length === 0) {
-		throw new Error("DISCORD_TOKEN is required");
-	}
+	const DISCORD_TOKEN = readConfigValue("DISCORD_TOKEN", true);
+	const ENVIRONMENT = readConfigValue("ENVIRONMENT");
+	const BOT_NAME = readConfigValue("BOT_NAME");
+	const BOT_PFP = readConfigValue("BOT_PFP");
+	const BOT_WEBSITE = readConfigValue("BOT_WEBSITE");
 
-	loadedConfig = { DISCORD_TOKEN };
+	loadedConfig = { DISCORD_TOKEN, ENVIRONMENT, BOT_NAME, BOT_PFP, BOT_WEBSITE };
 	return loadedConfig;
 }
 

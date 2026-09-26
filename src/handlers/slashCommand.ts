@@ -13,9 +13,7 @@ export async function handleSlashCommand(interaction: ChatInputCommandInteractio
 		});
 		return;
 	}
-
 	const startedAt = performance.now();
-
 	try {
 		await command.execute(interaction);
 		logger.info("SLASH_COMMANDS", "Application (/) command executed successfully", {
