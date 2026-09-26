@@ -1,13 +1,13 @@
 import { EmbedBuilder, InteractionContextType, MessageFlags, SlashCommandBuilder } from "discord.js";
 
-import type { BotCommand } from "../services/commandLoader.js";
+import type { BotCommand, BotCommandData } from "../services/commandLoader.js";
 import { getConfig } from "../services/config.js";
 import type { Config } from "../services/config.js";
 
 const commandData = {
 	name: "ping",
 	description: "Get latency information about the bot",
-} as const;
+} satisfies BotCommandData;
 
 const config = getConfig();
 

@@ -3,6 +3,7 @@ import type { Interaction } from "discord.js";
 
 import { getClient } from "../bot.js";
 import { getCommands, setRegisteredCommandIds } from "../services/commandLoader.js";
+import { getConfig } from "../services/config.js";
 import { logger } from "../services/logger.js";
 import { handleAutocomplete } from "./autocomplete.js";
 import { handleSlashCommand } from "./slashCommand.js";
@@ -12,9 +13,14 @@ export function registerDiscordHandlers(): void {
 	const commands = getCommands();
 
 	client.once(Events.ClientReady, (readyClient) => {
+		const config = getConfig();
+		config.BOT_NAME = readyClient.user.username;
+		config.BOT_PFP = readyClient.user.displayAvatarURL({ size: 256 });
 		logger.success("DISCORD", "Client ready", {
 			user: readyClient.user.tag,
 			guilds: readyClient.guilds.cache.size,
+			commands: commands.size,
+			users: readyClient.users.cache.size,
 		});
 	});
 
@@ -45,6 +51,7 @@ export function registerDiscordHandlers(): void {
 			type: InteractionType[interaction.type],
 			typeId: interaction.type,
 			command: "commandName" in interaction ? interaction.commandName : undefined,
+			customId: interaction.isMessageComponent() ? interaction.customId : undefined,
 			user: `${interaction.user.tag} <${interaction.user.id}>`,
 		});
 
@@ -53,10 +60,16 @@ export function registerDiscordHandlers(): void {
 			return;
 		}
 
-		if (!interaction.isChatInputCommand()) {
+		if (interaction.isChatInputCommand()) {
+			void handleSlashCommand(interaction);
 			return;
 		}
-
-		void handleSlashCommand(interaction);
+		logger.warn("DISCORD", "Unhandled interaction", {
+			type: InteractionType[interaction.type],
+			typeId: interaction.type,
+			customId: interaction.isMessageComponent() ? interaction.customId : undefined,
+			user: `${interaction.user.tag} <${interaction.user.id}>`,
+		});
+		return;
 	});
 }

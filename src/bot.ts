@@ -43,7 +43,13 @@ export function getClient(): Client {
 	return discordClient;
 }
 
-export function shutdownBot(signal: string): void {
-	logger.info("DISCORD", "Shutdown requested", { signal });
-	getClient().destroy();
+export function isBotConnected(): boolean {
+	return discordClient?.isReady() ?? false;
+}
+
+export async function disconnectBot(): Promise<void> {
+	const client = discordClient;
+	if (client?.isReady()) {
+		client.destroy();
+	}
 }

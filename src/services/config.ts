@@ -1,9 +1,10 @@
 export interface Config {
 	readonly ENVIRONMENT: string;
 	readonly DISCORD_TOKEN: string;
-	readonly BOT_NAME: string;
-	readonly BOT_PFP: string;
+	BOT_NAME: string;
+	BOT_PFP: string;
 	readonly BOT_WEBSITE: string;
+	readonly DB_URL: string;
 }
 
 let loadedConfig: Config | undefined;
@@ -37,8 +38,9 @@ export function loadConfig(): Config {
 	const BOT_NAME = readConfigValue("BOT_NAME");
 	const BOT_PFP = readConfigValue("BOT_PFP");
 	const BOT_WEBSITE = readConfigValue("BOT_WEBSITE");
+	const DB_URL = readConfigValue("DB_URL", true);
 
-	loadedConfig = { DISCORD_TOKEN, ENVIRONMENT, BOT_NAME, BOT_PFP, BOT_WEBSITE };
+	loadedConfig = { DISCORD_TOKEN, ENVIRONMENT, BOT_NAME, BOT_PFP, BOT_WEBSITE, DB_URL };
 	return loadedConfig;
 }
 

@@ -7,7 +7,7 @@ import type { ApplicationCommand } from "discord.js";
 import { isBotCommand } from "../helpers/command.js";
 import { logger } from "./logger.js";
 
-export type { BotCommand } from "../helpers/command.js";
+export type { BotCommand, BotCommandData } from "../helpers/command.js";
 import type { BotCommand } from "../helpers/command.js";
 
 type CommandModule = {
@@ -45,7 +45,6 @@ export async function loadCommands(): Promise<Collection<string, BotCommand>> {
 	}
 
 	loadedCommands = commands;
-	logger.info("SLASH_COMMANDS", `#${commands.size} Application (/) commands loaded`);
 	return loadedCommands;
 }
 
