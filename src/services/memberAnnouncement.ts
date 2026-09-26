@@ -116,7 +116,7 @@ async function disableAnnouncement(
 				? chatInputApplicationCommandMention("memberannounce", "on", commandId)
 				: "`/memberannounce on`";
 			await fallbackChannel.send(
-				`⚠️ Member ${event === "join" ? "join" : "leave"} announcements were automatically disabled because I can no longer access ${channelMention(channelId)}. Please configure a new channel with ${commandMention}.`,
+				`⚠️ Member ${event === "join" ? "join" : "leave"} announcements were automatically disabled because I can no longer access ${channelMention(channelId)} (channel ID: \`${channelId}\`).\n📣 PSA for admins: please configure a new channel with ${commandMention}.`,
 			);
 			return storedGuildSettingsData.memberAnnouncements;
 		} catch (error: unknown) {
