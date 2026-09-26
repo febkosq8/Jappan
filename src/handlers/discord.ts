@@ -5,9 +5,9 @@ import { getClient } from "../bot.js";
 import { getCommands, setRegisteredCommandIds } from "../services/commandLoader.js";
 import { getConfig } from "../services/config.js";
 import { logger } from "../services/logger.js";
-import { handleAutocomplete } from "./autocomplete.js";
-import { handleButton } from "./button.js";
-import { handleSlashCommand } from "./slashCommand.js";
+import { handleAutocompleteInteraction } from "./autocomplete.js";
+import { handleButtonInteraction } from "./button.js";
+import { handleSlashCommandInteraction } from "./slashCommand.js";
 
 export function registerDiscordHandlers(): void {
 	const client = getClient();
@@ -58,17 +58,17 @@ export function registerDiscordHandlers(): void {
 		});
 
 		if (interaction.isAutocomplete()) {
-			void handleAutocomplete({ interaction, config });
+			void handleAutocompleteInteraction({ interaction, config });
 			return;
 		}
 
 		if (interaction.isButton()) {
-			void handleButton({ interaction, config });
+			void handleButtonInteraction({ interaction, config });
 			return;
 		}
 
 		if (interaction.isChatInputCommand()) {
-			void handleSlashCommand({ interaction, config });
+			void handleSlashCommandInteraction({ interaction, config });
 			return;
 		}
 

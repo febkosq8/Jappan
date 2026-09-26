@@ -7,7 +7,7 @@ import { isDatabaseConnected } from "../services/database.js";
 import { logger } from "../services/logger.js";
 import { getMissingBotPermissions } from "../helpers/shared/permissions.js";
 
-export async function handleSlashCommand({
+export async function handleSlashCommandInteraction({
 	interaction,
 	config,
 }: {

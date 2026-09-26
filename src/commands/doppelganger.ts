@@ -72,14 +72,14 @@ const command: BotCommand = {
 		const deleteButton = new ActionRowBuilder<ButtonBuilder>().addComponents(
 			new ButtonBuilder().setLabel("Jump to message").setStyle(ButtonStyle.Link).setURL(message.url),
 			new ButtonBuilder()
-				.setCustomId(`DeleteDoppelganger|${message.id}|${message.channelId}|${interaction.user.id}`)
+				.setCustomId(`DeleteDoppelganger|MID#${message.id}:CID#${message.channelId}:UID#${targetUser.id}`)
 				.setLabel("Delete posted message")
 				.setStyle(ButtonStyle.Danger),
 		);
 		const notification = new EmbedBuilder()
 			.setColor("Blue")
-			.setTitle("A doppelganger message was posted")
-			.setAuthor({ name: `${config.BOT_NAME} : Notification`, iconURL: config.BOT_PFP, url: config.BOT_WEBSITE })
+			.setTitle("A doppelganger message has been posted")
+			.setAuthor({ name: `${config.BOT_NAME} : Notice`, iconURL: config.BOT_PFP, url: config.BOT_WEBSITE })
 			.setDescription("A fake message was posted impersonating you.")
 			.addFields(
 				{ name: "Message", value: notificationContent },
@@ -87,7 +87,6 @@ const command: BotCommand = {
 					name: "Location",
 					value: `${channelMention(interaction.channel.id)} in [${interaction.guild.name}](https://discord.com/channels/${interaction.guild.id})`,
 				},
-				{ name: "Actions", value: `[Jump to message](${message.url})` },
 			);
 
 		await targetUser.send({ embeds: [notification], components: [deleteButton] }).catch((error: unknown) => {

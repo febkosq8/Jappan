@@ -5,7 +5,7 @@ import type { Config } from "../services/config.js";
 import { logger } from "../services/logger.js";
 import { getButtonHandler } from "../services/buttonLoader.js";
 
-export async function handleButton({
+export async function handleButtonInteraction({
 	interaction,
 	config,
 }: {

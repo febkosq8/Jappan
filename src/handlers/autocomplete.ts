@@ -4,7 +4,7 @@ import { getCommands } from "../services/commandLoader.js";
 import type { Config } from "../services/config.js";
 import { logger } from "../services/logger.js";
 
-export async function handleAutocomplete({
+export async function handleAutocompleteInteraction({
 	interaction,
 	config: _config,
 }: {
