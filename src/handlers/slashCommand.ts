@@ -4,6 +4,7 @@ import { getCommands } from "../services/commandLoader.js";
 import { logger } from "../services/logger.js";
 
 export async function handleSlashCommand(interaction: ChatInputCommandInteraction): Promise<void> {
+	const startedAt = performance.now();
 	const commands = getCommands();
 	const command = commands.get(interaction.commandName);
 	if (!command) {
@@ -13,7 +14,6 @@ export async function handleSlashCommand(interaction: ChatInputCommandInteractio
 		});
 		return;
 	}
-	const startedAt = performance.now();
 	try {
 		await command.execute(interaction);
 		logger.info("SLASH_COMMANDS", "Application (/) command executed successfully", {
