@@ -1,22 +1,14 @@
 import "dotenv/config";
 import { pathToFileURL } from "node:url";
-import { createDiscordClient } from "./bot.js";
-import { getConfig, loadConfig } from "./config.js";
+import { shutdownBot, startBot as startDiscordBot } from "./bot.js";
+import { loadConfig } from "./config.js";
 import { logger } from "./logger.js";
 
 export async function startBot(): Promise<void> {
 	loadConfig();
-	const client = createDiscordClient();
-
-	const shutdown = (signal: string): void => {
-		logger.info("BOT", "Shutdown requested", { signal });
-		client.destroy();
-	};
-
-	process.once("SIGINT", () => shutdown("SIGINT"));
-	process.once("SIGTERM", () => shutdown("SIGTERM"));
-
-	await client.login(getConfig("DISCORD_TOKEN"));
+	process.once("SIGINT", () => shutdownBot("SIGINT"));
+	process.once("SIGTERM", () => shutdownBot("SIGTERM"));
+	await startDiscordBot();
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

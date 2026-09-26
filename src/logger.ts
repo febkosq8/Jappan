@@ -1,4 +1,4 @@
-import { blue, bold, gray, green, red, yellow } from "colorette";
+import { blue, bold, cyan, dim, gray, green, red, yellow } from "colorette";
 
 type LogDetails = Record<string, unknown>;
 
@@ -24,8 +24,10 @@ function formatDetails(details: LogDetails | undefined): string {
 }
 
 function write(level: LogLevel, category: string, message: string, details?: LogDetails): void {
+	const timestamp = dim(new Date().toISOString().slice(11, 19));
 	const label = levelColors[level](bold(level.toUpperCase()));
-	const output = `[${label}] [${category}] ${message}${formatDetails(details)}`;
+	const categoryLabel = cyan(bold(category));
+	const output = `[${timestamp}] [${label}] [${categoryLabel}] ${message}${formatDetails(details)}`;
 
 	if (level === "error") {
 		console.error(output);
