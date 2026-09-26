@@ -1,6 +1,9 @@
 import type { ButtonInteraction } from "discord.js";
 import type { Config } from "../services/config.js";
-import { handleHelpCategory } from "./category.js";
+import type { ButtonData, ButtonModule } from "../services/buttonLoader.js";
+import { handleHelpCategory } from "../helpers/buttonCategory.js";
+
+const buttonData = { id: "ModHelp" } satisfies ButtonData;
 
 export function handleModHelp({
 	interaction,
@@ -11,3 +14,7 @@ export function handleModHelp({
 }): Promise<void> {
 	return handleHelpCategory({ interaction, config, category: "moderator" });
 }
+
+const button: ButtonModule = { buttonData, execute: handleModHelp };
+
+export default button;

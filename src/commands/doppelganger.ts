@@ -2,6 +2,7 @@ import {
 	ActionRowBuilder,
 	ButtonBuilder,
 	ButtonStyle,
+	channelMention,
 	EmbedBuilder,
 	InteractionContextType,
 	MessageFlags,
@@ -53,12 +54,11 @@ const command: BotCommand = {
 		const webhooks = await interaction.channel.fetchWebhooks();
 		let webhook = webhooks.find(
 			(candidate) =>
-				candidate.name === `${interaction.client.user.username} : Doppelganger` &&
-				candidate.owner?.id === interaction.client.user.id,
+				candidate.name === `${config.BOT_NAME} : Doppelganger` && candidate.owner?.id === interaction.client.user.id,
 		);
 		if (!webhook) {
 			webhook = await interaction.channel.createWebhook({
-				name: `${interaction.client.user.username} : Doppelganger`,
+				name: `${config.BOT_NAME} : Doppelganger`,
 				avatar: config.BOT_PFP,
 			});
 		}
@@ -68,20 +68,26 @@ const command: BotCommand = {
 			username: member.displayName,
 			avatarURL: targetUser.displayAvatarURL(),
 		});
+		const notificationContent = content.length > 1021 ? `${content.slice(0, 1018)}...` : content || "(empty)";
 		const deleteButton = new ActionRowBuilder<ButtonBuilder>().addComponents(
+			new ButtonBuilder().setLabel("Jump to message").setStyle(ButtonStyle.Link).setURL(message.url),
 			new ButtonBuilder()
 				.setCustomId(`DeleteDoppelganger|${message.id}|${message.channelId}|${interaction.user.id}`)
-				.setLabel("Delete message")
+				.setLabel("Delete posted message")
 				.setStyle(ButtonStyle.Danger),
 		);
 		const notification = new EmbedBuilder()
 			.setColor("Blue")
-			.setTitle("Someone used `/doppelganger` on you")
+			.setTitle("A doppelganger message was posted")
 			.setAuthor({ name: `${config.BOT_NAME} : Notification`, iconURL: config.BOT_PFP, url: config.BOT_WEBSITE })
-			.setDescription("This command posts a fake message with your name and profile picture.")
+			.setDescription("A fake message was posted impersonating you.")
 			.addFields(
-				{ name: "Content", value: `${content} | [Jump to Message](${message.url})` },
-				{ name: "Location", value: `${interaction.guild} | ${interaction.channel}` },
+				{ name: "Message", value: notificationContent },
+				{
+					name: "Location",
+					value: `${channelMention(interaction.channel.id)} in [${interaction.guild.name}](https://discord.com/channels/${interaction.guild.id})`,
+				},
+				{ name: "Actions", value: `[Jump to message](${message.url})` },
 			);
 
 		await targetUser.send({ embeds: [notification], components: [deleteButton] }).catch((error: unknown) => {

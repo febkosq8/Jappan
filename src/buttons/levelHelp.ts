@@ -1,6 +1,9 @@
 import type { ButtonInteraction } from "discord.js";
 import type { Config } from "../services/config.js";
-import { handleHelpCategory } from "./category.js";
+import type { ButtonData, ButtonModule } from "../services/buttonLoader.js";
+import { handleHelpCategory } from "../helpers/buttonCategory.js";
+
+const buttonData = { id: "LevelHelp" } satisfies ButtonData;
 
 export function handleLevelHelp({
 	interaction,
@@ -11,3 +14,7 @@ export function handleLevelHelp({
 }): Promise<void> {
 	return handleHelpCategory({ interaction, config, category: "level" });
 }
+
+const button: ButtonModule = { buttonData, execute: handleLevelHelp };
+
+export default button;

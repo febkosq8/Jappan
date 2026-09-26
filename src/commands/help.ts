@@ -9,6 +9,7 @@ import {
 } from "discord.js";
 
 import type { BotCommand, BotCommandData } from "../services/commandLoader.js";
+import { getCommands } from "../services/commandLoader.js";
 
 const commandData = {
 	name: "help",
@@ -30,12 +31,17 @@ const command: BotCommand = {
 		.setContexts([InteractionContextType.Guild]),
 	execute: async ({ interaction, config }) => {
 		await interaction.deferReply();
+		const helpSections = [
+			{ id: "GeneralHelp", label: "General Commands", category: "general" },
+			{ id: "MusicHelp", label: "Music Commands", category: "music" },
+			{ id: "LevelHelp", label: "Level Commands", category: "level" },
+			{ id: "FunHelp", label: "Fun Commands", category: "fun" },
+			{ id: "ModHelp", label: "Moderator Commands", category: "moderator" },
+		].filter(({ category }) => getCommands().some((command) => command.commandData.category === category));
 		const buttons = new ActionRowBuilder<ButtonBuilder>().addComponents(
-			new ButtonBuilder().setCustomId("GeneralHelp").setLabel("General Commands").setStyle(ButtonStyle.Primary),
-			new ButtonBuilder().setCustomId("MusicHelp").setLabel("Music Commands").setStyle(ButtonStyle.Primary),
-			new ButtonBuilder().setCustomId("LevelHelp").setLabel("Level Commands").setStyle(ButtonStyle.Primary),
-			new ButtonBuilder().setCustomId("FunHelp").setLabel("Fun Commands").setStyle(ButtonStyle.Primary),
-			new ButtonBuilder().setCustomId("ModHelp").setLabel("Moderator Commands").setStyle(ButtonStyle.Primary),
+			helpSections.map(({ id, label }) =>
+				new ButtonBuilder().setCustomId(id).setLabel(label).setStyle(ButtonStyle.Primary),
+			),
 		);
 		const embed = new EmbedBuilder()
 			.setColor("Blue")

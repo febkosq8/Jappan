@@ -3,23 +3,7 @@ import type { ButtonInteraction } from "discord.js";
 
 import type { Config } from "../services/config.js";
 import { logger } from "../services/logger.js";
-import { handleFunHelp } from "../buttons/funHelp.js";
-import { handleGeneralHelp } from "../buttons/generalHelp.js";
-import { handleHelp } from "../buttons/help.js";
-import { handleLevelHelp } from "../buttons/levelHelp.js";
-import { handleModHelp } from "../buttons/modHelp.js";
-import { handleMusicHelp } from "../buttons/musicHelp.js";
-import { handlePing } from "../buttons/ping.js";
-
-const buttonHandlers = {
-	Ping: handlePing,
-	Help: handleHelp,
-	GeneralHelp: handleGeneralHelp,
-	MusicHelp: handleMusicHelp,
-	LevelHelp: handleLevelHelp,
-	FunHelp: handleFunHelp,
-	ModHelp: handleModHelp,
-} as const;
+import { getButtonHandler } from "../services/buttonLoader.js";
 
 export async function handleButton({
 	interaction,
@@ -29,7 +13,7 @@ export async function handleButton({
 	config: Config;
 }): Promise<void> {
 	const startedAt = performance.now();
-	const handler = buttonHandlers[interaction.customId as keyof typeof buttonHandlers];
+	const handler = getButtonHandler(interaction.customId);
 	if (!handler) {
 		logger.warn("BUTTONS", "Unknown button interaction", {
 			customId: interaction.customId,

@@ -1,5 +1,6 @@
 import {
 	ChannelType,
+	channelMention as formatChannelMention,
 	InteractionContextType,
 	EmbedBuilder,
 	MessageFlags,
@@ -246,7 +247,7 @@ const command: BotCommand = {
 				if (progressState.deletedMessages >= count) break;
 				progressState.processedChannels += 1;
 				progressState.currentChannel = channel.name;
-				progressState.currentChannelMention = `<#${channel.id}>`;
+				progressState.currentChannelMention = formatChannelMention(channel.id);
 				progressState.currentChannelScanned = 0;
 				progressState.currentChannelDeleted = 0;
 				progressState.currentChannelFailed = 0;
