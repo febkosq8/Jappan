@@ -80,4 +80,6 @@ export function registerDiscordHandlers(): void {
 		});
 		return;
 	});
+
+	logger.success("DISCORD", "Event handlers registered");
 }

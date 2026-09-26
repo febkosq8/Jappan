@@ -2,6 +2,7 @@ import { SlashCommandBuilder } from "discord.js";
 import type {
 	AutocompleteInteraction,
 	ChatInputCommandInteraction,
+	PermissionResolvable,
 	SlashCommandOptionsOnlyBuilder,
 	SlashCommandSubcommandsOnlyBuilder,
 } from "discord.js";
@@ -14,6 +15,7 @@ export interface BotCommandData {
 	readonly description: string;
 	readonly category: CommandCategory;
 	readonly isDBDependant?: boolean;
+	readonly requiredBotPermissions?: readonly PermissionResolvable[];
 }
 
 export interface BotCommandContext {

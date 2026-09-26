@@ -5,6 +5,7 @@ import {
 	EmbedBuilder,
 	InteractionContextType,
 	MessageFlags,
+	PermissionFlagsBits,
 	SlashCommandBuilder,
 } from "discord.js";
 
@@ -16,6 +17,12 @@ const commandData = {
 	description: "Make a user say something that you want",
 	category: "fun",
 	isDBDependant: false,
+	requiredBotPermissions: [
+		PermissionFlagsBits.ViewChannel,
+		PermissionFlagsBits.SendMessages,
+		PermissionFlagsBits.EmbedLinks,
+		PermissionFlagsBits.ManageWebhooks,
+	],
 } satisfies BotCommandData;
 
 const command: BotCommand = {

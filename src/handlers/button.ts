@@ -1,3 +1,4 @@
+import { MessageFlags } from "discord.js";
 import type { ButtonInteraction } from "discord.js";
 
 import type { Config } from "../services/config.js";
@@ -34,7 +35,7 @@ export async function handleButton({
 			customId: interaction.customId,
 			user: `${interaction.user.tag} <${interaction.user.id}>`,
 		});
-		await interaction.reply({ content: "This button is no longer available.", ephemeral: true });
+		await interaction.reply({ content: "This button is no longer available.", flags: MessageFlags.Ephemeral });
 		return;
 	}
 
@@ -53,7 +54,7 @@ export async function handleButton({
 			message,
 		});
 		if (!interaction.replied && !interaction.deferred) {
-			await interaction.reply({ content: "There was an error handling this button.", ephemeral: true });
+			await interaction.reply({ content: "There was an error handling this button.", flags: MessageFlags.Ephemeral });
 		}
 	}
 }

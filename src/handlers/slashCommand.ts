@@ -1,9 +1,11 @@
+import { MessageFlags, quote, underline } from "discord.js";
 import type { ChatInputCommandInteraction } from "discord.js";
 
 import { getCommand } from "../services/commandLoader.js";
 import type { Config } from "../services/config.js";
 import { isDatabaseConnected } from "../services/database.js";
 import { logger } from "../services/logger.js";
+import { getMissingBotPermissions } from "../helpers/shared/permissions.js";
 
 export async function handleSlashCommand({
 	interaction,
@@ -22,6 +24,21 @@ export async function handleSlashCommand({
 		return;
 	}
 	try {
+		const missingPermissions = getMissingBotPermissions(interaction, command.commandData.requiredBotPermissions);
+		if (missingPermissions.length > 0) {
+			logger.warn("SLASH_COMMANDS", "Application (/) command rejected because bot lacks permissions", {
+				command: interaction.commandName,
+				user: `${interaction.user.tag} <${interaction.user.id}>`,
+				missingPermissions,
+				durationMs: Math.round(performance.now() - startedAt),
+			});
+			await interaction.reply({
+				content: `I need these permissions to run this command: ${underline(missingPermissions.join(", "))}.`,
+				flags: MessageFlags.Ephemeral,
+			});
+			return;
+		}
+
 		if (command.commandData.isDBDependant && !isDatabaseConnected()) {
 			logger.warn("SLASH_COMMANDS", "Application (/) command rejected because database is unavailable", {
 				command: interaction.commandName,
@@ -30,7 +47,7 @@ export async function handleSlashCommand({
 			});
 			await interaction.reply({
 				content: "The bot is temporarily unavailable. Please try again later.",
-				ephemeral: true,
+				flags: MessageFlags.Ephemeral,
 			});
 			return;
 		}
@@ -53,12 +70,12 @@ export async function handleSlashCommand({
 		if (interaction.replied || interaction.deferred) {
 			await interaction.followUp({
 				content: "There was an error while running this Application (/) command.",
-				ephemeral: true,
+				flags: MessageFlags.Ephemeral,
 			});
 		} else {
 			await interaction.reply({
 				content: "There was an error while running this Application (/) command.",
-				ephemeral: true,
+				flags: MessageFlags.Ephemeral,
 			});
 		}
 	}

@@ -4,6 +4,7 @@ import {
 	ButtonStyle,
 	EmbedBuilder,
 	InteractionContextType,
+	PermissionFlagsBits,
 	SlashCommandBuilder,
 } from "discord.js";
 
@@ -14,6 +15,11 @@ const commandData = {
 	description: "List all available commands",
 	category: "general",
 	isDBDependant: false,
+	requiredBotPermissions: [
+		PermissionFlagsBits.ViewChannel,
+		PermissionFlagsBits.SendMessages,
+		PermissionFlagsBits.EmbedLinks,
+	],
 } satisfies BotCommandData;
 
 const command: BotCommand = {
