@@ -89,7 +89,8 @@ const command: BotCommand = {
 					name: "Location",
 					value: `${channelMention(interaction.channel.id)} in [${interaction.guild.name}](https://discord.com/channels/${interaction.guild.id})`,
 				},
-			);
+			)
+			.setTimestamp();
 
 		await targetUser.send({ embeds: [notification], components: [deleteButton] }).catch((error: unknown) => {
 			logger.warn("DOPPELGANGER", "Could not notify target user", {

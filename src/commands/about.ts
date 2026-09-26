@@ -53,7 +53,8 @@ const command: BotCommand = {
 					value: `Server active since ${uptime}\nDatabase: ${isDatabaseConnected() ? "Connected" : "Unavailable"}`,
 				},
 				{ name: "Know More", value: "Interact below" },
-			);
+			)
+			.setTimestamp();
 		await interaction.editReply({ embeds: [embed], components: [buttons] });
 	},
 };

@@ -16,7 +16,8 @@ function createPingEmbed(config: Config, botLatency: string, apiLatency: string)
 		.addFields(
 			{ name: ":robot: Bot Latency", value: botLatency },
 			{ name: ":satellite: Gateway Latency", value: apiLatency },
-		);
+		)
+		.setTimestamp();
 }
 
 export async function executePing({

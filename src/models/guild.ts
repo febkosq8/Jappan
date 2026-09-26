@@ -22,8 +22,10 @@ const levelingSchema = new Schema(
 
 const memberAnnouncementsSchema = new Schema(
 	{
-		enabled: { type: Boolean, required: true, default: false },
-		channelId: { type: String, default: null },
+		joinEnabled: { type: Boolean, required: true, default: false },
+		leaveEnabled: { type: Boolean, required: true, default: false },
+		joinChannelId: { type: String, default: null },
+		leaveChannelId: { type: String, default: null },
 	},
 	{ _id: false },
 );
@@ -41,7 +43,7 @@ const warningsSchema = new Schema(
 const guildSchema = new Schema(
 	{
 		guildId: { type: String, required: true, immutable: true },
-		name: { type: String, required: true, trim: true },
+		guildName: { type: String, required: true, trim: true },
 		auditLog: { type: auditLogSchema, required: true, default: () => ({}) },
 		leveling: { type: levelingSchema, required: true, default: () => ({}) },
 		memberAnnouncements: {

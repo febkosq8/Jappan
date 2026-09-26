@@ -32,6 +32,7 @@ export async function handleHelpCategory({
 			fields.length > 0
 				? fields
 				: [{ name: "No commands available", value: "There are no commands in this category yet." }],
-		);
+		)
+		.setTimestamp();
 	await interaction.reply({ flags: MessageFlags.Ephemeral, embeds: [embed] });
 }

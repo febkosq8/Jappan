@@ -47,7 +47,8 @@ const command: BotCommand = {
 			.setColor("Blue")
 			.setTitle(`Find help regarding ${config.BOT_NAME} here`)
 			.setAuthor({ name: `${config.BOT_NAME} : Docs`, iconURL: config.BOT_PFP, url: config.BOT_WEBSITE })
-			.setDescription("Select a topic below to proceed.");
+			.setDescription("Select a topic below to proceed.")
+			.setTimestamp();
 		await interaction.editReply({ embeds: [embed], components: [buttons] });
 	},
 };

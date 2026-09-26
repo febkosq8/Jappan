@@ -51,6 +51,7 @@ export async function handleDeleteDoppelganger({
 					.setColor("Green")
 					.setTitle("A doppelganger message was posted")
 					.setDescription("The doppelganger message has since been deleted.")
+					.setTimestamp()
 			: undefined;
 		await interaction.editReply({ embeds: notification ? [notification] : [], components: [] });
 	} catch {
@@ -58,6 +59,7 @@ export async function handleDeleteDoppelganger({
 			? EmbedBuilder.from(interaction.message.embeds[0])
 					.setColor("Red")
 					.setDescription("The doppelganger message could not be deleted.")
+					.setTimestamp()
 			: undefined;
 		await interaction.editReply({ embeds: notification ? [notification] : [], components: [] });
 	}
