@@ -15,7 +15,7 @@ import { logger } from "../services/logger.js";
 
 const commandData = {
 	name: "doppelganger",
-	description: "Make a user say something that you want",
+	description: "Post a message that appears to come from another user",
 	category: "fun",
 	isDBDependant: false,
 	requiredBotPermissions: [
@@ -32,9 +32,11 @@ const command: BotCommand = {
 		.setName(commandData.name)
 		.setDescription(commandData.description)
 		.addUserOption((option) =>
-			option.setName("user").setDescription("The user who will say the message").setRequired(true),
+			option.setName("user").setDescription("The user the message will appear to come from").setRequired(true),
 		)
-		.addStringOption((option) => option.setName("content").setDescription("The message to send").setRequired(true))
+		.addStringOption((option) =>
+			option.setName("content").setDescription("The message to post as the selected user").setRequired(true),
+		)
 		.setContexts([InteractionContextType.Guild]),
 	execute: async ({ interaction, config }) => {
 		await interaction.deferReply({ flags: MessageFlags.Ephemeral });
@@ -96,7 +98,7 @@ const command: BotCommand = {
 				message: error instanceof Error ? error.message : String(error),
 			});
 		});
-		await interaction.editReply("Message posted successfully.");
+		await interaction.editReply("Doppelganger message posted successfully.");
 	},
 };
 
