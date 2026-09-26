@@ -2,7 +2,7 @@ import { channelMention } from "discord.js";
 
 import GuildModel, { type GuildDocument } from "../models/guild.js";
 
-export type MemberAnnouncementEvent = "in" | "out";
+export type MemberAnnouncementEvent = "in" | "out" | "both";
 
 async function getGuildSettings(guildId: string, guildName: string): Promise<GuildDocument> {
 	let guild = await GuildModel.findOne().where("guildId", guildId).exec();
@@ -26,10 +26,11 @@ export async function setMemberAnnouncement(
 	channelId?: string,
 ): Promise<GuildDocument> {
 	const guild = await getGuildSettings(guildId, guildName);
-	if (event === "in") {
+	if (event === "in" || event === "both") {
 		guild.memberAnnouncements.joinEnabled = enabled;
 		guild.memberAnnouncements.joinChannelId = enabled ? (channelId ?? null) : null;
-	} else {
+	}
+	if (event === "out" || event === "both") {
 		guild.memberAnnouncements.leaveEnabled = enabled;
 		guild.memberAnnouncements.leaveChannelId = enabled ? (channelId ?? null) : null;
 	}

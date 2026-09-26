@@ -1,4 +1,5 @@
 import {
+	ChannelType,
 	EmbedBuilder,
 	InteractionContextType,
 	MessageFlags,
@@ -75,11 +76,26 @@ const command: BotCommand = {
 					option
 						.setName("event")
 						.setDescription("Member direction to announce")
-						.addChoices({ name: "Member joins", value: "in" }, { name: "Member leaves", value: "out" })
+						.addChoices(
+							{ name: "Member joins", value: "in" },
+							{ name: "Member leaves", value: "out" },
+							{ name: "Both", value: "both" },
+						)
 						.setRequired(true),
 				)
 				.addChannelOption((option) =>
-					option.setName("channel").setDescription("Text channel for member announcements").setRequired(true),
+					option
+						.setName("in-channel")
+						.setDescription("Channel for member join announcements")
+						.addChannelTypes(ChannelType.GuildText)
+						.setRequired(false),
+				)
+				.addChannelOption((option) =>
+					option
+						.setName("out-channel")
+						.setDescription("Channel for member leave announcements")
+						.addChannelTypes(ChannelType.GuildText)
+						.setRequired(false),
 				),
 		)
 		.addSubcommand((subcommand) =>
@@ -90,7 +106,11 @@ const command: BotCommand = {
 					option
 						.setName("event")
 						.setDescription("Member direction to stop announcing")
-						.addChoices({ name: "Member joins", value: "in" }, { name: "Member leaves", value: "out" })
+						.addChoices(
+							{ name: "Member joins", value: "in" },
+							{ name: "Member leaves", value: "out" },
+							{ name: "Both", value: "both" },
+						)
 						.setRequired(true),
 				),
 		)
@@ -106,33 +126,70 @@ const command: BotCommand = {
 
 		const subcommand = interaction.options.getSubcommand();
 		if (subcommand === "on") {
-			const event = interaction.options.getString("event", true) as "in" | "out";
-			const selectedChannel = interaction.options.getChannel("channel", true);
-			const channel = await interaction.guild.channels.fetch(selectedChannel.id);
-			if (!channel) {
-				await interaction.editReply("The selected channel could not be found.");
-				return;
-			}
-			if (!channel.isTextBased()) {
-				await interaction.editReply("The selected channel cannot receive messages.");
-				return;
-			}
-
-			const botMember = interaction.guild.members.me;
+			const event = interaction.options.getString("event", true) as "in" | "out" | "both";
+			const inChannel = interaction.options.getChannel("in-channel");
+			const outChannel = interaction.options.getChannel("out-channel");
 			if (
-				!botMember ||
-				!channel.permissionsFor(botMember)?.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages])
+				(event === "in" && !inChannel) ||
+				(event === "out" && !outChannel) ||
+				(event === "both" && (!inChannel || !outChannel))
 			) {
-				await interaction.editReply("I do not have permission to view and send messages in that channel.");
+				await interaction.editReply(
+					event === "both"
+						? "Select both an IN channel and an OUT channel."
+						: `Select an ${event === "in" ? "IN" : "OUT"} channel.`,
+				);
 				return;
 			}
 
-			await setMemberAnnouncement(interaction.guild.id, interaction.guild.name, event, true, channel.id);
-			await channel.send({ content: `${event === "in" ? "Member join" : "Member leave"} announcements are enabled.` });
+			const selectedChannels =
+				event === "in"
+					? [{ event: "in" as const, selectedChannel: inChannel! }]
+					: event === "out"
+						? [{ event: "out" as const, selectedChannel: outChannel! }]
+						: [
+								{ event: "in" as const, selectedChannel: inChannel! },
+								{ event: "out" as const, selectedChannel: outChannel! },
+							];
+			const channels = [];
+			for (const { event: selectedEvent, selectedChannel } of selectedChannels) {
+				const direction = selectedEvent === "in" ? "IN" : "OUT";
+				const channelMention = getAnnouncementChannelMention(selectedChannel.id) ?? selectedChannel.id;
+				const channel = await interaction.guild.channels.fetch(selectedChannel.id);
+				if (!channel) {
+					await interaction.editReply(`The selected ${direction} channel ${channelMention} could not be found.`);
+					return;
+				}
+				if (!channel.isTextBased()) {
+					await interaction.editReply(`The selected ${direction} channel ${channelMention} cannot receive messages.`);
+					return;
+				}
+
+				const botMember = interaction.guild.members.me;
+				if (
+					!botMember ||
+					!channel.permissionsFor(botMember)?.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages])
+				) {
+					await interaction.editReply(
+						`I do not have permission to view and send messages in the selected ${direction} channel ${channelMention}.`,
+					);
+					return;
+				}
+				channels.push({ event: selectedEvent, channel });
+			}
+
+			for (const { event: selectedEvent, channel } of channels) {
+				await setMemberAnnouncement(interaction.guild.id, interaction.guild.name, selectedEvent, true, channel.id);
+				const announcementType = selectedEvent === "in" ? "join" : "leave";
+				const channelMention = getAnnouncementChannelMention(channel.id) ?? channel.id;
+				await channel.send({
+					content: `Member ${announcementType} announcements are now enabled for this server. Future member ${announcementType} events will be posted here in ${channelMention}.`,
+				});
+			}
 		}
 
 		if (subcommand === "off") {
-			const event = interaction.options.getString("event", true) as "in" | "out";
+			const event = interaction.options.getString("event", true) as "in" | "out" | "both";
 			await setMemberAnnouncement(interaction.guild.id, interaction.guild.name, event, false);
 		}
 
