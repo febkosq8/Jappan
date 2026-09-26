@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 
+import { loadModels } from "../helpers/database.js";
 import { getConfig } from "./config.js";
 import { logger } from "./logger.js";
 
@@ -22,6 +23,7 @@ class DatabaseManager {
 			logger.success("DATABASE", "MongoDB connected", {
 				database: mongoose.connection.name,
 			});
+			void this.syncIndexes();
 		});
 		mongoose.connection.on("reconnected", () => {
 			logger.info("DATABASE", "MongoDB reconnected");
@@ -38,6 +40,24 @@ class DatabaseManager {
 		});
 
 		this.listenersRegistered = true;
+	}
+
+	private static async syncIndexes(): Promise<void> {
+		await loadModels();
+
+		for (const modelName of mongoose.modelNames()) {
+			try {
+				await mongoose.model(modelName).syncIndexes();
+				logger.info("DATABASE", "MongoDB indexes synchronized", {
+					model: modelName,
+				});
+			} catch (error: unknown) {
+				logger.error("DATABASE", "MongoDB index synchronization failed", {
+					model: modelName,
+					message: error instanceof Error ? error.message : String(error),
+				});
+			}
+		}
 	}
 
 	static getDatabaseStatus(): boolean {
