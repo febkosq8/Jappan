@@ -11,16 +11,16 @@ export async function setWarningSettings(
 	banThreshold: number | null,
 	auditChannelId: string | null,
 ): Promise<GuildDocument> {
-	const guild = await getGuildSettings(guildId, guildName);
-	guild.warnings.timeoutThreshold = timeoutThreshold;
-	guild.warnings.timeoutDurationHours = timeoutDurationHours;
-	guild.warnings.banThreshold = banThreshold;
-	guild.warnings.auditChannelId = auditChannelId;
-	return guild.save();
+	const storedGuild = await getGuildSettings({ guildId, guildName });
+	storedGuild.warnings.timeoutThreshold = timeoutThreshold;
+	storedGuild.warnings.timeoutDurationHours = timeoutDurationHours;
+	storedGuild.warnings.banThreshold = banThreshold;
+	storedGuild.warnings.auditChannelId = auditChannelId;
+	return storedGuild.save();
 }
 
 export async function getWarningSettings(guildId: string, guildName: string): Promise<GuildDocument> {
-	return getGuildSettings(guildId, guildName);
+	return getGuildSettings({ guildId, guildName });
 }
 
 export async function getWarningCount(guildId: string, userId: string): Promise<number> {

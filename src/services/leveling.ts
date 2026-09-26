@@ -24,16 +24,16 @@ export async function setLeveling(
 	threshold: number | null,
 	roleId: string | null,
 ): Promise<GuildDocument> {
-	const guild = await getGuildSettings(guildId, guildName);
-	guild.leveling.enabled = enabled;
-	guild.leveling.threshold = enabled ? threshold : null;
-	guild.leveling.roleId = enabled ? roleId : null;
-	return guild.save();
+	const storedGuild = await getGuildSettings({ guildId, guildName });
+	storedGuild.leveling.enabled = enabled;
+	storedGuild.leveling.threshold = enabled ? threshold : null;
+	storedGuild.leveling.roleId = enabled ? roleId : null;
+	return storedGuild.save();
 }
 
 export async function getLevelingStatus(guildId: string, guildName: string): Promise<LevelingStatus> {
-	const guild = await getGuildSettings(guildId, guildName);
-	return { guildId: guild.guildId, guildName: guild.guildName, leveling: guild.leveling };
+	const storedGuild = await getGuildSettings({ guildId, guildName });
+	return { guildId: storedGuild.guildId, guildName: storedGuild.guildName, leveling: storedGuild.leveling };
 }
 
 export async function getLeaderboard(

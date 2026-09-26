@@ -194,15 +194,15 @@ const command: BotCommand = {
 			await setMemberAnnouncement(interaction.guild.id, interaction.guild.name, event, false);
 		}
 
-		const status = await getMemberAnnouncementStatus(interaction.guild.id, interaction.guild.name);
+		const status = await getMemberAnnouncementStatus(interaction.guild);
 		await interaction.editReply({
 			embeds: [
 				createStatusEmbed(
-					status.guildName,
-					status.memberAnnouncements.joinEnabled,
-					status.memberAnnouncements.joinChannelId ?? null,
-					status.memberAnnouncements.leaveEnabled,
-					status.memberAnnouncements.leaveChannelId ?? null,
+					interaction.guild.name,
+					status.joinEnabled,
+					status.joinChannelId ?? null,
+					status.leaveEnabled,
+					status.leaveChannelId ?? null,
 					config,
 				),
 			],

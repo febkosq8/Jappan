@@ -65,6 +65,6 @@ guildSchema.index({ guildId: 1 }, { unique: true });
 export type Guild = InferSchemaType<typeof guildSchema>;
 export type GuildDocument = HydratedDocument<Guild>;
 
-const GuildModel = models.Guild ?? model<Guild>("Guild", guildSchema);
+const GuildModel = (models.Guild as mongoose.Model<Guild> | undefined) ?? model<Guild>("Guild", guildSchema);
 
 export default GuildModel;

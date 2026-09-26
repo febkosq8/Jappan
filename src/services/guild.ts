@@ -1,15 +1,29 @@
+import type { Guild as DiscordGuild } from "discord.js";
+
 import GuildModel, { type GuildDocument } from "../models/guild.js";
 
-export async function getGuildSettings(guildId: string, guildName: string): Promise<GuildDocument> {
-	let guild = await GuildModel.findOne().where("guildId", guildId).exec();
-	if (!guild) {
-		guild = await GuildModel.create({ guildId, guildName });
+export interface GuildSettingsOptions {
+	guildId?: string;
+	guildName?: string;
+	guild?: DiscordGuild;
+}
+
+export async function getGuildSettings({ guildId, guildName, guild }: GuildSettingsOptions): Promise<GuildDocument> {
+	const resolvedGuildId = guild?.id ?? guildId;
+	const resolvedGuildName = guild?.name ?? guildName;
+	if (!resolvedGuildId || !resolvedGuildName) {
+		throw new Error("Guild ID and guild name are required when guild is not provided");
 	}
 
-	if (guild.guildName !== guildName) {
-		guild.guildName = guildName;
-		await guild.save();
+	let storedGuild = await GuildModel.findOne({ guildId: resolvedGuildId }).exec();
+	if (!storedGuild) {
+		storedGuild = await GuildModel.create({ guildId: resolvedGuildId, guildName: resolvedGuildName });
 	}
 
-	return guild;
+	if (storedGuild.guildName !== resolvedGuildName) {
+		storedGuild.guildName = resolvedGuildName;
+		await storedGuild.save();
+	}
+
+	return storedGuild;
 }
