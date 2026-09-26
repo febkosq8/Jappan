@@ -52,15 +52,9 @@ const command: BotCommand = {
 				.setName("on")
 				.setDescription("Turn on the leveling system")
 				.addIntegerOption((option) =>
-					option
-						.setName("threshold")
-						.setDescription("Points required for the reward role")
-						.setMinValue(1)
-						.setRequired(true),
+					option.setName("threshold").setDescription("Optional points required for the reward role").setMinValue(1),
 				)
-				.addRoleOption((option) =>
-					option.setName("role").setDescription("Role awarded at the threshold").setRequired(true),
-				),
+				.addRoleOption((option) => option.setName("role").setDescription("Optional role awarded at the threshold")),
 		)
 		.addSubcommand((subcommand) => subcommand.setName("off").setDescription("Turn off the leveling system"))
 		.addSubcommand((subcommand) => subcommand.setName("check").setDescription("Check the leveling status"))
@@ -74,27 +68,33 @@ const command: BotCommand = {
 		}
 
 		if (interaction.options.getSubcommand() === "on") {
-			const threshold = interaction.options.getInteger("threshold", true);
-			const role = interaction.options.getRole("role", true);
-			const botMember = await interaction.guild.members.fetchMe();
-			const selectedRole = await interaction.guild.roles.fetch(role.id);
-			if (!selectedRole) {
-				await interaction.editReply(`The selected reward role ${roleMention(role.id)} could not be found.`);
+			const threshold = interaction.options.getInteger("threshold");
+			const role = interaction.options.getRole("role");
+			if ((threshold === null) !== (role === null)) {
+				await interaction.editReply("Provide both a threshold and a role to configure a leveling reward.");
 				return;
 			}
-			if (selectedRole.managed) {
-				await interaction.editReply(
-					`The selected reward role ${roleMention(role.id)} is managed by an integration and cannot be assigned by this bot.`,
-				);
-				return;
+			if (role) {
+				const botMember = await interaction.guild.members.fetchMe();
+				const selectedRole = await interaction.guild.roles.fetch(role.id);
+				if (!selectedRole) {
+					await interaction.editReply(`The selected reward role ${roleMention(role.id)} could not be found.`);
+					return;
+				}
+				if (selectedRole.managed) {
+					await interaction.editReply(
+						`The selected reward role ${roleMention(role.id)} is managed by an integration and cannot be assigned by this bot.`,
+					);
+					return;
+				}
+				if (botMember.roles.highest.comparePositionTo(selectedRole) <= 0) {
+					await interaction.editReply(
+						`The selected reward role ${roleMention(role.id)} is at or above my highest role. Choose a lower role.`,
+					);
+					return;
+				}
 			}
-			if (botMember.roles.highest.comparePositionTo(selectedRole) <= 0) {
-				await interaction.editReply(
-					`The selected reward role ${roleMention(role.id)} is at or above my highest role. Choose a lower role.`,
-				);
-				return;
-			}
-			await setLeveling(interaction.guild.id, interaction.guild.name, true, threshold, role.id);
+			await setLeveling(interaction.guild.id, interaction.guild.name, true, threshold, role?.id ?? null);
 		}
 
 		if (interaction.options.getSubcommand() === "off") {
