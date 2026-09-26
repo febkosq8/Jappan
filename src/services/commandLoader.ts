@@ -56,6 +56,10 @@ export function getCommands(): Collection<string, BotCommand> {
 	return loadedCommands;
 }
 
+export function getCommand(name: string): BotCommand | undefined {
+	return getCommands().get(name);
+}
+
 export function setRegisteredCommandIds(commands: Collection<string, ApplicationCommand>): void {
 	registeredCommandIds = new Collection(commands.map((command) => [command.name, command.id]));
 }

@@ -1,13 +1,12 @@
 import type { ChatInputCommandInteraction } from "discord.js";
 
-import { getCommands } from "../services/commandLoader.js";
+import { getCommand } from "../services/commandLoader.js";
 import { isDatabaseConnected } from "../services/database.js";
 import { logger } from "../services/logger.js";
 
 export async function handleSlashCommand(interaction: ChatInputCommandInteraction): Promise<void> {
 	const startedAt = performance.now();
-	const commands = getCommands();
-	const command = commands.get(interaction.commandName);
+	const command = getCommand(interaction.commandName);
 	if (!command) {
 		logger.warn("SLASH_COMMANDS", "Unknown Application (/) command", {
 			command: interaction.commandName,
