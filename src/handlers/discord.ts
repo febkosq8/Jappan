@@ -1,8 +1,11 @@
-import { Events } from "discord.js";
+import { Events, InteractionType } from "discord.js";
+import type { Interaction } from "discord.js";
 
 import { getClient } from "../bot.js";
 import { getCommands } from "../services/commandLoader.js";
 import { logger } from "../services/logger.js";
+import { handleAutocomplete } from "./autocomplete.js";
+import { handleSlashCommand } from "./slashCommand.js";
 
 export function registerDiscordHandlers(): void {
 	const client = getClient();
@@ -17,12 +20,12 @@ export function registerDiscordHandlers(): void {
 
 	client.once(Events.ClientReady, async (readyClient) => {
 		try {
-			logger.info("SLASH_COMMANDS", `Starting to update #${commands.size} application slash commands`);
+			logger.info("SLASH_COMMANDS", `Starting to update #${commands.size} Application (/) commands`);
 			await readyClient.application.commands.set(commands.map((command) => command.data.toJSON()));
-			logger.success("SLASH_COMMANDS", `#${commands.size} application slash commands updated`);
+			logger.success("SLASH_COMMANDS", `#${commands.size} Application (/) commands updated`);
 		} catch (error: unknown) {
 			const message = error instanceof Error ? error.message : String(error);
-			logger.error("SLASH_COMMANDS", "Failed to update application slash commands", { message });
+			logger.error("SLASH_COMMANDS", "Failed to update Application (/) commands", { message });
 		}
 	});
 
@@ -34,31 +37,23 @@ export function registerDiscordHandlers(): void {
 		});
 	});
 
-	client.on(Events.InteractionCreate, async (interaction) => {
+	client.on(Events.InteractionCreate, (interaction: Interaction) => {
+		logger.info("DISCORD", "Interaction received", {
+			type: InteractionType[interaction.type],
+			typeId: interaction.type,
+			command: "commandName" in interaction ? interaction.commandName : undefined,
+			user: `${interaction.user.tag} <${interaction.user.id}>`,
+		});
+
+		if (interaction.isAutocomplete()) {
+			void handleAutocomplete(interaction);
+			return;
+		}
+
 		if (!interaction.isChatInputCommand()) {
 			return;
 		}
 
-		const command = commands.get(interaction.commandName);
-		if (!command) {
-			logger.warn("SLASH_COMMANDS", "Unknown application slash command", { command: interaction.commandName });
-			return;
-		}
-
-		try {
-			await command.execute(interaction);
-		} catch (error: unknown) {
-			const message = error instanceof Error ? error.message : String(error);
-			logger.error("SLASH_COMMANDS", "Application slash command failed", {
-				command: interaction.commandName,
-				message,
-			});
-
-			if (interaction.replied || interaction.deferred) {
-				await interaction.followUp("There was an error while running this application slash command.");
-			} else {
-				await interaction.reply("There was an error while running this application slash command.");
-			}
-		}
+		void handleSlashCommand(interaction);
 	});
 }

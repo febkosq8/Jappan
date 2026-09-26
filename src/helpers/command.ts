@@ -1,9 +1,10 @@
 import { SlashCommandBuilder } from "discord.js";
-import type { ChatInputCommandInteraction } from "discord.js";
+import type { AutocompleteInteraction, ChatInputCommandInteraction } from "discord.js";
 
 export interface BotCommand {
 	readonly data: SlashCommandBuilder;
 	readonly execute: (interaction: ChatInputCommandInteraction) => Promise<void>;
+	readonly autocomplete?: (interaction: AutocompleteInteraction) => Promise<void>;
 }
 
 export function isBotCommand(value: unknown): value is BotCommand {

@@ -43,7 +43,7 @@ export async function loadCommands(): Promise<Collection<string, BotCommand>> {
 	}
 
 	loadedCommands = commands;
-	logger.info("SLASH_COMMANDS", `#${commands.size} application slash commands loaded`);
+	logger.info("SLASH_COMMANDS", `#${commands.size} Application (/) commands loaded`);
 	return loadedCommands;
 }
 
