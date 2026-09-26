@@ -15,15 +15,15 @@ export async function getGuildSettings({ guildId, guildName, guild }: GuildSetti
 		throw new Error("Guild ID and guild name are required when guild is not provided");
 	}
 
-	let storedGuild = await GuildModel.findOne({ guildId: resolvedGuildId }).exec();
-	if (!storedGuild) {
-		storedGuild = await GuildModel.create({ guildId: resolvedGuildId, guildName: resolvedGuildName });
+	let storedGuildData = await GuildModel.findOne({ guildId: resolvedGuildId }).exec();
+	if (!storedGuildData) {
+		storedGuildData = await GuildModel.create({ guildId: resolvedGuildId, guildName: resolvedGuildName });
 	}
 
-	if (storedGuild.guildName !== resolvedGuildName) {
-		storedGuild.guildName = resolvedGuildName;
-		await storedGuild.save();
+	if (storedGuildData.guildName !== resolvedGuildName) {
+		storedGuildData.guildName = resolvedGuildName;
+		await storedGuildData.save();
 	}
 
-	return storedGuild;
+	return storedGuildData;
 }

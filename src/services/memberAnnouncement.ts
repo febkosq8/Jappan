@@ -36,14 +36,14 @@ export async function setMemberAnnouncement(
 }
 
 export async function getMemberAnnouncementStatus(guild: Guild): Promise<GuildDocument["memberAnnouncements"]> {
-	const storedGuildSettings = await getGuildSettings({ guild });
+	const storedGuildSettingsData = await getGuildSettings({ guild });
 
 	for (const announcement of [
 		{ enabled: "joinEnabled", channel: "joinChannelId" },
 		{ enabled: "leaveEnabled", channel: "leaveChannelId" },
 	] as const) {
-		const channelId = storedGuildSettings.memberAnnouncements[announcement.channel];
-		if (!storedGuildSettings.memberAnnouncements[announcement.enabled] || !channelId) {
+		const channelId = storedGuildSettingsData.memberAnnouncements[announcement.channel];
+		if (!storedGuildSettingsData.memberAnnouncements[announcement.enabled] || !channelId) {
 			continue;
 		}
 
@@ -60,12 +60,12 @@ export async function getMemberAnnouncementStatus(guild: Guild): Promise<GuildDo
 		if (!channel?.isTextBased()) {
 			const event = announcement.enabled === "joinEnabled" ? "join" : "leave";
 			await disableAnnouncement(guild, event, channelId);
-			storedGuildSettings.memberAnnouncements[announcement.enabled] = false;
-			storedGuildSettings.memberAnnouncements[announcement.channel] = null;
+			storedGuildSettingsData.memberAnnouncements[announcement.enabled] = false;
+			storedGuildSettingsData.memberAnnouncements[announcement.channel] = null;
 		}
 	}
 
-	return storedGuildSettings.memberAnnouncements;
+	return storedGuildSettingsData.memberAnnouncements;
 }
 
 function isUnavailableChannelError(error: unknown): boolean {
@@ -82,15 +82,15 @@ async function disableAnnouncement(
 	event: "join" | "leave",
 	channelId: string,
 ): Promise<GuildDocument["memberAnnouncements"]> {
-	const storedGuildSettings = await getGuildSettings({ guild });
+	const storedGuildSettingsData = await getGuildSettings({ guild });
 	if (event === "join") {
-		storedGuildSettings.memberAnnouncements.joinEnabled = false;
-		storedGuildSettings.memberAnnouncements.joinChannelId = null;
+		storedGuildSettingsData.memberAnnouncements.joinEnabled = false;
+		storedGuildSettingsData.memberAnnouncements.joinChannelId = null;
 	} else {
-		storedGuildSettings.memberAnnouncements.leaveEnabled = false;
-		storedGuildSettings.memberAnnouncements.leaveChannelId = null;
+		storedGuildSettingsData.memberAnnouncements.leaveEnabled = false;
+		storedGuildSettingsData.memberAnnouncements.leaveChannelId = null;
 	}
-	await storedGuildSettings.save();
+	await storedGuildSettingsData.save();
 	logger.warn("DISCORD", "Member announcement disabled because its channel is unavailable", {
 		guildId: guild.id,
 		channelId,
@@ -118,7 +118,7 @@ async function disableAnnouncement(
 			await fallbackChannel.send(
 				`⚠️ Member ${event === "join" ? "join" : "leave"} announcements were automatically disabled because I can no longer access ${channelMention(channelId)}. Please configure a new channel with ${commandMention}.`,
 			);
-			return storedGuildSettings.memberAnnouncements;
+			return storedGuildSettingsData.memberAnnouncements;
 		} catch (error: unknown) {
 			logger.error("DISCORD", "Failed to notify guild about disabled member announcements", {
 				guildId: guild.id,
@@ -129,7 +129,7 @@ async function disableAnnouncement(
 		}
 	}
 
-	return storedGuildSettings.memberAnnouncements;
+	return storedGuildSettingsData.memberAnnouncements;
 }
 
 async function postAnnouncement(

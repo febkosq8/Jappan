@@ -11,12 +11,12 @@ export async function setWarningSettings(
 	banThreshold: number | null,
 	auditChannelId: string | null,
 ): Promise<GuildDocument> {
-	const storedGuild = await getGuildSettings({ guildId, guildName });
-	storedGuild.warnings.timeoutThreshold = timeoutThreshold;
-	storedGuild.warnings.timeoutDurationHours = timeoutDurationHours;
-	storedGuild.warnings.banThreshold = banThreshold;
-	storedGuild.warnings.auditChannelId = auditChannelId;
-	return storedGuild.save();
+	const storedGuildData = await getGuildSettings({ guildId, guildName });
+	storedGuildData.warnings.timeoutThreshold = timeoutThreshold;
+	storedGuildData.warnings.timeoutDurationHours = timeoutDurationHours;
+	storedGuildData.warnings.banThreshold = banThreshold;
+	storedGuildData.warnings.auditChannelId = auditChannelId;
+	return storedGuildData.save();
 }
 
 export async function getWarningSettings(guildId: string, guildName: string): Promise<GuildDocument> {
@@ -24,8 +24,8 @@ export async function getWarningSettings(guildId: string, guildName: string): Pr
 }
 
 export async function getWarningCount(guildId: string, userId: string): Promise<number> {
-	const state = await getGuildMemberState(guildId, userId);
-	return state?.warnings.count ?? 0;
+	const storedMemberStateData = await getGuildMemberState(guildId, userId);
+	return storedMemberStateData?.warnings.count ?? 0;
 }
 
 export async function issueWarning(
@@ -33,10 +33,10 @@ export async function issueWarning(
 	userId: string,
 	username: string,
 ): Promise<GuildMemberStateDocument> {
-	const state = await getOrCreateGuildMemberState(guildId, userId, username);
-	state.warnings.count += 1;
-	await state.save();
-	return state;
+	const storedMemberStateData = await getOrCreateGuildMemberState(guildId, userId, username);
+	storedMemberStateData.warnings.count += 1;
+	await storedMemberStateData.save();
+	return storedMemberStateData;
 }
 
 export async function overrideWarningCount(
@@ -45,8 +45,8 @@ export async function overrideWarningCount(
 	username: string,
 	count: number,
 ): Promise<GuildMemberStateDocument> {
-	const state = await getOrCreateGuildMemberState(guildId, userId, username);
-	state.warnings.count = count;
-	await state.save();
-	return state;
+	const storedMemberStateData = await getOrCreateGuildMemberState(guildId, userId, username);
+	storedMemberStateData.warnings.count = count;
+	await storedMemberStateData.save();
+	return storedMemberStateData;
 }

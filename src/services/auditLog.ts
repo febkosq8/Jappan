@@ -8,11 +8,11 @@ export async function setAuditLog(
 	channelId: string | null,
 	fullVerbosity: boolean,
 ): Promise<GuildDocument> {
-	const storedGuild = await getGuildSettings({ guildId, guildName });
-	storedGuild.auditLog.enabled = enabled;
-	storedGuild.auditLog.channelId = channelId;
-	storedGuild.auditLog.fullVerbosity = enabled && fullVerbosity;
-	return storedGuild.save();
+	const storedGuildData = await getGuildSettings({ guildId, guildName });
+	storedGuildData.auditLog.enabled = enabled;
+	storedGuildData.auditLog.channelId = channelId;
+	storedGuildData.auditLog.fullVerbosity = enabled && fullVerbosity;
+	return storedGuildData.save();
 }
 
 export async function getAuditLogStatus(guildId: string, guildName: string): Promise<GuildDocument> {

@@ -9,13 +9,13 @@ export async function getOrCreateGuildMemberState(
 	userId: string,
 	username: string,
 ): Promise<GuildMemberStateDocument> {
-	let state = await getGuildMemberState(guildId, userId);
-	if (!state) {
+	let storedMemberStateData = await getGuildMemberState(guildId, userId);
+	if (!storedMemberStateData) {
 		return await GuildMemberStateModel.create({ guildId, userId, username });
 	}
-	if (state.username !== username) {
-		state.username = username;
-		await state.save();
+	if (storedMemberStateData.username !== username) {
+		storedMemberStateData.username = username;
+		await storedMemberStateData.save();
 	}
-	return state;
+	return storedMemberStateData;
 }

@@ -162,7 +162,7 @@ const command: BotCommand = {
 					return;
 				}
 			}
-			const settings = await setWarningSettings(
+			const storedGuildData = await setWarningSettings(
 				interaction.guild.id,
 				interaction.guild.name,
 				timeoutThreshold,
@@ -173,11 +173,11 @@ const command: BotCommand = {
 			await interaction.editReply({
 				embeds: [
 					createSettingsEmbed(
-						settings.guildName,
-						settings.warnings.timeoutThreshold,
-						settings.warnings.timeoutDurationHours,
-						settings.warnings.banThreshold,
-						settings.warnings.auditChannelId,
+						storedGuildData.guildName,
+						storedGuildData.warnings.timeoutThreshold,
+						storedGuildData.warnings.timeoutDurationHours,
+						storedGuildData.warnings.banThreshold,
+						storedGuildData.warnings.auditChannelId,
 						config,
 					),
 				],
@@ -195,10 +195,10 @@ const command: BotCommand = {
 				return;
 			}
 			const reason = interaction.options.getString("reason") ?? "No reason provided";
-			const state = await issueWarning(interaction.guild.id, user.id, user.username);
-			const settings = await getWarningSettings(interaction.guild.id, interaction.guild.name);
-			if (settings.warnings.auditChannelId) {
-				const auditChannel = await interaction.guild.channels.fetch(settings.warnings.auditChannelId);
+			const storedMemberStateData = await issueWarning(interaction.guild.id, user.id, user.username);
+			const storedGuildData = await getWarningSettings(interaction.guild.id, interaction.guild.name);
+			if (storedGuildData.warnings.auditChannelId) {
+				const auditChannel = await interaction.guild.channels.fetch(storedGuildData.warnings.auditChannelId);
 				if (auditChannel?.isTextBased()) {
 					await auditChannel.send({
 						embeds: [
@@ -207,7 +207,7 @@ const command: BotCommand = {
 								.setTitle("Warning Issued")
 								.addFields(
 									{ name: "User", value: `${user}`, inline: true },
-									{ name: "Total Warnings", value: `${state.warnings.count}`, inline: true },
+									{ name: "Total Warnings", value: `${storedMemberStateData.warnings.count}`, inline: true },
 									{ name: "Reason", value: reason },
 									{ name: "Issued By", value: `${interaction.user}` },
 								)
@@ -216,26 +216,33 @@ const command: BotCommand = {
 					});
 				}
 			}
-			if (settings.warnings.banThreshold && state.warnings.count >= settings.warnings.banThreshold) {
+			if (
+				storedGuildData.warnings.banThreshold &&
+				storedMemberStateData.warnings.count >= storedGuildData.warnings.banThreshold
+			) {
 				await member.ban({ reason: `Warning threshold reached: ${reason}` });
-				await interaction.editReply(`${user} was warned and banned after reaching ${state.warnings.count} warnings.`);
+				await interaction.editReply(
+					`${user} was warned and banned after reaching ${storedMemberStateData.warnings.count} warnings.`,
+				);
 				return;
 			}
 			if (
-				settings.warnings.timeoutThreshold &&
-				settings.warnings.timeoutDurationHours &&
-				state.warnings.count >= settings.warnings.timeoutThreshold
+				storedGuildData.warnings.timeoutThreshold &&
+				storedGuildData.warnings.timeoutDurationHours &&
+				storedMemberStateData.warnings.count >= storedGuildData.warnings.timeoutThreshold
 			) {
 				await member.timeout(
-					settings.warnings.timeoutDurationHours * 60 * 60 * 1000,
+					storedGuildData.warnings.timeoutDurationHours * 60 * 60 * 1000,
 					`Warning threshold reached: ${reason}`,
 				);
 				await interaction.editReply(
-					`${user} was warned and timed out after reaching ${state.warnings.count} warnings.`,
+					`${user} was warned and timed out after reaching ${storedMemberStateData.warnings.count} warnings.`,
 				);
 				return;
 			}
-			await interaction.editReply(`Warning issued to ${user}. Total warnings: ${state.warnings.count}.`);
+			await interaction.editReply(
+				`Warning issued to ${user}. Total warnings: ${storedMemberStateData.warnings.count}.`,
+			);
 		}
 
 		if (subcommand === "check") {
