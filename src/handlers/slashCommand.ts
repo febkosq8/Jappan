@@ -1,6 +1,7 @@
 import type { ChatInputCommandInteraction } from "discord.js";
 
 import { getCommands } from "../services/commandLoader.js";
+import { isDatabaseConnected } from "../services/database.js";
 import { logger } from "../services/logger.js";
 
 export async function handleSlashCommand(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -15,6 +16,19 @@ export async function handleSlashCommand(interaction: ChatInputCommandInteractio
 		return;
 	}
 	try {
+		if (command.commandData.isDBDependant && !isDatabaseConnected()) {
+			logger.warn("SLASH_COMMANDS", "Application (/) command rejected because database is unavailable", {
+				command: interaction.commandName,
+				user: `${interaction.user.tag} <${interaction.user.id}>`,
+				durationMs: Math.round(performance.now() - startedAt),
+			});
+			await interaction.reply({
+				content: "The bot is temporarily unavailable. Please try again later.",
+				ephemeral: true,
+			});
+			return;
+		}
+
 		await command.execute(interaction);
 		logger.info("SLASH_COMMANDS", "Application (/) command executed successfully", {
 			command: interaction.commandName,

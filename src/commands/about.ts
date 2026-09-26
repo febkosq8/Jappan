@@ -13,11 +13,13 @@ import { getConfig } from "../services/config.js";
 const commandData = {
 	name: "about",
 	description: "Get to know more about this bot",
+	isDBDependant: false,
 } satisfies BotCommandData;
 
 const config = getConfig();
 
 const command: BotCommand = {
+	commandData,
 	data: new SlashCommandBuilder()
 		.setName(commandData.name)
 		.setDescription(`${config.BOT_NAME} : ${commandData.description}`)

@@ -7,6 +7,7 @@ import type { Config } from "../services/config.js";
 const commandData = {
 	name: "ping",
 	description: "Get latency information about the bot",
+	isDBDependant: false,
 } satisfies BotCommandData;
 
 const config = getConfig();
@@ -32,6 +33,7 @@ function createPingEmbed(config: Config, botLatency: string, apiLatency: string)
 }
 
 const command: BotCommand = {
+	commandData,
 	data: new SlashCommandBuilder()
 		.setName(commandData.name)
 		.setDescription(`${config.BOT_NAME} : ${commandData.description}`)

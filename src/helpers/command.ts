@@ -9,9 +9,11 @@ import type {
 export interface BotCommandData {
 	readonly name: string;
 	readonly description: string;
+	readonly isDBDependant?: boolean;
 }
 
 export interface BotCommand {
+	readonly commandData: BotCommandData;
 	readonly data: SlashCommandBuilder | SlashCommandOptionsOnlyBuilder | SlashCommandSubcommandsOnlyBuilder;
 	readonly execute: (interaction: ChatInputCommandInteraction) => Promise<void>;
 	readonly autocomplete?: (interaction: AutocompleteInteraction) => Promise<void>;
