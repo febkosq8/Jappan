@@ -27,6 +27,7 @@ export async function handleButton({
 	interaction: ButtonInteraction;
 	config: Config;
 }): Promise<void> {
+	const startedAt = performance.now();
 	const handler = buttonHandlers[interaction.customId as keyof typeof buttonHandlers];
 	if (!handler) {
 		logger.warn("BUTTONS", "Unknown button interaction", {
@@ -39,6 +40,11 @@ export async function handleButton({
 
 	try {
 		await handler({ interaction, config });
+		logger.info("BUTTONS", "Button interaction executed successfully", {
+			customId: interaction.customId,
+			user: `${interaction.user.tag} <${interaction.user.id}>`,
+			durationMs: Math.round(performance.now() - startedAt),
+		});
 	} catch (error: unknown) {
 		const message = error instanceof Error ? error.message : String(error);
 		logger.error("BUTTONS", "Button interaction failed", {

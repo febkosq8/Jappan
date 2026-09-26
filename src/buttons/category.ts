@@ -29,7 +29,9 @@ export async function handleHelpCategory({
 		.setAuthor({ name: `${config.BOT_NAME} : Docs`, iconURL: config.BOT_PFP, url: config.BOT_WEBSITE })
 		.setDescription(`${categoryName} Commands`)
 		.addFields(
-			fields.length > 0 ? fields : [{ name: "No commands available", value: "There are no commands in this category yet." }],
+			fields.length > 0
+				? fields
+				: [{ name: "No commands available", value: "There are no commands in this category yet." }],
 		);
 	await interaction.reply({ flags: MessageFlags.Ephemeral, embeds: [embed] });
 }

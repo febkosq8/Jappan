@@ -62,13 +62,13 @@ export function registerDiscordHandlers(): void {
 			return;
 		}
 
-		if (interaction.isChatInputCommand()) {
-			void handleSlashCommand({ interaction, config });
+		if (interaction.isButton()) {
+			void handleButton({ interaction, config });
 			return;
 		}
 
-		if (interaction.isButton()) {
-			void handleButton({ interaction, config });
+		if (interaction.isChatInputCommand()) {
+			void handleSlashCommand({ interaction, config });
 			return;
 		}
 
