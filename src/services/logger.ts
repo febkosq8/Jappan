@@ -1,4 +1,4 @@
-import { writeLog, type LogDetails } from "./helpers/logger.js";
+import { writeLog, type LogDetails } from "../helpers/logger.js";
 
 export const logger = {
 	info: (category: string, message: string, details?: LogDetails): void => writeLog("info", category, message, details),

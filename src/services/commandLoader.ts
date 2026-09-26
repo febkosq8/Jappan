@@ -1,13 +1,13 @@
+import { join } from "node:path";
 import { readdir } from "node:fs/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { join } from "node:path";
 import { Collection } from "discord.js";
 
-import { isBotCommand } from "./helpers/command.js";
+import { isBotCommand } from "../helpers/command.js";
 import { logger } from "./logger.js";
 
-export type { BotCommand } from "./helpers/command.js";
-import type { BotCommand } from "./helpers/command.js";
+export type { BotCommand } from "../helpers/command.js";
+import type { BotCommand } from "../helpers/command.js";
 
 type CommandModule = {
 	readonly default?: unknown;
@@ -16,7 +16,7 @@ type CommandModule = {
 let loadedCommands: Collection<string, BotCommand> | undefined;
 
 export async function loadCommands(): Promise<Collection<string, BotCommand>> {
-	const commandDirectory = fileURLToPath(new URL("./commands", import.meta.url));
+	const commandDirectory = fileURLToPath(new URL("../commands", import.meta.url));
 	const entries = await readdir(commandDirectory, { withFileTypes: true });
 	const commands = new Collection<string, BotCommand>();
 
@@ -43,7 +43,7 @@ export async function loadCommands(): Promise<Collection<string, BotCommand>> {
 	}
 
 	loadedCommands = commands;
-	logger.info("COMMANDS", "Commands loaded", { count: commands.size });
+	logger.info("SLASH_COMMANDS", `#${commands.size} application slash commands loaded`);
 	return loadedCommands;
 }
 

@@ -1,8 +1,8 @@
 import "dotenv/config";
 import { pathToFileURL } from "node:url";
 import { shutdownBot, startBot as startDiscordBot } from "./bot.js";
-import { loadConfig } from "./config.js";
-import { logger } from "./logger.js";
+import { loadConfig } from "./services/config.js";
+import { logger } from "./services/logger.js";
 
 export async function startBot(): Promise<void> {
 	loadConfig();

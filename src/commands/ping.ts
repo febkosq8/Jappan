@@ -1,6 +1,6 @@
 import { SlashCommandBuilder } from "discord.js";
 
-import type { BotCommand } from "../commandLoader.js";
+import type { BotCommand } from "../services/commandLoader.js";
 
 const commandData = {
 	name: "ping",

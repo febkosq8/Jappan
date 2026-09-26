@@ -1,8 +1,8 @@
 import { Events } from "discord.js";
 
 import { getClient } from "../bot.js";
-import { getCommands } from "../commandLoader.js";
-import { logger } from "../logger.js";
+import { getCommands } from "../services/commandLoader.js";
+import { logger } from "../services/logger.js";
 
 export function registerDiscordHandlers(): void {
 	const client = getClient();
@@ -17,12 +17,12 @@ export function registerDiscordHandlers(): void {
 
 	client.once(Events.ClientReady, async (readyClient) => {
 		try {
-			logger.info("COMMANDS", "Updating Discord commands", { count: commands.size });
+			logger.info("SLASH_COMMANDS", `Starting to update #${commands.size} application slash commands`);
 			await readyClient.application.commands.set(commands.map((command) => command.data.toJSON()));
-			logger.success("COMMANDS", "Discord commands updated", { count: commands.size });
+			logger.success("SLASH_COMMANDS", `#${commands.size} application slash commands updated`);
 		} catch (error: unknown) {
 			const message = error instanceof Error ? error.message : String(error);
-			logger.error("COMMANDS", "Failed to update Discord commands", { message });
+			logger.error("SLASH_COMMANDS", "Failed to update application slash commands", { message });
 		}
 	});
 
@@ -41,7 +41,7 @@ export function registerDiscordHandlers(): void {
 
 		const command = commands.get(interaction.commandName);
 		if (!command) {
-			logger.warn("COMMANDS", "Unknown command", { command: interaction.commandName });
+			logger.warn("SLASH_COMMANDS", "Unknown application slash command", { command: interaction.commandName });
 			return;
 		}
 
@@ -49,15 +49,15 @@ export function registerDiscordHandlers(): void {
 			await command.execute(interaction);
 		} catch (error: unknown) {
 			const message = error instanceof Error ? error.message : String(error);
-			logger.error("COMMANDS", "Command failed", {
+			logger.error("SLASH_COMMANDS", "Application slash command failed", {
 				command: interaction.commandName,
 				message,
 			});
 
 			if (interaction.replied || interaction.deferred) {
-				await interaction.followUp("There was an error while running this command.");
+				await interaction.followUp("There was an error while running this application slash command.");
 			} else {
-				await interaction.reply("There was an error while running this command.");
+				await interaction.reply("There was an error while running this application slash command.");
 			}
 		}
 	});

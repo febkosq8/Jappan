@@ -1,9 +1,9 @@
 import { Client, GatewayIntentBits, Partials } from "discord.js";
 
-import { loadCommands } from "./commandLoader.js";
-import { getConfig } from "./config.js";
 import { registerDiscordHandlers } from "./handlers/discord.js";
-import { logger } from "./logger.js";
+import { loadCommands } from "./services/commandLoader.js";
+import { getConfig } from "./services/config.js";
+import { logger } from "./services/logger.js";
 
 let discordClient: Client | undefined;
 
