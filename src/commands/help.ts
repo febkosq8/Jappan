@@ -8,23 +8,21 @@ import {
 } from "discord.js";
 
 import type { BotCommand, BotCommandData } from "../services/commandLoader.js";
-import { getConfig } from "../services/config.js";
 
 const commandData = {
 	name: "help",
 	description: "List all available commands",
+	category: "general",
 	isDBDependant: false,
 } satisfies BotCommandData;
-
-const config = getConfig();
 
 const command: BotCommand = {
 	commandData,
 	data: new SlashCommandBuilder()
 		.setName(commandData.name)
-		.setDescription(`${config.BOT_NAME} : ${commandData.description}`)
+		.setDescription(commandData.description)
 		.setContexts([InteractionContextType.Guild]),
-	execute: async (interaction) => {
+	execute: async ({ interaction, config }) => {
 		await interaction.deferReply();
 		const buttons = new ActionRowBuilder<ButtonBuilder>().addComponents(
 			new ButtonBuilder().setCustomId("GeneralHelp").setLabel("General Commands").setStyle(ButtonStyle.Primary),

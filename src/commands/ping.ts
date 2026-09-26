@@ -1,16 +1,14 @@
 import { EmbedBuilder, InteractionContextType, MessageFlags, SlashCommandBuilder } from "discord.js";
 
 import type { BotCommand, BotCommandData } from "../services/commandLoader.js";
-import { getConfig } from "../services/config.js";
 import type { Config } from "../services/config.js";
 
 const commandData = {
 	name: "ping",
 	description: "Get latency information about the bot",
+	category: "general",
 	isDBDependant: false,
 } satisfies BotCommandData;
-
-const config = getConfig();
 
 function createPingEmbed(config: Config, botLatency: string, apiLatency: string): EmbedBuilder {
 	return new EmbedBuilder()
@@ -36,9 +34,9 @@ const command: BotCommand = {
 	commandData,
 	data: new SlashCommandBuilder()
 		.setName(commandData.name)
-		.setDescription(`${config.BOT_NAME} : ${commandData.description}`)
+		.setDescription(commandData.description)
 		.setContexts([InteractionContextType.Guild, InteractionContextType.BotDM, InteractionContextType.PrivateChannel]),
-	execute: async (interaction) => {
+	execute: async ({ interaction, config }) => {
 		await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 		let botLatency = "Calculating...";
 		let apiLatency = "Calculating...";

@@ -8,23 +8,22 @@ import {
 } from "discord.js";
 
 import type { BotCommand, BotCommandData } from "../services/commandLoader.js";
-import { getConfig } from "../services/config.js";
+import { isDatabaseConnected } from "../services/database.js";
 
 const commandData = {
 	name: "about",
 	description: "Get to know more about this bot",
+	category: "general",
 	isDBDependant: false,
 } satisfies BotCommandData;
-
-const config = getConfig();
 
 const command: BotCommand = {
 	commandData,
 	data: new SlashCommandBuilder()
 		.setName(commandData.name)
-		.setDescription(`${config.BOT_NAME} : ${commandData.description}`)
+		.setDescription(commandData.description)
 		.setContexts([InteractionContextType.Guild]),
-	execute: async (interaction) => {
+	execute: async ({ interaction, config }) => {
 		await interaction.deferReply();
 		const uptime =
 			interaction.client.uptime === null
@@ -36,7 +35,6 @@ const command: BotCommand = {
 			new ButtonBuilder().setLabel("Status Updates").setURL("https://discord.gg/3mRbVCjvmz").setStyle(ButtonStyle.Link),
 			new ButtonBuilder().setLabel("Website").setURL(config.BOT_WEBSITE).setStyle(ButtonStyle.Link),
 		);
-		console.log({ config });
 		const embed = new EmbedBuilder()
 			.setColor("Blue")
 			.setTitle(`Find help regarding ${config.BOT_NAME} here`)
@@ -44,7 +42,10 @@ const command: BotCommand = {
 			.setDescription("I am a simple Discord bot made to make someone's life easier.")
 			.addFields(
 				{ name: "Features", value: "Application (/) commands, moderation tools, and utility commands" },
-				{ name: "Status", value: `Server active since ${uptime}\nDatabase: Not configured` },
+				{
+					name: "Status",
+					value: `Server active since ${uptime}\nDatabase: ${isDatabaseConnected() ? "Connected" : "Unavailable"}`,
+				},
 				{ name: "Know More", value: "Interact below" },
 			);
 		await interaction.editReply({ embeds: [embed], components: [buttons] });

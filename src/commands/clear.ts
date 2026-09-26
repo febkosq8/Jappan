@@ -7,21 +7,19 @@ import {
 } from "discord.js";
 
 import type { BotCommand, BotCommandData } from "../services/commandLoader.js";
-import { getConfig } from "../services/config.js";
 
 const commandData = {
 	name: "clear",
 	description: "Clear messages",
+	category: "moderator",
 	isDBDependant: false,
 } satisfies BotCommandData;
-
-const config = getConfig();
 
 const command: BotCommand = {
 	commandData,
 	data: new SlashCommandBuilder()
 		.setName(commandData.name)
-		.setDescription(`${config.BOT_NAME} : ${commandData.description}`)
+		.setDescription(commandData.description)
 		.addSubcommand((subcommand) =>
 			subcommand
 				.setName("channel")
@@ -43,7 +41,7 @@ const command: BotCommand = {
 		)
 		.setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
 		.setContexts([InteractionContextType.Guild]),
-	execute: async (interaction) => {
+	execute: async ({ interaction, config }) => {
 		await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 		if (
 			!interaction.guild ||

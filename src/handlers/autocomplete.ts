@@ -1,9 +1,16 @@
 import type { AutocompleteInteraction } from "discord.js";
 
 import { getCommands } from "../services/commandLoader.js";
+import type { Config } from "../services/config.js";
 import { logger } from "../services/logger.js";
 
-export async function handleAutocomplete(interaction: AutocompleteInteraction): Promise<void> {
+export async function handleAutocomplete({
+	interaction,
+	config: _config,
+}: {
+	interaction: AutocompleteInteraction;
+	config: Config;
+}): Promise<void> {
 	const command = getCommands().get(interaction.commandName);
 	if (!command) {
 		logger.warn("AUTOCOMPLETE", "Unknown application command for autocomplete", {

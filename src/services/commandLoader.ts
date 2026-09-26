@@ -7,7 +7,7 @@ import type { ApplicationCommand } from "discord.js";
 import { isBotCommand } from "../helpers/command.js";
 import { logger } from "./logger.js";
 
-export type { BotCommand, BotCommandData } from "../helpers/command.js";
+export type { BotCommand, BotCommandContext, BotCommandData, CommandCategory } from "../helpers/command.js";
 import type { BotCommand } from "../helpers/command.js";
 
 type CommandModule = {

@@ -5,17 +5,26 @@ import type {
 	SlashCommandOptionsOnlyBuilder,
 	SlashCommandSubcommandsOnlyBuilder,
 } from "discord.js";
+import type { Config } from "../services/config.js";
+
+export type CommandCategory = "general" | "music" | "level" | "fun" | "moderator";
 
 export interface BotCommandData {
 	readonly name: string;
 	readonly description: string;
+	readonly category: CommandCategory;
 	readonly isDBDependant?: boolean;
+}
+
+export interface BotCommandContext {
+	readonly interaction: ChatInputCommandInteraction;
+	readonly config: Config;
 }
 
 export interface BotCommand {
 	readonly commandData: BotCommandData;
 	readonly data: SlashCommandBuilder | SlashCommandOptionsOnlyBuilder | SlashCommandSubcommandsOnlyBuilder;
-	readonly execute: (interaction: ChatInputCommandInteraction) => Promise<void>;
+	readonly execute: (context: BotCommandContext) => Promise<void>;
 	readonly autocomplete?: (interaction: AutocompleteInteraction) => Promise<void>;
 }
 

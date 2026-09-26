@@ -6,11 +6,13 @@ import { getCommands, setRegisteredCommandIds } from "../services/commandLoader.
 import { getConfig } from "../services/config.js";
 import { logger } from "../services/logger.js";
 import { handleAutocomplete } from "./autocomplete.js";
+import { handleButton } from "./button.js";
 import { handleSlashCommand } from "./slashCommand.js";
 
 export function registerDiscordHandlers(): void {
 	const client = getClient();
 	const commands = getCommands();
+	const config = getConfig();
 
 	client.once(Events.ClientReady, (readyClient) => {
 		const config = getConfig();
@@ -56,14 +58,20 @@ export function registerDiscordHandlers(): void {
 		});
 
 		if (interaction.isAutocomplete()) {
-			void handleAutocomplete(interaction);
+			void handleAutocomplete({ interaction, config });
 			return;
 		}
 
 		if (interaction.isChatInputCommand()) {
-			void handleSlashCommand(interaction);
+			void handleSlashCommand({ interaction, config });
 			return;
 		}
+
+		if (interaction.isButton()) {
+			void handleButton({ interaction, config });
+			return;
+		}
+
 		logger.warn("DISCORD", "Unhandled interaction", {
 			type: InteractionType[interaction.type],
 			typeId: interaction.type,

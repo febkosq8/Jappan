@@ -1,10 +1,17 @@
 import type { ChatInputCommandInteraction } from "discord.js";
 
 import { getCommand } from "../services/commandLoader.js";
+import type { Config } from "../services/config.js";
 import { isDatabaseConnected } from "../services/database.js";
 import { logger } from "../services/logger.js";
 
-export async function handleSlashCommand(interaction: ChatInputCommandInteraction): Promise<void> {
+export async function handleSlashCommand({
+	interaction,
+	config,
+}: {
+	interaction: ChatInputCommandInteraction;
+	config: Config;
+}): Promise<void> {
 	const startedAt = performance.now();
 	const command = getCommand(interaction.commandName);
 	if (!command) {
@@ -28,7 +35,7 @@ export async function handleSlashCommand(interaction: ChatInputCommandInteractio
 			return;
 		}
 
-		await command.execute(interaction);
+		await command.execute({ interaction, config });
 		logger.info("SLASH_COMMANDS", "Application (/) command executed successfully", {
 			command: interaction.commandName,
 			user: `${interaction.user.tag} <${interaction.user.id}>`,
