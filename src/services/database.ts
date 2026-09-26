@@ -91,7 +91,6 @@ class DatabaseManager {
 		this.hasExited = true;
 		if (!this.hasConnected || mongoose.connection.readyState === 0) {
 			this.connectionPromise = undefined;
-			logger.info("DATABASE", "MongoDB never connected");
 			return;
 		}
 
