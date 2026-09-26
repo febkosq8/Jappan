@@ -5,11 +5,12 @@ import {
 	MessageFlags,
 	PermissionFlagsBits,
 	SlashCommandBuilder,
+	channelMention,
 } from "discord.js";
 
 import type { BotCommand, BotCommandData } from "../helpers/command.js";
 import type { Config } from "../services/config.js";
-import { getAuditLogChannelMention, getAuditLogStatus, setAuditLog } from "../services/auditLog.js";
+import { getAuditLogStatus, setAuditLog } from "../services/auditLog.js";
 
 const commandData = {
 	name: "auditlog",
@@ -41,7 +42,7 @@ function createStatusEmbed(
 		{
 			name: `${enabled ? "✅" : "❌"} AUDIT LOG`,
 			value: enabled
-				? `Audit events are sent to ${getAuditLogChannelMention(channelId) ?? "the configured channel (currently unavailable)"}.`
+				? `Audit events are sent to ${channelId ? channelMention(channelId) : "the configured channel (currently unavailable)"}.`
 				: "No audit events are sent.",
 			inline: false,
 		},

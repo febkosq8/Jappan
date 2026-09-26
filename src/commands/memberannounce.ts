@@ -5,15 +5,12 @@ import {
 	MessageFlags,
 	PermissionFlagsBits,
 	SlashCommandBuilder,
+	channelMention,
 } from "discord.js";
 
 import type { BotCommand, BotCommandData } from "../helpers/command.js";
 import type { Config } from "../services/config.js";
-import {
-	getAnnouncementChannelMention,
-	getMemberAnnouncementStatus,
-	setMemberAnnouncement,
-} from "../services/memberAnnouncement.js";
+import { getMemberAnnouncementStatus, setMemberAnnouncement } from "../services/memberAnnouncement.js";
 
 const commandData = {
 	name: "memberannounce",
@@ -33,7 +30,7 @@ function createStatusEmbed(
 ): EmbedBuilder {
 	const formatStatus = (enabled: boolean, channelId: string | null, action: "joins" | "leaves"): string =>
 		enabled
-			? `When a member ${action}, an announcement is sent to ${getAnnouncementChannelMention(channelId) ?? "the configured channel (currently unavailable)"}.`
+			? `When a member ${action}, an announcement is sent to ${channelId ? channelMention(channelId) : "the configured channel (currently unavailable)"}.`
 			: `When a member ${action}, nothing is sent.`;
 
 	const embed = new EmbedBuilder()
@@ -154,14 +151,18 @@ const command: BotCommand = {
 			const channels = [];
 			for (const { event: selectedEvent, selectedChannel } of selectedChannels) {
 				const direction = selectedEvent === "in" ? "IN" : "OUT";
-				const channelMention = getAnnouncementChannelMention(selectedChannel.id) ?? selectedChannel.id;
+				const selectedChannelMention = channelMention(selectedChannel.id);
 				const channel = await interaction.guild.channels.fetch(selectedChannel.id);
 				if (!channel) {
-					await interaction.editReply(`The selected ${direction} channel ${channelMention} could not be found.`);
+					await interaction.editReply(
+						`The selected ${direction} channel ${selectedChannelMention} could not be found.`,
+					);
 					return;
 				}
 				if (!channel.isTextBased()) {
-					await interaction.editReply(`The selected ${direction} channel ${channelMention} cannot receive messages.`);
+					await interaction.editReply(
+						`The selected ${direction} channel ${selectedChannelMention} cannot receive messages.`,
+					);
 					return;
 				}
 
@@ -171,7 +172,7 @@ const command: BotCommand = {
 					!channel.permissionsFor(botMember)?.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages])
 				) {
 					await interaction.editReply(
-						`I do not have permission to view and send messages in the selected ${direction} channel ${channelMention}.`,
+						`I do not have permission to view and send messages in the selected ${direction} channel ${selectedChannelMention}.`,
 					);
 					return;
 				}
@@ -181,9 +182,9 @@ const command: BotCommand = {
 			for (const { event: selectedEvent, channel } of channels) {
 				await setMemberAnnouncement(interaction.guild.id, interaction.guild.name, selectedEvent, true, channel.id);
 				const announcementType = selectedEvent === "in" ? "join" : "leave";
-				const channelMention = getAnnouncementChannelMention(channel.id) ?? channel.id;
+				const selectedChannelMention = channelMention(channel.id);
 				await channel.send({
-					content: `Member ${announcementType} announcements are now enabled for this server. Future member ${announcementType} events will be posted here in ${channelMention}.`,
+					content: `Member ${announcementType} announcements are now enabled for this server. Future member ${announcementType} events will be posted here in ${selectedChannelMention}.`,
 				});
 			}
 		}

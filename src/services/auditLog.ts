@@ -1,5 +1,3 @@
-import { channelMention } from "discord.js";
-
 import GuildModel, { type GuildDocument } from "../models/guild.js";
 
 async function getGuildSettings(guildId: string, guildName: string): Promise<GuildDocument> {
@@ -32,8 +30,4 @@ export async function setAuditLog(
 
 export async function getAuditLogStatus(guildId: string, guildName: string): Promise<GuildDocument> {
 	return getGuildSettings(guildId, guildName);
-}
-
-export function getAuditLogChannelMention(channelId: string | null): string | null {
-	return channelId ? channelMention(channelId) : null;
 }

@@ -1,5 +1,3 @@
-import { channelMention } from "discord.js";
-
 import GuildModel, { type GuildDocument } from "../models/guild.js";
 
 export type MemberAnnouncementEvent = "in" | "out" | "both";
@@ -40,8 +38,4 @@ export async function setMemberAnnouncement(
 
 export async function getMemberAnnouncementStatus(guildId: string, guildName: string): Promise<GuildDocument> {
 	return getGuildSettings(guildId, guildName);
-}
-
-export function getAnnouncementChannelMention(channelId: string | null): string | null {
-	return channelId ? channelMention(channelId) : null;
 }
