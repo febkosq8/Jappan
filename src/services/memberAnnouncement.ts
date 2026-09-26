@@ -58,8 +58,26 @@ async function postAnnouncement(
 				new EmbedBuilder()
 					.setColor(event === "join" ? "Green" : "Red")
 					.setAuthor({ name: config.BOT_NAME, iconURL: config.BOT_PFP, url: config.BOT_WEBSITE })
-					.setTitle(event === "join" ? "Member Joined" : "Member Left")
-					.setDescription(`${userMention(member.user.id)} ${event === "join" ? "joined" : "left"} the server.`)
+					.setTitle(event === "join" ? "New Member" : "Member Departed")
+					.setDescription(
+						event === "join"
+							? `🎉 Welcome, ${userMention(member.user.id)}! Glad to have you here.`
+							: `👋 ${userMention(member.user.id)} has left the server. We wish them well!`,
+					)
+					.setThumbnail(member.user.displayAvatarURL({ size: 256 }))
+					.addFields(
+						{ name: "User", value: userMention(member.user.id), inline: true },
+						...(event === "leave" && member.joinedTimestamp
+							? [
+									{
+										name: "Joined At",
+										value: `<t:${Math.floor(member.joinedTimestamp / 1000)}:D>`,
+										inline: true,
+									},
+								]
+							: []),
+					)
+					.setFooter({ text: `User ID: ${member.user.id}` })
 					.setTimestamp(),
 			],
 		});
