@@ -1,12 +1,19 @@
-import { EmbedBuilder, userMention } from "discord.js";
-import type { GuildMember, PartialGuildMember } from "discord.js";
+import {
+	EmbedBuilder,
+	PermissionFlagsBits,
+	channelMention,
+	chatInputApplicationCommandMention,
+	userMention,
+} from "discord.js";
+import type { Guild, GuildMember, PartialGuildMember } from "discord.js";
 
 import type { GuildDocument } from "../models/guild.js";
+import { getCommandId } from "./commandLoader.js";
 import type { Config } from "./config.js";
 import { getGuildSettings } from "./guild.js";
 import { logger } from "./logger.js";
 
-export type MemberAnnouncementEvent = "in" | "out" | "both";
+export type MemberAnnouncementEvent = "join" | "leave" | "both";
 
 export async function setMemberAnnouncement(
 	guildId: string,
@@ -16,11 +23,11 @@ export async function setMemberAnnouncement(
 	channelId?: string,
 ): Promise<GuildDocument> {
 	const guild = await getGuildSettings(guildId, guildName);
-	if (event === "in" || event === "both") {
+	if (event === "join" || event === "both") {
 		guild.memberAnnouncements.joinEnabled = enabled;
 		guild.memberAnnouncements.joinChannelId = enabled ? (channelId ?? null) : null;
 	}
-	if (event === "out" || event === "both") {
+	if (event === "leave" || event === "both") {
 		guild.memberAnnouncements.leaveEnabled = enabled;
 		guild.memberAnnouncements.leaveChannelId = enabled ? (channelId ?? null) : null;
 	}
@@ -30,6 +37,55 @@ export async function setMemberAnnouncement(
 
 export async function getMemberAnnouncementStatus(guildId: string, guildName: string): Promise<GuildDocument> {
 	return getGuildSettings(guildId, guildName);
+}
+
+async function disableAnnouncement(guild: Guild, event: "join" | "leave", channelId: string): Promise<void> {
+	const settings = await getMemberAnnouncementStatus(guild.id, guild.name);
+	if (event === "join") {
+		settings.memberAnnouncements.joinEnabled = false;
+		settings.memberAnnouncements.joinChannelId = null;
+	} else {
+		settings.memberAnnouncements.leaveEnabled = false;
+		settings.memberAnnouncements.leaveChannelId = null;
+	}
+	await settings.save();
+	logger.warn("DISCORD", "Member announcement disabled because its channel is unavailable", {
+		guildId: guild.id,
+		channelId,
+		event,
+	});
+
+	const botMember = await guild.members.fetchMe().catch(() => null);
+	const channels = [guild.systemChannel, ...guild.channels.cache.values()];
+	for (const fallbackChannel of channels) {
+		if (
+			!fallbackChannel?.isTextBased() ||
+			(botMember &&
+				!fallbackChannel
+					.permissionsFor(botMember)
+					?.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages]))
+		) {
+			continue;
+		}
+
+		try {
+			const commandId = getCommandId("memberannounce");
+			const commandMention = commandId
+				? chatInputApplicationCommandMention("memberannounce", "on", commandId)
+				: "`/memberannounce on`";
+			await fallbackChannel.send(
+				`⚠️ Member ${event === "join" ? "join" : "leave"} announcements were automatically disabled because I can no longer access ${channelMention(channelId)}. Please configure a new channel with ${commandMention}.`,
+			);
+			return;
+		} catch (error: unknown) {
+			logger.error("DISCORD", "Failed to notify guild about disabled member announcements", {
+				guildId: guild.id,
+				channelId: fallbackChannel.id,
+				event,
+				error,
+			});
+		}
+	}
 }
 
 async function postAnnouncement(
@@ -45,11 +101,7 @@ async function postAnnouncement(
 	try {
 		const channel = await member.guild.channels.fetch(channelId);
 		if (!channel?.isTextBased()) {
-			logger.warn("DISCORD", "Member announcement channel is unavailable", {
-				guildId: member.guild.id,
-				channelId,
-				event,
-			});
+			await disableAnnouncement(member.guild, event, channelId);
 			return;
 		}
 

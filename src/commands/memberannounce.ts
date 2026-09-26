@@ -46,12 +46,12 @@ function createStatusEmbed(
 
 	embed.addFields(
 		{
-			name: `${joinEnabled ? "✅" : "❌"} IN`,
+			name: `${joinEnabled ? "✅" : "❌"} JOIN`,
 			value: formatStatus(joinEnabled, joinChannelId, "joins"),
 			inline: false,
 		},
 		{
-			name: `${leaveEnabled ? "✅" : "❌"} OUT`,
+			name: `${leaveEnabled ? "✅" : "❌"} LEAVE`,
 			value: formatStatus(leaveEnabled, leaveChannelId, "leaves"),
 			inline: false,
 		},
@@ -74,22 +74,22 @@ const command: BotCommand = {
 						.setName("event")
 						.setDescription("Member direction to announce")
 						.addChoices(
-							{ name: "Member joins", value: "in" },
-							{ name: "Member leaves", value: "out" },
+							{ name: "Member joins", value: "join" },
+							{ name: "Member leaves", value: "leave" },
 							{ name: "Both", value: "both" },
 						)
 						.setRequired(true),
 				)
 				.addChannelOption((option) =>
 					option
-						.setName("in-channel")
+						.setName("join-channel")
 						.setDescription("Channel for member join announcements")
 						.addChannelTypes(ChannelType.GuildText)
 						.setRequired(false),
 				)
 				.addChannelOption((option) =>
 					option
-						.setName("out-channel")
+						.setName("leave-channel")
 						.setDescription("Channel for member leave announcements")
 						.addChannelTypes(ChannelType.GuildText)
 						.setRequired(false),
@@ -104,8 +104,8 @@ const command: BotCommand = {
 						.setName("event")
 						.setDescription("Member direction to stop announcing")
 						.addChoices(
-							{ name: "Member joins", value: "in" },
-							{ name: "Member leaves", value: "out" },
+							{ name: "Member joins", value: "join" },
+							{ name: "Member leaves", value: "leave" },
 							{ name: "Both", value: "both" },
 						)
 						.setRequired(true),
@@ -123,34 +123,34 @@ const command: BotCommand = {
 
 		const subcommand = interaction.options.getSubcommand();
 		if (subcommand === "on") {
-			const event = interaction.options.getString("event", true) as "in" | "out" | "both";
-			const inChannel = interaction.options.getChannel("in-channel");
-			const outChannel = interaction.options.getChannel("out-channel");
+			const event = interaction.options.getString("event", true) as "join" | "leave" | "both";
+			const joinChannel = interaction.options.getChannel("join-channel");
+			const leaveChannel = interaction.options.getChannel("leave-channel");
 			if (
-				(event === "in" && !inChannel) ||
-				(event === "out" && !outChannel) ||
-				(event === "both" && (!inChannel || !outChannel))
+				(event === "join" && !joinChannel) ||
+				(event === "leave" && !leaveChannel) ||
+				(event === "both" && (!joinChannel || !leaveChannel))
 			) {
 				await interaction.editReply(
 					event === "both"
 						? "Select both an IN channel and an OUT channel."
-						: `Select an ${event === "in" ? "IN" : "OUT"} channel.`,
+						: `Select a ${event === "join" ? "join" : "leave"} channel.`,
 				);
 				return;
 			}
 
 			const selectedChannels =
-				event === "in"
-					? [{ event: "in" as const, selectedChannel: inChannel! }]
-					: event === "out"
-						? [{ event: "out" as const, selectedChannel: outChannel! }]
+				event === "join"
+					? [{ event: "join" as const, selectedChannel: joinChannel! }]
+					: event === "leave"
+						? [{ event: "leave" as const, selectedChannel: leaveChannel! }]
 						: [
-								{ event: "in" as const, selectedChannel: inChannel! },
-								{ event: "out" as const, selectedChannel: outChannel! },
+								{ event: "join" as const, selectedChannel: joinChannel! },
+								{ event: "leave" as const, selectedChannel: leaveChannel! },
 							];
 			const channels = [];
 			for (const { event: selectedEvent, selectedChannel } of selectedChannels) {
-				const direction = selectedEvent === "in" ? "IN" : "OUT";
+				const direction = selectedEvent === "join" ? "join" : "leave";
 				const selectedChannelMention = channelMention(selectedChannel.id);
 				const channel = await interaction.guild.channels.fetch(selectedChannel.id);
 				if (!channel) {
@@ -181,7 +181,7 @@ const command: BotCommand = {
 
 			for (const { event: selectedEvent, channel } of channels) {
 				await setMemberAnnouncement(interaction.guild.id, interaction.guild.name, selectedEvent, true, channel.id);
-				const announcementType = selectedEvent === "in" ? "join" : "leave";
+				const announcementType = selectedEvent;
 				const selectedChannelMention = channelMention(channel.id);
 				await channel.send({
 					content: `Member ${announcementType} announcements are now enabled for this server. Future member ${announcementType} events will be posted here in ${selectedChannelMention}.`,
@@ -190,7 +190,7 @@ const command: BotCommand = {
 		}
 
 		if (subcommand === "off") {
-			const event = interaction.options.getString("event", true) as "in" | "out" | "both";
+			const event = interaction.options.getString("event", true) as "join" | "leave" | "both";
 			await setMemberAnnouncement(interaction.guild.id, interaction.guild.name, event, false);
 		}
 
