@@ -37,7 +37,7 @@ const deleteMessages = async (channel: object, messages: Message[], channelName:
 			deleted += (await channel.bulkDelete(bulkMessages, true)).size;
 		} catch (error: unknown) {
 			failed += bulkMessages.length;
-			logger.warn("(/) Command : CLEAR", "Failed to bulk delete messages", {
+			logger.warn("SLASH_COMMANDS", "Failed to bulk delete messages", {
 				channel: channelName,
 				message: error instanceof Error ? error.message : String(error),
 			});
@@ -52,7 +52,7 @@ const deleteMessages = async (channel: object, messages: Message[], channelName:
 			deleted += 1;
 		} catch (error: unknown) {
 			failed += 1;
-			logger.warn("(/) Command : CLEAR", "Failed to delete message", {
+			logger.warn("SLASH_COMMANDS", "Failed to delete message", {
 				channel: channelName,
 				messageId: message.id,
 				message: error instanceof Error ? error.message : String(error),

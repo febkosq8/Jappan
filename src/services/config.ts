@@ -5,6 +5,7 @@ export interface Config {
 	BOT_PFP: string;
 	readonly BOT_WEBSITE: string;
 	readonly DB_URL: string;
+	readonly LOG_TIMESTAMP: boolean;
 }
 
 let loadedConfig: Config | undefined;
@@ -14,6 +15,7 @@ const configTemplate: Partial<Record<keyof Config, string>> = {
 	BOT_NAME: "Jappan",
 	BOT_PFP: "https://jappan.febkosq8.me/assets/Profile-FDHZtz5Q.png",
 	BOT_WEBSITE: "https://jappan.febkosq8.me",
+	LOG_TIMESTAMP: "false",
 };
 
 function readConfigValue(name: keyof Config, required = false): string {
@@ -39,8 +41,9 @@ export function loadConfig(): Config {
 	const BOT_PFP = readConfigValue("BOT_PFP");
 	const BOT_WEBSITE = readConfigValue("BOT_WEBSITE");
 	const DB_URL = readConfigValue("DB_URL", true);
+	const LOG_TIMESTAMP = readConfigValue("LOG_TIMESTAMP") === "true";
 
-	loadedConfig = { DISCORD_TOKEN, ENVIRONMENT, BOT_NAME, BOT_PFP, BOT_WEBSITE, DB_URL };
+	loadedConfig = { DISCORD_TOKEN, ENVIRONMENT, BOT_NAME, BOT_PFP, BOT_WEBSITE, DB_URL, LOG_TIMESTAMP };
 	return loadedConfig;
 }
 
