@@ -1,0 +1,26 @@
+{
+	"name": "jappan",
+	"version": "1.0.0",
+	"description": "Jappan Discord Bot rework",
+	"type": "module",
+	"main": "dist/index.js",
+	"scripts": {
+		"build": "tsc",
+		"dev": "tsx watch src/index.ts",
+		"start": "node dist/index.js",
+		"typecheck": "tsc --noEmit"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"devDependencies": {
+		"@types/node": "26.6.2",
+		"tsx": "4.23.15",
+		"typescript": "7.0.2"
+	},
+	"dependencies": {
+		"colorette": "2.0.20",
+		"discord.js": "14.27.0",
+		"dotenv": "18.0.3"
+	}
+}
