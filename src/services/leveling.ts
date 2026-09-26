@@ -45,11 +45,10 @@ export async function getLeaderboard(
 	page: number;
 	pageCount: number;
 }> {
-	const total = await GuildMemberStateModel.countDocuments().where("guildId", guildId).exec();
+	const total = await GuildMemberStateModel.countDocuments({ guildId }).exec();
 	const pageCount = Math.max(1, Math.ceil(total / pageSize));
 	const currentPage = Math.min(Math.max(page, 1), pageCount);
-	const entries = await GuildMemberStateModel.find()
-		.where("guildId", guildId)
+	const entries = await GuildMemberStateModel.find({ guildId })
 		.sort({ "leveling.points": -1, userId: 1 })
 		.skip((currentPage - 1) * pageSize)
 		.limit(pageSize)

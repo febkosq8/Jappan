@@ -30,6 +30,17 @@ function formatThreshold(value: number | null | undefined): string {
 	return value ? `✅ ${value} warning(s)` : "❌ Disabled";
 }
 
+function formatDuration(hours: number | null | undefined): string {
+	if (!hours) {
+		return "❌ Disabled";
+	}
+	if (hours >= 24 && hours % 24 === 0) {
+		const days = hours / 24;
+		return `✅ ${days} day(s)`;
+	}
+	return `✅ ${hours} hour(s)`;
+}
+
 function createSettingsEmbed(
 	guildName: string,
 	timeoutThreshold: number | null | undefined,
@@ -44,17 +55,15 @@ function createSettingsEmbed(
 		.setDescription(`**${guildName}**`)
 		.setAuthor({ name: `${config.BOT_NAME} : Warning Status`, iconURL: config.BOT_PFP, url: config.BOT_WEBSITE })
 		.addFields(
-			{ name: "TIMEOUT THRESHOLD", value: formatThreshold(timeoutThreshold), inline: true },
 			{
-				name: "TIMEOUT DURATION",
-				value: timeoutDurationHours ? `✅ ${timeoutDurationHours} hour(s)` : "❌ Disabled",
+				name: "TIMEOUT SETTINGS",
+				value: `**Threshold:** ${formatThreshold(timeoutThreshold)}\n**Duration:** ${formatDuration(timeoutDurationHours)}`,
 				inline: true,
 			},
-			{ name: "BAN THRESHOLD", value: formatThreshold(banThreshold), inline: true },
 			{
-				name: "AUDIT CHANNEL",
-				value: auditChannelId ? channelMention(auditChannelId) : "❌ Disabled",
-				inline: false,
+				name: "MODERATION SETTINGS",
+				value: `**Ban threshold:** ${formatThreshold(banThreshold)}\n**Audit channel:** ${auditChannelId ? channelMention(auditChannelId) : "❌ Disabled"}`,
+				inline: true,
 			},
 		)
 		.setTimestamp();
@@ -78,8 +87,10 @@ const command: BotCommand = {
 						.setDescription("Timeout duration in hours")
 						.addChoices(
 							{ name: "1 Hour", value: 1 },
+							{ name: "6 Hours", value: 6 },
 							{ name: "12 Hours", value: 12 },
 							{ name: "1 Day", value: 24 },
+							{ name: "3 Days", value: 72 },
 							{ name: "1 Week", value: 168 },
 						)
 						.setRequired(false),
@@ -151,7 +162,7 @@ const command: BotCommand = {
 					return;
 				}
 			}
-			await setWarningSettings(
+			const settings = await setWarningSettings(
 				interaction.guild.id,
 				interaction.guild.name,
 				timeoutThreshold,
@@ -159,6 +170,19 @@ const command: BotCommand = {
 				banThreshold,
 				selectedChannel?.id ?? null,
 			);
+			await interaction.editReply({
+				embeds: [
+					createSettingsEmbed(
+						settings.guildName,
+						settings.warnings.timeoutThreshold,
+						settings.warnings.timeoutDurationHours,
+						settings.warnings.banThreshold,
+						settings.warnings.auditChannelId,
+						config,
+					),
+				],
+			});
+			return;
 		}
 
 		if (subcommand === "issue") {

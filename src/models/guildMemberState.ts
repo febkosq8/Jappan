@@ -42,6 +42,7 @@ export type GuildMemberState = InferSchemaType<typeof guildMemberStateSchema>;
 export type GuildMemberStateDocument = HydratedDocument<GuildMemberState>;
 
 const GuildMemberStateModel =
-	models.GuildMemberState ?? model<GuildMemberState>("GuildMemberState", guildMemberStateSchema);
+	(models.GuildMemberState as mongoose.Model<GuildMemberState> | undefined) ??
+	model<GuildMemberState>("GuildMemberState", guildMemberStateSchema);
 
 export default GuildMemberStateModel;

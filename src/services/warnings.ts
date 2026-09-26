@@ -23,7 +23,7 @@ export async function getWarningSettings(guildId: string, guildName: string): Pr
 }
 
 export async function getWarningCount(guildId: string, userId: string): Promise<number> {
-	const state = await GuildMemberStateModel.findOne().where("guildId", guildId).where("userId", userId).exec();
+	const state = await GuildMemberStateModel.findOne({ guildId, userId }).exec();
 	return state?.warnings.count ?? 0;
 }
 
@@ -32,7 +32,7 @@ export async function issueWarning(
 	userId: string,
 	username: string,
 ): Promise<GuildMemberStateDocument> {
-	let state = await GuildMemberStateModel.findOne().where("guildId", guildId).where("userId", userId).exec();
+	let state = await GuildMemberStateModel.findOne({ guildId, userId }).exec();
 	if (!state) {
 		state = await GuildMemberStateModel.create({ guildId, userId, username, warnings: { count: 1 } });
 	} else {
@@ -49,7 +49,7 @@ export async function overrideWarningCount(
 	username: string,
 	count: number,
 ): Promise<GuildMemberStateDocument> {
-	let state = await GuildMemberStateModel.findOne().where("guildId", guildId).where("userId", userId).exec();
+	let state = await GuildMemberStateModel.findOne({ guildId, userId }).exec();
 	if (!state) {
 		state = await GuildMemberStateModel.create({ guildId, userId, username, warnings: { count } });
 	} else {
