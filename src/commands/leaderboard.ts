@@ -18,11 +18,17 @@ const commandData = {
 	isDBDependant: true,
 } satisfies BotCommandData;
 
-export function createLeaderboardComponents(
-	userId: string,
-	page: number,
-	pageCount: number,
-): ActionRowBuilder<ButtonBuilder> | undefined {
+interface CreateLeaderboardComponentsOptions {
+	userId: string;
+	page: number;
+	pageCount: number;
+}
+
+export function createLeaderboardComponents({
+	userId,
+	page,
+	pageCount,
+}: CreateLeaderboardComponentsOptions): ActionRowBuilder<ButtonBuilder> | undefined {
 	const buttons = new ActionRowBuilder<ButtonBuilder>();
 	if (page > 1) {
 		buttons.addComponents(
@@ -43,17 +49,28 @@ export function createLeaderboardComponents(
 	return buttons.components.length > 0 ? buttons : undefined;
 }
 
-export async function buildLeaderboardReply(
-	guildId: string,
-	guildName: string,
-	userId: string,
-	config: Config,
-	page: number,
-): Promise<{ embeds: ReturnType<typeof createLeaderboardEmbed>[]; components: ActionRowBuilder<ButtonBuilder>[] }> {
-	const leaderboard = await getLeaderboard(guildId, page);
-	const buttons = createLeaderboardComponents(userId, leaderboard.page, leaderboard.pageCount);
+interface BuildLeaderboardReplyOptions {
+	guildId: string;
+	guildName: string;
+	userId: string;
+	config: Config;
+	page: number;
+}
+
+export async function buildLeaderboardReply({
+	guildId,
+	guildName,
+	userId,
+	config,
+	page,
+}: BuildLeaderboardReplyOptions): Promise<{
+	embeds: ReturnType<typeof createLeaderboardEmbed>[];
+	components: ActionRowBuilder<ButtonBuilder>[];
+}> {
+	const leaderboard = await getLeaderboard({ guildId, page });
+	const buttons = createLeaderboardComponents({ userId, page: leaderboard.page, pageCount: leaderboard.pageCount });
 	return {
-		embeds: [createLeaderboardEmbed(guildName, config, leaderboard)],
+		embeds: [createLeaderboardEmbed({ guildName, config, leaderboard })],
 		components: buttons ? [buttons] : [],
 	};
 }
@@ -67,18 +84,24 @@ const command: BotCommand = {
 	execute: async ({ interaction, config }) => {
 		await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 		if (!interaction.guild) {
-			await interaction.editReply("This command can only be used in a guild.");
+			await interaction.editReply(":error: This command can only be used in a guild.");
 			return;
 		}
 
-		const status = await getLevelingStatus(interaction.guild.id, interaction.guild.name);
+		const status = await getLevelingStatus(interaction.guild);
 		if (!status.leveling.enabled) {
-			await interaction.editReply("The leveling system is currently disabled for this server.");
+			await interaction.editReply(":error: The leveling system is currently disabled for this server.");
 			return;
 		}
 
 		await interaction.editReply(
-			await buildLeaderboardReply(interaction.guild.id, interaction.guild.name, interaction.user.id, config, 1),
+			await buildLeaderboardReply({
+				guildId: interaction.guild.id,
+				guildName: interaction.guild.name,
+				userId: interaction.user.id,
+				config,
+				page: 1,
+			}),
 		);
 	},
 };

@@ -9,17 +9,26 @@ const button: ButtonModule = {
 		const [, userId, rawPage] = interaction.customId.split("|");
 		if (userId !== interaction.user.id) {
 			await interaction.reply({
-				content: "Only the user who opened this leaderboard can use these buttons.",
+				content: ":error: Only the user who opened this leaderboard can use these buttons.",
 				flags: MessageFlags.Ephemeral,
 			});
 			return;
 		}
 		if (!interaction.guild) {
-			await interaction.reply({ content: "This leaderboard is no longer available.", flags: MessageFlags.Ephemeral });
+			await interaction.reply({
+				content: ":error: This leaderboard is no longer available.",
+				flags: MessageFlags.Ephemeral,
+			});
 			return;
 		}
 		await interaction.update(
-			await buildLeaderboardReply(interaction.guild.id, interaction.guild.name, userId, config, Number(rawPage) - 1),
+			await buildLeaderboardReply({
+				guildId: interaction.guild.id,
+				guildName: interaction.guild.name,
+				userId,
+				config,
+				page: Number(rawPage) - 1,
+			}),
 		);
 	},
 };

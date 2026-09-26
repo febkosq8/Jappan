@@ -1,16 +1,11 @@
-import {
-	EmbedBuilder,
-	PermissionFlagsBits,
-	channelMention,
-	chatInputApplicationCommandMention,
-	userMention,
-} from "discord.js";
+import { EmbedBuilder, channelMention, chatInputApplicationCommandMention, userMention } from "discord.js";
 import type { Guild, GuildBasedChannel, GuildMember, PartialGuildMember } from "discord.js";
 
 import type { GuildDocument } from "../models/guild.js";
 import { getCommandId } from "./commandLoader.js";
 import type { Config } from "./config.js";
 import { getGuildSettings } from "./guild.js";
+import { sendGuildMessage } from "../helpers/guildHelper.js";
 import { logger } from "./logger.js";
 
 export type MemberAnnouncementEvent = "join" | "leave" | "both";
@@ -97,37 +92,16 @@ async function disableAnnouncement(
 		event,
 	});
 
-	const botMember = await guild.members.fetchMe().catch(() => null);
-	const channels = [guild.systemChannel, ...guild.channels.cache.values()];
-	for (const fallbackChannel of channels) {
-		if (
-			!fallbackChannel?.isTextBased() ||
-			(botMember &&
-				!fallbackChannel
-					.permissionsFor(botMember)
-					?.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages]))
-		) {
-			continue;
-		}
-
-		try {
-			const commandId = getCommandId("memberannounce");
-			const commandMention = commandId
-				? chatInputApplicationCommandMention("memberannounce", "on", commandId)
-				: "`/memberannounce on`";
-			await fallbackChannel.send(
-				`⚠️ Member ${event === "join" ? "join" : "leave"} announcements were automatically disabled because I can no longer access ${channelMention(channelId)} (channel ID: \`${channelId}\`).\n📣 PSA for admins: please configure a new channel with ${commandMention}.`,
-			);
-			return storedGuildSettingsData.memberAnnouncements;
-		} catch (error: unknown) {
-			logger.error("DISCORD", "Failed to notify guild about disabled member announcements", {
-				guildId: guild.id,
-				channelId: fallbackChannel.id,
-				event,
-				error,
-			});
-		}
-	}
+	const commandId = getCommandId("memberannounce");
+	const commandMention = commandId
+		? chatInputApplicationCommandMention("memberannounce", "on", commandId)
+		: "`/memberannounce on`";
+	await sendGuildMessage({
+		guild,
+		content: `⚠️ Member ${event === "join" ? "join" : "leave"} announcements were automatically disabled because I can no longer access ${channelMention(channelId)} (channel ID: \`${channelId}\`).\n📢 PSA for admins: please configure a new channel with ${commandMention}.`,
+		failureMessage: "Failed to notify guild about disabled member announcements",
+		details: { channelId, event },
+	});
 
 	return storedGuildSettingsData.memberAnnouncements;
 }

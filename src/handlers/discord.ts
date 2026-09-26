@@ -9,6 +9,7 @@ import { handleAutocompleteInteraction } from "./autocomplete.js";
 import { handleButtonInteraction } from "./button.js";
 import { handleSlashCommandInteraction } from "./slashCommand.js";
 import { handleMemberJoinAnnouncement, handleMemberLeaveAnnouncement } from "../services/memberAnnouncement.js";
+import { handleLevelingInteraction, handleLevelingMessage, handleLevelingVoiceState } from "../services/leveling.js";
 
 export function registerDiscordHandlers(): void {
 	const client = getClient();
@@ -94,6 +95,18 @@ export function registerExtendedDiscordHandlers(): void {
 
 	client.on(Events.GuildMemberRemove, (member) => {
 		void handleMemberLeaveAnnouncement(member, config);
+	});
+
+	client.on(Events.MessageCreate, (message) => {
+		void handleLevelingMessage(message);
+	});
+
+	client.on(Events.InteractionCreate, (interaction) => {
+		void handleLevelingInteraction(interaction);
+	});
+
+	client.on(Events.VoiceStateUpdate, (oldState, newState) => {
+		void handleLevelingVoiceState(oldState, newState);
 	});
 
 	logger.success("DISCORD", "Extended event handlers registered");

@@ -88,7 +88,7 @@ const command: BotCommand = {
 	execute: async ({ interaction, config }) => {
 		await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 		if (!interaction.guild) {
-			await interaction.editReply("This command can only be used in a guild.");
+			await interaction.editReply(":error: This command can only be used in a guild.");
 			return;
 		}
 
@@ -96,7 +96,7 @@ const command: BotCommand = {
 			const selectedChannel = interaction.options.getChannel("channel", true);
 			const channel = await interaction.guild.channels.fetch(selectedChannel.id);
 			if (!channel || !channel.isTextBased()) {
-				await interaction.editReply("The selected channel cannot receive messages.");
+				await interaction.editReply(":error: The selected channel cannot receive messages.");
 				return;
 			}
 
@@ -105,7 +105,7 @@ const command: BotCommand = {
 				!botMember ||
 				!channel.permissionsFor(botMember)?.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages])
 			) {
-				await interaction.editReply("I do not have permission to view and send messages in that channel.");
+				await interaction.editReply(":error: I do not have permission to view and send messages in that channel.");
 				return;
 			}
 

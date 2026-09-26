@@ -117,7 +117,7 @@ const command: BotCommand = {
 	execute: async ({ interaction, config }) => {
 		await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 		if (!interaction.guild) {
-			await interaction.editReply("This command can only be used in a guild.");
+			await interaction.editReply(":error: This command can only be used in a guild.");
 			return;
 		}
 
@@ -133,8 +133,8 @@ const command: BotCommand = {
 			) {
 				await interaction.editReply(
 					event === "both"
-						? "Select both an IN channel and an OUT channel."
-						: `Select a ${event === "join" ? "join" : "leave"} channel.`,
+						? ":error: Select both an IN channel and an OUT channel."
+						: `:error: Select a ${event === "join" ? "join" : "leave"} channel.`,
 				);
 				return;
 			}
@@ -155,13 +155,13 @@ const command: BotCommand = {
 				const channel = await interaction.guild.channels.fetch(selectedChannel.id);
 				if (!channel) {
 					await interaction.editReply(
-						`The selected ${direction} channel ${selectedChannelMention} could not be found.`,
+						`:error: The selected ${direction} channel ${selectedChannelMention} could not be found.`,
 					);
 					return;
 				}
 				if (!channel.isTextBased()) {
 					await interaction.editReply(
-						`The selected ${direction} channel ${selectedChannelMention} cannot receive messages.`,
+						`:error: The selected ${direction} channel ${selectedChannelMention} cannot receive messages.`,
 					);
 					return;
 				}
@@ -172,7 +172,7 @@ const command: BotCommand = {
 					!channel.permissionsFor(botMember)?.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages])
 				) {
 					await interaction.editReply(
-						`I do not have permission to view and send messages in the selected ${direction} channel ${selectedChannelMention}.`,
+						`:error: I do not have permission to view and send messages in the selected ${direction} channel ${selectedChannelMention}.`,
 					);
 					return;
 				}

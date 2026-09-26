@@ -96,7 +96,7 @@ const command: BotCommand = {
 	execute: async ({ interaction, config }) => {
 		await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 		if (!interaction.guild) {
-			await interaction.editReply("This command can only be used in a guild.");
+			await interaction.editReply(":error: This command can only be used in a guild.");
 			return;
 		}
 
@@ -106,11 +106,11 @@ const command: BotCommand = {
 		const targetText = interaction.options.getString("text")?.trim();
 		const count = Math.floor(interaction.options.getNumber("count") ?? 200);
 		if (count < 1) {
-			await interaction.editReply("Count must be at least 1.");
+			await interaction.editReply(":error: Count must be at least 1.");
 			return;
 		}
 		if (targetUserId && !/^\d{17,20}$/.test(targetUserId)) {
-			await interaction.editReply("User ID must be a valid Discord user ID.");
+			await interaction.editReply(":error: User ID must be a valid Discord user ID.");
 			return;
 		}
 
@@ -121,7 +121,7 @@ const command: BotCommand = {
 				? await interaction.guild.channels.fetch(selectedChannel.id)
 				: undefined;
 			if (selectedChannel && !selectedGuildChannel) {
-				await interaction.editReply("The selected channel could not be found.");
+				await interaction.editReply(":error: The selected channel could not be found.");
 				return;
 			}
 			const channels = selectedGuildChannel
@@ -324,7 +324,7 @@ const command: BotCommand = {
 			return;
 		} catch (error: unknown) {
 			if (progressInterval) clearInterval(progressInterval);
-			await interaction.editReply("There was an error while clearing messages from this guild.");
+			await interaction.editReply(":error: There was an error while clearing messages from this guild.");
 			throw error;
 		}
 	},

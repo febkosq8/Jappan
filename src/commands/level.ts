@@ -63,7 +63,7 @@ const command: BotCommand = {
 	execute: async ({ interaction, config }) => {
 		await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 		if (!interaction.guild) {
-			await interaction.editReply("This command can only be used in a guild.");
+			await interaction.editReply(":error: This command can only be used in a guild.");
 			return;
 		}
 
@@ -71,37 +71,61 @@ const command: BotCommand = {
 			const threshold = interaction.options.getInteger("threshold");
 			const role = interaction.options.getRole("role");
 			if ((threshold === null) !== (role === null)) {
-				await interaction.editReply("Provide both a threshold and a role to configure a leveling reward.");
+				await interaction.editReply(`⛔ Provide both a threshold and a role to configure a leveling reward.`);
 				return;
 			}
 			if (role) {
 				const botMember = await interaction.guild.members.fetchMe();
+				const botHasGuildManageRolesPermission = botMember.permissions.has(PermissionFlagsBits.ManageRoles);
+				if (!botHasGuildManageRolesPermission) {
+					await interaction.editReply(
+						`⛔ I need the guild-level Manage Roles permission to assign leveling reward roles.`,
+					);
+					return;
+				}
+
 				const selectedRole = await interaction.guild.roles.fetch(role.id);
 				if (!selectedRole) {
-					await interaction.editReply(`The selected reward role ${roleMention(role.id)} could not be found.`);
+					await interaction.editReply(`⛔ The selected reward role ${roleMention(role.id)} could not be found.`);
+					return;
+				}
+				if (selectedRole.id === interaction.guild.id) {
+					await interaction.editReply(`⛔ The @everyone role cannot be used as a leveling reward.`);
 					return;
 				}
 				if (selectedRole.managed) {
 					await interaction.editReply(
-						`The selected reward role ${roleMention(role.id)} is managed by an integration and cannot be assigned by this bot.`,
+						`⛔ The selected reward role ${roleMention(role.id)} is managed by an integration and cannot be assigned by this bot.`,
 					);
 					return;
 				}
 				if (botMember.roles.highest.comparePositionTo(selectedRole) <= 0) {
 					await interaction.editReply(
-						`The selected reward role ${roleMention(role.id)} is at or above my highest role. Choose a lower role.`,
+						`⛔ The selected reward role ${roleMention(role.id)} is at or above my highest role. Choose a lower role.`,
 					);
 					return;
 				}
 			}
-			await setLeveling(interaction.guild.id, interaction.guild.name, true, threshold, role?.id ?? null);
+			await setLeveling({
+				guildId: interaction.guild.id,
+				guildName: interaction.guild.name,
+				enabled: true,
+				threshold,
+				roleId: role?.id ?? null,
+			});
 		}
 
 		if (interaction.options.getSubcommand() === "off") {
-			await setLeveling(interaction.guild.id, interaction.guild.name, false, null, null);
+			await setLeveling({
+				guildId: interaction.guild.id,
+				guildName: interaction.guild.name,
+				enabled: false,
+				threshold: null,
+				roleId: null,
+			});
 		}
 
-		const status = await getLevelingStatus(interaction.guild.id, interaction.guild.name);
+		const status = await getLevelingStatus(interaction.guild);
 		await interaction.editReply({
 			embeds: [
 				createStatusEmbed(
