@@ -13,6 +13,8 @@ import { handleLevelingInteraction, handleLevelingMessage, handleLevelingVoiceSt
 import {
 	handleAuditMemberAdd,
 	handleAuditMemberRemove,
+	handleAuditInviteCreate,
+	handleAuditInviteDelete,
 	handleAuditMessageBulkDelete,
 	handleAuditMessageDelete,
 	handleAuditMessageUpdate,
@@ -103,6 +105,8 @@ function registerEventDebugHandlers(client: ReturnType<typeof getClient>, enable
 		MessageDelete: { event: Events.MessageDelete, argumentNames: ["message"] },
 		MessageBulkDelete: { event: Events.MessageBulkDelete, argumentNames: ["messages"] },
 		MessageUpdate: { event: Events.MessageUpdate, argumentNames: ["oldMessage", "newMessage"] },
+		InviteCreate: { event: Events.InviteCreate, argumentNames: ["invite"] },
+		InviteDelete: { event: Events.InviteDelete, argumentNames: ["invite"] },
 	};
 	for (const [eventName, debugEvent] of Object.entries(debugEvents)) {
 		if (!enabledEvents.includes(eventName)) {
@@ -130,6 +134,14 @@ export function registerExtendedDiscordHandlers(): void {
 	client.on(Events.GuildMemberRemove, (member) => {
 		void handleMemberLeaveAnnouncement(member);
 		void handleAuditMemberRemove(member);
+	});
+
+	client.on(Events.InviteCreate, (invite) => {
+		void handleAuditInviteCreate(invite);
+	});
+
+	client.on(Events.InviteDelete, (invite) => {
+		void handleAuditInviteDelete(invite);
 	});
 
 	client.on(Events.MessageCreate, (message) => {

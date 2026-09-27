@@ -186,6 +186,17 @@ Boolean values are enabled only when their environment value is exactly `"true"`
 ### Priority 2: Feature Parity
 
 - Compare the rewrite against `CURRENT_SETUP_DETAILS.md` and the legacy bot feature inventory.
+- Pending audit migration items from `Jappan_Discord_Bot/Components/AuditHandler.js`:
+  - Add executor and reason attribution through recent `Guild.fetchAuditLogs()` entries for moderation and configuration events.
+  - [x] Migrate invite creation and revocation auditing.
+  - Migrate guild member profile updates, including nickname, roles, and timeout changes.
+  - Migrate ban and unban auditing.
+  - Migrate channel create, update, delete, and permission-overwrite auditing.
+  - Migrate role create, update, and delete auditing.
+  - Migrate user profile updates, including username and avatar changes, across guilds where the user is a member.
+  - Migrate raw `guildAuditLogEntryCreate` forwarding with target, executor, reason, and changed fields.
+  - Reconcile partial message-delete behavior with the legacy `fullVerbosity` setting.
+  - Add an explicit message-update timestamp and confirm embed-change comparison semantics.
 - Complete migrated command behavior, not only command registration:
   - `level`: finish response consistency and runtime configuration edge cases.
   - `leaderboard`: finish pagination, button recovery, empty-state, and disabled-leveling behavior.

@@ -12,6 +12,7 @@ import type {
 	APIEmbed,
 	Guild,
 	GuildMember,
+	Invite,
 	JSONEncodable,
 	Message,
 	MessageCreateOptions,
@@ -219,6 +220,63 @@ export async function handleAuditMemberRemove(member: GuildMember | PartialGuild
 		.setFooter({ text: `Audit Event ID: ${auditEventId}` })
 		.setTimestamp();
 	await postAuditEvent(member.guild, { embeds: [embed] });
+}
+
+export async function handleAuditInviteCreate(invite: Invite): Promise<void> {
+	const guild = invite.guild ? invite.client.guilds.cache.get(invite.guild.id) : undefined;
+	if (!guild || !invite.inviterId || isOwnBot(guild, invite.inviterId)) {
+		return;
+	}
+	if (!(await isAuditLogEnabled(guild))) {
+		return;
+	}
+
+	const auditEventId = createAuditEventId();
+	const inviter = invite.inviter;
+	const channel = invite.channelId ? channelMention(invite.channelId) : "Unknown channel";
+	const createdAt = invite.createdTimestamp ? `<t:${Math.floor(invite.createdTimestamp / 1000)}:F>` : "Unknown";
+	const expiresAt = invite.expiresTimestamp ? `<t:${Math.floor(invite.expiresTimestamp / 1000)}:R>` : "Never";
+	const embed = new EmbedBuilder()
+		.setColor("Aqua")
+		.setTitle("Audit Event: Invite Created")
+		.setDescription(`${userMention(invite.inviterId)} created an invite.`)
+		.addFields(
+			{ name: "Invite Code", value: `\`${invite.code}\``, inline: true },
+			{ name: "Channel", value: channel, inline: true },
+			{ name: "Created At", value: createdAt },
+			{ name: "Expires", value: expiresAt, inline: true },
+			{ name: "Maximum Uses", value: invite.maxUses ? `${invite.maxUses}` : "Unlimited", inline: true },
+		)
+		.setFooter({ text: `Audit Event ID: ${auditEventId}` })
+		.setTimestamp();
+	if (inviter) {
+		embed.setAuthor({ name: inviter.tag, iconURL: inviter.displayAvatarURL({ size: 256 }) });
+	}
+	await postAuditEvent(guild, { embeds: [embed], allowedMentions: { parse: [] } });
+}
+
+export async function handleAuditInviteDelete(invite: Invite): Promise<void> {
+	const guild = invite.guild ? invite.client.guilds.cache.get(invite.guild.id) : undefined;
+	if (!guild) {
+		return;
+	}
+	if (!(await isAuditLogEnabled(guild))) {
+		return;
+	}
+
+	const auditEventId = createAuditEventId();
+	const channel = invite.channelId ? channelMention(invite.channelId) : "Unknown channel";
+	const embed = new EmbedBuilder()
+		.setColor("LuminousVividPink")
+		.setTitle("Audit Event: Invite Revoked")
+		.setDescription("An invite was revoked.")
+		.addFields(
+			{ name: "Invite Code", value: `\`${invite.code}\``, inline: true },
+			{ name: "Channel", value: channel, inline: true },
+		)
+		.setFooter({ text: `Audit Event ID: ${auditEventId}` })
+		.setTimestamp();
+	await postAuditEvent(guild, { embeds: [embed], allowedMentions: { parse: [] } });
 }
 
 export async function handleAuditMessageUpdate(
