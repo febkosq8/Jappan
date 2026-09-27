@@ -166,8 +166,8 @@ export function getProfileChangeResponse(
 		? `${isMemberProfile ? "Member" : "User"} ${singleChange.name} ${singleChange.label}`
 		: `${isMemberProfile ? "Member" : "User"} Profile Updated`;
 	const description = singleChange
-		? `${formatUserMention(newProfile.id)} ${singleChange.description}.`
-		: `${formatUserMention(newProfile.id)} updated their ${isMemberProfile ? "server " : ""}profile.`;
+		? `${formatUserMention(newProfile)} ${singleChange.description}.`
+		: `${formatUserMention(newProfile)} updated their ${isMemberProfile ? "server " : ""}profile.`;
 
 	return {
 		usernameChanged,
@@ -208,7 +208,7 @@ export async function getRecentMemberUpdateExecutor(member: GuildMember): Promis
 		(candidateAuditEntry) =>
 			candidateAuditEntry.target?.id === member.id && Date.now() - candidateAuditEntry.createdTimestamp < 20_000,
 	);
-	return auditEntry?.executor ? `${formatUserMention(auditEntry.executor.id)} (${auditEntry.executor.tag})` : "Unknown";
+	return auditEntry?.executor ? `${formatUserMention(auditEntry.executor)} (${auditEntry.executor.tag})` : "Unknown";
 }
 
 export function getChannelTypeLabel(channel: GuildChannel | ThreadChannel): string {
@@ -262,7 +262,7 @@ export function addAuditEntryDetails(embed: EmbedBuilder, auditEntry: GuildAudit
 	if (auditEntry?.executor) {
 		embed.addFields({
 			name: "Action Initiated By",
-			value: `${formatUserMention(auditEntry.executor.id)} (${auditEntry.executor.tag})`,
+			value: `${formatUserMention(auditEntry.executor)} (${auditEntry.executor.tag})`,
 		});
 	}
 	if (auditEntry?.reason) {

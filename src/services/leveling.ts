@@ -241,7 +241,7 @@ async function awardLevelingPoints({
 	await member.roles.add(rewardRole, "Leveling reward threshold reached");
 	if (previousPoints < threshold && notificationChannel?.isSendable()) {
 		await notificationChannel.send(
-			`${formatUserMention(user.id)} reached ${threshold} leveling points and earned ${rewardRole}.`,
+			`${formatUserMention(user)} reached ${threshold} leveling points and earned ${rewardRole}.`,
 		);
 	}
 }
@@ -325,7 +325,7 @@ export function createLeaderboardEmbed({
 		? leaderboard.entries
 				.map(
 					(entry, index) =>
-						`${(leaderboard.page - 1) * 20 + index + 1}. ${formatUserMention(entry.userId)} - ${entry.leveling.points} points`,
+						`${(leaderboard.page - 1) * 20 + index + 1}. <@${entry.userId}> - ${entry.leveling.points} points`,
 				)
 				.join("\n")
 		: "No member stats were found.";

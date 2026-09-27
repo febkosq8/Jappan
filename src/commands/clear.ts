@@ -1,15 +1,15 @@
 import {
 	ChannelType,
-	channelMention as formatChannelMention,
 	InteractionContextType,
 	EmbedBuilder,
 	MessageFlags,
 	PermissionFlagsBits,
 	SlashCommandBuilder,
+	userMention,
 } from "discord.js";
 import type { Message } from "discord.js";
 
-import { formatUserMention } from "../helpers/discord.js";
+import { formatChannelMention } from "../helpers/discord.js";
 import type { BotCommand, BotCommandData } from "../services/commandLoader.js";
 import { logger } from "../services/logger.js";
 
@@ -218,7 +218,7 @@ const command: BotCommand = {
 					.setFooter({ text: `Run ${interaction.id} | Page 1/${totalPages}` })
 					.setTimestamp()
 					.addFields(
-						...(targetUserId ? [{ name: "Target user", value: formatUserMention(targetUserId) }] : []),
+						...(targetUserId ? [{ name: "Target user", value: userMention(targetUserId) }] : []),
 						{ name: "Delete limit", value: count.toString() },
 						{
 							name: "Status",
@@ -248,7 +248,7 @@ const command: BotCommand = {
 				if (progressState.deletedMessages >= count) break;
 				progressState.processedChannels += 1;
 				progressState.currentChannel = channel.name;
-				progressState.currentChannelMention = formatChannelMention(channel.id);
+				progressState.currentChannelMention = formatChannelMention(channel);
 				progressState.currentChannelScanned = 0;
 				progressState.currentChannelDeleted = 0;
 				progressState.currentChannelFailed = 0;

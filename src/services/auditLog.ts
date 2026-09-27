@@ -43,7 +43,7 @@ import {
 	getVideoQualityModeLabel,
 	isOwnBot,
 } from "../helpers/auditLog.js";
-import { formatUserMention } from "../helpers/discord.js";
+import { formatChannelMention, formatUserMention } from "../helpers/discord.js";
 import { sendGuildMessage } from "../helpers/guildHelper.js";
 import { splitString, trimString } from "../helpers/string.js";
 import type { GuildDocument } from "../models/guild.js";
@@ -158,11 +158,11 @@ async function handleAuditBan(ban: GuildBan, action: "Banned" | "Unbanned"): Pro
 		.setColor(action === "Banned" ? "DarkRed" : "Green")
 		.setTitle(`Audit Event: Member ${action}`)
 		.setAuthor({ name: ban.user.tag, iconURL: ban.user.displayAvatarURL({ size: 256 }) })
-		.setDescription(`${formatUserMention(ban.user.id)} was ${action.toLowerCase()}.`)
+		.setDescription(`${formatUserMention(ban.user)} was ${action.toLowerCase()}.`)
 		.addFields({
 			name: "Action Initiated By",
 			value: auditEntry?.executor
-				? `${formatUserMention(auditEntry.executor.id)} (${auditEntry.executor.tag})`
+				? `${formatUserMention(auditEntry.executor)} (${auditEntry.executor.tag})`
 				: "Unknown",
 		})
 		.setFooter({ text: `Audit Event ID: ${auditEventId}` })
@@ -182,9 +182,9 @@ export async function handleAuditChannelCreate(channel: GuildChannel): Promise<v
 	const embed = new EmbedBuilder()
 		.setColor("DarkGreen")
 		.setTitle("Audit Event: Channel Created")
-		.setDescription(`${channelMention(channel.id)} was created.`)
+		.setDescription(`${formatChannelMention(channel)} was created.`)
 		.addFields(
-			{ name: "Channel", value: channelMention(channel.id) },
+			{ name: "Channel", value: formatChannelMention(channel) },
 			{ name: "Name", value: channel.name },
 			{ name: "Type", value: getChannelTypeLabel(channel), inline: true },
 		)
@@ -203,9 +203,9 @@ export async function handleAuditChannelDelete(channel: GuildChannel): Promise<v
 	const embed = new EmbedBuilder()
 		.setColor("Red")
 		.setTitle("Audit Event: Channel Deleted")
-		.setDescription(`${channelMention(channel.id)} was deleted.`)
+		.setDescription(`${formatChannelMention(channel)} was deleted.`)
 		.addFields(
-			{ name: "Channel ID", value: channel.id },
+			{ name: "Channel", value: formatChannelMention(channel) },
 			{ name: "Name", value: channel.name },
 			{ name: "Type", value: getChannelTypeLabel(channel), inline: true },
 		)
@@ -318,9 +318,9 @@ export async function handleAuditChannelUpdate(oldChannel: GuildChannel, newChan
 	const embed = new EmbedBuilder()
 		.setColor("Yellow")
 		.setTitle("Audit Event: Channel Updated")
-		.setDescription(`${channelMention(newChannel.id)} was updated.`)
+		.setDescription(`${formatChannelMention(newChannel)} was updated.`)
 		.addFields(
-			{ name: "Channel", value: channelMention(newChannel.id), inline: true },
+			{ name: "Channel", value: formatChannelMention(newChannel), inline: true },
 			{ name: "Type", value: getChannelTypeLabel(newChannel), inline: true },
 			{ name: "Changes", value: changes.join("\n") },
 		)
@@ -339,12 +339,12 @@ export async function handleAuditThreadCreate(thread: ThreadChannel): Promise<vo
 	const embed = new EmbedBuilder()
 		.setColor("DarkGreen")
 		.setTitle("Audit Event: Thread Created")
-		.setDescription(`${channelMention(thread.id)} was created.`)
+		.setDescription(`${formatChannelMention(thread)} was created.`)
 		.addFields(
 			{ name: "Name", value: thread.name },
-			{ name: "Channel", value: channelMention(thread.id) },
+			{ name: "Channel", value: formatChannelMention(thread) },
 			{ name: "Type", value: getChannelTypeLabel(thread), inline: true },
-			{ name: "Parent", value: thread.parentId ? channelMention(thread.parentId) : "None", inline: true },
+			{ name: "Parent", value: thread.parent ? formatChannelMention(thread.parent) : "None", inline: true },
 		)
 		.setFooter({ text: `Audit Event ID: ${createAuditEventId()}` })
 		.setTimestamp();
@@ -356,6 +356,11 @@ export async function handleAuditThreadUpdate(oldThread: ThreadChannel, newThrea
 	const changes: string[] = [];
 	if (oldThread.name !== newThread.name) {
 		changes.push(`Name: ${formatAuditValue(oldThread.name)} -> ${formatAuditValue(newThread.name)}`);
+	}
+	if (oldThread.flags.bitfield !== newThread.flags.bitfield) {
+		changes.push(
+			`Channel flags: ${formatAuditValue(oldThread.flags.toArray().join(", ") || null)} -> ${formatAuditValue(newThread.flags.toArray().join(", ") || null)}`,
+		);
 	}
 	if (oldThread.archived !== newThread.archived) {
 		changes.push(
@@ -390,9 +395,9 @@ export async function handleAuditThreadUpdate(oldThread: ThreadChannel, newThrea
 	const embed = new EmbedBuilder()
 		.setColor("Yellow")
 		.setTitle("Audit Event: Thread Updated")
-		.setDescription(`${channelMention(newThread.id)} was updated.`)
+		.setDescription(`${formatChannelMention(newThread)} was updated.`)
 		.addFields(
-			{ name: "Channel", value: channelMention(newThread.id), inline: true },
+			{ name: "Channel", value: formatChannelMention(newThread), inline: true },
 			{ name: "Type", value: getChannelTypeLabel(newThread), inline: true },
 			{ name: "Changes", value: changes.join("\n") },
 		)
@@ -411,12 +416,12 @@ export async function handleAuditThreadDelete(thread: ThreadChannel): Promise<vo
 	const embed = new EmbedBuilder()
 		.setColor("Red")
 		.setTitle("Audit Event: Thread Deleted")
-		.setDescription(`${channelMention(thread.id)} was deleted.`)
+		.setDescription(`${formatChannelMention(thread)} was deleted.`)
 		.addFields(
 			{ name: "Name", value: thread.name },
-			{ name: "Channel", value: channelMention(thread.id) },
+			{ name: "Channel", value: formatChannelMention(thread) },
 			{ name: "Type", value: getChannelTypeLabel(thread), inline: true },
-			{ name: "Parent", value: thread.parentId ? channelMention(thread.parentId) : "None", inline: true },
+			{ name: "Parent", value: thread.parent ? formatChannelMention(thread.parent) : "None", inline: true },
 		)
 		.setFooter({ text: `Audit Event ID: ${createAuditEventId()}` })
 		.setTimestamp();
@@ -464,8 +469,8 @@ export async function handleAuditMemberAdd(member: GuildMember): Promise<void> {
 	const embed = new EmbedBuilder()
 		.setColor("Green")
 		.setTitle("Audit Event: Member Joined")
-		.setDescription(`${formatUserMention(member.id)} joined the server.`)
-		.addFields({ name: "User", value: `${formatUserMention(member.id)} (${member.user.tag})` })
+		.setDescription(`${formatUserMention(member)} joined the server.`)
+		.addFields({ name: "User", value: `${formatUserMention(member)} (${member.user.tag})` })
 		.setThumbnail(member.user.displayAvatarURL({ size: 256 }))
 		.setFooter({ text: `Audit Event ID: ${auditEventId}` })
 		.setTimestamp();
@@ -484,8 +489,8 @@ export async function handleAuditMemberRemove(member: GuildMember | PartialGuild
 	const embed = new EmbedBuilder()
 		.setColor("Red")
 		.setTitle("Audit Event: Member Left")
-		.setDescription(`${formatUserMention(member.id)} left the server.`)
-		.addFields({ name: "User", value: `${formatUserMention(member.id)} (${member.user.tag})` })
+		.setDescription(`${formatUserMention(member)} left the server.`)
+		.addFields({ name: "User", value: `${formatUserMention(member)} (${member.user.tag})` })
 		.setThumbnail(member.user.displayAvatarURL({ size: 256 }))
 		.setFooter({ text: `Audit Event ID: ${auditEventId}` })
 		.setTimestamp();
@@ -514,7 +519,7 @@ export async function handleAuditMemberUpdate(
 	}
 
 	const fields: { name: string; value: string; inline?: boolean }[] = [
-		{ name: "User", value: formatUserMention(newMember.id), inline: true },
+		{ name: "User", value: formatUserMention(newMember), inline: true },
 	];
 	if (profileChange.nicknameChanged) {
 		if (oldMember.nickname) {
@@ -608,13 +613,16 @@ export async function handleAuditInviteCreate(invite: Invite): Promise<void> {
 
 	const auditEventId = createAuditEventId();
 	const inviter = invite.inviter;
-	const channel = invite.channelId ? channelMention(invite.channelId) : "Unknown channel";
+	const channel =
+		invite.channel && !invite.channel.isDMBased() ? formatChannelMention(invite.channel) : "Unknown channel";
 	const createdAt = invite.createdTimestamp ? `<t:${Math.floor(invite.createdTimestamp / 1000)}:F>` : "Unknown";
 	const expiresAt = invite.expiresTimestamp ? `<t:${Math.floor(invite.expiresTimestamp / 1000)}:R>` : "Never";
 	const embed = new EmbedBuilder()
 		.setColor("Aqua")
 		.setTitle("Audit Event: Invite Created")
-		.setDescription(`${formatUserMention(invite.inviterId)} created an invite.`)
+		.setDescription(
+			invite.inviter ? `${formatUserMention(invite.inviter)} created an invite.` : "An invite was created.",
+		)
 		.addFields(
 			{ name: "Invite Code", value: `\`${invite.code}\``, inline: true },
 			{ name: "Channel", value: channel, inline: true },
@@ -640,7 +648,8 @@ export async function handleAuditInviteDelete(invite: Invite): Promise<void> {
 	}
 
 	const auditEventId = createAuditEventId();
-	const channel = invite.channelId ? channelMention(invite.channelId) : "Unknown channel";
+	const channel =
+		invite.channel && !invite.channel.isDMBased() ? formatChannelMention(invite.channel) : "Unknown channel";
 	const embed = new EmbedBuilder()
 		.setColor("LuminousVividPink")
 		.setTitle("Audit Event: Invite Revoked")
@@ -676,7 +685,7 @@ export async function handleAuditUserUpdate(oldUser: PartialUser | User, newUser
 				.setTitle(`Audit Event: ${profileChange.title}`)
 				.setAuthor({ name: newUser.tag, iconURL: newUser.displayAvatarURL({ size: 256 }) })
 				.setDescription(profileChange.description)
-				.addFields({ name: "User", value: formatUserMention(newUser.id), inline: true })
+				.addFields({ name: "User", value: formatUserMention(newUser), inline: true })
 				.setFooter({ text: `Audit Event ID: ${auditEventId}` })
 				.setTimestamp();
 			if (profileChange.usernameChanged) {
@@ -797,8 +806,14 @@ export async function handleAuditMessageUpdate(
 				name: "Updated Content",
 				value: blockQuote(trimString(newMessage.content || "No text content.", 1020)),
 			},
-			{ name: "Author", value: formatUserMention(author.id), inline: true },
-			{ name: "Channel", value: channelMention(newMessage.channel.id), inline: true },
+			{ name: "Author", value: formatUserMention(author), inline: true },
+			{
+				name: "Channel",
+				value: newMessage.channel.isDMBased()
+					? channelMention(newMessage.channel.id)
+					: formatChannelMention(newMessage.channel),
+				inline: true,
+			},
 			{ name: "Type", value: messageChannelType, inline: true },
 			{ name: "Created At", value: `<t:${Math.floor(newMessage.createdTimestamp / 1000)}:F>` },
 			{ name: "Message ID", value: newMessage.id },
@@ -837,8 +852,11 @@ export async function handleAuditMessageDelete(message: Message | PartialMessage
 				name: "Content",
 				value: trimString(message.content, 1024),
 			},
-			{ name: "Author", value: formatUserMention(message.author.id) },
-			{ name: "Channel", value: channelMention(message.channel.id) },
+			{ name: "Author", value: formatUserMention(message.author) },
+			{
+				name: "Channel",
+				value: message.channel.isDMBased() ? channelMention(message.channel.id) : formatChannelMention(message.channel),
+			},
 			{ name: "Created At", value: `<t:${Math.floor(message.createdTimestamp / 1000)}:F>` },
 			{ name: "Message ID", value: message.id },
 		)
@@ -857,7 +875,7 @@ export async function handleAuditMessageDelete(message: Message | PartialMessage
 				.setTitle(`Deleted Message Follow-up (Page ${pageIndex + 1}/${pageCount})`)
 				.setDescription(
 					[
-						`**Original message (MID: ${message.id}) from ${formatUserMention(message.author.id)}:**`,
+						`**Original message (MID: ${message.id}) from ${formatUserMention(message.author)}:**`,
 						contentPage ? blockQuote(contentPage) : "",
 						pageIndex === 0 && attachmentLinks ? `Attachments:\n${attachmentLinks}` : "",
 					]
@@ -900,7 +918,13 @@ export async function handleAuditMessageBulkDelete(
 		)
 		.addFields(
 			{ name: "Messages Deleted", value: `${originalMessages.length}`, inline: true },
-			{ name: "Channel", value: channelMention(firstMessage.channel.id), inline: true },
+			{
+				name: "Channel",
+				value: firstMessage.channel.isDMBased()
+					? channelMention(firstMessage.channel.id)
+					: formatChannelMention(firstMessage.channel),
+				inline: true,
+			},
 		)
 		.setFooter({ text: `Audit Event ID: ${auditEventId}` })
 		.setTimestamp();
@@ -910,9 +934,7 @@ export async function handleAuditMessageBulkDelete(
 	const pagePrefix = `Follow-up for Audit Event ID: ${auditEventId}\n\n`;
 	const maxPageContentLength = 4096 - pagePrefix.length;
 	const messageBlocks = originalMessages.flatMap((message, index) => {
-		const author = message.author
-			? `${formatUserMention(message.author.id)} (${message.author.tag})`
-			: "Unknown author";
+		const author = message.author ? `${formatUserMention(message.author)} (${message.author.tag})` : "Unknown author";
 		const messageHeader = `**Message ${index + 1} (ID: ${message.id}) from ${author}:**`;
 		const continuedMessageHeader = `**Message ${index + 1} (ID: ${message.id}) from ${author} (continued):**`;
 		const attachments = [...message.attachments.values()]
@@ -1046,8 +1068,8 @@ export async function handleAuditVoiceState(oldState: VoiceState, newState: Voic
 	const auditEventId = createAuditEventId();
 	const joined = !oldState.channelId;
 	const left = !newState.channelId;
-	const oldChannelMention = oldState.channelId ? channelMention(oldState.channelId) : "No channel";
-	const newChannelMention = newState.channelId ? channelMention(newState.channelId) : "No channel";
+	const oldChannelMention = oldState.channel ? formatChannelMention(oldState.channel) : "No channel";
+	const newChannelMention = newState.channel ? formatChannelMention(newState.channel) : "No channel";
 	const title = joined
 		? "Joined Voice Channel"
 		: left
@@ -1063,7 +1085,7 @@ export async function handleAuditVoiceState(oldState: VoiceState, newState: Voic
 				? "A member moved voice channels."
 				: "A member changed voice state settings.";
 	const fields: { name: string; value: string; inline?: boolean }[] = [
-		{ name: "User", value: `${formatUserMention(member.id)} (${member.user.tag})`, inline: !hasChannelChange },
+		{ name: "User", value: `${formatUserMention(member)} (${member.user.tag})`, inline: !hasChannelChange },
 	];
 	if (hasChannelChange) {
 		if (joined) {

@@ -132,12 +132,12 @@ async function postAnnouncement(
 					.setTitle(event === "join" ? "New Member" : "Member Departed")
 					.setDescription(
 						event === "join"
-							? `🎉 Welcome, ${formatUserMention(member.user.id)}! Glad to have you here.`
-							: `👋 ${formatUserMention(member.user.id)} has left the server. We wish them well!`,
+							? `🎉 Welcome, ${formatUserMention(member.user)}! Glad to have you here.`
+							: `👋 ${formatUserMention(member.user)} has left the server. We wish them well!`,
 					)
 					.setThumbnail(member.user.displayAvatarURL({ size: 256 }))
 					.addFields(
-						{ name: "User", value: formatUserMention(member.user.id), inline: true },
+						{ name: "User", value: formatUserMention(member.user), inline: true },
 						...(event === "leave" && member.joinedTimestamp
 							? [
 									{
