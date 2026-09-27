@@ -91,6 +91,17 @@ DeleteDoppelganger|MID#messageId:CID#channelId:UID#userId
 
 Use named fields, not positional payloads. Static buttons without payloads may use a plain action ID.
 
+### Discord Mentions
+
+Anything that represents a Discord entity must use its clickable mention format in user-facing messages:
+
+- Users: `userMention(userId)`
+- Channels: `channelMention(channelId)`
+- Roles: `roleMention(roleId)`
+- Slash commands: `chatInputApplicationCommandMention(commandName, subcommandGroupName, subcommandName, commandId)`
+
+Do not display raw user, channel, role, or command IDs or names when a Discord mention can be generated. Use plain text only when the entity cannot be mentioned or when the surrounding wording explicitly requires a non-clickable label.
+
 ### Logging
 
 Use `src/services/logger.ts` for logging. The logger delegates to `src/helpers/logger.ts` and supports `debug`, `info`, `success`, `warn`, and `error` levels. Include useful context in the details object, especially guild, user, command, role, and channel identifiers.

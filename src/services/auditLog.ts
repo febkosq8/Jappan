@@ -1,5 +1,11 @@
 import { randomUUID } from "node:crypto";
-import { EmbedBuilder, PermissionFlagsBits, userMention } from "discord.js";
+import {
+	EmbedBuilder,
+	PermissionFlagsBits,
+	channelMention,
+	chatInputApplicationCommandMention,
+	userMention,
+} from "discord.js";
 import type {
 	Guild,
 	GuildMember,
@@ -13,6 +19,7 @@ import type {
 import { sendGuildMessage } from "../helpers/guildHelper.js";
 import { splitString, trimString } from "../helpers/string.js";
 import type { GuildDocument } from "../models/guild.js";
+import { getCommandId } from "./commandLoader.js";
 import { getGuildSettings } from "./guild.js";
 import { logger } from "./logger.js";
 
@@ -80,6 +87,10 @@ async function isAuditLogEnabled(guild: Guild): Promise<boolean> {
 	return status.auditLog.enabled && Boolean(status.auditLog.channelId);
 }
 
+function isOwnBot(guild: Guild, userId: string): boolean {
+	return guild.client.user?.id === userId;
+}
+
 async function disableAuditLog(guild: Guild, channelId: string): Promise<void> {
 	const storedGuildData = await getGuildSettings({ guild });
 	storedGuildData.auditLog.enabled = false;
@@ -90,15 +101,20 @@ async function disableAuditLog(guild: Guild, channelId: string): Promise<void> {
 		guildId: guild.id,
 		channelId,
 	});
+	const commandId = getCommandId("auditlog");
+	const commandMention = commandId ? chatInputApplicationCommandMention("auditlog", "on", commandId) : "`/auditlog on`";
 	await sendGuildMessage({
 		guild,
-		content: `⚠️ Audit logging was automatically disabled because I can no longer access the configured audit channel.\n📢 PSA for admins: please configure a new audit channel with \`/auditlog on\`.`,
+		content: `⚠️ Audit logging was automatically disabled because I can no longer access ${channelMention(channelId)}.\n📢 PSA for admins: please configure a new channel with ${commandMention}.`,
 		failureMessage: "Failed to notify guild about disabled audit logging",
 		details: { channelId },
 	});
 }
 
 export async function handleAuditMemberAdd(member: GuildMember): Promise<void> {
+	if (isOwnBot(member.guild, member.user.id)) {
+		return;
+	}
 	if (!(await isAuditLogEnabled(member.guild))) {
 		return;
 	}
@@ -116,6 +132,9 @@ export async function handleAuditMemberAdd(member: GuildMember): Promise<void> {
 }
 
 export async function handleAuditMemberRemove(member: GuildMember | PartialGuildMember): Promise<void> {
+	if (isOwnBot(member.guild, member.user.id)) {
+		return;
+	}
 	if (!(await isAuditLogEnabled(member.guild))) {
 		return;
 	}
@@ -133,7 +152,7 @@ export async function handleAuditMemberRemove(member: GuildMember | PartialGuild
 }
 
 export async function handleAuditMessageDelete(message: Message | PartialMessage): Promise<void> {
-	if (!message.guild || message.partial) {
+	if (!message.guild || message.partial || isOwnBot(message.guild, message.author.id)) {
 		return;
 	}
 	if (!(await isAuditLogEnabled(message.guild))) {
@@ -159,7 +178,7 @@ export async function handleAuditMessageDelete(message: Message | PartialMessage
 				value: trimString(message.content, 1024),
 			},
 			{ name: "Author", value: `${userMention(message.author.id)} (${message.author.tag})` },
-			{ name: "Channel", value: `${message.channel}` },
+			{ name: "Channel", value: channelMention(message.channel.id) },
 			{ name: "Created At", value: `<t:${Math.floor(message.createdTimestamp / 1000)}:F>` },
 			{ name: "Message ID", value: message.id },
 		)
@@ -202,7 +221,7 @@ export async function handleAuditMessageDelete(message: Message | PartialMessage
 
 export async function handleAuditVoiceState(oldState: VoiceState, newState: VoiceState): Promise<void> {
 	const member = newState.member ?? oldState.member;
-	if (!member || oldState.channelId === newState.channelId) {
+	if (!member || isOwnBot(newState.guild, member.user.id) || oldState.channelId === newState.channelId) {
 		return;
 	}
 	if (!(await isAuditLogEnabled(newState.guild))) {
@@ -212,6 +231,8 @@ export async function handleAuditVoiceState(oldState: VoiceState, newState: Voic
 	const auditEventId = createAuditEventId();
 	const joined = !oldState.channelId;
 	const left = !newState.channelId;
+	const oldChannelMention = oldState.channelId ? channelMention(oldState.channelId) : "No channel";
+	const newChannelMention = newState.channelId ? channelMention(newState.channelId) : "No channel";
 	const title = joined ? "Joined Voice Channel" : left ? "Left Voice Channel" : "Moved Voice Channels";
 	const description = joined
 		? "A member joined a voice channel."
@@ -226,12 +247,12 @@ export async function handleAuditVoiceState(oldState: VoiceState, newState: Voic
 		.addFields(
 			{ name: "User", value: `${userMention(member.id)} (${member.user.tag})` },
 			...(joined
-				? [{ name: "Channel", value: `<#${newState.channelId}>`, inline: true }]
+				? [{ name: "Channel", value: newChannelMention, inline: true }]
 				: left
-					? [{ name: "Channel", value: `<#${oldState.channelId}>`, inline: true }]
+					? [{ name: "Channel", value: oldChannelMention, inline: true }]
 					: [
-							{ name: "From", value: `<#${oldState.channelId}>`, inline: true },
-							{ name: "To", value: `<#${newState.channelId}>`, inline: true },
+							{ name: "From", value: oldChannelMention, inline: true },
+							{ name: "To", value: newChannelMention, inline: true },
 						]),
 		)
 		.setFooter({ text: `Audit Event ID: ${auditEventId}` })
