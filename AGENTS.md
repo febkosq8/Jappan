@@ -129,7 +129,7 @@ Boolean values are enabled only when their environment value is exactly `"true"`
 
 ### Commands and UX
 
-- Added leveling, leaderboard, member announcement, audit log, warning, clear, doppelganger, help, about, and ping command flows present in the rewrite.
+- Added initial leveling, leaderboard, member announcement, audit log, warning, clear, doppelganger, help, about, and ping command flows. These commands still require parity and edge-case completion listed below.
 - Added button and autocomplete dispatch.
 - Added command mentions for recovery instructions.
 - Added role and permission validation for leveling setup.
@@ -159,6 +159,16 @@ Boolean values are enabled only when their environment value is exactly `"true"`
 ### Priority 2: Feature Parity
 
 - Compare the rewrite against `CURRENT_SETUP_DETAILS.md` and the legacy bot feature inventory.
+- Complete migrated command behavior, not only command registration:
+  - `level`: finish response consistency and runtime configuration edge cases.
+  - `leaderboard`: finish pagination, button recovery, empty-state, and disabled-leveling behavior.
+  - `memberannounce`: finish response consistency and join/leave configuration edge cases.
+  - `auditlog`: verify complete audit event coverage, unavailable-channel recovery, and verbosity parity.
+  - `warn`: separate warning, timeout, and ban permission checks; verify threshold and audit-channel parity.
+  - `clear`: support complete message pagination/history scanning and verify permission failure recovery.
+  - `doppelganger`: verify webhook lifecycle, delete-button recovery, notification failure handling, and permission parity.
+  - `help`, `about`, and `ping`: verify final UX and error behavior against legacy expectations.
+- Replace remaining bot-sent `:error:` shortcodes with direct Unicode or shared response constants.
 - Complete any missing music, moderation, audit, fun, utility, admin, and fallback operational flows.
 - Preserve equivalent operational fallback capability when slash commands are unavailable.
 - Verify all legacy persistence intent has an explicit rewrite model or migration path.
