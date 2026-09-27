@@ -1,4 +1,4 @@
-import { EmbedBuilder, PermissionFlagsBits, userMention } from "discord.js";
+import { EmbedBuilder, PermissionFlagsBits, blockQuote, userMention } from "discord.js";
 import type { Client, Guild, GuildBasedChannel, Invite } from "discord.js";
 
 import type { Config } from "./config.js";
@@ -137,7 +137,7 @@ export async function kickGuild({
 		message: [
 			`${config.BOT_NAME} admin's decision has led to the removal of the bot from this server.`,
 			`Please [contact the developer](${config.BOT_WEBSITE}) for more information.`,
-			additionalMessage,
+			additionalMessage ? `Message from admins:\n${blockQuote(additionalMessage)}` : undefined,
 		]
 			.filter(Boolean)
 			.join("\n"),

@@ -259,6 +259,13 @@ const command: BotCommand = {
 					},
 					{ name: "Locale", value: guild.preferredLocale, inline: true },
 					{
+						name: "Departure channel",
+						value: kickResult.departureMessage
+							? `${channelMention(kickResult.departureMessage.channelId)} (${kickResult.departureMessage.channelName})`
+							: "No message was posted.",
+						inline: true,
+					},
+					{
 						name: "Departure message",
 						value: kickResult.departureMessage?.messageUrl ?? "No message was posted.",
 					},
