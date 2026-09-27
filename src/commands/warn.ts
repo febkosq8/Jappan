@@ -135,7 +135,7 @@ const command: BotCommand = {
 	execute: async ({ interaction, config }) => {
 		await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 		if (!interaction.guild) {
-			await interaction.editReply(":error: This command can only be used in a guild.");
+			await interaction.editReply("⛔ This command can only be used in a guild.");
 			return;
 		}
 
@@ -146,7 +146,7 @@ const command: BotCommand = {
 			const banThreshold = interaction.options.getInteger("ban");
 			const selectedChannel = interaction.options.getChannel("channel");
 			if (timeoutThreshold !== null && timeoutDurationHours === null) {
-				await interaction.editReply(":error: Select a timeout duration when enabling the timeout threshold.");
+				await interaction.editReply("⛔ Select a timeout duration when enabling the timeout threshold.");
 				return;
 			}
 			if (selectedChannel) {
@@ -159,7 +159,7 @@ const command: BotCommand = {
 					!channel.permissionsFor(botMember)?.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages])
 				) {
 					await interaction.editReply(
-						`:error: I cannot use ${channelMention(selectedChannel.id)} for warning audit events.`,
+						`⛔ I cannot use ${channelMention(selectedChannel.id)} for warning audit events.`,
 					);
 					return;
 				}
@@ -192,7 +192,7 @@ const command: BotCommand = {
 			const member = await interaction.guild.members.fetch(user.id);
 			if (!member.manageable || !member.moderatable || !member.bannable) {
 				await interaction.editReply(
-					`:error: I cannot moderate ${user}. Their role is higher than mine or they are the server owner.`,
+					`⛔ I cannot moderate ${user}. Their role is higher than mine or they are the server owner.`,
 				);
 				return;
 			}

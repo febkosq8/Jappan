@@ -46,7 +46,7 @@ const command: BotCommand = {
 			!("fetchWebhooks" in interaction.channel) ||
 			!("createWebhook" in interaction.channel)
 		) {
-			await interaction.editReply(":error: This command can only be used in a guild text channel.");
+			await interaction.editReply("⛔ This command can only be used in a guild text channel.");
 			return;
 		}
 

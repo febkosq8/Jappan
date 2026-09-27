@@ -33,7 +33,7 @@ export async function handleSlashCommandInteraction({
 				durationMs: Math.round(performance.now() - startedAt),
 			});
 			await interaction.reply({
-				content: `:error: I need these permissions to run this command: ${missingPermissions
+				content: `⛔ I need these permissions to run this command: ${missingPermissions
 					.map((permission) => underline(permission))
 					.join(", ")}.`,
 				flags: MessageFlags.Ephemeral,
@@ -48,7 +48,7 @@ export async function handleSlashCommandInteraction({
 				durationMs: Math.round(performance.now() - startedAt),
 			});
 			await interaction.reply({
-				content: ":error: The bot is temporarily unavailable. Please try again later.",
+				content: "⛔ The bot is temporarily unavailable. Please try again later.",
 				flags: MessageFlags.Ephemeral,
 			});
 			return;
@@ -70,12 +70,12 @@ export async function handleSlashCommandInteraction({
 
 		if (interaction.replied || interaction.deferred) {
 			await interaction.followUp({
-				content: ":error: There was an error while running this Application (/) command.",
+				content: "⛔ There was an error while running this Application (/) command.",
 				flags: MessageFlags.Ephemeral,
 			});
 		} else {
 			await interaction.reply({
-				content: ":error: There was an error while running this Application (/) command.",
+				content: "⛔ There was an error while running this Application (/) command.",
 				flags: MessageFlags.Ephemeral,
 			});
 		}

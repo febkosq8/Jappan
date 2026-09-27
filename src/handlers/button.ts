@@ -19,7 +19,7 @@ export async function handleButtonInteraction({
 			customId: interaction.customId,
 			user: `${interaction.user.tag} <${interaction.user.id}>`,
 		});
-		await interaction.reply({ content: ":error: This button is no longer available.", flags: MessageFlags.Ephemeral });
+		await interaction.reply({ content: "⛔ This button is no longer available.", flags: MessageFlags.Ephemeral });
 		return;
 	}
 
@@ -38,7 +38,7 @@ export async function handleButtonInteraction({
 		});
 		if (!interaction.replied && !interaction.deferred) {
 			await interaction.reply({
-				content: ":error: There was an error handling this button.",
+				content: "⛔ There was an error handling this button.",
 				flags: MessageFlags.Ephemeral,
 			});
 		}

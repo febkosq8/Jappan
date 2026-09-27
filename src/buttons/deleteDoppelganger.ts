@@ -19,13 +19,13 @@ export async function handleDeleteDoppelganger({
 	const authorizedUserId = fields.get("UID");
 	if (!messageId || !channelId || !authorizedUserId) {
 		await interaction.reply({
-			content: ":error: This delete button is invalid or expired.",
+			content: "⛔ This delete button is invalid or expired.",
 			flags: MessageFlags.Ephemeral,
 		});
 		return;
 	} else if (interaction.user.id !== authorizedUserId) {
 		await interaction.reply({
-			content: ":error: Only the notified user can delete this message.",
+			content: "⛔ Only the notified user can delete this message.",
 			flags: MessageFlags.Ephemeral,
 		});
 		return;
@@ -34,7 +34,7 @@ export async function handleDeleteDoppelganger({
 	await interaction.deferUpdate();
 	const channel = await interaction.client.channels.fetch(channelId);
 	if (!channel?.isTextBased() || !("messages" in channel)) {
-		await interaction.editReply({ content: ":error: The original channel is no longer available.", components: [] });
+		await interaction.editReply({ content: "⛔ The original channel is no longer available.", components: [] });
 		return;
 	}
 
