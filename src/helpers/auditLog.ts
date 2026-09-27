@@ -1,5 +1,14 @@
 import { randomUUID } from "node:crypto";
-import { AuditLogEvent, ChannelType, EmbedBuilder, VideoQualityMode, blockQuote } from "discord.js";
+import {
+	AuditLogEvent,
+	ChannelType,
+	EmbedBuilder,
+	PermissionsBitField,
+	VideoQualityMode,
+	blockQuote,
+	roleMention,
+	userMention,
+} from "discord.js";
 import type {
 	APIEmbed,
 	Guild,
@@ -117,6 +126,68 @@ export function getRoleCreationDetails(role: Role): { name: string; value: strin
 	return details;
 }
 
+function formatPermissionOverwriteTarget(
+	guild: Guild,
+	overwrite: GuildChannel["permissionOverwrites"]["cache"] extends infer Cache
+		? Cache extends Map<string, infer Value>
+			? Value
+			: never
+		: never,
+): string {
+	if (overwrite.type === 0) {
+		const role = guild.roles.cache.get(overwrite.id);
+		return role ? formatRoleMention(role) : `${roleMention(overwrite.id)} (${overwrite.id})`;
+	}
+	const member = guild.members.cache.get(overwrite.id);
+	return member ? formatUserMention(member) : `${userMention(overwrite.id)} (${overwrite.id})`;
+}
+
+export function getPermissionOverwriteChangeDetails(
+	guild: Guild,
+	oldOverwrites: GuildChannel["permissionOverwrites"]["cache"],
+	newOverwrites: GuildChannel["permissionOverwrites"]["cache"],
+): string[] {
+	const overwriteIds = new Set([...oldOverwrites.keys(), ...newOverwrites.keys()]);
+	return [...overwriteIds]
+		.map((overwriteId) => {
+			const oldOverwrite = oldOverwrites.get(overwriteId);
+			const newOverwrite = newOverwrites.get(overwriteId);
+			if (
+				oldOverwrite &&
+				newOverwrite &&
+				oldOverwrite.allow.bitfield === newOverwrite.allow.bitfield &&
+				oldOverwrite.deny.bitfield === newOverwrite.deny.bitfield
+			) {
+				return null;
+			}
+			const target = formatPermissionOverwriteTarget(guild, newOverwrite ?? oldOverwrite!);
+			const oldAllowed = new Set(oldOverwrite?.allow.toArray() ?? []);
+			const newAllowed = new Set(newOverwrite?.allow.toArray() ?? []);
+			const oldDenied = new Set(oldOverwrite?.deny.toArray() ?? []);
+			const newDenied = new Set(newOverwrite?.deny.toArray() ?? []);
+			const addedAllowed = [...newAllowed].filter((permission) => !oldAllowed.has(permission));
+			const removedAllowed = [...oldAllowed].filter((permission) => !newAllowed.has(permission));
+			const addedDenied = [...newDenied].filter((permission) => !oldDenied.has(permission));
+			const removedDenied = [...oldDenied].filter((permission) => !newDenied.has(permission));
+			const changes = [
+				addedAllowed.length > 0
+					? `ALLOW added: ${addedAllowed.map((permission) => formatAuditValue(permission)).join(", ")}`
+					: null,
+				removedAllowed.length > 0
+					? `ALLOW removed: ${removedAllowed.map((permission) => formatAuditValue(permission)).join(", ")}`
+					: null,
+				addedDenied.length > 0
+					? `DENY added: ${addedDenied.map((permission) => formatAuditValue(permission)).join(", ")}`
+					: null,
+				removedDenied.length > 0
+					? `DENY removed: ${removedDenied.map((permission) => formatAuditValue(permission)).join(", ")}`
+					: null,
+			].filter((change): change is string => change !== null);
+			return `${target}\n${changes.join("\n")}`;
+		})
+		.filter((change): change is string => change !== null);
+}
+
 export function getEmbedCharacterCount(embed: APIEmbed | JSONEncodable<APIEmbed>): number {
 	const serializedEmbed = "toJSON" in embed ? embed.toJSON() : embed;
 	return [
@@ -224,9 +295,13 @@ export function getAuditEntryTargetLabel(auditEntry: GuildAuditLogsEntry): strin
 	return formatAuditValue(String(target));
 }
 
-function formatAuditChangeValue(value: unknown): string {
+function formatAuditChangeValue(value: unknown, key?: string): string {
 	if (value === null || value === undefined) {
 		return "None";
+	}
+	if ((key === "allow" || key === "deny") && (typeof value === "number" || typeof value === "bigint")) {
+		const permissions = new PermissionsBitField(BigInt(value)).toArray();
+		return formatAuditValue(permissions.join(", ") || null);
 	}
 	if (typeof value === "string" || typeof value === "number") {
 		return formatAuditValue(value);
@@ -240,7 +315,7 @@ export function getAuditEntryChangeDetails(auditEntry: GuildAuditLogsEntry): str
 		.filter((change) => change.old !== undefined || change.new !== undefined)
 		.map(
 			(change) =>
-				`${formatAuditValue(change.key)}: ${formatAuditChangeValue(change.old)} -> ${formatAuditChangeValue(change.new)}`,
+				`${formatAuditValue(change.key)}: ${formatAuditChangeValue(change.old, change.key)} -> ${formatAuditChangeValue(change.new, change.key)}`,
 		);
 }
 

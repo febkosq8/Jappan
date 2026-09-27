@@ -167,6 +167,7 @@ Boolean values are enabled only when their environment value is exactly `"true"`
 - Standardized many command rejection messages around the Unicode error indicator.
 - Keep `requiredBotPermissions` limited to permissions required by every subcommand; check subcommand-specific permissions inside the relevant branch instead of applying them globally.
 - Added recent audit executor and reason attribution for member, channel, thread, role, invite, ban, and user profile events, including multi-type audit lookups for member role changes.
+- Added detailed before/after permission overwrite auditing for channel roles and members.
 
 ### Observability
 

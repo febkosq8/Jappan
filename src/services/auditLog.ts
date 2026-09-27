@@ -44,6 +44,7 @@ import {
 	getChannelTypeLabel,
 	getEmbedCharacterCount,
 	getProfileChangeResponse,
+	getPermissionOverwriteChangeDetails,
 	getRecentAuditEntry,
 	getRoleCreationDetails,
 	getRoleChangeDetails,
@@ -351,6 +352,11 @@ export async function handleAuditChannelUpdate(oldChannel: GuildChannel, newChan
 	}
 	const oldOverwrites = oldChannel.permissionOverwrites.cache;
 	const newOverwrites = newChannel.permissionOverwrites.cache;
+	const permissionOverwriteChanges = getPermissionOverwriteChangeDetails(
+		newChannel.guild,
+		oldOverwrites,
+		newOverwrites,
+	);
 	const overwritesChanged =
 		oldOverwrites.size !== newOverwrites.size ||
 		[...oldOverwrites.values()].some((oldOverwrite) => {
@@ -361,10 +367,7 @@ export async function handleAuditChannelUpdate(oldChannel: GuildChannel, newChan
 				oldOverwrite.deny.bitfield !== newOverwrite.deny.bitfield
 			);
 		});
-	if (overwritesChanged) {
-		changes.push("Permission overwrites changed");
-	}
-	if (changes.length === 0 || !(await isAuditLogEnabled(newChannel.guild))) {
+	if (changes.length === 0 && permissionOverwriteChanges.length === 0 || !(await isAuditLogEnabled(newChannel.guild))) {
 		return;
 	}
 
@@ -393,6 +396,7 @@ export async function handleAuditChannelUpdate(oldChannel: GuildChannel, newChan
 			{ name: "Channel", value: formatChannelMention(newChannel), inline: true },
 			{ name: "Type", value: getChannelTypeLabel(newChannel), inline: true },
 			{ name: "Changes", value: changes.join("\n") },
+			...permissionOverwriteChanges.map((change) => ({ name: "Permission Overwrite", value: change })),
 		)
 		.setFooter({ text: `Audit Event ID: ${createAuditEventId()}` })
 		.setTimestamp();
@@ -515,7 +519,7 @@ export async function handleAuditLogEntryCreate(auditEntry: GuildAuditLogsEntry,
 	const changes = getAuditEntryChangeDetails(auditEntry);
 	const embed = new EmbedBuilder()
 		.setColor("DarkGreen")
-		.setTitle(`Audit Event: ${getAuditEntryActionLabel(auditEntry.action)}`)
+		.setTitle(`Audit Event: New Audit Log Entry`)
 		.addFields(
 			{ name: "Action", value: getAuditEntryActionLabel(auditEntry.action), inline: true },
 			{ name: "Target Type", value: auditEntry.targetType ?? "Unknown", inline: true },
