@@ -193,7 +193,7 @@ Boolean values are enabled only when their environment value is exactly `"true"`
   - Migrate ban and unban auditing.
   - Migrate channel create, update, delete, and permission-overwrite auditing.
   - Migrate role create, update, and delete auditing.
-  - Migrate user profile updates, including username and avatar changes, across guilds where the user is a member.
+  - [x] Migrate user profile updates, including username and avatar changes, across guilds where the user is a member.
   - Migrate raw `guildAuditLogEntryCreate` forwarding with target, executor, reason, and changed fields.
   - Reconcile partial message-delete behavior with the legacy `fullVerbosity` setting.
   - Add an explicit message-update timestamp and confirm embed-change comparison semantics.

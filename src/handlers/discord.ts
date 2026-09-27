@@ -18,6 +18,7 @@ import {
 	handleAuditMessageBulkDelete,
 	handleAuditMessageDelete,
 	handleAuditMessageUpdate,
+	handleAuditUserUpdate,
 	handleAuditVoiceState,
 } from "../services/auditLog.js";
 
@@ -107,6 +108,7 @@ function registerEventDebugHandlers(client: ReturnType<typeof getClient>, enable
 		MessageUpdate: { event: Events.MessageUpdate, argumentNames: ["oldMessage", "newMessage"] },
 		InviteCreate: { event: Events.InviteCreate, argumentNames: ["invite"] },
 		InviteDelete: { event: Events.InviteDelete, argumentNames: ["invite"] },
+		UserUpdate: { event: Events.UserUpdate, argumentNames: ["oldUser", "newUser"] },
 	};
 	for (const [eventName, debugEvent] of Object.entries(debugEvents)) {
 		if (!enabledEvents.includes(eventName)) {
@@ -167,6 +169,10 @@ export function registerExtendedDiscordHandlers(): void {
 
 	client.on(Events.MessageBulkDelete, (messages) => {
 		void handleAuditMessageBulkDelete(messages);
+	});
+
+	client.on(Events.UserUpdate, (oldUser, newUser) => {
+		void handleAuditUserUpdate(oldUser, newUser);
 	});
 
 	logger.success("DISCORD", "Extended Discord event handlers registered");

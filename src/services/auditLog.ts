@@ -18,6 +18,8 @@ import type {
 	MessageCreateOptions,
 	PartialGuildMember,
 	PartialMessage,
+	PartialUser,
+	User,
 	VoiceState,
 } from "discord.js";
 import type { ReadonlyCollection } from "discord.js";
@@ -277,6 +279,67 @@ export async function handleAuditInviteDelete(invite: Invite): Promise<void> {
 		.setFooter({ text: `Audit Event ID: ${auditEventId}` })
 		.setTimestamp();
 	await postAuditEvent(guild, { embeds: [embed], allowedMentions: { parse: [] } });
+}
+
+export async function handleAuditUserUpdate(oldUser: PartialUser | User, newUser: User): Promise<void> {
+	const usernameChanged = oldUser.username !== newUser.username;
+	const globalNameChanged = oldUser.globalName !== newUser.globalName;
+	const avatarChanged = oldUser.avatar !== newUser.avatar;
+	if (!usernameChanged && !globalNameChanged && !avatarChanged) {
+		return;
+	}
+
+	await Promise.all(
+		newUser.client.guilds.cache.map(async (guild) => {
+			if (isOwnBot(guild, newUser.id)) {
+				return;
+			}
+			const member = await guild.members.fetch(newUser.id).catch(() => null);
+			if (!member || !(await isAuditLogEnabled(guild))) {
+				return;
+			}
+
+			const auditEventId = createAuditEventId();
+			const embed = new EmbedBuilder()
+				.setColor("Yellow")
+				.setTitle("Audit Event: User Profile Updated")
+				.setAuthor({ name: newUser.tag, iconURL: newUser.displayAvatarURL({ size: 256 }) })
+				.setDescription(`${userMention(newUser.id)} updated their profile.`)
+				.addFields({ name: "User", value: userMention(newUser.id), inline: true })
+				.setFooter({ text: `Audit Event ID: ${auditEventId}` })
+				.setTimestamp();
+			if (usernameChanged) {
+				embed.addFields(
+					{ name: "Old Username", value: oldUser.username ?? "Unknown", inline: true },
+					{ name: "New Username", value: newUser.username, inline: true },
+				);
+			}
+			if (globalNameChanged) {
+				embed.addFields(
+					{ name: "Old Display Name", value: oldUser.globalName ?? "None", inline: true },
+					{ name: "New Display Name", value: newUser.globalName ?? "None", inline: true },
+				);
+			}
+			if (avatarChanged) {
+				embed
+					.addFields(
+						{
+							name: "Old Avatar (Thumbnail)",
+							value: `[View Avatar](${oldUser.displayAvatarURL({ size: 256 })})`,
+							inline: true,
+						},
+						{
+							name: "New Avatar (Image)",
+							value: `[View Avatar](${newUser.displayAvatarURL({ size: 256 })})`,
+							inline: true,
+						},
+					)
+					.setThumbnail(oldUser.displayAvatarURL({ size: 256 }))
+					.setImage(newUser.displayAvatarURL({ size: 256 }));
+			}
+			await postAuditEvent(guild, { embeds: [embed], allowedMentions: { parse: [] } });
+		}),
+	);
 }
 
 export async function handleAuditMessageUpdate(
