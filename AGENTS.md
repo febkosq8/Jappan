@@ -162,6 +162,7 @@ Boolean values are enabled only when their environment value is exactly `"true"`
 - Added initial leveling, leaderboard, member announcement, audit log, warning, clear, doppelganger, help, about, and ping command flows. These commands still require parity and edge-case completion listed below.
 - Added button and autocomplete dispatch.
 - Added command mentions for recovery instructions.
+- Completed entity-based user, channel, and thread mention formatting with consistent `(Name/ID)` labels.
 - Added role and permission validation for leveling setup.
 - Standardized many command rejection messages around the Unicode error indicator.
 - Keep `requiredBotPermissions` limited to permissions required by every subcommand; check subcommand-specific permissions inside the relevant branch instead of applying them globally.
@@ -197,7 +198,7 @@ Boolean values are enabled only when their environment value is exactly `"true"`
   - [x] Migrate ban and unban auditing.
   - [x] Migrate channel create, update, delete, and permission-overwrite auditing.
   - Migrate role create, update, and delete auditing.
-  - Add thread create, update, and delete auditing through Discord's dedicated thread events.
+  - [x] Add thread create, update, and delete auditing through Discord's dedicated thread events.
   - [x] Migrate user profile updates, including username and avatar changes, across guilds where the user is a member.
   - Migrate raw `guildAuditLogEntryCreate` forwarding with target, executor, reason, and changed fields.
   - Reconcile partial message-delete behavior with the legacy `fullVerbosity` setting.
