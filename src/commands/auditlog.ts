@@ -114,8 +114,14 @@ const command: BotCommand = {
 			}
 
 			const fullVerbosity = interaction.options.getBoolean("full-verbosity") ?? false;
-			await setAuditLog(interaction.guild.id, interaction.guild.name, true, channel.id, fullVerbosity);
-			await channel.send({ content: "Audit log events are enabled for this channel." });
+			try {
+				await setAuditLog(interaction.guild.id, interaction.guild.name, true, channel.id, fullVerbosity);
+				await channel.send({ content: "Audit log events are enabled for this channel." });
+			} catch {
+				await setAuditLog(interaction.guild.id, interaction.guild.name, false, null, false).catch(() => undefined);
+				await interaction.editReply("⛔ I could not send the confirmation message, so audit logging was not enabled.");
+				return;
+			}
 		}
 
 		if (interaction.options.getSubcommand() === "off") {

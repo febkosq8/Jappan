@@ -128,6 +128,12 @@ export function getEmbedCharacterCount(embed: APIEmbed | JSONEncodable<APIEmbed>
 	].reduce((total, value) => total + (value?.length ?? 0), 0);
 }
 
+export function getComparableEmbed(embed: APIEmbed | JSONEncodable<APIEmbed>): APIEmbed {
+	const serializedEmbed = "toJSON" in embed ? embed.toJSON() : embed;
+	const { image: _image, thumbnail: _thumbnail, ...comparableEmbed } = serializedEmbed;
+	return comparableEmbed;
+}
+
 export function createAuditEventId(): string {
 	return randomUUID();
 }

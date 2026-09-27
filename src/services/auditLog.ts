@@ -40,6 +40,7 @@ import {
 	getAuditEntryActionLabel,
 	getAuditEntryChangeDetails,
 	getAuditEntryTargetLabel,
+	getComparableEmbed,
 	getChannelTypeLabel,
 	getEmbedCharacterCount,
 	getProfileChangeResponse,
@@ -812,15 +813,16 @@ export async function handleAuditMessageUpdate(
 		return;
 	}
 	const oldMessageWasNotCached = oldMessage.partial;
-	const oldEmbeds = JSON.stringify(oldMessage.embeds.map((embed) => embed.toJSON()));
-	const newEmbeds = JSON.stringify(newMessage.embeds.map((embed) => embed.toJSON()));
+	const oldEmbeds = JSON.stringify(oldMessage.embeds.map((embed) => getComparableEmbed(embed)));
+	const newEmbeds = JSON.stringify(newMessage.embeds.map((embed) => getComparableEmbed(embed)));
 	const contentChanged = oldMessageWasNotCached || oldMessage.content !== newMessage.content;
 	const embedsChanged = oldMessageWasNotCached || oldEmbeds !== newEmbeds;
 	if (!contentChanged && !embedsChanged) {
 		return;
 	}
 	const auditEventId = createAuditEventId();
-	const hasEmbedFollowUp = embedsChanged && newMessage.embeds.length > 0;
+	const hasPreviousEmbedFollowUp = embedsChanged && oldMessage.embeds.length > 0;
+	const hasUpdatedEmbedFollowUp = embedsChanged && newMessage.embeds.length > 0;
 	const previousContent = oldMessage.content ?? "";
 	const updatedContent = newMessage.content ?? "";
 	const previousContentWasTrimmed = !oldMessageWasNotCached && previousContent.length > 1020;
@@ -829,7 +831,10 @@ export async function handleAuditMessageUpdate(
 	const previousContentPageCount = previousContentWasTrimmed ? splitString(previousContent, 4000).length : 0;
 	const updatedContentPageCount = updatedContentWasTrimmed ? splitString(updatedContent, 4000).length : 0;
 	const contentFollowUpPageCount = previousContentPageCount + updatedContentPageCount;
-	const followUpPageCount = contentFollowUpPageCount + (hasEmbedFollowUp ? updatedEmbeds.length : 0);
+	const followUpPageCount =
+		contentFollowUpPageCount +
+		(hasPreviousEmbedFollowUp ? oldMessage.embeds.length : 0) +
+		(hasUpdatedEmbedFollowUp ? updatedEmbeds.length : 0);
 	const totalPageCount = 1 + followUpPageCount;
 	const contentFollowUps = [
 		...(previousContentWasTrimmed
@@ -855,10 +860,17 @@ export async function handleAuditMessageUpdate(
 				)
 			: []),
 	];
-	const updatedEmbedFollowUps = hasEmbedFollowUp
+	const previousEmbedFollowUps = hasPreviousEmbedFollowUp
+		? oldMessage.embeds.map((originalEmbed, pageIndex) =>
+				EmbedBuilder.from(originalEmbed.toJSON()).setTitle(
+					`${originalEmbed.data.title ?? "Previous Embed"} (MID: ${newMessage.id}) (Page ${contentFollowUpPageCount + pageIndex + 2}/${totalPageCount})`,
+				),
+			)
+		: [];
+	const updatedEmbedFollowUps = hasUpdatedEmbedFollowUp
 		? updatedEmbeds.map((originalEmbed, pageIndex) =>
 				EmbedBuilder.from(originalEmbed).setTitle(
-					`${originalEmbed.title ?? "Updated Embed"} (MID: ${newMessage.id}) (Page ${contentFollowUpPageCount + pageIndex + 2}/${totalPageCount})`,
+					`${originalEmbed.title ?? "Updated Embed"} (MID: ${newMessage.id}) (Page ${contentFollowUpPageCount + (hasPreviousEmbedFollowUp ? oldMessage.embeds.length : 0) + pageIndex + 2}/${totalPageCount})`,
 				),
 			)
 		: [];
@@ -873,7 +885,7 @@ export async function handleAuditMessageUpdate(
 		.setDescription(
 			oldMessageWasNotCached
 				? "A message was edited, but the previous version was not cached. The updated content is shown below."
-				: hasEmbedFollowUp
+				: hasPreviousEmbedFollowUp || hasUpdatedEmbedFollowUp
 					? "A message was edited. The updated embeds are included with this audit event."
 					: embedsChanged
 						? "A message was edited and its embed content changed."
@@ -909,7 +921,7 @@ export async function handleAuditMessageUpdate(
 		.setFooter({ text: `Audit Event ID: ${auditEventId}` })
 		.setTimestamp();
 	await postAuditEvent(guild, {
-		embeds: [embed, ...contentFollowUps, ...updatedEmbedFollowUps],
+		embeds: [embed, ...contentFollowUps, ...previousEmbedFollowUps, ...updatedEmbedFollowUps],
 		allowedMentions: { parse: [] },
 	});
 }
