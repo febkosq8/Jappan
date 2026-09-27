@@ -208,7 +208,7 @@ export async function getRecentMemberUpdateExecutor(member: GuildMember): Promis
 		(candidateAuditEntry) =>
 			candidateAuditEntry.target?.id === member.id && Date.now() - candidateAuditEntry.createdTimestamp < 20_000,
 	);
-	return auditEntry?.executor ? `${formatUserMention(auditEntry.executor)} (${auditEntry.executor.tag})` : "Unknown";
+	return auditEntry?.executor ? formatUserMention(auditEntry.executor) : "Unknown";
 }
 
 export function getChannelTypeLabel(channel: GuildChannel | ThreadChannel): string {
@@ -262,7 +262,7 @@ export function addAuditEntryDetails(embed: EmbedBuilder, auditEntry: GuildAudit
 	if (auditEntry?.executor) {
 		embed.addFields({
 			name: "Action Initiated By",
-			value: `${formatUserMention(auditEntry.executor)} (${auditEntry.executor.tag})`,
+			value: formatUserMention(auditEntry.executor),
 		});
 	}
 	if (auditEntry?.reason) {

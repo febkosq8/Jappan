@@ -161,9 +161,7 @@ async function handleAuditBan(ban: GuildBan, action: "Banned" | "Unbanned"): Pro
 		.setDescription(`${formatUserMention(ban.user)} was ${action.toLowerCase()}.`)
 		.addFields({
 			name: "Action Initiated By",
-			value: auditEntry?.executor
-				? `${formatUserMention(auditEntry.executor)} (${auditEntry.executor.tag})`
-				: "Unknown",
+			value: auditEntry?.executor ? formatUserMention(auditEntry.executor) : "Unknown",
 		})
 		.setFooter({ text: `Audit Event ID: ${auditEventId}` })
 		.setTimestamp();
@@ -470,7 +468,7 @@ export async function handleAuditMemberAdd(member: GuildMember): Promise<void> {
 		.setColor("Green")
 		.setTitle("Audit Event: Member Joined")
 		.setDescription(`${formatUserMention(member)} joined the server.`)
-		.addFields({ name: "User", value: `${formatUserMention(member)} (${member.user.tag})` })
+		.addFields({ name: "User", value: formatUserMention(member) })
 		.setThumbnail(member.user.displayAvatarURL({ size: 256 }))
 		.setFooter({ text: `Audit Event ID: ${auditEventId}` })
 		.setTimestamp();
@@ -490,7 +488,7 @@ export async function handleAuditMemberRemove(member: GuildMember | PartialGuild
 		.setColor("Red")
 		.setTitle("Audit Event: Member Left")
 		.setDescription(`${formatUserMention(member)} left the server.`)
-		.addFields({ name: "User", value: `${formatUserMention(member)} (${member.user.tag})` })
+		.addFields({ name: "User", value: formatUserMention(member) })
 		.setThumbnail(member.user.displayAvatarURL({ size: 256 }))
 		.setFooter({ text: `Audit Event ID: ${auditEventId}` })
 		.setTimestamp();
@@ -934,7 +932,7 @@ export async function handleAuditMessageBulkDelete(
 	const pagePrefix = `Follow-up for Audit Event ID: ${auditEventId}\n\n`;
 	const maxPageContentLength = 4096 - pagePrefix.length;
 	const messageBlocks = originalMessages.flatMap((message, index) => {
-		const author = message.author ? `${formatUserMention(message.author)} (${message.author.tag})` : "Unknown author";
+		const author = message.author ? formatUserMention(message.author) : "Unknown author";
 		const messageHeader = `**Message ${index + 1} (ID: ${message.id}) from ${author}:**`;
 		const continuedMessageHeader = `**Message ${index + 1} (ID: ${message.id}) from ${author} (continued):**`;
 		const attachments = [...message.attachments.values()]
@@ -1085,7 +1083,7 @@ export async function handleAuditVoiceState(oldState: VoiceState, newState: Voic
 				? "A member moved voice channels."
 				: "A member changed voice state settings.";
 	const fields: { name: string; value: string; inline?: boolean }[] = [
-		{ name: "User", value: `${formatUserMention(member)} (${member.user.tag})`, inline: !hasChannelChange },
+		{ name: "User", value: formatUserMention(member), inline: !hasChannelChange },
 	];
 	if (hasChannelChange) {
 		if (joined) {

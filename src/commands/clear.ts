@@ -5,11 +5,10 @@ import {
 	MessageFlags,
 	PermissionFlagsBits,
 	SlashCommandBuilder,
-	userMention,
 } from "discord.js";
 import type { Message } from "discord.js";
 
-import { formatChannelMention } from "../helpers/discord.js";
+import { formatChannelMention, formatUserMention } from "../helpers/discord.js";
 import type { BotCommand, BotCommandData } from "../services/commandLoader.js";
 import { logger } from "../services/logger.js";
 
@@ -83,9 +82,6 @@ const command: BotCommand = {
 			option.setName("username").setDescription("Only delete messages sent by this user").setRequired(false),
 		)
 		.addStringOption((option) =>
-			option.setName("user-id").setDescription("Only delete messages sent by this Discord user ID").setRequired(false),
-		)
-		.addStringOption((option) =>
 			option
 				.setName("text")
 				.setDescription("Only delete messages containing this text (case-sensitive)")
@@ -102,18 +98,12 @@ const command: BotCommand = {
 
 		const selectedChannel = interaction.options.getChannel("channel");
 		const targetUser = interaction.options.getUser("username");
-		const targetUserId = targetUser?.id ?? interaction.options.getString("user-id")?.trim();
 		const targetText = interaction.options.getString("text")?.trim();
 		const count = Math.floor(interaction.options.getNumber("count") ?? 200);
 		if (count < 1) {
 			await interaction.editReply("⛔ Count must be at least 1.");
 			return;
 		}
-		if (targetUserId && !/^\d{17,20}$/.test(targetUserId)) {
-			await interaction.editReply("⛔ User ID must be a valid Discord user ID.");
-			return;
-		}
-
 		let progressInterval: ReturnType<typeof setInterval> | undefined;
 		let progressUpdate: Promise<void> | undefined;
 		try {
@@ -218,7 +208,7 @@ const command: BotCommand = {
 					.setFooter({ text: `Run ${interaction.id} | Page 1/${totalPages}` })
 					.setTimestamp()
 					.addFields(
-						...(targetUserId ? [{ name: "Target user", value: userMention(targetUserId) }] : []),
+						...(targetUser ? [{ name: "Target user", value: formatUserMention(targetUser) }] : []),
 						{ name: "Delete limit", value: count.toString() },
 						{
 							name: "Status",
@@ -291,7 +281,7 @@ const command: BotCommand = {
 				const messagesToDelete = [...messages.values()]
 					.filter(
 						(message) =>
-							(!targetUserId || message.author.id === targetUserId) &&
+							(!targetUser || message.author.id === targetUser.id) &&
 							(!targetText || message.content.includes(targetText)) &&
 							message.interactionMetadata?.id !== interaction.id,
 					)
