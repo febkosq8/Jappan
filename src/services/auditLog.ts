@@ -17,6 +17,7 @@ import type {
 	JSONEncodable,
 	Message,
 	MessageCreateOptions,
+	GuildBan,
 	PartialGuildMember,
 	PartialMessage,
 	PartialUser,
@@ -293,12 +294,49 @@ function addAvatarChange(embed: EmbedBuilder, oldAvatarUrl: string, newAvatarUrl
 }
 
 async function getRecentMemberUpdateExecutor(member: GuildMember): Promise<string> {
-	const auditLogs = await member.guild.fetchAuditLogs({ limit: 1, type: AuditLogEvent.MemberUpdate }).catch(() => null);
+	const auditLogs = await member.guild
+		.fetchAuditLogs({ limit: 10, type: AuditLogEvent.MemberUpdate })
+		.catch(() => null);
 	const entry = auditLogs?.entries.find(
 		(auditEntry) => auditEntry.target?.id === member.id && Date.now() - auditEntry.createdTimestamp < 20_000,
 	);
-	console.log("getRecentMemberUpdateExecutor", { member, auditLogs, entry });
 	return entry?.executor ? `${formatUserMention(entry.executor.id)} (${entry.executor.tag})` : "Unknown";
+}
+
+async function handleAuditBan(ban: GuildBan, action: "Banned" | "Unbanned"): Promise<void> {
+	if (isOwnBot(ban.guild, ban.user.id) || !(await isAuditLogEnabled(ban.guild))) {
+		return;
+	}
+
+	const auditLogType = action === "Banned" ? AuditLogEvent.MemberBanAdd : AuditLogEvent.MemberBanRemove;
+	const auditLogs = await ban.guild.fetchAuditLogs({ limit: 10, type: auditLogType }).catch(() => null);
+	const entry = auditLogs?.entries.find(
+		(auditEntry) => auditEntry.target?.id === ban.user.id && Date.now() - auditEntry.createdTimestamp < 20_000,
+	);
+	const auditEventId = createAuditEventId();
+	const embed = new EmbedBuilder()
+		.setColor(action === "Banned" ? "DarkRed" : "Green")
+		.setTitle(`Audit Event: Member ${action}`)
+		.setAuthor({ name: ban.user.tag, iconURL: ban.user.displayAvatarURL({ size: 256 }) })
+		.setDescription(`${formatUserMention(ban.user.id)} was ${action.toLowerCase()}.`)
+		.addFields({
+			name: "Action Initiated By",
+			value: entry?.executor ? `${formatUserMention(entry.executor.id)} (${entry.executor.tag})` : "Unknown",
+		})
+		.setFooter({ text: `Audit Event ID: ${auditEventId}` })
+		.setTimestamp();
+	if (entry?.reason) {
+		embed.addFields({ name: "Reason", value: entry.reason });
+	}
+	await postAuditEvent(ban.guild, { embeds: [embed], allowedMentions: { parse: [] } });
+}
+
+export async function handleAuditMemberBanAdd(ban: GuildBan): Promise<void> {
+	await handleAuditBan(ban, "Banned");
+}
+
+export async function handleAuditMemberBanRemove(ban: GuildBan): Promise<void> {
+	await handleAuditBan(ban, "Unbanned");
 }
 
 async function disableAuditLog(guild: Guild, channelId: string): Promise<void> {

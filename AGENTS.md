@@ -73,6 +73,8 @@ When an event is listed in `ENABLE_EVENTS_DEBUG`, a separate debug listener is r
 - `Events.InteractionCreate`
 - `Events.VoiceStateUpdate`
 - `Events.GuildMemberUpdate`
+- `Events.GuildBanAdd`
+- `Events.GuildBanRemove`
 
 Debug output uses `logger.debug`, not direct console calls.
 
@@ -192,7 +194,7 @@ Boolean values are enabled only when their environment value is exactly `"true"`
   - Add executor and reason attribution through recent `Guild.fetchAuditLogs()` entries for moderation and configuration events.
   - [x] Migrate invite creation and revocation auditing.
   - [x] Migrate guild member profile updates, including nickname, roles, timeout, guild-specific avatar changes, and timeout executor attribution.
-  - Migrate ban and unban auditing.
+  - [x] Migrate ban and unban auditing.
   - Migrate channel create, update, delete, and permission-overwrite auditing.
   - Migrate role create, update, and delete auditing.
   - [x] Migrate user profile updates, including username and avatar changes, across guilds where the user is a member.

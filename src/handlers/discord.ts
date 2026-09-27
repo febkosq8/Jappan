@@ -12,6 +12,8 @@ import { handleMemberJoinAnnouncement, handleMemberLeaveAnnouncement } from "../
 import { handleLevelingInteraction, handleLevelingMessage, handleLevelingVoiceState } from "../services/leveling.js";
 import {
 	handleAuditMemberAdd,
+	handleAuditMemberBanAdd,
+	handleAuditMemberBanRemove,
 	handleAuditMemberRemove,
 	handleAuditMemberUpdate,
 	handleAuditInviteCreate,
@@ -111,6 +113,8 @@ function registerEventDebugHandlers(client: ReturnType<typeof getClient>, enable
 		InviteDelete: { event: Events.InviteDelete, argumentNames: ["invite"] },
 		UserUpdate: { event: Events.UserUpdate, argumentNames: ["oldUser", "newUser"] },
 		GuildMemberUpdate: { event: Events.GuildMemberUpdate, argumentNames: ["oldMember", "newMember"] },
+		GuildBanAdd: { event: Events.GuildBanAdd, argumentNames: ["ban"] },
+		GuildBanRemove: { event: Events.GuildBanRemove, argumentNames: ["ban"] },
 	};
 	for (const [eventName, debugEvent] of Object.entries(debugEvents)) {
 		if (!enabledEvents.includes(eventName)) {
@@ -142,6 +146,14 @@ export function registerExtendedDiscordHandlers(): void {
 
 	client.on(Events.GuildMemberUpdate, (oldMember, newMember) => {
 		void handleAuditMemberUpdate(oldMember, newMember);
+	});
+
+	client.on(Events.GuildBanAdd, (ban) => {
+		void handleAuditMemberBanAdd(ban);
+	});
+
+	client.on(Events.GuildBanRemove, (ban) => {
+		void handleAuditMemberBanRemove(ban);
 	});
 
 	client.on(Events.InviteCreate, (invite) => {
