@@ -17,6 +17,10 @@ export async function setWarningSettings(
 	banThreshold: number | null,
 	auditChannelId: string | null,
 ): Promise<WarningSettings> {
+	if (timeoutThreshold !== null && banThreshold !== null && banThreshold <= timeoutThreshold) {
+		throw new Error("Ban threshold must be greater than the timeout threshold");
+	}
+
 	const storedGuildData = await getGuildSettings({ guildId, guildName });
 	storedGuildData.warnings.timeoutThreshold = timeoutThreshold;
 	storedGuildData.warnings.timeoutDurationHours = timeoutDurationHours;

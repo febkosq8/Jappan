@@ -149,6 +149,10 @@ const command: BotCommand = {
 				await interaction.editReply("⛔ Select a timeout duration when enabling the timeout threshold.");
 				return;
 			}
+			if (timeoutThreshold !== null && banThreshold !== null && banThreshold <= timeoutThreshold) {
+				await interaction.editReply("⛔ The ban threshold must be greater than the timeout threshold.");
+				return;
+			}
 			if (selectedChannel) {
 				const channel = await interaction.guild.channels.fetch(selectedChannel.id);
 				const botMember = interaction.guild.members.me;
