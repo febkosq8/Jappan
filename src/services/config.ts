@@ -1,3 +1,5 @@
+import { writeLog } from "../helpers/logger.js";
+
 export interface Config {
 	readonly ENVIRONMENT: string;
 	readonly DISCORD_TOKEN: string;
@@ -5,6 +7,7 @@ export interface Config {
 	BOT_PFP: string;
 	readonly BOT_WEBSITE: string;
 	readonly DB_URL: string;
+	readonly ADMIN_USER_IDS: readonly string[];
 	readonly LOG_TIMESTAMP: boolean;
 	readonly ENABLE_EVENTS_DEBUG: readonly string[];
 }
@@ -16,6 +19,7 @@ const configTemplate: Partial<Record<keyof Config, string>> = {
 	BOT_NAME: "Jappan",
 	BOT_PFP: "https://jappan.febkosq8.me/assets/Profile-FDHZtz5Q.png",
 	BOT_WEBSITE: "https://jappan.febkosq8.me",
+	ADMIN_USER_IDS: "",
 	LOG_TIMESTAMP: "false",
 	ENABLE_EVENTS_DEBUG: "false",
 };
@@ -43,6 +47,11 @@ export function loadConfig(): Config {
 	const BOT_PFP = readConfigValue("BOT_PFP");
 	const BOT_WEBSITE = readConfigValue("BOT_WEBSITE");
 	const DB_URL = readConfigValue("DB_URL", true);
+	const adminUserIdsValue = readConfigValue("ADMIN_USER_IDS");
+	const ADMIN_USER_IDS = adminUserIdsValue
+		.split(";")
+		.map((userId) => userId.trim())
+		.filter(Boolean);
 	const LOG_TIMESTAMP = readConfigValue("LOG_TIMESTAMP") === "true";
 	const eventsDebugValue = readConfigValue("ENABLE_EVENTS_DEBUG");
 	const ENABLE_EVENTS_DEBUG =
@@ -59,9 +68,13 @@ export function loadConfig(): Config {
 		BOT_PFP,
 		BOT_WEBSITE,
 		DB_URL,
+		ADMIN_USER_IDS,
 		LOG_TIMESTAMP,
 		ENABLE_EVENTS_DEBUG,
 	};
+	if (ADMIN_USER_IDS.length > 0) {
+		writeLog("info", "BOT", "Admin users are now loaded", { count: ADMIN_USER_IDS.length });
+	}
 	return loadedConfig;
 }
 

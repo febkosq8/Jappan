@@ -5,6 +5,7 @@ export type LogDetails = Record<string, unknown>;
 export type LogLevel = "debug" | "info" | "success" | "warn" | "error";
 export type LogCategory =
 	| "AUTOCOMPLETE"
+	| "ADMIN"
 	| "BOT"
 	| "BUTTONS"
 	| "DATABASE"
@@ -22,6 +23,7 @@ const levelColors: Record<LogLevel, (value: string) => string> = {
 
 const categoryColors: Record<LogCategory, (value: string) => string> = {
 	AUTOCOMPLETE: white,
+	ADMIN: red,
 	BOT: magenta,
 	BUTTONS: yellow,
 	DATABASE: cyan,

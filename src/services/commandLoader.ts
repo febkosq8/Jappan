@@ -6,7 +6,6 @@ import type { ApplicationCommand } from "discord.js";
 
 import { isBotCommand } from "../helpers/command.js";
 import { logger } from "./logger.js";
-
 export type { BotCommand, BotCommandContext, BotCommandData, CommandCategory } from "../helpers/command.js";
 import type { BotCommand } from "../helpers/command.js";
 
@@ -15,10 +14,11 @@ type CommandModule = {
 };
 
 let loadedCommands: Collection<string, BotCommand> | undefined;
+let loadedGlobalCommands: Collection<string, BotCommand> | undefined;
+let loadedGuildCommands: Collection<string, BotCommand> | undefined;
 let registeredCommandIds: Collection<string, string> | undefined;
 
-export async function loadCommands(): Promise<Collection<string, BotCommand>> {
-	const commandDirectory = fileURLToPath(new URL("../commands", import.meta.url));
+async function loadCommandDirectory(commandDirectory: string): Promise<Collection<string, BotCommand>> {
 	const entries = await readdir(commandDirectory, { withFileTypes: true });
 	const commands = new Collection<string, BotCommand>();
 
@@ -44,7 +44,15 @@ export async function loadCommands(): Promise<Collection<string, BotCommand>> {
 		commands.set(commandModule.default.data.name, commandModule.default);
 	}
 
-	loadedCommands = commands;
+	return commands;
+}
+
+export async function loadCommands(): Promise<Collection<string, BotCommand>> {
+	const commandDirectory = fileURLToPath(new URL("../commands", import.meta.url));
+	const guildCommandDirectory = join(commandDirectory, "guildCommands");
+	loadedGlobalCommands = await loadCommandDirectory(commandDirectory);
+	loadedGuildCommands = await loadCommandDirectory(guildCommandDirectory);
+	loadedCommands = new Collection([...loadedGlobalCommands, ...loadedGuildCommands]);
 	return loadedCommands;
 }
 
@@ -58,6 +66,22 @@ export function getCommands(): Collection<string, BotCommand> {
 
 export function getCommand(name: string): BotCommand | undefined {
 	return getCommands().get(name);
+}
+
+export function getGlobalCommands(): Collection<string, BotCommand> {
+	if (!loadedGlobalCommands) {
+		throw new Error("Commands have not been loaded");
+	}
+
+	return loadedGlobalCommands;
+}
+
+export function getGuildCommands(): Collection<string, BotCommand> {
+	if (!loadedGuildCommands) {
+		throw new Error("Commands have not been loaded");
+	}
+
+	return loadedGuildCommands;
 }
 
 export function setRegisteredCommandIds(commands: Collection<string, ApplicationCommand>): void {

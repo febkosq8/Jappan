@@ -8,7 +8,7 @@ import type {
 } from "discord.js";
 import type { Config } from "../services/config.js";
 
-export type CommandCategory = "general" | "music" | "level" | "fun" | "moderator";
+export type CommandCategory = "general" | "music" | "level" | "fun" | "moderator" | "admin";
 
 export interface BotCommandData {
 	readonly name: string;

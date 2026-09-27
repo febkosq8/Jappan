@@ -34,9 +34,11 @@ Required environment values are `DISCORD_TOKEN` and `DB_URL`. Optional configura
 - `BOT_NAME`, default `Jappan`
 - `BOT_PFP`, default bot profile image
 - `BOT_WEBSITE`, default project website
+- `ADMIN_USER_IDS`, optional semicolon-separated Discord user IDs authorized for admin commands
 - `LOG_TIMESTAMP`, default `false`
 - `ENABLE_EVENTS_DEBUG`, default `false`; semicolon-separated event names such as `MessageCreate;MessageUpdate`
 
+Set `ADMIN_USER_IDS=123456789012345678;234567890123456789` to authorize multiple admin users.
 Set `ENABLE_EVENTS_DEBUG=MessageCreate;MessageUpdate` to log only those extended Discord events through the shared logger.
 
 ## System Design
@@ -138,6 +140,7 @@ The rewrite currently has:
 - Idempotent guild-create initialization with a permission-aware welcome message and `/help` guidance.
 - Audit coverage for members, roles, channels, threads, messages, invites, bans, users, voice state, permission overwrites, and raw audit-log entries, including recent executor and reason attribution.
 - Slash-command, button, and autocomplete dispatch with database availability rejection for database-dependent commands.
+- Message-based guild command deployment through `!deploy` and `!unDeployGuild`, restricted to configured admin users and the guild where the message is sent.
 - Warning setup threshold ordering and action-specific timeout/ban permission checks.
 - Database model loading and index synchronization are part of the awaited startup gate.
 - Structured logging with contextual details and configurable extended-event debugging.
@@ -152,7 +155,7 @@ The following legacy capabilities are not implemented in the rewrite:
 - Music commands, player lifecycle, queue controls, extractors, and playlist persistence.
 - The guild-scoped `admin` command and administrative deployment/management operations.
 - The `soundboard` command.
-- Legacy operational fallback commands for deployment, undeployment, player diagnostics, and prefix ping.
+- Legacy operational fallback commands for test deployment, global undeployment, player diagnostics, and prefix ping.
 - Legacy event/debug/error log persistence models and user playlist persistence.
 
 Fallback capability must remain available when slash commands are unavailable. Any feature removal requires owner approval and an equivalent supported mechanism.

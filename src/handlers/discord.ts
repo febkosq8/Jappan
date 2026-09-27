@@ -2,7 +2,7 @@ import { Events, InteractionType } from "discord.js";
 import type { Interaction } from "discord.js";
 
 import { getClient } from "../bot.js";
-import { getCommands, setRegisteredCommandIds } from "../services/commandLoader.js";
+import { getCommands, getGlobalCommands, setRegisteredCommandIds } from "../services/commandLoader.js";
 import { getConfig } from "../services/config.js";
 import { initializeGuild } from "../services/guild.js";
 import { logger } from "../services/logger.js";
@@ -12,6 +12,7 @@ import { handleSlashCommandInteraction } from "./slashCommand.js";
 import { handleMemberJoinAnnouncement, handleMemberLeaveAnnouncement } from "../services/memberAnnouncement.js";
 import { handleLevelingInteraction, handleLevelingMessage, handleLevelingVoiceState } from "../services/leveling.js";
 import { handleVoiceRegionState } from "../services/voiceRegion.js";
+import { handleAdminDeploymentMessage } from "../services/adminDeployment.js";
 import {
 	handleAuditMemberAdd,
 	handleAuditMemberBanAdd,
@@ -56,12 +57,13 @@ export function registerDiscordHandlers(): void {
 
 	client.once(Events.ClientReady, async (readyClient) => {
 		try {
-			logger.info("SLASH_COMMANDS", `Starting to update #${commands.size} Application (/) commands`);
+			const globalCommands = getGlobalCommands();
+			logger.info("SLASH_COMMANDS", `Starting to update #${globalCommands.size} global Application (/) commands`);
 			const registeredCommands = await readyClient.application.commands.set(
-				commands.map((command) => command.data.toJSON()),
+				globalCommands.map((command) => command.data.toJSON()),
 			);
 			setRegisteredCommandIds(registeredCommands);
-			logger.success("SLASH_COMMANDS", `#${commands.size} Application (/) commands updated`);
+			logger.success("SLASH_COMMANDS", `#${globalCommands.size} global Application (/) commands updated`);
 		} catch (error: unknown) {
 			logger.error("SLASH_COMMANDS", "Failed to update Application (/) commands", { error });
 		}
@@ -240,6 +242,10 @@ export function registerExtendedDiscordHandlers(): void {
 	});
 
 	client.on(Events.MessageCreate, (message) => {
+		if (message.content.startsWith("!")) {
+			void handleAdminDeploymentMessage(message, config);
+			return;
+		}
 		void handleLevelingMessage(message);
 	});
 
