@@ -166,7 +166,7 @@ Fallback capability must remain available when slash commands are unavailable. A
 
 ### Priority 2: Reliability and Verification
 
-- Add practical Vitest coverage for guild initialization, leveling concurrency, warning actions, command recovery, and database outage behavior.
+- Add practical automated coverage for guild initialization, leveling concurrency, warning actions, command recovery, and database outage behavior.
 - Persist critical logs to the database in addition to console output.
 - Add correlation or request IDs for command and event traces.
 - Add controlled reconnect and database recovery behavior with observable logging.
