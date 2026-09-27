@@ -412,19 +412,31 @@ export async function handleAuditMemberUpdate(
 		);
 	}
 	if (profileChange.timeoutChanged) {
-		fields.push({
-			name:
-				profileChange.timeoutChangeLabel === "Added"
-					? "Timed Out Until"
-					: profileChange.timeoutChangeLabel === "Removed"
-						? "Timeout Removed"
-						: "Timeout Updated Until",
-			value: newMember.communicationDisabledUntilTimestamp
-				? `<t:${Math.floor(newMember.communicationDisabledUntilTimestamp / 1000)}:F>`
-				: oldMember.communicationDisabledUntilTimestamp
-					? `<t:${Math.floor(oldMember.communicationDisabledUntilTimestamp / 1000)}:F>`
-					: "No timeout",
-		});
+		if (profileChange.timeoutChangeLabel === "Updated") {
+			fields.push(
+				{
+					name: "Previous Timeout Until",
+					value: oldMember.communicationDisabledUntilTimestamp
+						? `<t:${Math.floor(oldMember.communicationDisabledUntilTimestamp / 1000)}:F>`
+						: "No timeout",
+				},
+				{
+					name: "Timeout Updated Until",
+					value: newMember.communicationDisabledUntilTimestamp
+						? `<t:${Math.floor(newMember.communicationDisabledUntilTimestamp / 1000)}:F>`
+						: "No timeout",
+				},
+			);
+		} else {
+			fields.push({
+				name: profileChange.timeoutChangeLabel === "Added" ? "Timed Out Until" : "Timeout Removed",
+				value: newMember.communicationDisabledUntilTimestamp
+					? `<t:${Math.floor(newMember.communicationDisabledUntilTimestamp / 1000)}:F>`
+					: oldMember.communicationDisabledUntilTimestamp
+						? `<t:${Math.floor(oldMember.communicationDisabledUntilTimestamp / 1000)}:F>`
+						: "No timeout",
+			});
+		}
 		fields.push({ name: "Action Initiated By", value: await getRecentMemberUpdateExecutor(newMember) });
 	}
 	if (profileChange.avatarChanged) {
