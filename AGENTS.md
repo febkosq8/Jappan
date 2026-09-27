@@ -105,6 +105,10 @@ Anything that represents a Discord entity must use its clickable mention format 
 
 Do not display raw user, channel, role, or command IDs or names when a Discord mention can be generated. Use plain text only when the entity cannot be mentioned or when the surrounding wording explicitly requires a non-clickable label.
 
+### Discord Permission Formatting
+
+Permission names in ordinary Discord message content must use Discord underlining via `underline(...)`. Permission names inside embed descriptions, fields, or other embed text must use Markdown backticks instead.
+
 ### Logging
 
 Use `src/services/logger.ts` for logging. The logger delegates to `src/helpers/logger.ts` and supports `debug`, `info`, `success`, `warn`, and `error` levels. Include useful context in the details object, especially guild, user, command, role, and channel identifiers.

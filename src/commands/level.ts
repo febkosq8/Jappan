@@ -5,6 +5,7 @@ import {
 	PermissionFlagsBits,
 	roleMention,
 	SlashCommandBuilder,
+	underline,
 } from "discord.js";
 
 import type { BotCommand, BotCommandData } from "../helpers/command.js";
@@ -79,7 +80,7 @@ const command: BotCommand = {
 				const botHasGuildManageRolesPermission = botMember.permissions.has(PermissionFlagsBits.ManageRoles);
 				if (!botHasGuildManageRolesPermission) {
 					await interaction.editReply(
-						`⛔ I need the guild-level Manage Roles permission to assign leveling reward roles.`,
+						`⛔ I need the guild-level ${underline("Manage Roles")} permission to assign leveling reward roles.`,
 					);
 					return;
 				}

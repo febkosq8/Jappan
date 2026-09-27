@@ -1,4 +1,4 @@
-import { EmbedBuilder, PermissionFlagsBits, chatInputApplicationCommandMention, roleMention } from "discord.js";
+import { EmbedBuilder, PermissionFlagsBits, chatInputApplicationCommandMention, roleMention, underline } from "discord.js";
 import type { Guild, GuildMember, Interaction, Message, User, VoiceState } from "discord.js";
 
 import type { GuildDocument } from "../models/guild.js";
@@ -217,7 +217,7 @@ async function awardLevelingPoints({
 		await disableLevelingReward({
 			guild,
 			roleId,
-			reason: "the bot lacks the guild-level Manage Roles permission",
+			reason: `the bot lacks the guild-level ${underline("Manage Roles")} permission`,
 		});
 		return;
 	}

@@ -3,6 +3,7 @@ import {
 	PermissionFlagsBits,
 	channelMention,
 	chatInputApplicationCommandMention,
+	underline,
 	userMention,
 } from "discord.js";
 import type { Guild, VoiceChannel, VoiceState } from "discord.js";
@@ -55,7 +56,7 @@ export async function addVoiceRegionLock({
 
 	const botMember = await guild.members.fetchMe();
 	if (!botMember.permissionsIn(channel).has(PermissionFlagsBits.ManageChannels)) {
-		throw new Error(`I need Manage Channels permission in <#${channelId}> to lock its region.`);
+		throw new Error(`I need \`Manage Channels\` permission in <#${channelId}> to lock its region.`);
 	}
 
 	const storedMemberState = await getOrCreateGuildMemberState(guild.id, userId, userName);
@@ -177,7 +178,7 @@ export async function handleVoiceRegionState(oldState: VoiceState, newState: Voi
 				guild: newState.guild,
 				userId: member.id,
 				channelId: channel.id,
-				reason: "I no longer have Manage Channels permission there",
+				reason: `I no longer have ${underline("Manage Channels")} permission there`,
 			});
 			return;
 		}
