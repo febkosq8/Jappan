@@ -15,6 +15,7 @@ import {
 	handleAuditMemberRemove,
 	handleAuditMessageBulkDelete,
 	handleAuditMessageDelete,
+	handleAuditMessageUpdate,
 	handleAuditVoiceState,
 } from "../services/auditLog.js";
 
@@ -92,7 +93,7 @@ export function registerDiscordHandlers(): void {
 	logger.success("DISCORD", "Core Discord event handlers registered");
 }
 
-function registerEventDebugHandlers(client: ReturnType<typeof getClient>): void {
+function registerEventDebugHandlers(client: ReturnType<typeof getClient>, enabledEvents: readonly string[]): void {
 	const events = {
 		GuildMemberAdd: Events.GuildMemberAdd,
 		GuildMemberRemove: Events.GuildMemberRemove,
@@ -101,17 +102,17 @@ function registerEventDebugHandlers(client: ReturnType<typeof getClient>): void 
 		VoiceStateUpdate: Events.VoiceStateUpdate,
 		MessageDelete: Events.MessageDelete,
 		MessageBulkDelete: Events.MessageBulkDelete,
+		MessageUpdate: Events.MessageUpdate,
 	} as const;
 	for (const [eventName, event] of Object.entries(events)) {
+		if (!enabledEvents.includes(event)) {
+			continue;
+		}
+		logger.success("DISCORD", "Debug Discord event handlers registered", { eventName });
 		client.on(event as string, (...args: unknown[]) => {
-			const message = args[0] as { author?: { id?: string } } | undefined;
-			if (eventName === "MessageCreate" && message?.author?.id === client.user?.id) {
-				return;
-			}
 			logger.debug("DISCORD", `Events.${eventName}`, { args });
 		});
 	}
-	logger.success("DISCORD", "Debug Discord event handlers registered");
 }
 
 export function registerExtendedDiscordHandlers(): void {
@@ -145,12 +146,16 @@ export function registerExtendedDiscordHandlers(): void {
 		void handleAuditMessageDelete(message);
 	});
 
+	client.on(Events.MessageUpdate, (oldMessage, newMessage) => {
+		void handleAuditMessageUpdate(oldMessage, newMessage);
+	});
+
 	client.on(Events.MessageBulkDelete, (messages) => {
 		void handleAuditMessageBulkDelete(messages);
 	});
 
 	logger.success("DISCORD", "Extended Discord event handlers registered");
-	if (config.ENABLE_EVENTS_DEBUG) {
-		registerEventDebugHandlers(client);
+	if (config.ENABLE_EVENTS_DEBUG.length > 0) {
+		registerEventDebugHandlers(client, config.ENABLE_EVENTS_DEBUG);
 	}
 }

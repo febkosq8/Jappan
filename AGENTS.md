@@ -35,9 +35,9 @@ Required environment values are `DISCORD_TOKEN` and `DB_URL`. Optional configura
 - `BOT_PFP`, default bot profile image
 - `BOT_WEBSITE`, default project website
 - `LOG_TIMESTAMP`, default `false`
-- `ENABLE_EVENTS_DEBUG`, default `false`
+- `ENABLE_EVENTS_DEBUG`, default `false`; semicolon-separated event names such as `MessageCreate;MessageUpdate`
 
-Set `ENABLE_EVENTS_DEBUG=true` to log the extended Discord events through the shared logger.
+Set `ENABLE_EVENTS_DEBUG=MessageCreate;MessageUpdate` to log only those extended Discord events through the shared logger.
 
 ## System Design
 
@@ -65,7 +65,7 @@ Handlers should receive Discord events and forward feature behavior to services.
 
 Core handlers cover client readiness, command deployment, Discord errors, and interaction dispatch. Extended handlers cover member join, member leave, message leveling, interaction leveling, and voice leveling.
 
-When `ENABLE_EVENTS_DEBUG=true`, a separate debug listener is registered only for the extended events:
+When an event is listed in `ENABLE_EVENTS_DEBUG`, a separate debug listener is registered for it. Supported event names are:
 
 - `Events.GuildMemberAdd`
 - `Events.GuildMemberRemove`

@@ -6,7 +6,7 @@ export interface Config {
 	readonly BOT_WEBSITE: string;
 	readonly DB_URL: string;
 	readonly LOG_TIMESTAMP: boolean;
-	readonly ENABLE_EVENTS_DEBUG: boolean;
+	readonly ENABLE_EVENTS_DEBUG: readonly string[];
 }
 
 let loadedConfig: Config | undefined;
@@ -44,8 +44,14 @@ export function loadConfig(): Config {
 	const BOT_WEBSITE = readConfigValue("BOT_WEBSITE");
 	const DB_URL = readConfigValue("DB_URL", true);
 	const LOG_TIMESTAMP = readConfigValue("LOG_TIMESTAMP") === "true";
-	const ENABLE_EVENTS_DEBUG = readConfigValue("ENABLE_EVENTS_DEBUG") === "true";
-
+	const eventsDebugValue = readConfigValue("ENABLE_EVENTS_DEBUG");
+	const ENABLE_EVENTS_DEBUG =
+		eventsDebugValue.toLowerCase() === "false"
+			? []
+			: eventsDebugValue
+					.split(";")
+					.map((eventName) => eventName.trim())
+					.filter(Boolean);
 	loadedConfig = {
 		DISCORD_TOKEN,
 		ENVIRONMENT,

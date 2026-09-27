@@ -152,6 +152,59 @@ export async function handleAuditMemberRemove(member: GuildMember | PartialGuild
 	await postAuditEvent(member.guild, { embeds: [embed] });
 }
 
+export async function handleAuditMessageUpdate(
+	oldMessage: Message | PartialMessage,
+	newMessage: Message | PartialMessage,
+): Promise<void> {
+	const guild = newMessage.guild ?? oldMessage.guild;
+	const author = newMessage.author ?? oldMessage.author;
+	if (!guild || !author || isOwnBot(guild, author.id)) {
+		return;
+	}
+	if (!(await isAuditLogEnabled(guild))) {
+		return;
+	}
+
+	const oldEmbeds = JSON.stringify(oldMessage.embeds.map((embed) => embed.toJSON()));
+	const newEmbeds = JSON.stringify(newMessage.embeds.map((embed) => embed.toJSON()));
+	const contentChanged = oldMessage.content !== newMessage.content;
+	const embedsChanged = oldEmbeds !== newEmbeds;
+	if (!contentChanged && !embedsChanged) {
+		return;
+	}
+
+	const auditEventId = createAuditEventId();
+	const hasEmbedFollowUp = embedsChanged && newMessage.embeds.length > 0;
+	const embed = new EmbedBuilder()
+		.setColor("Orange")
+		.setTitle("Audit Event: Message Edited")
+		.setDescription(
+			hasEmbedFollowUp
+				? "A message was edited. The updated embed is included in the follow-up below."
+				: embedsChanged
+					? "A message was edited and its embed content changed."
+					: "A message was edited.",
+		)
+		.addFields(
+			{ name: "Previous Content", value: trimString(oldMessage.content || "No text content.", 1024) },
+			{ name: "Updated Content", value: trimString(newMessage.content || "No text content.", 1024) },
+			{ name: "Author", value: `${userMention(author.id)} (${author.tag})` },
+			{ name: "Channel", value: channelMention(newMessage.channel.id) },
+			{ name: "Message ID", value: newMessage.id },
+		)
+		.setFooter({ text: `Audit Event ID: ${auditEventId}` })
+		.setTimestamp();
+	await postAuditEvent(guild, { embeds: [embed] });
+
+	if (hasEmbedFollowUp) {
+		await postAuditEvent(guild, {
+			content: `Updated embed for message ${newMessage.id} | Audit Event ID: ${auditEventId}`,
+			embeds: newMessage.embeds.map((originalEmbed) => originalEmbed.toJSON()),
+			allowedMentions: { parse: [] },
+		});
+	}
+}
+
 export async function handleAuditMessageDelete(message: Message | PartialMessage): Promise<void> {
 	if (!message.guild || message.partial || isOwnBot(message.guild, message.author.id)) {
 		return;
@@ -253,18 +306,34 @@ export async function handleAuditMessageBulkDelete(
 
 	const pagePrefix = `Follow-up for Audit Event ID: ${auditEventId}\n\n`;
 	const maxPageContentLength = 4096 - pagePrefix.length;
-	const messageBlocks = originalMessages.map((message, index) => {
+	const messageBlocks = originalMessages.flatMap((message, index) => {
 		const author = message.author ? `${userMention(message.author.id)} (${message.author.tag})` : "Unknown author";
+		const messageHeader = `**Message ${index + 1} (ID: ${message.id}) from ${author}:**`;
+		const continuedMessageHeader = `**Message ${index + 1} (ID: ${message.id}) from ${author} (continued):**`;
 		const attachments = [...message.attachments.values()]
 			.map((attachment) => `[Attachment: ${attachment.name}](${attachment.url})`)
 			.join(", ");
-		return [
-			`**Message ${index + 1} (ID: ${message.id}) from ${author}:**`,
+		const messageContent = [
 			(message.content ?? "No text content.").replace(/^/gm, "> "),
 			attachments ? `Attachments: ${attachments}` : "",
 		]
 			.filter(Boolean)
 			.join("\n");
+		const completeMessage = `${messageHeader}\n${messageContent}`;
+		if (completeMessage.length <= maxPageContentLength) {
+			return [completeMessage];
+		}
+
+		const firstContentLength = Math.min(75, messageContent.length);
+		const firstSegment = `${messageHeader}\n${messageContent.slice(0, firstContentLength)}`;
+		const continuationContentLength = Math.max(1, maxPageContentLength - continuedMessageHeader.length - 1);
+		const remainingContent = messageContent.slice(firstContentLength);
+		return [
+			firstSegment,
+			...splitString(remainingContent, continuationContentLength).map(
+				(contentSegment) => `${continuedMessageHeader}\n${contentSegment}`,
+			),
+		];
 	});
 	const contentPages: string[] = [];
 	let currentPage = "";
