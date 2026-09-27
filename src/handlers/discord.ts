@@ -1,4 +1,4 @@
-import { Events, InteractionType } from "discord.js";
+import { ActivityType, Events, InteractionType, PresenceUpdateStatus } from "discord.js";
 import type { Interaction } from "discord.js";
 
 import { getClient } from "../bot.js";
@@ -47,6 +47,20 @@ export function registerDiscordHandlers(): void {
 		const config = getConfig();
 		config.BOT_NAME = readyClient.user.username;
 		config.BOT_PFP = readyClient.user.displayAvatarURL({ size: 256 });
+		const updatePresence = () => {
+			readyClient.user.setPresence({
+				activities: [
+					{
+						name: "Existential crisis",
+						type: ActivityType.Playing,
+						state: `on ${readyClient.guilds.cache.size} servers & ${readyClient.users.cache.size} users`,
+					},
+				],
+				status: PresenceUpdateStatus.Online,
+			});
+		};
+		updatePresence();
+		setInterval(updatePresence, 6 * 60 * 60 * 1000);
 		logger.success("DISCORD", "Client ready", {
 			user: readyClient.user.tag,
 			guilds: readyClient.guilds.cache.size,
