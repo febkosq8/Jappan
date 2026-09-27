@@ -166,6 +166,7 @@ Boolean values are enabled only when their environment value is exactly `"true"`
 - Added role and permission validation for leveling setup.
 - Standardized many command rejection messages around the Unicode error indicator.
 - Keep `requiredBotPermissions` limited to permissions required by every subcommand; check subcommand-specific permissions inside the relevant branch instead of applying them globally.
+- Added recent audit executor and reason attribution for member, channel, thread, role, invite, ban, and user profile events, including multi-type audit lookups for member role changes.
 
 ### Observability
 
@@ -192,12 +193,12 @@ Boolean values are enabled only when their environment value is exactly `"true"`
 
 - Compare the rewrite against `CURRENT_SETUP_DETAILS.md` and the legacy bot feature inventory.
 - Pending audit migration items from `Jappan_Discord_Bot/Components/AuditHandler.js`:
-  - Add executor and reason attribution through recent `Guild.fetchAuditLogs()` entries for moderation and configuration events.
+  - [x] Add executor and reason attribution through recent `Guild.fetchAuditLogs()` entries for moderation and configuration events.
   - [x] Migrate invite creation and revocation auditing.
   - [x] Migrate guild member profile updates, including nickname, roles, timeout, guild-specific avatar changes, and timeout executor attribution.
   - [x] Migrate ban and unban auditing.
   - [x] Migrate channel create, update, delete, and permission-overwrite auditing.
-  - Migrate role create, update, and delete auditing.
+  - [x] Migrate role create, update, and delete auditing.
   - [x] Add thread create, update, and delete auditing through Discord's dedicated thread events.
   - [x] Migrate user profile updates, including username and avatar changes, across guilds where the user is a member.
   - Migrate raw `guildAuditLogEntryCreate` forwarding with target, executor, reason, and changed fields.

@@ -19,6 +19,9 @@ import {
 	handleAuditChannelCreate,
 	handleAuditChannelDelete,
 	handleAuditChannelUpdate,
+	handleAuditRoleCreate,
+	handleAuditRoleDelete,
+	handleAuditRoleUpdate,
 	handleAuditThreadCreate,
 	handleAuditThreadDelete,
 	handleAuditThreadUpdate,
@@ -124,6 +127,9 @@ function registerEventDebugHandlers(client: ReturnType<typeof getClient>, enable
 		ChannelCreate: { event: Events.ChannelCreate, argumentNames: ["channel"] },
 		ChannelUpdate: { event: Events.ChannelUpdate, argumentNames: ["oldChannel", "newChannel"] },
 		ChannelDelete: { event: Events.ChannelDelete, argumentNames: ["channel"] },
+		GuildRoleCreate: { event: Events.GuildRoleCreate, argumentNames: ["role"] },
+		GuildRoleUpdate: { event: Events.GuildRoleUpdate, argumentNames: ["oldRole", "newRole"] },
+		GuildRoleDelete: { event: Events.GuildRoleDelete, argumentNames: ["role"] },
 		ThreadCreate: { event: Events.ThreadCreate, argumentNames: ["thread"] },
 		ThreadUpdate: { event: Events.ThreadUpdate, argumentNames: ["oldThread", "newThread"] },
 		ThreadDelete: { event: Events.ThreadDelete, argumentNames: ["thread"] },
@@ -179,6 +185,18 @@ export function registerExtendedDiscordHandlers(): void {
 			return;
 		}
 		void handleAuditChannelDelete(channel);
+	});
+
+	client.on(Events.GuildRoleCreate, (role) => {
+		void handleAuditRoleCreate(role);
+	});
+
+	client.on(Events.GuildRoleUpdate, (oldRole, newRole) => {
+		void handleAuditRoleUpdate(oldRole, newRole);
+	});
+
+	client.on(Events.GuildRoleDelete, (role) => {
+		void handleAuditRoleDelete(role);
 	});
 
 	client.on(Events.ThreadCreate, (thread) => {

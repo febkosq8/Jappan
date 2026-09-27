@@ -21,6 +21,7 @@ import type {
 	PartialGuildMember,
 	PartialMessage,
 	PartialUser,
+	Role,
 	ThreadChannel,
 	User,
 	VoiceState,
@@ -38,12 +39,13 @@ import {
 	getChannelTypeLabel,
 	getEmbedCharacterCount,
 	getProfileChangeResponse,
-	getRecentChannelAuditEntry,
-	getRecentMemberUpdateExecutor,
+	getRecentAuditEntry,
+	getRoleCreationDetails,
+	getRoleChangeDetails,
 	getVideoQualityModeLabel,
 	isOwnBot,
 } from "../helpers/auditLog.js";
-import { formatChannelMention, formatUserMention } from "../helpers/discord.js";
+import { formatChannelMention, formatRoleMention, formatUserMention } from "../helpers/discord.js";
 import { sendGuildMessage } from "../helpers/guildHelper.js";
 import { splitString, trimString } from "../helpers/string.js";
 import type { GuildDocument } from "../models/guild.js";
@@ -176,7 +178,7 @@ export async function handleAuditChannelCreate(channel: GuildChannel): Promise<v
 		return;
 	}
 
-	const auditEntry = await getRecentChannelAuditEntry(channel, AuditLogEvent.ChannelCreate);
+	const auditEntry = await getRecentAuditEntry(channel, AuditLogEvent.ChannelCreate);
 	const embed = new EmbedBuilder()
 		.setColor("DarkGreen")
 		.setTitle("Audit Event: Channel Created")
@@ -197,7 +199,7 @@ export async function handleAuditChannelDelete(channel: GuildChannel): Promise<v
 		return;
 	}
 
-	const auditEntry = await getRecentChannelAuditEntry(channel, AuditLogEvent.ChannelDelete);
+	const auditEntry = await getRecentAuditEntry(channel, AuditLogEvent.ChannelDelete);
 	const embed = new EmbedBuilder()
 		.setColor("Red")
 		.setTitle("Audit Event: Channel Deleted")
@@ -211,6 +213,61 @@ export async function handleAuditChannelDelete(channel: GuildChannel): Promise<v
 		.setTimestamp();
 	addAuditEntryDetails(embed, auditEntry);
 	await postAuditEvent(channel.guild, { embeds: [embed], allowedMentions: { parse: [] } });
+}
+
+export async function handleAuditRoleCreate(role: Role): Promise<void> {
+	if (!(await isAuditLogEnabled(role.guild))) {
+		return;
+	}
+
+	const auditEntry = await getRecentAuditEntry(role, AuditLogEvent.RoleCreate);
+	const auditEventId = createAuditEventId();
+	const embed = new EmbedBuilder()
+		.setColor("Green")
+		.setTitle("Audit Event: Role Created")
+		.setDescription(`${formatRoleMention(role)} was created.`)
+		.addFields({ name: "Role", value: formatRoleMention(role) }, ...getRoleCreationDetails(role))
+		.setFooter({ text: `Audit Event ID: ${auditEventId}` })
+		.setTimestamp();
+	addAuditEntryDetails(embed, auditEntry);
+	await postAuditEvent(role.guild, { embeds: [embed], allowedMentions: { parse: [] } });
+}
+
+export async function handleAuditRoleUpdate(oldRole: Role, newRole: Role): Promise<void> {
+	const changes = getRoleChangeDetails(oldRole, newRole);
+	if (changes.length === 0 || !(await isAuditLogEnabled(newRole.guild))) {
+		return;
+	}
+
+	const auditEntry = await getRecentAuditEntry(newRole, AuditLogEvent.RoleUpdate);
+	const auditEventId = createAuditEventId();
+	const embed = new EmbedBuilder()
+		.setColor("Yellow")
+		.setTitle("Audit Event: Role Updated")
+		.setDescription(`${formatRoleMention(newRole)} was updated.`)
+		.addFields({ name: "Role", value: formatRoleMention(newRole) }, { name: "Changes", value: changes.join("\n") })
+		.setFooter({ text: `Audit Event ID: ${auditEventId}` })
+		.setTimestamp();
+	addAuditEntryDetails(embed, auditEntry);
+	await postAuditEvent(newRole.guild, { embeds: [embed], allowedMentions: { parse: [] } });
+}
+
+export async function handleAuditRoleDelete(role: Role): Promise<void> {
+	if (!(await isAuditLogEnabled(role.guild))) {
+		return;
+	}
+
+	const auditEntry = await getRecentAuditEntry(role, AuditLogEvent.RoleDelete);
+	const auditEventId = createAuditEventId();
+	const embed = new EmbedBuilder()
+		.setColor("Red")
+		.setTitle("Audit Event: Role Deleted")
+		.setDescription(`${formatRoleMention(role)} was deleted.`)
+		.addFields({ name: "Role", value: formatRoleMention(role) })
+		.setFooter({ text: `Audit Event ID: ${auditEventId}` })
+		.setTimestamp();
+	addAuditEntryDetails(embed, auditEntry);
+	await postAuditEvent(role.guild, { embeds: [embed], allowedMentions: { parse: [] } });
 }
 
 export async function handleAuditChannelUpdate(oldChannel: GuildChannel, newChannel: GuildChannel): Promise<void> {
@@ -296,7 +353,7 @@ export async function handleAuditChannelUpdate(oldChannel: GuildChannel, newChan
 		return;
 	}
 
-	const auditEntry = await getRecentChannelAuditEntry(newChannel, AuditLogEvent.ChannelUpdate);
+	const auditEntry = await getRecentAuditEntry(newChannel, AuditLogEvent.ChannelUpdate);
 	let overwriteEntry = auditEntry;
 	if (!overwriteEntry && overwritesChanged) {
 		const overwriteAuditTypes: Array<
@@ -307,7 +364,7 @@ export async function handleAuditChannelUpdate(oldChannel: GuildChannel, newChan
 			AuditLogEvent.ChannelOverwriteDelete,
 		];
 		for (const overwriteAuditType of overwriteAuditTypes) {
-			overwriteEntry = await getRecentChannelAuditEntry(newChannel, overwriteAuditType);
+			overwriteEntry = await getRecentAuditEntry(newChannel, overwriteAuditType);
 			if (overwriteEntry) {
 				break;
 			}
@@ -333,7 +390,7 @@ export async function handleAuditThreadCreate(thread: ThreadChannel): Promise<vo
 		return;
 	}
 
-	const auditEntry = await getRecentChannelAuditEntry(thread, AuditLogEvent.ThreadCreate);
+	const auditEntry = await getRecentAuditEntry(thread, AuditLogEvent.ThreadCreate);
 	const embed = new EmbedBuilder()
 		.setColor("DarkGreen")
 		.setTitle("Audit Event: Thread Created")
@@ -389,7 +446,7 @@ export async function handleAuditThreadUpdate(oldThread: ThreadChannel, newThrea
 		return;
 	}
 
-	const auditEntry = await getRecentChannelAuditEntry(newThread, AuditLogEvent.ThreadUpdate);
+	const auditEntry = await getRecentAuditEntry(newThread, AuditLogEvent.ThreadUpdate);
 	const embed = new EmbedBuilder()
 		.setColor("Yellow")
 		.setTitle("Audit Event: Thread Updated")
@@ -410,7 +467,7 @@ export async function handleAuditThreadDelete(thread: ThreadChannel): Promise<vo
 		return;
 	}
 
-	const auditEntry = await getRecentChannelAuditEntry(thread, AuditLogEvent.ThreadDelete);
+	const auditEntry = await getRecentAuditEntry(thread, AuditLogEvent.ThreadDelete);
 	const embed = new EmbedBuilder()
 		.setColor("Red")
 		.setTitle("Audit Event: Thread Deleted")
@@ -515,6 +572,12 @@ export async function handleAuditMemberUpdate(
 	if (!(await isAuditLogEnabled(newMember.guild))) {
 		return;
 	}
+	const auditEntry = await getRecentAuditEntry(
+		newMember,
+		profileChange.rolesChanged
+			? [AuditLogEvent.MemberRoleUpdate, AuditLogEvent.MemberUpdate]
+			: AuditLogEvent.MemberUpdate,
+	);
 
 	const fields: { name: string; value: string; inline?: boolean }[] = [
 		{ name: "User", value: formatUserMention(newMember), inline: true },
@@ -528,22 +591,18 @@ export async function handleAuditMemberUpdate(
 		}
 	}
 	if (profileChange.rolesChanged) {
-		fields.push(
-			{
+		if (profileChange.addedRoles.length > 0) {
+			fields.push({
 				name: "Added Roles",
-				value:
-					profileChange.addedRoleIds.length > 0
-						? profileChange.addedRoleIds.map((roleId) => roleMention(roleId)).join(" ")
-						: "No roles",
-			},
-			{
+				value: profileChange.addedRoles.map((role) => formatRoleMention(role)).join(", "),
+			});
+		}
+		if (profileChange.removedRoles.length > 0) {
+			fields.push({
 				name: "Removed Roles",
-				value:
-					profileChange.removedRoleIds.length > 0
-						? profileChange.removedRoleIds.map((roleId) => roleMention(roleId)).join(" ")
-						: "No roles",
-			},
-		);
+				value: profileChange.removedRoles.map((role) => formatRoleMention(role)).join(","),
+			});
+		}
 	}
 	if (profileChange.timeoutChanged) {
 		if (profileChange.timeoutChangeLabel === "Updated") {
@@ -571,7 +630,6 @@ export async function handleAuditMemberUpdate(
 						: "No timeout",
 			});
 		}
-		fields.push({ name: "Action Initiated By", value: await getRecentMemberUpdateExecutor(newMember) });
 	}
 	if (profileChange.avatarChanged) {
 		fields.push({
@@ -589,6 +647,7 @@ export async function handleAuditMemberUpdate(
 		.addFields(fields)
 		.setFooter({ text: `Audit Event ID: ${auditEventId}` })
 		.setTimestamp();
+	addAuditEntryDetails(embed, auditEntry);
 	if (profileChange.avatarChanged) {
 		addAvatarChange(
 			embed,

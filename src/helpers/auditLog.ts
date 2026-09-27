@@ -9,6 +9,7 @@ import type {
 	JSONEncodable,
 	PartialGuildMember,
 	PartialUser,
+	Role,
 	ThreadChannel,
 	User,
 } from "discord.js";
@@ -25,6 +26,95 @@ export function formatAuditValue(value: string | number | null | undefined): str
 
 export function getVideoQualityModeLabel(mode: VideoQualityMode | null): string | null {
 	return mode === VideoQualityMode.Auto ? "Auto" : mode === VideoQualityMode.Full ? "Full" : null;
+}
+
+export function getRoleChangeDetails(oldRole: Role, newRole: Role): string[] {
+	const changes: string[] = [];
+	if (oldRole.name !== newRole.name) {
+		changes.push(`Name: ${formatAuditValue(oldRole.name)} -> ${formatAuditValue(newRole.name)}`);
+	}
+	if (oldRole.hexColor !== newRole.hexColor) {
+		changes.push(`Color: ${formatAuditValue(oldRole.hexColor)} -> ${formatAuditValue(newRole.hexColor)}`);
+	}
+	if (oldRole.hoist !== newRole.hoist) {
+		changes.push(
+			`Displayed separately: ${formatAuditValue(oldRole.hoist ? "Yes" : "No")} -> ${formatAuditValue(newRole.hoist ? "Yes" : "No")}`,
+		);
+	}
+	if (oldRole.mentionable !== newRole.mentionable) {
+		changes.push(
+			`Mentionable: ${formatAuditValue(oldRole.mentionable ? "Yes" : "No")} -> ${formatAuditValue(newRole.mentionable ? "Yes" : "No")}`,
+		);
+	}
+	if (oldRole.permissions.bitfield !== newRole.permissions.bitfield) {
+		const oldPermissions = new Set(oldRole.permissions.toArray());
+		const newPermissions = new Set(newRole.permissions.toArray());
+		const addedPermissions = [...newPermissions].filter((permission) => !oldPermissions.has(permission));
+		const removedPermissions = [...oldPermissions].filter((permission) => !newPermissions.has(permission));
+		changes.push(
+			`Permissions: ${addedPermissions.length} added (${addedPermissions.map((permission) => formatAuditValue(permission)).join(", ")}); ${removedPermissions.length} removed (${removedPermissions.map((permission) => formatAuditValue(permission)).join(", ")})`,
+		);
+	}
+	if (oldRole.position !== newRole.position) {
+		changes.push(`Position: ${formatAuditValue(oldRole.position)} -> ${formatAuditValue(newRole.position)}`);
+	}
+	if (oldRole.unicodeEmoji !== newRole.unicodeEmoji) {
+		changes.push(
+			`Unicode Emoji: ${formatAuditValue(oldRole.unicodeEmoji)} -> ${formatAuditValue(newRole.unicodeEmoji)}`,
+		);
+	}
+	return changes;
+}
+
+export function getRoleCreationDetails(role: Role): { name: string; value: string; inline?: boolean }[] {
+	const details: { name: string; value: string; inline?: boolean }[] = [
+		{ name: "Name", value: formatAuditValue(role.name) },
+	];
+	const permissions = role.permissions.toArray();
+	if (permissions.length > 0) {
+		details.push({ name: "Permissions", value: formatAuditValue(permissions.join(", ")) });
+	}
+	if (role.hexColor !== "#000000") {
+		details.push({ name: "Color", value: formatAuditValue(role.hexColor), inline: true });
+	}
+	if (role.colors.secondaryColor !== null || role.colors.tertiaryColor !== null) {
+		details.push({
+			name: "Additional Colors",
+			value: formatAuditValue(
+				[
+					role.colors.secondaryColor !== null ? `Secondary: ${role.colors.secondaryColor}` : null,
+					role.colors.tertiaryColor !== null ? `Tertiary: ${role.colors.tertiaryColor}` : null,
+				]
+					.filter(Boolean)
+					.join(", "),
+			),
+		});
+	}
+	if (role.hoist) {
+		details.push({ name: "Displayed Separately", value: "Yes", inline: true });
+	}
+	if (role.mentionable) {
+		details.push({ name: "Mentionable", value: "Yes", inline: true });
+	}
+	if (role.unicodeEmoji) {
+		details.push({ name: "Unicode Emoji", value: formatAuditValue(role.unicodeEmoji), inline: true });
+	}
+	if (role.managed) {
+		details.push({ name: "Managed", value: "Yes", inline: true });
+	}
+	const flags = role.flags.toArray();
+	if (flags.length > 0) {
+		details.push({ name: "Flags", value: formatAuditValue(flags.join(", ")) });
+	}
+	if (role.tags) {
+		const tags = Object.entries(role.tags)
+			.filter(([, value]) => value !== null && value !== undefined && value !== false)
+			.map(([name, value]) => `${name}: ${value}`);
+		if (tags.length > 0) {
+			details.push({ name: "Tags", value: formatAuditValue(tags.join(", ")) });
+		}
+	}
+	return details;
 }
 
 export function getEmbedCharacterCount(embed: APIEmbed | JSONEncodable<APIEmbed>): number {
@@ -77,10 +167,30 @@ export interface ProfileChangeResponse {
 	readonly timeoutChangeLabel: "Added" | "Removed" | "Updated";
 	readonly avatarChanged: boolean;
 	readonly avatarChangeLabel: "Added" | "Removed" | "Updated";
-	readonly addedRoleIds: readonly string[];
-	readonly removedRoleIds: readonly string[];
+	readonly addedRoles: readonly Role[];
+	readonly removedRoles: readonly Role[];
 	readonly title: string;
 	readonly description: string;
+}
+
+export async function getRecentAuditEntry(
+	target: { guild: Guild; id: string },
+	types: AuditLogEvent | readonly AuditLogEvent[],
+): Promise<GuildAuditLogsEntry | undefined> {
+	const auditTypes = Array.isArray(types) ? types : [types];
+	const auditLogs = await Promise.all(
+		auditTypes.map((type) => target.guild.fetchAuditLogs({ limit: 10, type }).catch(() => null)),
+	);
+	return auditLogs
+		.flatMap((auditLog) => (auditLog ? [...auditLog.entries.values()] : []))
+		.filter(
+			(candidateAuditEntry) =>
+				candidateAuditEntry.target &&
+				"id" in candidateAuditEntry.target &&
+				candidateAuditEntry.target.id === target.id &&
+				Date.now() - candidateAuditEntry.createdTimestamp < 20_000,
+		)
+		.sort((firstEntry, secondEntry) => secondEntry.createdTimestamp - firstEntry.createdTimestamp)[0];
 }
 
 function getChangeLabel(
@@ -106,6 +216,14 @@ export function getProfileChangeResponse(
 	const newRoleIds = isMemberProfile ? new Set(newMember.roles.cache.keys()) : new Set<string>();
 	const addedRoleIds = [...newRoleIds].filter((roleId) => !oldRoleIds.has(roleId));
 	const removedRoleIds = [...oldRoleIds].filter((roleId) => !newRoleIds.has(roleId));
+	const addedRoles = [...newRoleIds]
+		.filter((roleId) => !oldRoleIds.has(roleId))
+		.map((roleId) => newMember.roles.cache.get(roleId))
+		.filter((role): role is Role => Boolean(role));
+	const removedRoles = [...oldRoleIds]
+		.filter((roleId) => !newRoleIds.has(roleId))
+		.map((roleId) => oldMember.roles.cache.get(roleId))
+		.filter((role): role is Role => Boolean(role));
 	const rolesChanged = addedRoleIds.length > 0 || removedRoleIds.length > 0;
 	const timeoutChanged = Boolean(
 		isMemberProfile && oldMember.communicationDisabledUntilTimestamp !== newMember.communicationDisabledUntilTimestamp,
@@ -178,8 +296,8 @@ export function getProfileChangeResponse(
 		timeoutChangeLabel,
 		avatarChanged,
 		avatarChangeLabel,
-		addedRoleIds,
-		removedRoleIds,
+		addedRoles,
+		removedRoles,
 		title,
 		description,
 	};
@@ -198,17 +316,6 @@ export function addAvatarChange(
 		)
 		.setThumbnail(oldAvatarUrl)
 		.setImage(newAvatarUrl);
-}
-
-export async function getRecentMemberUpdateExecutor(member: GuildMember): Promise<string> {
-	const auditLogs = await member.guild
-		.fetchAuditLogs({ limit: 10, type: AuditLogEvent.MemberUpdate })
-		.catch(() => null);
-	const auditEntry = auditLogs?.entries.find(
-		(candidateAuditEntry) =>
-			candidateAuditEntry.target?.id === member.id && Date.now() - candidateAuditEntry.createdTimestamp < 20_000,
-	);
-	return auditEntry?.executor ? formatUserMention(auditEntry.executor) : "Unknown";
 }
 
 export function getChannelTypeLabel(channel: GuildChannel | ThreadChannel): string {
@@ -233,29 +340,6 @@ export function getChannelTypeLabel(channel: GuildChannel | ThreadChannel): stri
 										: channel.type === ChannelType.GuildNewsThread
 											? "Announcement Thread"
 											: "Channel";
-}
-
-export async function getRecentChannelAuditEntry(
-	channel: GuildChannel | ThreadChannel,
-	type:
-		| AuditLogEvent.ChannelCreate
-		| AuditLogEvent.ChannelUpdate
-		| AuditLogEvent.ChannelDelete
-		| AuditLogEvent.ChannelOverwriteCreate
-		| AuditLogEvent.ChannelOverwriteUpdate
-		| AuditLogEvent.ChannelOverwriteDelete
-		| AuditLogEvent.ThreadCreate
-		| AuditLogEvent.ThreadUpdate
-		| AuditLogEvent.ThreadDelete,
-): Promise<GuildAuditLogsEntry | undefined> {
-	const auditLogs = await channel.guild.fetchAuditLogs({ limit: 10, type }).catch(() => null);
-	return auditLogs?.entries.find(
-		(candidateAuditEntry) =>
-			candidateAuditEntry.target &&
-			"id" in candidateAuditEntry.target &&
-			candidateAuditEntry.target.id === channel.id &&
-			Date.now() - candidateAuditEntry.createdTimestamp < 20_000,
-	);
 }
 
 export function addAuditEntryDetails(embed: EmbedBuilder, auditEntry: GuildAuditLogsEntry | undefined): void {
