@@ -19,6 +19,9 @@ import {
 	handleAuditChannelCreate,
 	handleAuditChannelDelete,
 	handleAuditChannelUpdate,
+	handleAuditThreadCreate,
+	handleAuditThreadDelete,
+	handleAuditThreadUpdate,
 	handleAuditInviteCreate,
 	handleAuditInviteDelete,
 	handleAuditMessageBulkDelete,
@@ -121,6 +124,9 @@ function registerEventDebugHandlers(client: ReturnType<typeof getClient>, enable
 		ChannelCreate: { event: Events.ChannelCreate, argumentNames: ["channel"] },
 		ChannelUpdate: { event: Events.ChannelUpdate, argumentNames: ["oldChannel", "newChannel"] },
 		ChannelDelete: { event: Events.ChannelDelete, argumentNames: ["channel"] },
+		ThreadCreate: { event: Events.ThreadCreate, argumentNames: ["thread"] },
+		ThreadUpdate: { event: Events.ThreadUpdate, argumentNames: ["oldThread", "newThread"] },
+		ThreadDelete: { event: Events.ThreadDelete, argumentNames: ["thread"] },
 	};
 	for (const [eventName, debugEvent] of Object.entries(debugEvents)) {
 		if (!enabledEvents.includes(eventName)) {
@@ -173,6 +179,18 @@ export function registerExtendedDiscordHandlers(): void {
 			return;
 		}
 		void handleAuditChannelDelete(channel);
+	});
+
+	client.on(Events.ThreadCreate, (thread) => {
+		void handleAuditThreadCreate(thread);
+	});
+
+	client.on(Events.ThreadUpdate, (oldThread, newThread) => {
+		void handleAuditThreadUpdate(oldThread, newThread);
+	});
+
+	client.on(Events.ThreadDelete, (thread) => {
+		void handleAuditThreadDelete(thread);
 	});
 
 	client.on(Events.GuildBanAdd, (ban) => {

@@ -21,6 +21,7 @@ import type {
 	PartialGuildMember,
 	PartialMessage,
 	PartialUser,
+	ThreadChannel,
 	User,
 	VoiceState,
 } from "discord.js";
@@ -180,11 +181,11 @@ export async function handleAuditChannelCreate(channel: GuildChannel): Promise<v
 	const auditEntry = await getRecentChannelAuditEntry(channel, AuditLogEvent.ChannelCreate);
 	const embed = new EmbedBuilder()
 		.setColor("DarkGreen")
-		.setTitle(`Audit Event: ${getChannelTypeLabel(channel)} Created`)
+		.setTitle("Audit Event: Channel Created")
 		.setDescription(`${channelMention(channel.id)} was created.`)
 		.addFields(
-			{ name: "Name", value: channel.name },
 			{ name: "Channel", value: channelMention(channel.id) },
+			{ name: "Name", value: channel.name },
 			{ name: "Type", value: getChannelTypeLabel(channel), inline: true },
 		)
 		.setFooter({ text: `Audit Event ID: ${createAuditEventId()}` })
@@ -201,7 +202,7 @@ export async function handleAuditChannelDelete(channel: GuildChannel): Promise<v
 	const auditEntry = await getRecentChannelAuditEntry(channel, AuditLogEvent.ChannelDelete);
 	const embed = new EmbedBuilder()
 		.setColor("Red")
-		.setTitle(`Audit Event: ${getChannelTypeLabel(channel)} Deleted`)
+		.setTitle("Audit Event: Channel Deleted")
 		.setDescription(`${channelMention(channel.id)} was deleted.`)
 		.addFields(
 			{ name: "Channel ID", value: channel.id },
@@ -327,6 +328,100 @@ export async function handleAuditChannelUpdate(oldChannel: GuildChannel, newChan
 		.setTimestamp();
 	addAuditEntryDetails(embed, overwriteEntry);
 	await postAuditEvent(newChannel.guild, { embeds: [embed], allowedMentions: { parse: [] } });
+}
+
+export async function handleAuditThreadCreate(thread: ThreadChannel): Promise<void> {
+	if (!(await isAuditLogEnabled(thread.guild))) {
+		return;
+	}
+
+	const auditEntry = await getRecentChannelAuditEntry(thread, AuditLogEvent.ThreadCreate);
+	const embed = new EmbedBuilder()
+		.setColor("DarkGreen")
+		.setTitle("Audit Event: Thread Created")
+		.setDescription(`${channelMention(thread.id)} was created.`)
+		.addFields(
+			{ name: "Name", value: thread.name },
+			{ name: "Channel", value: channelMention(thread.id) },
+			{ name: "Type", value: getChannelTypeLabel(thread), inline: true },
+			{ name: "Parent", value: thread.parentId ? channelMention(thread.parentId) : "None", inline: true },
+		)
+		.setFooter({ text: `Audit Event ID: ${createAuditEventId()}` })
+		.setTimestamp();
+	addAuditEntryDetails(embed, auditEntry);
+	await postAuditEvent(thread.guild, { embeds: [embed], allowedMentions: { parse: [] } });
+}
+
+export async function handleAuditThreadUpdate(oldThread: ThreadChannel, newThread: ThreadChannel): Promise<void> {
+	const changes: string[] = [];
+	if (oldThread.name !== newThread.name) {
+		changes.push(`Name: ${formatAuditValue(oldThread.name)} -> ${formatAuditValue(newThread.name)}`);
+	}
+	if (oldThread.archived !== newThread.archived) {
+		changes.push(
+			`Archived: ${formatAuditValue(oldThread.archived ? "ON" : "OFF")} -> ${formatAuditValue(newThread.archived ? "ON" : "OFF")}`,
+		);
+	}
+	if (oldThread.locked !== newThread.locked) {
+		changes.push(
+			`Locked: ${formatAuditValue(oldThread.locked ? "ON" : "OFF")} -> ${formatAuditValue(newThread.locked ? "ON" : "OFF")}`,
+		);
+	}
+	if (oldThread.autoArchiveDuration !== newThread.autoArchiveDuration) {
+		changes.push(
+			`Auto-Archive Duration: ${formatAuditValue(oldThread.autoArchiveDuration)} minutes -> ${formatAuditValue(newThread.autoArchiveDuration)} minutes`,
+		);
+	}
+	if (oldThread.rateLimitPerUser !== newThread.rateLimitPerUser) {
+		changes.push(
+			`Slowmode: ${formatAuditValue(oldThread.rateLimitPerUser)}s -> ${formatAuditValue(newThread.rateLimitPerUser)}s`,
+		);
+	}
+	if ("invitable" in oldThread && "invitable" in newThread && oldThread.invitable !== newThread.invitable) {
+		changes.push(
+			`Invitable: ${formatAuditValue(oldThread.invitable ? "ON" : "OFF")} -> ${formatAuditValue(newThread.invitable ? "ON" : "OFF")}`,
+		);
+	}
+	if (changes.length === 0 || !(await isAuditLogEnabled(newThread.guild))) {
+		return;
+	}
+
+	const auditEntry = await getRecentChannelAuditEntry(newThread, AuditLogEvent.ThreadUpdate);
+	const embed = new EmbedBuilder()
+		.setColor("Yellow")
+		.setTitle("Audit Event: Thread Updated")
+		.setDescription(`${channelMention(newThread.id)} was updated.`)
+		.addFields(
+			{ name: "Channel", value: channelMention(newThread.id), inline: true },
+			{ name: "Type", value: getChannelTypeLabel(newThread), inline: true },
+			{ name: "Changes", value: changes.join("\n") },
+		)
+		.setFooter({ text: `Audit Event ID: ${createAuditEventId()}` })
+		.setTimestamp();
+	addAuditEntryDetails(embed, auditEntry);
+	await postAuditEvent(newThread.guild, { embeds: [embed], allowedMentions: { parse: [] } });
+}
+
+export async function handleAuditThreadDelete(thread: ThreadChannel): Promise<void> {
+	if (!(await isAuditLogEnabled(thread.guild))) {
+		return;
+	}
+
+	const auditEntry = await getRecentChannelAuditEntry(thread, AuditLogEvent.ThreadDelete);
+	const embed = new EmbedBuilder()
+		.setColor("Red")
+		.setTitle("Audit Event: Thread Deleted")
+		.setDescription(`${channelMention(thread.id)} was deleted.`)
+		.addFields(
+			{ name: "Name", value: thread.name },
+			{ name: "Channel", value: channelMention(thread.id) },
+			{ name: "Type", value: getChannelTypeLabel(thread), inline: true },
+			{ name: "Parent", value: thread.parentId ? channelMention(thread.parentId) : "None", inline: true },
+		)
+		.setFooter({ text: `Audit Event ID: ${createAuditEventId()}` })
+		.setTimestamp();
+	addAuditEntryDetails(embed, auditEntry);
+	await postAuditEvent(thread.guild, { embeds: [embed], allowedMentions: { parse: [] } });
 }
 
 export async function handleAuditMemberBanAdd(ban: GuildBan): Promise<void> {
@@ -674,6 +769,9 @@ export async function handleAuditMessageUpdate(
 				),
 			)
 		: [];
+	const messageChannelType = newMessage.channel.isDMBased()
+		? "Direct Message"
+		: getChannelTypeLabel(newMessage.channel);
 	const embed = new EmbedBuilder()
 		.setColor("Orange")
 		.setTitle(
@@ -699,8 +797,9 @@ export async function handleAuditMessageUpdate(
 				name: "Updated Content",
 				value: blockQuote(trimString(newMessage.content || "No text content.", 1020)),
 			},
-			{ name: "Author", value: `${formatUserMention(author.id)} (${author.tag})`, inline: true },
+			{ name: "Author", value: formatUserMention(author.id), inline: true },
 			{ name: "Channel", value: channelMention(newMessage.channel.id), inline: true },
+			{ name: "Type", value: messageChannelType, inline: true },
 			{ name: "Created At", value: `<t:${Math.floor(newMessage.createdTimestamp / 1000)}:F>` },
 			{ name: "Message ID", value: newMessage.id },
 		)
@@ -738,7 +837,7 @@ export async function handleAuditMessageDelete(message: Message | PartialMessage
 				name: "Content",
 				value: trimString(message.content, 1024),
 			},
-			{ name: "Author", value: `${formatUserMention(message.author.id)} (${message.author.tag})` },
+			{ name: "Author", value: formatUserMention(message.author.id) },
 			{ name: "Channel", value: channelMention(message.channel.id) },
 			{ name: "Created At", value: `<t:${Math.floor(message.createdTimestamp / 1000)}:F>` },
 			{ name: "Message ID", value: message.id },
@@ -758,7 +857,7 @@ export async function handleAuditMessageDelete(message: Message | PartialMessage
 				.setTitle(`Deleted Message Follow-up (Page ${pageIndex + 1}/${pageCount})`)
 				.setDescription(
 					[
-						`**Original message (MID: ${message.id}) from ${formatUserMention(message.author.id)} (${message.author.tag}):**`,
+						`**Original message (MID: ${message.id}) from ${formatUserMention(message.author.id)}:**`,
 						contentPage ? blockQuote(contentPage) : "",
 						pageIndex === 0 && attachmentLinks ? `Attachments:\n${attachmentLinks}` : "",
 					]

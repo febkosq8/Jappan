@@ -9,6 +9,7 @@ import type {
 	JSONEncodable,
 	PartialGuildMember,
 	PartialUser,
+	ThreadChannel,
 	User,
 } from "discord.js";
 
@@ -210,7 +211,7 @@ export async function getRecentMemberUpdateExecutor(member: GuildMember): Promis
 	return auditEntry?.executor ? `${formatUserMention(auditEntry.executor.id)} (${auditEntry.executor.tag})` : "Unknown";
 }
 
-export function getChannelTypeLabel(channel: GuildChannel): string {
+export function getChannelTypeLabel(channel: GuildChannel | ThreadChannel): string {
 	return channel.type === ChannelType.GuildText
 		? "Text Channel"
 		: channel.type === ChannelType.GuildVoice
@@ -225,18 +226,27 @@ export function getChannelTypeLabel(channel: GuildChannel): string {
 							? "Forum Channel"
 							: channel.type === ChannelType.GuildMedia
 								? "Media Channel"
-								: "Channel";
+								: channel.type === ChannelType.GuildPublicThread
+									? "Public Thread"
+									: channel.type === ChannelType.GuildPrivateThread
+										? "Private Thread"
+										: channel.type === ChannelType.GuildNewsThread
+											? "Announcement Thread"
+											: "Channel";
 }
 
 export async function getRecentChannelAuditEntry(
-	channel: GuildChannel,
+	channel: GuildChannel | ThreadChannel,
 	type:
 		| AuditLogEvent.ChannelCreate
 		| AuditLogEvent.ChannelUpdate
 		| AuditLogEvent.ChannelDelete
 		| AuditLogEvent.ChannelOverwriteCreate
 		| AuditLogEvent.ChannelOverwriteUpdate
-		| AuditLogEvent.ChannelOverwriteDelete,
+		| AuditLogEvent.ChannelOverwriteDelete
+		| AuditLogEvent.ThreadCreate
+		| AuditLogEvent.ThreadUpdate
+		| AuditLogEvent.ThreadDelete,
 ): Promise<GuildAuditLogsEntry | undefined> {
 	const auditLogs = await channel.guild.fetchAuditLogs({ limit: 10, type }).catch(() => null);
 	return auditLogs?.entries.find(
