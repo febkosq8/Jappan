@@ -18,11 +18,7 @@ const commandData = {
 	description: "Control the audit log feature for this server",
 	category: "moderator",
 	isDBDependant: true,
-	requiredBotPermissions: [
-		PermissionFlagsBits.ViewChannel,
-		PermissionFlagsBits.SendMessages,
-		PermissionFlagsBits.ViewAuditLog,
-	],
+	requiredBotPermissions: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages],
 } satisfies BotCommandData;
 
 function createStatusEmbed(

@@ -162,6 +162,7 @@ Boolean values are enabled only when their environment value is exactly `"true"`
 - Added command mentions for recovery instructions.
 - Added role and permission validation for leveling setup.
 - Standardized many command rejection messages around the Unicode error indicator.
+- Keep `requiredBotPermissions` limited to permissions required by every subcommand; check subcommand-specific permissions inside the relevant branch instead of applying them globally.
 
 ### Observability
 
