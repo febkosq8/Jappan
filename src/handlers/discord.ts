@@ -13,6 +13,7 @@ import { handleLevelingInteraction, handleLevelingMessage, handleLevelingVoiceSt
 import {
 	handleAuditMemberAdd,
 	handleAuditMemberRemove,
+	handleAuditMessageBulkDelete,
 	handleAuditMessageDelete,
 	handleAuditVoiceState,
 } from "../services/auditLog.js";
@@ -99,6 +100,7 @@ function registerEventDebugHandlers(client: ReturnType<typeof getClient>): void 
 		InteractionCreate: Events.InteractionCreate,
 		VoiceStateUpdate: Events.VoiceStateUpdate,
 		MessageDelete: Events.MessageDelete,
+		MessageBulkDelete: Events.MessageBulkDelete,
 	} as const;
 	for (const [eventName, event] of Object.entries(events)) {
 		client.on(event as string, (...args: unknown[]) => {
@@ -141,6 +143,10 @@ export function registerExtendedDiscordHandlers(): void {
 
 	client.on(Events.MessageDelete, (message) => {
 		void handleAuditMessageDelete(message);
+	});
+
+	client.on(Events.MessageBulkDelete, (messages) => {
+		void handleAuditMessageBulkDelete(messages);
 	});
 
 	logger.success("DISCORD", "Extended Discord event handlers registered");

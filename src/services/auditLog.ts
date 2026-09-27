@@ -15,6 +15,7 @@ import type {
 	PartialMessage,
 	VoiceState,
 } from "discord.js";
+import type { ReadonlyCollection } from "discord.js";
 
 import { sendGuildMessage } from "../helpers/guildHelper.js";
 import { splitString, trimString } from "../helpers/string.js";
@@ -214,6 +215,89 @@ export async function handleAuditMessageDelete(message: Message | PartialMessage
 
 		await postAuditEvent(message.guild, {
 			embeds: [pageEmbed, ...(pageIndex === 0 ? message.embeds.map((originalEmbed) => originalEmbed.toJSON()) : [])],
+			allowedMentions: { parse: [] },
+		});
+	}
+}
+
+export async function handleAuditMessageBulkDelete(
+	messages: ReadonlyCollection<string, Message | PartialMessage>,
+): Promise<void> {
+	const firstMessage = messages.find((message) => Boolean(message.guild));
+	const guild = firstMessage?.guild;
+	if (!guild) {
+		return;
+	}
+	const originalMessages = [...messages.values()].filter((message) => !isOwnBot(guild, message.author?.id ?? ""));
+	if (originalMessages.length === 0) {
+		return;
+	}
+	if (!(await isAuditLogEnabled(guild))) {
+		return;
+	}
+
+	const auditEventId = createAuditEventId();
+	const embed = new EmbedBuilder()
+		.setColor("DarkRed")
+		.setTitle("Audit Event: Bulk Messages Deleted")
+		.setDescription(
+			"Multiple messages were deleted at once. The original messages are included in the follow-up below.",
+		)
+		.addFields(
+			{ name: "Messages Deleted", value: `${originalMessages.length}`, inline: true },
+			{ name: "Channel", value: channelMention(firstMessage.channel.id), inline: true },
+		)
+		.setFooter({ text: `Audit Event ID: ${auditEventId}` })
+		.setTimestamp();
+	await postAuditEvent(guild, { embeds: [embed] });
+
+	const pagePrefix = `Follow-up for Audit Event ID: ${auditEventId}\n\n`;
+	const maxPageContentLength = 4096 - pagePrefix.length;
+	const messageBlocks = originalMessages.map((message, index) => {
+		const author = message.author ? `${userMention(message.author.id)} (${message.author.tag})` : "Unknown author";
+		const attachments = [...message.attachments.values()]
+			.map((attachment) => `[Attachment: ${attachment.name}](${attachment.url})`)
+			.join(", ");
+		return [
+			`**Message ${index + 1} (ID: ${message.id}) from ${author}:**`,
+			(message.content ?? "No text content.").replace(/^/gm, "> "),
+			attachments ? `Attachments: ${attachments}` : "",
+		]
+			.filter(Boolean)
+			.join("\n");
+	});
+	const contentPages: string[] = [];
+	let currentPage = "";
+	for (const messageBlock of messageBlocks) {
+		const nextPage = currentPage ? `${currentPage}\n\n${messageBlock}` : messageBlock;
+		if (nextPage.length <= maxPageContentLength) {
+			currentPage = nextPage;
+			continue;
+		}
+
+		if (currentPage) {
+			contentPages.push(currentPage);
+		}
+		if (messageBlock.length <= maxPageContentLength) {
+			currentPage = messageBlock;
+			continue;
+		}
+		contentPages.push(...splitString(messageBlock, maxPageContentLength));
+		currentPage = "";
+	}
+	if (currentPage) {
+		contentPages.push(currentPage);
+	}
+
+	for (const [pageIndex, contentPage] of contentPages.entries()) {
+		const pageEmbed = new EmbedBuilder()
+			.setColor("DarkRed")
+			.setTitle(`Messages Bulk Deleted (Page ${pageIndex + 1}/${contentPages.length})`)
+			.setDescription(`${pagePrefix}${contentPage}`)
+			.setFooter({ text: `Audit Event ID: ${auditEventId}` })
+			.setTimestamp();
+		await postAuditEvent(guild, {
+			embeds: [pageEmbed],
 			allowedMentions: { parse: [] },
 		});
 	}
