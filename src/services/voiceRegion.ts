@@ -1,9 +1,17 @@
-import { ChannelType, PermissionFlagsBits } from "discord.js";
+import {
+	ChannelType,
+	PermissionFlagsBits,
+	channelMention,
+	chatInputApplicationCommandMention,
+	userMention,
+} from "discord.js";
 import type { Guild, VoiceChannel, VoiceState } from "discord.js";
 
 import GuildMemberStateModel from "../models/guildMemberState.js";
+import { sendGuildMessage } from "../helpers/guildHelper.js";
 import type { GuildMemberStateDocument } from "../models/guildMemberState.js";
 import { getGuildMemberState, getOrCreateGuildMemberState } from "./guildMemberState.js";
+import { getCommandId } from "./commandLoader.js";
 import { logger } from "./logger.js";
 
 export interface VoiceRegionLock {
@@ -103,9 +111,34 @@ function hasOtherLockedMemberInChannel(
 	);
 }
 
-async function getManagedVoiceChannel(guild: Guild, channelId: string): Promise<VoiceChannel | null> {
-	const channel = await guild.channels.fetch(channelId);
-	return channel?.isVoiceBased() && channel.type === ChannelType.GuildVoice ? channel : null;
+async function handleVoiceRegionLockDisable({
+	guild,
+	userId,
+	channelId,
+	reason,
+}: {
+	guild: Guild;
+	userId: string;
+	channelId: string;
+	reason: string;
+}): Promise<void> {
+	logger.warn("DISCORD", "Removed voice region lock because it cannot be processed", {
+		guildId: guild.id,
+		userId,
+		channelId,
+		reason,
+	});
+	await removeVoiceRegionLock(guild, userId);
+	const commandId = getCommandId("lock-vc-region");
+	const addLockCommand = commandId
+		? chatInputApplicationCommandMention("lock-vc-region", "add", commandId)
+		: "the command menu";
+	await sendGuildMessage({
+		guild,
+		content: `⚠️ The voice-region lock for ${userMention(userId)} in ${channelMention(channelId)} was automatically disabled because ${reason}.\n📢 PSA for admins: please configure a new lock with ${addLockCommand}.`,
+		failureMessage: "Failed to notify guild about disabled voice region lock",
+		details: { userId, channelId, reason },
+	});
 }
 
 export async function handleVoiceRegionState(oldState: VoiceState, newState: VoiceState): Promise<void> {
@@ -121,30 +154,31 @@ export async function handleVoiceRegionState(oldState: VoiceState, newState: Voi
 			return;
 		}
 
-		const joinedLockedChannel = oldState.channelId !== newState.channelId && newState.channelId === lock.channelId;
-		const leftLockedChannel = oldState.channelId === lock.channelId && newState.channelId !== lock.channelId;
+		const channelChanged = oldState.channelId !== newState.channelId;
+		const joinedLockedChannel = channelChanged && newState.channelId === lock.channelId;
+		const leftLockedChannel = channelChanged && oldState.channelId === lock.channelId;
 		if (!joinedLockedChannel && !leftLockedChannel) {
 			return;
 		}
 
-		const channel = await getManagedVoiceChannel(newState.guild, lock.channelId);
-		if (!channel) {
-			logger.warn("DISCORD", "Removed voice region lock because its channel is unavailable", {
-				guildId: newState.guild.id,
+		const channel = joinedLockedChannel ? newState.channel : oldState.channel;
+		if (!channel || channel.type !== ChannelType.GuildVoice) {
+			await handleVoiceRegionLockDisable({
+				guild: newState.guild,
 				userId: member.id,
 				channelId: lock.channelId,
+				reason: "the configured voice channel is no longer available",
 			});
-			await removeVoiceRegionLock(newState.guild, member.id);
 			return;
 		}
 
 		if (!member.guild.members.me?.permissionsIn(channel).has(PermissionFlagsBits.ManageChannels)) {
-			logger.warn("DISCORD", "Removed voice region lock because the bot lacks Manage Channels", {
-				guildId: newState.guild.id,
+			await handleVoiceRegionLockDisable({
+				guild: newState.guild,
 				userId: member.id,
 				channelId: channel.id,
+				reason: "I no longer have Manage Channels permission there",
 			});
-			await removeVoiceRegionLock(newState.guild, member.id);
 			return;
 		}
 
@@ -155,6 +189,7 @@ export async function handleVoiceRegionState(oldState: VoiceState, newState: Voi
 				return;
 			}
 
+			const previousRegion = channel.rtcRegion ?? "automatic";
 			lock.fallbackRegion = channel.rtcRegion;
 			await channel.setRTCRegion(lock.region);
 			await storedMemberState.save();
@@ -164,10 +199,15 @@ export async function handleVoiceRegionState(oldState: VoiceState, newState: Voi
 				channelId: channel.id,
 				region: lock.region,
 			});
+			await channel.send({
+				content: `🔊 Voice region 🌐 updated from \`${previousRegion}\` to \`${lock.region}\` because ${userMention(member.id)} joined.`,
+				allowedMentions: { parse: [] },
+			});
 			return;
-		}
-
-		if (!hasOtherLockedMemberInChannel(channel, member.id, locks)) {
+		} else if (leftLockedChannel) {
+			if (hasOtherLockedMemberInChannel(channel, member.id, locks)) {
+				return;
+			}
 			const fallbackState = (await getVoiceRegionLockStates(newState.guild.id, channel.id)).find(
 				(state) => state.voiceRegionLock?.fallbackRegion,
 			);
@@ -176,6 +216,7 @@ export async function handleVoiceRegionState(oldState: VoiceState, newState: Voi
 			}
 
 			const fallbackRegion = fallbackState.voiceRegionLock.fallbackRegion;
+			const previousRegion = channel.rtcRegion ?? "automatic";
 			await channel.setRTCRegion(fallbackRegion);
 			fallbackState.voiceRegionLock.fallbackRegion = null;
 			await fallbackState.save();
@@ -184,6 +225,10 @@ export async function handleVoiceRegionState(oldState: VoiceState, newState: Voi
 				userId: fallbackState.userId,
 				channelId: channel.id,
 				region: fallbackRegion,
+			});
+			await channel.send({
+				content: `🔊 Voice region 🌐 restored from \`${previousRegion}\` to \`${fallbackRegion}\` because ${userMention(member.id)} left.`,
+				allowedMentions: { parse: [] },
 			});
 		}
 	} catch (error: unknown) {

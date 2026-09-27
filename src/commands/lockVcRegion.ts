@@ -79,7 +79,7 @@ const command: BotCommand = {
 					region,
 				});
 				await interaction.editReply(
-					`✅ ${userMention(user.id)} will lock ${channelMention(channel.id)} to \`${region}\` when they join.`,
+					`✅ When ${userMention(user.id)} joins ${channelMention(channel.id)}, its voice region will be set to \`${region}\`.`,
 				);
 			} catch (error: unknown) {
 				await interaction.editReply(

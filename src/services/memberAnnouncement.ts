@@ -151,6 +151,7 @@ async function postAnnouncement(
 					.setFooter({ text: `User ID: ${member.user.id}` })
 					.setTimestamp(),
 			],
+			allowedMentions: { parse: [] },
 		});
 	} catch (error: unknown) {
 		if (isUnavailableChannelError(error)) {

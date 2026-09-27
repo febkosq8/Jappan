@@ -242,9 +242,10 @@ async function awardLevelingPoints({
 
 	await member.roles.add(rewardRole, "Leveling reward threshold reached");
 	if (previousPoints < threshold && notificationChannel?.isSendable()) {
-		await notificationChannel.send(
-			`${formatUserMention(user)} reached ${threshold} leveling points and earned ${rewardRole}.`,
-		);
+		await notificationChannel.send({
+			content: `${formatUserMention(user)} reached ${threshold} leveling points and earned ${rewardRole}.`,
+			allowedMentions: { parse: [] },
+		});
 	}
 }
 
