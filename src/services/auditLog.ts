@@ -2,13 +2,17 @@ import { randomUUID } from "node:crypto";
 import {
 	EmbedBuilder,
 	PermissionFlagsBits,
+	blockQuote,
 	channelMention,
 	chatInputApplicationCommandMention,
+	italic,
 	userMention,
 } from "discord.js";
 import type {
+	APIEmbed,
 	Guild,
 	GuildMember,
+	JSONEncodable,
 	Message,
 	MessageCreateOptions,
 	PartialGuildMember,
@@ -30,8 +34,42 @@ export interface AuditLogStatus {
 	readonly auditLog: GuildDocument["auditLog"];
 }
 
+const MAX_EMBEDS_PER_MESSAGE = 10;
+const MAX_EMBED_CHARACTERS_PER_MESSAGE = 6000;
+
+function getEmbedCharacterCount(embed: APIEmbed | JSONEncodable<APIEmbed>): number {
+	const serializedEmbed = "toJSON" in embed ? embed.toJSON() : embed;
+	return [
+		serializedEmbed.author?.name,
+		serializedEmbed.title,
+		serializedEmbed.description,
+		serializedEmbed.footer?.text,
+		...(serializedEmbed.fields ?? []).flatMap((field) => [field.name, field.value]),
+	].reduce((total, value) => total + (value?.length ?? 0), 0);
+}
+
 function createAuditEventId(): string {
 	return randomUUID();
+}
+
+function createContentFollowUps(
+	title: string,
+	content: string,
+	auditEventId: string,
+	color: Parameters<EmbedBuilder["setColor"]>[0],
+	messageId: string,
+	pageOffset: number,
+	totalPages: number,
+): EmbedBuilder[] {
+	const contentPages = splitString(content, 4000);
+	return contentPages.map((contentPage, pageIndex) =>
+		new EmbedBuilder()
+			.setColor(color)
+			.setTitle(`${title} (MID: ${messageId}) (Page ${pageOffset + pageIndex + 1}/${totalPages})`)
+			.setDescription(blockQuote(contentPage))
+			.setFooter({ text: `Audit Event ID: ${auditEventId}` })
+			.setTimestamp(),
+	);
 }
 
 export async function setAuditLog(
@@ -62,10 +100,10 @@ export async function getAuditLogStatus(guildId: string, guildName: string): Pro
 	};
 }
 
-async function postAuditEvent(guild: Guild, content: MessageCreateOptions): Promise<void> {
+async function postAuditEvent(guild: Guild, content: MessageCreateOptions): Promise<Message | null> {
 	const storedGuildData = await getGuildSettings({ guild });
 	if (!storedGuildData.auditLog.enabled || !storedGuildData.auditLog.channelId) {
-		return;
+		return null;
 	}
 
 	const channelId = storedGuildData.auditLog.channelId;
@@ -77,10 +115,41 @@ async function postAuditEvent(guild: Guild, content: MessageCreateOptions): Prom
 		!botMember?.permissionsIn(channel).has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages])
 	) {
 		await disableAuditLog(guild, channelId);
-		return;
+		return null;
 	}
 
-	await channel.send(content);
+	const embeds: Array<APIEmbed | JSONEncodable<APIEmbed>> = content.embeds ? [...content.embeds] : [];
+	let firstMessage: Message | null = null;
+	for (let start = 0; start < Math.max(embeds.length, 1); ) {
+		let end = start;
+		let pageCharacterCount = 0;
+		while (end < embeds.length && end - start < MAX_EMBEDS_PER_MESSAGE) {
+			const embed = embeds[end];
+			if (!embed) {
+				break;
+			}
+			const embedCharacterCount = getEmbedCharacterCount(embed);
+			if (end > start && pageCharacterCount + embedCharacterCount > MAX_EMBED_CHARACTERS_PER_MESSAGE) {
+				break;
+			}
+			pageCharacterCount += embedCharacterCount;
+			end += 1;
+		}
+		if (end === start) {
+			end += 1;
+		}
+		const pageContent: MessageCreateOptions = {
+			...content,
+			embeds: embeds.slice(start, end),
+		};
+		if (firstMessage) {
+			pageContent.reply = { messageReference: firstMessage.id };
+		}
+		const sentMessage = await channel.send(pageContent);
+		firstMessage ??= sentMessage;
+		start = end;
+	}
+	return firstMessage;
 }
 
 async function isAuditLogEnabled(guild: Guild): Promise<boolean> {
@@ -164,45 +233,93 @@ export async function handleAuditMessageUpdate(
 	if (!(await isAuditLogEnabled(guild))) {
 		return;
 	}
-
+	const oldMessageWasNotCached = oldMessage.partial;
 	const oldEmbeds = JSON.stringify(oldMessage.embeds.map((embed) => embed.toJSON()));
 	const newEmbeds = JSON.stringify(newMessage.embeds.map((embed) => embed.toJSON()));
-	const contentChanged = oldMessage.content !== newMessage.content;
-	const embedsChanged = oldEmbeds !== newEmbeds;
+	const contentChanged = oldMessageWasNotCached || oldMessage.content !== newMessage.content;
+	const embedsChanged = oldMessageWasNotCached || oldEmbeds !== newEmbeds;
 	if (!contentChanged && !embedsChanged) {
 		return;
 	}
-
 	const auditEventId = createAuditEventId();
 	const hasEmbedFollowUp = embedsChanged && newMessage.embeds.length > 0;
+	const previousContent = oldMessage.content ?? "";
+	const updatedContent = newMessage.content ?? "";
+	const previousContentWasTrimmed = !oldMessageWasNotCached && previousContent.length > 1020;
+	const updatedContentWasTrimmed = updatedContent.length > 1020;
+	const updatedEmbeds = newMessage.embeds.map((originalEmbed) => originalEmbed.toJSON());
+	const previousContentPageCount = previousContentWasTrimmed ? splitString(previousContent, 4000).length : 0;
+	const updatedContentPageCount = updatedContentWasTrimmed ? splitString(updatedContent, 4000).length : 0;
+	const contentFollowUpPageCount = previousContentPageCount + updatedContentPageCount;
+	const followUpPageCount = contentFollowUpPageCount + (hasEmbedFollowUp ? updatedEmbeds.length : 0);
+	const totalPageCount = 1 + followUpPageCount;
+	const contentFollowUps = [
+		...(previousContentWasTrimmed
+			? createContentFollowUps(
+					"Full Previous Content",
+					previousContent,
+					auditEventId,
+					"Orange",
+					newMessage.id,
+					1,
+					totalPageCount,
+				)
+			: []),
+		...(updatedContentWasTrimmed
+			? createContentFollowUps(
+					"Full Updated Content",
+					updatedContent,
+					auditEventId,
+					"Orange",
+					newMessage.id,
+					1 + previousContentPageCount,
+					totalPageCount,
+				)
+			: []),
+	];
+	const updatedEmbedFollowUps = hasEmbedFollowUp
+		? updatedEmbeds.map((originalEmbed, pageIndex) =>
+				EmbedBuilder.from(originalEmbed).setTitle(
+					`${originalEmbed.title ?? "Updated Embed"} (MID: ${newMessage.id}) (Page ${contentFollowUpPageCount + pageIndex + 2}/${totalPageCount})`,
+				),
+			)
+		: [];
 	const embed = new EmbedBuilder()
 		.setColor("Orange")
-		.setTitle("Audit Event: Message Edited")
+		.setTitle(
+			followUpPageCount > 0 ? `Audit Event: Message Edited (Page 1/${totalPageCount})` : "Audit Event: Message Edited",
+		)
 		.setDescription(
-			hasEmbedFollowUp
-				? "A message was edited. The updated embed is included in the follow-up below."
-				: embedsChanged
-					? "A message was edited and its embed content changed."
-					: "A message was edited.",
+			oldMessageWasNotCached
+				? "A message was edited, but the previous version was not cached. The updated content is shown below."
+				: hasEmbedFollowUp
+					? "A message was edited. The updated embeds are included with this audit event."
+					: embedsChanged
+						? "A message was edited and its embed content changed."
+						: "A message was edited.",
 		)
 		.addFields(
-			{ name: "Previous Content", value: trimString(oldMessage.content || "No text content.", 1024) },
-			{ name: "Updated Content", value: trimString(newMessage.content || "No text content.", 1024) },
-			{ name: "Author", value: `${userMention(author.id)} (${author.tag})` },
-			{ name: "Channel", value: channelMention(newMessage.channel.id) },
+			{
+				name: "Previous Content",
+				value: oldMessageWasNotCached
+					? italic("Previous content unavailable because the message was not cached.")
+					: blockQuote(trimString(oldMessage.content || "No text content.", 1020)),
+			},
+			{
+				name: "Updated Content",
+				value: blockQuote(trimString(newMessage.content || "No text content.", 1020)),
+			},
+			{ name: "Author", value: `${userMention(author.id)} (${author.tag})`, inline: true },
+			{ name: "Channel", value: channelMention(newMessage.channel.id), inline: true },
+			{ name: "Created At", value: `<t:${Math.floor(newMessage.createdTimestamp / 1000)}:F>` },
 			{ name: "Message ID", value: newMessage.id },
 		)
 		.setFooter({ text: `Audit Event ID: ${auditEventId}` })
 		.setTimestamp();
-	await postAuditEvent(guild, { embeds: [embed] });
-
-	if (hasEmbedFollowUp) {
-		await postAuditEvent(guild, {
-			content: `Updated embed for message ${newMessage.id} | Audit Event ID: ${auditEventId}`,
-			embeds: newMessage.embeds.map((originalEmbed) => originalEmbed.toJSON()),
-			allowedMentions: { parse: [] },
-		});
-	}
+	await postAuditEvent(guild, {
+		embeds: [embed, ...contentFollowUps, ...updatedEmbedFollowUps],
+		allowedMentions: { parse: [] },
+	});
 }
 
 export async function handleAuditMessageDelete(message: Message | PartialMessage): Promise<void> {
@@ -238,39 +355,35 @@ export async function handleAuditMessageDelete(message: Message | PartialMessage
 		)
 		.setFooter({ text: `Audit Event ID: ${auditEventId}` })
 		.setTimestamp();
-	await postAuditEvent(message.guild, { embeds: [embed] });
-
-	if (!hasFollowUp) {
-		return;
+	const auditEmbeds: Array<APIEmbed | JSONEncodable<APIEmbed>> = [embed];
+	if (hasFollowUp) {
+		const contentPages = splitString(message.content, 1700);
+		const attachmentLinks = [...message.attachments.values()]
+			.map((attachment, index) => `[Attachment #${index + 1} : ${attachment.name}](${attachment.url})`)
+			.join("\n");
+		const pageCount = contentPages.length;
+		for (const [pageIndex, contentPage] of contentPages.entries()) {
+			const pageEmbed = new EmbedBuilder()
+				.setColor("DarkRed")
+				.setTitle(`Deleted Message Follow-up (Page ${pageIndex + 1}/${pageCount})`)
+				.setDescription(
+					[
+						`**Original message (MID: ${message.id}) from ${userMention(message.author.id)} (${message.author.tag}):**`,
+						contentPage ? blockQuote(contentPage) : "",
+						pageIndex === 0 && attachmentLinks ? `Attachments:\n${attachmentLinks}` : "",
+					]
+						.filter(Boolean)
+						.join("\n"),
+				)
+				.setFooter({ text: `Audit Event ID: ${auditEventId}` })
+				.setTimestamp();
+			auditEmbeds.push(
+				pageEmbed,
+				...(pageIndex === 0 ? message.embeds.map((originalEmbed) => originalEmbed.toJSON()) : []),
+			);
+		}
 	}
-
-	const contentPages = splitString(message.content, 1700);
-	const attachmentLinks = [...message.attachments.values()]
-		.map((attachment, index) => `[Attachment #${index + 1} : ${attachment.name}](${attachment.url})`)
-		.join("\n");
-
-	const pageCount = contentPages.length;
-	for (const [pageIndex, contentPage] of contentPages.entries()) {
-		const pageEmbed = new EmbedBuilder()
-			.setColor("DarkRed")
-			.setTitle(`Deleted Message Follow-up (Page ${pageIndex + 1}/${pageCount})`)
-			.setDescription(
-				[
-					`**Original message (MID: ${message.id}) from ${userMention(message.author.id)} (${message.author.tag}):**`,
-					contentPage ? contentPage.replace(/^/gm, "> ") : "",
-					pageIndex === 0 && attachmentLinks ? `Attachments:\n${attachmentLinks}` : "",
-				]
-					.filter(Boolean)
-					.join("\n"),
-			)
-			.setFooter({ text: `Audit Event ID: ${auditEventId}` })
-			.setTimestamp();
-
-		await postAuditEvent(message.guild, {
-			embeds: [pageEmbed, ...(pageIndex === 0 ? message.embeds.map((originalEmbed) => originalEmbed.toJSON()) : [])],
-			allowedMentions: { parse: [] },
-		});
-	}
+	await postAuditEvent(message.guild, { embeds: auditEmbeds, allowedMentions: { parse: [] } });
 }
 
 export async function handleAuditMessageBulkDelete(
@@ -302,7 +415,8 @@ export async function handleAuditMessageBulkDelete(
 		)
 		.setFooter({ text: `Audit Event ID: ${auditEventId}` })
 		.setTimestamp();
-	await postAuditEvent(guild, { embeds: [embed] });
+
+	const auditEmbeds: Array<APIEmbed | JSONEncodable<APIEmbed>> = [embed];
 
 	const pagePrefix = `Follow-up for Audit Event ID: ${auditEventId}\n\n`;
 	const maxPageContentLength = 4096 - pagePrefix.length;
@@ -313,12 +427,11 @@ export async function handleAuditMessageBulkDelete(
 		const attachments = [...message.attachments.values()]
 			.map((attachment) => `[Attachment: ${attachment.name}](${attachment.url})`)
 			.join(", ");
-		const messageContent = [
-			(message.content ?? "No text content.").replace(/^/gm, "> "),
-			attachments ? `Attachments: ${attachments}` : "",
-		]
-			.filter(Boolean)
+		const quotedContent = (message.content ?? "No text content.")
+			.split("\n")
+			.map((line) => `> ${line}`)
 			.join("\n");
+		const messageContent = [quotedContent, attachments ? `Attachments: ${attachments}` : ""].filter(Boolean).join("\n");
 		const completeMessage = `${messageHeader}\n${messageContent}`;
 		if (completeMessage.length <= maxPageContentLength) {
 			return [completeMessage];
@@ -365,11 +478,9 @@ export async function handleAuditMessageBulkDelete(
 			.setDescription(`${pagePrefix}${contentPage}`)
 			.setFooter({ text: `Audit Event ID: ${auditEventId}` })
 			.setTimestamp();
-		await postAuditEvent(guild, {
-			embeds: [pageEmbed],
-			allowedMentions: { parse: [] },
-		});
+		auditEmbeds.push(pageEmbed);
 	}
+	await postAuditEvent(guild, { embeds: auditEmbeds, allowedMentions: { parse: [] } });
 }
 
 export async function handleAuditVoiceState(oldState: VoiceState, newState: VoiceState): Promise<void> {

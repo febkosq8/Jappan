@@ -94,23 +94,26 @@ export function registerDiscordHandlers(): void {
 }
 
 function registerEventDebugHandlers(client: ReturnType<typeof getClient>, enabledEvents: readonly string[]): void {
-	const events = {
-		GuildMemberAdd: Events.GuildMemberAdd,
-		GuildMemberRemove: Events.GuildMemberRemove,
-		MessageCreate: Events.MessageCreate,
-		InteractionCreate: Events.InteractionCreate,
-		VoiceStateUpdate: Events.VoiceStateUpdate,
-		MessageDelete: Events.MessageDelete,
-		MessageBulkDelete: Events.MessageBulkDelete,
-		MessageUpdate: Events.MessageUpdate,
-	} as const;
-	for (const [eventName, event] of Object.entries(events)) {
+	const debugEvents = {
+		GuildMemberAdd: { event: Events.GuildMemberAdd, argumentNames: ["member"] },
+		GuildMemberRemove: { event: Events.GuildMemberRemove, argumentNames: ["member"] },
+		MessageCreate: { event: Events.MessageCreate, argumentNames: ["message"] },
+		InteractionCreate: { event: Events.InteractionCreate, argumentNames: ["interaction"] },
+		VoiceStateUpdate: { event: Events.VoiceStateUpdate, argumentNames: ["oldState", "newState"] },
+		MessageDelete: { event: Events.MessageDelete, argumentNames: ["message"] },
+		MessageBulkDelete: { event: Events.MessageBulkDelete, argumentNames: ["messages"] },
+		MessageUpdate: { event: Events.MessageUpdate, argumentNames: ["oldMessage", "newMessage"] },
+	};
+	for (const [eventName, debugEvent] of Object.entries(debugEvents)) {
 		if (!enabledEvents.includes(eventName)) {
 			continue;
 		}
 		logger.success("DISCORD", "Debug Discord event handlers registered", { eventName });
-		client.on(event as string, (...args: unknown[]) => {
-			logger.debug("DISCORD", `Events.${eventName}`, { args });
+		client.on(debugEvent.event as string, (...args: unknown[]) => {
+			const namedArgs = Object.fromEntries(
+				args.map((argument, index) => [debugEvent.argumentNames[index] ?? `arg${index + 1}`, argument]),
+			);
+			logger.debug("DISCORD", `Events.${eventName}`, namedArgs);
 		});
 	}
 }
