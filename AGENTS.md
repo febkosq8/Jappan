@@ -130,6 +130,7 @@ The rewrite currently has:
 - Leveling from messages, interactions, and voice activity, including reward-role validation, recovery, hierarchy checks, and leaderboard retrieval.
 - Atomic leveling point and warning count updates to prevent concurrent read-modify-save loss.
 - Join/leave announcements with unavailable-channel recovery and administrator notification through fallback channels.
+- Idempotent guild-create initialization with a permission-aware welcome message and `/help` guidance.
 - Audit coverage for members, roles, channels, threads, messages, invites, bans, users, voice state, permission overwrites, and raw audit-log entries, including recent executor and reason attribution.
 - Slash-command, button, and autocomplete dispatch with database availability rejection for database-dependent commands.
 - Warning setup threshold ordering and action-specific timeout/ban permission checks.
@@ -156,7 +157,6 @@ Fallback capability must remain available when slash commands are unavailable. A
 
 - Reduce repeated guild settings reads on high-volume message events with a controlled cache or event-scoped cache.
 - Prevent duplicate threshold role work when multiple events arrive concurrently for the same member.
-- Complete guild-create initialization and new-guild confirmation.
 - Add presence updates and Discord reconnect/disconnect handling.
 - Add process-level `uncaughtException` and `unhandledRejection` handling.
 

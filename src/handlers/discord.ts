@@ -4,6 +4,7 @@ import type { Interaction } from "discord.js";
 import { getClient } from "../bot.js";
 import { getCommands, setRegisteredCommandIds } from "../services/commandLoader.js";
 import { getConfig } from "../services/config.js";
+import { initializeGuild } from "../services/guild.js";
 import { logger } from "../services/logger.js";
 import { handleAutocompleteInteraction } from "./autocomplete.js";
 import { handleButtonInteraction } from "./button.js";
@@ -153,6 +154,10 @@ function registerEventDebugHandlers(client: ReturnType<typeof getClient>, enable
 export function registerExtendedDiscordHandlers(): void {
 	const client = getClient();
 	const config = getConfig();
+
+	client.on(Events.GuildCreate, (guild) => {
+		void initializeGuild(guild);
+	});
 
 	client.on(Events.GuildMemberAdd, (member) => {
 		void handleMemberJoinAnnouncement(member);
