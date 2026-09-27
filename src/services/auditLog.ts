@@ -221,7 +221,67 @@ export async function handleAuditMessageDelete(message: Message | PartialMessage
 
 export async function handleAuditVoiceState(oldState: VoiceState, newState: VoiceState): Promise<void> {
 	const member = newState.member ?? oldState.member;
-	if (!member || isOwnBot(newState.guild, member.user.id) || oldState.channelId === newState.channelId) {
+	if (!member || isOwnBot(newState.guild, member.user.id)) {
+		return;
+	}
+
+	const hasChannelChange = oldState.channelId !== newState.channelId;
+	const changes: { name: string; value: string; inline: true }[] = [];
+	const oldServerMute = Boolean(oldState.serverMute);
+	const newServerMute = Boolean(newState.serverMute);
+	const oldServerDeaf = Boolean(oldState.serverDeaf);
+	const newServerDeaf = Boolean(newState.serverDeaf);
+	const oldSelfMute = Boolean(oldState.selfMute);
+	const newSelfMute = Boolean(newState.selfMute);
+	const oldSelfDeaf = Boolean(oldState.selfDeaf);
+	const newSelfDeaf = Boolean(newState.selfDeaf);
+	const oldSelfVideo = Boolean(oldState.selfVideo);
+	const newSelfVideo = Boolean(newState.selfVideo);
+	const oldStreaming = Boolean(oldState.streaming);
+	const newStreaming = Boolean(newState.streaming);
+	if (oldServerMute !== newServerMute) {
+		changes.push({
+			name: "☁️🎙️ Server mute",
+			value: `${oldServerMute ? "ON" : "OFF"} -> ${newServerMute ? "ON" : "OFF"}`,
+			inline: true,
+		});
+	}
+	if (oldServerDeaf !== newServerDeaf) {
+		changes.push({
+			name: "☁️🎧 Server deafen",
+			value: `${oldServerDeaf ? "ON" : "OFF"} -> ${newServerDeaf ? "ON" : "OFF"}`,
+			inline: true,
+		});
+	}
+	if (oldSelfMute !== newSelfMute) {
+		changes.push({
+			name: "🎙️ Self mute",
+			value: `${oldSelfMute ? "ON" : "OFF"} -> ${newSelfMute ? "ON" : "OFF"}`,
+			inline: true,
+		});
+	}
+	if (oldSelfDeaf !== newSelfDeaf) {
+		changes.push({
+			name: "🎧 Self deafen",
+			value: `${oldSelfDeaf ? "ON" : "OFF"} -> ${newSelfDeaf ? "ON" : "OFF"}`,
+			inline: true,
+		});
+	}
+	if (oldSelfVideo !== newSelfVideo) {
+		changes.push({
+			name: "📹 Video",
+			value: `${oldSelfVideo ? "ON" : "OFF"} -> ${newSelfVideo ? "ON" : "OFF"}`,
+			inline: true,
+		});
+	}
+	if (oldStreaming !== newStreaming) {
+		changes.push({
+			name: "📺 Streaming",
+			value: `${oldStreaming ? "ON" : "OFF"} -> ${newStreaming ? "ON" : "OFF"}`,
+			inline: true,
+		});
+	}
+	if (!hasChannelChange && changes.length === 0) {
 		return;
 	}
 	if (!(await isAuditLogEnabled(newState.guild))) {
@@ -233,28 +293,47 @@ export async function handleAuditVoiceState(oldState: VoiceState, newState: Voic
 	const left = !newState.channelId;
 	const oldChannelMention = oldState.channelId ? channelMention(oldState.channelId) : "No channel";
 	const newChannelMention = newState.channelId ? channelMention(newState.channelId) : "No channel";
-	const title = joined ? "Joined Voice Channel" : left ? "Left Voice Channel" : "Moved Voice Channels";
+	const title = joined
+		? "Joined Voice Channel"
+		: left
+			? "Left Voice Channel"
+			: hasChannelChange
+				? "Moved Voice Channels"
+				: "Voice State Changed";
 	const description = joined
 		? "A member joined a voice channel."
 		: left
 			? "A member left a voice channel."
-			: "A member moved voice channels.";
+			: hasChannelChange
+				? "A member moved voice channels."
+				: "A member changed voice state settings.";
+	const fields: { name: string; value: string; inline?: boolean }[] = [
+		{ name: "User", value: `${userMention(member.id)} (${member.user.tag})`, inline: !hasChannelChange },
+	];
+	if (hasChannelChange) {
+		if (joined) {
+			fields.push({ name: "Channel", value: newChannelMention, inline: true });
+		} else if (left) {
+			fields.push({ name: "Channel", value: oldChannelMention, inline: true });
+		} else {
+			fields.push(
+				{ name: "From", value: oldChannelMention, inline: true },
+				{ name: "To", value: newChannelMention, inline: true },
+			);
+		}
+	} else if (changes.length > 0) {
+		fields.push({ name: "Channel", value: newChannelMention, inline: true });
+	}
+	if (changes.length > 0) {
+		fields.push({ name: "Changes", value: "\u200b" });
+		fields.push(...changes);
+	}
 
 	const embed = new EmbedBuilder()
-		.setColor(joined ? "Green" : left ? "Red" : "Orange")
+		.setColor(joined ? "Green" : left ? "Red" : hasChannelChange ? "Orange" : "Yellow")
 		.setTitle(`Audit Event: ${title}`)
 		.setDescription(description)
-		.addFields(
-			{ name: "User", value: `${userMention(member.id)} (${member.user.tag})` },
-			...(joined
-				? [{ name: "Channel", value: newChannelMention, inline: true }]
-				: left
-					? [{ name: "Channel", value: oldChannelMention, inline: true }]
-					: [
-							{ name: "From", value: oldChannelMention, inline: true },
-							{ name: "To", value: newChannelMention, inline: true },
-						]),
-		)
+		.addFields(fields)
 		.setFooter({ text: `Audit Event ID: ${auditEventId}` })
 		.setTimestamp();
 	await postAuditEvent(newState.guild, { embeds: [embed] });

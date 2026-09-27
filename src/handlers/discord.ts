@@ -102,6 +102,10 @@ function registerEventDebugHandlers(client: ReturnType<typeof getClient>): void 
 	} as const;
 	for (const [eventName, event] of Object.entries(events)) {
 		client.on(event as string, (...args: unknown[]) => {
+			const message = args[0] as { author?: { id?: string } } | undefined;
+			if (eventName === "MessageCreate" && message?.author?.id === client.user?.id) {
+				return;
+			}
 			logger.debug("DISCORD", `Events.${eventName}`, { args });
 		});
 	}
