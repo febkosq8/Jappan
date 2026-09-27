@@ -23,7 +23,6 @@ class DatabaseManager {
 			logger.success("DATABASE", "MongoDB connected", {
 				database: mongoose.connection.name,
 			});
-			void this.syncIndexes();
 		});
 		mongoose.connection.on("reconnected", () => {
 			logger.info("DATABASE", "MongoDB reconnected");
@@ -56,6 +55,7 @@ class DatabaseManager {
 					model: modelName,
 					error,
 				});
+				throw error;
 			}
 		}
 	}
@@ -77,6 +77,8 @@ class DatabaseManager {
 		this.registerConnectionListeners();
 
 		if (mongoose.connection.readyState === 1) {
+			await this.syncIndexes();
+			this.hasConnected = true;
 			if (successCallback) {
 				await successCallback();
 			}
@@ -90,14 +92,19 @@ class DatabaseManager {
 					serverSelectionTimeoutMS: 10000,
 				})
 				.then(async (connection) => {
+					await this.syncIndexes();
 					this.hasConnected = true;
 					if (successCallback) {
 						await successCallback();
 					}
 					return connection;
 				})
-				.catch((error: unknown) => {
+				.catch(async (error: unknown) => {
 					this.connectionPromise = undefined;
+					this.hasConnected = false;
+					if (mongoose.connection.readyState !== 0) {
+						await mongoose.disconnect();
+					}
 					logger.error("DATABASE", "MongoDB connection failed", { error });
 					throw error;
 				});
