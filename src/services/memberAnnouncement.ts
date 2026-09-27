@@ -3,7 +3,7 @@ import type { Guild, GuildBasedChannel, GuildMember, PartialGuildMember } from "
 
 import type { GuildDocument } from "../models/guild.js";
 import { getCommandId } from "./commandLoader.js";
-import type { Config } from "./config.js";
+import { getConfig } from "./config.js";
 import { getGuildSettings } from "./guild.js";
 import { sendGuildMessage } from "../helpers/guildHelper.js";
 import { logger } from "./logger.js";
@@ -110,7 +110,6 @@ async function postAnnouncement(
 	member: GuildMember | PartialGuildMember,
 	event: "join" | "leave",
 	channelId: string | null | undefined,
-	config: Config,
 ): Promise<void> {
 	if (!channelId) {
 		return;
@@ -122,6 +121,7 @@ async function postAnnouncement(
 			await disableAnnouncement(member.guild, event, channelId);
 			return;
 		}
+		const config = getConfig();
 
 		await channel.send({
 			embeds: [
@@ -175,16 +175,13 @@ async function postAnnouncement(
 	}
 }
 
-export async function handleMemberJoinAnnouncement(
-	member: GuildMember | PartialGuildMember,
-	config: Config,
-): Promise<void> {
+export async function handleMemberJoinAnnouncement(member: GuildMember | PartialGuildMember): Promise<void> {
 	try {
 		const memberAnnouncements = await getMemberAnnouncementStatus(member.guild);
 		if (!memberAnnouncements.joinEnabled) {
 			return;
 		}
-		await postAnnouncement(member, "join", memberAnnouncements.joinChannelId, config);
+		await postAnnouncement(member, "join", memberAnnouncements.joinChannelId);
 	} catch (error: unknown) {
 		logger.error("DISCORD", "Failed to load member join announcement settings", {
 			member,
@@ -194,16 +191,13 @@ export async function handleMemberJoinAnnouncement(
 	}
 }
 
-export async function handleMemberLeaveAnnouncement(
-	member: GuildMember | PartialGuildMember,
-	config: Config,
-): Promise<void> {
+export async function handleMemberLeaveAnnouncement(member: GuildMember | PartialGuildMember): Promise<void> {
 	try {
 		const memberAnnouncements = await getMemberAnnouncementStatus(member.guild);
 		if (!memberAnnouncements.leaveEnabled) {
 			return;
 		}
-		await postAnnouncement(member, "leave", memberAnnouncements.leaveChannelId, config);
+		await postAnnouncement(member, "leave", memberAnnouncements.leaveChannelId);
 	} catch (error: unknown) {
 		logger.error("DISCORD", "Failed to load member leave announcement settings", {
 			member,
