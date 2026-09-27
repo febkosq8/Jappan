@@ -5,6 +5,7 @@ import {
 	MessageFlags,
 	PermissionFlagsBits,
 	SlashCommandBuilder,
+	blockQuote,
 	channelMention,
 } from "discord.js";
 
@@ -71,6 +72,9 @@ const command: BotCommand = {
 				.setDescription("Send an admin message to a guild")
 				.addStringOption((option) =>
 					option.setName("guild-id").setDescription("Guild ID").setAutocomplete(true).setRequired(true),
+				)
+				.addStringOption((option) =>
+					option.setName("channel-id").setDescription("Channel ID").setAutocomplete(true).setRequired(true),
 				)
 				.addStringOption((option) => option.setName("message").setDescription("Message to send").setRequired(true)),
 		)
@@ -204,8 +208,32 @@ const command: BotCommand = {
 		}
 
 		if (subcommand === "message") {
-			const channel = await sendGuildAdminMessage(guild, interaction.options.getString("message", true), config);
-			await interaction.editReply(`Admin message sent to ${channel}.`);
+			try {
+				const message = interaction.options.getString("message", true);
+				const channelId = interaction.options.getString("channel-id", true);
+				const channel = await guild.channels.fetch(channelId);
+				if (!channel) {
+					await interaction.editReply("⛔ Channel not found.");
+					return;
+				}
+				const messageUrl = await sendGuildAdminMessage(guild, message, config, channelId);
+				const messageEmbed = new EmbedBuilder()
+					.setColor("Orange")
+					.setAuthor({ name: `${config.BOT_NAME} Admin`, iconURL: config.BOT_PFP, url: config.BOT_WEBSITE })
+					.setTitle("Admin message sent")
+					.addFields(
+						{ name: "Content", value: blockQuote(message) },
+						{ name: "Guild", value: formatGuildMention(guild) },
+						{ name: "Channel", value: channelMention(channelId), inline: true },
+						{ name: "Channel type", value: ChannelType[channel.type] ?? String(channel.type), inline: true },
+						{ name: "Message", value: messageUrl },
+					)
+					.setTimestamp();
+				await interaction.editReply({ embeds: [messageEmbed] });
+			} catch (error: unknown) {
+				const message = error instanceof Error ? error.message : "Could not send the admin message.";
+				await interaction.editReply(`⛔ ${message}`);
+			}
 			return;
 		}
 
@@ -286,7 +314,12 @@ const command: BotCommand = {
 					? [...channels.values()]
 							.flatMap((channel) =>
 								channel && `${channel.name ?? ""} ${channel.id}`.toLowerCase().includes(query)
-									? [{ name: `${channel.name ?? "unnamed"} (${channel.id})`, value: channel.id }]
+									? [
+											{
+												name: `Name: ${channel.name ?? "unnamed"} | Type: ${ChannelType[channel.type] ?? channel.type} | ID: ${channel.id}`,
+												value: channel.id,
+											},
+										]
 									: [],
 							)
 							.slice(0, 25)

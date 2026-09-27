@@ -8,12 +8,14 @@ export interface SendGuildMessageOptions {
 	guild: Guild;
 	content: string | MessageCreateOptions;
 	failureMessage: string;
+	channelId?: string;
 	details?: LogDetails;
 }
 
 export interface SentGuildMessage {
 	channelId: string;
 	channelName: string;
+	messageUrl: string;
 	messageType: "embed" | "normal";
 }
 
@@ -21,10 +23,13 @@ export async function sendGuildMessage({
 	guild,
 	content,
 	failureMessage,
+	channelId,
 	details,
 }: SendGuildMessageOptions): Promise<SentGuildMessage | null> {
 	const botMember = await guild.members.fetchMe().catch(() => null);
-	const channels = [guild.systemChannel, ...guild.channels.cache.values()];
+	const channels = channelId
+		? [await guild.channels.fetch(channelId).catch(() => null)]
+		: [guild.systemChannel, ...guild.channels.cache.values()];
 	const requiresEmbedLinks = typeof content !== "string" && Boolean(content.embeds?.length);
 	const messageType = requiresEmbedLinks ? "embed" : "normal";
 	const requiredPermissions = [
@@ -41,10 +46,11 @@ export async function sendGuildMessage({
 		}
 
 		try {
-			await channel.send(content);
+			const sentMessage = await channel.send(content);
 			return {
 				channelId: channel.id,
 				channelName: channel.name ?? "unknown",
+				messageUrl: sentMessage.url,
 				messageType,
 			};
 		} catch (error: unknown) {

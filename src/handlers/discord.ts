@@ -82,6 +82,7 @@ export function registerDiscordHandlers(): void {
 			type: InteractionType[interaction.type],
 			typeId: interaction.type,
 			command: "commandName" in interaction ? interaction.commandName : undefined,
+			subcommand: interaction.isChatInputCommand() ? interaction.options.getSubcommand(false) : undefined,
 			customId: interaction.isMessageComponent() ? interaction.customId : undefined,
 			user: `${interaction.user.tag} <${interaction.user.id}>`,
 		});

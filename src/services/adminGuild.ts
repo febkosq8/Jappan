@@ -1,4 +1,4 @@
-import { EmbedBuilder, PermissionFlagsBits, channelMention, userMention } from "discord.js";
+import { EmbedBuilder, PermissionFlagsBits, userMention } from "discord.js";
 import type { Client, Guild, GuildBasedChannel, Invite } from "discord.js";
 
 import type { Config } from "./config.js";
@@ -78,7 +78,12 @@ export async function getGuildChannel(client: Client, guildId: string, channelId
 	return channel;
 }
 
-export async function sendGuildAdminMessage(guild: Guild, message: string, config: Config): Promise<string> {
+export async function sendGuildAdminMessage(
+	guild: Guild,
+	message: string,
+	config: Config,
+	channelId?: string,
+): Promise<string> {
 	const embed = new EmbedBuilder()
 		.setColor("Orange")
 		.setAuthor({ name: `${config.BOT_NAME} Admin`, iconURL: config.BOT_PFP, url: config.BOT_WEBSITE })
@@ -89,12 +94,13 @@ export async function sendGuildAdminMessage(guild: Guild, message: string, confi
 		guild,
 		content: { embeds: [embed] },
 		failureMessage: "Failed to send admin message to guild",
+		...(channelId ? { channelId } : {}),
 		details: { guildId: guild.id },
 	});
 	if (!sentMessage) {
 		throw new Error("No suitable channel was available in that guild.");
 	}
-	return channelMention(sentMessage.channelId);
+	return sentMessage.messageUrl;
 }
 
 export async function kickGuild(guild: Guild, config: Config): Promise<void> {
