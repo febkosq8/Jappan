@@ -1,6 +1,8 @@
 import { writeLog, type LogCategory, type LogDetails } from "../helpers/logger.js";
 
 export const logger = {
+	debug: (category: LogCategory, message: string, details?: LogDetails): void =>
+		writeLog("debug", category, message, details),
 	info: (category: LogCategory, message: string, details?: LogDetails): void =>
 		writeLog("info", category, message, details),
 	success: (category: LogCategory, message: string, details?: LogDetails): void =>

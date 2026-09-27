@@ -195,7 +195,6 @@ async function awardLevelingPoints({
 	}
 
 	const rewardRole = await guild.roles.fetch(roleId);
-	const botMember = await guild.members.fetchMe();
 	if (!rewardRole) {
 		await disableLevelingReward({
 			guild,
@@ -204,6 +203,11 @@ async function awardLevelingPoints({
 		});
 		return;
 	}
+	if (member.roles.cache.has(rewardRole.id)) {
+		return;
+	}
+
+	const botMember = await guild.members.fetchMe();
 	if (rewardRole.managed) {
 		await disableLevelingReward({
 			guild,
@@ -229,21 +233,21 @@ async function awardLevelingPoints({
 		return;
 	}
 	if (!member.manageable) {
-		logger.warn("DISCORD", "Skipped leveling reward for an unmanageable member", {
-			guildId: guild.id,
-			userId: user.id,
-			roleId,
-		});
+		if (member.id !== guild.ownerId) {
+			logger.warn("DISCORD", "Skipped leveling reward for an unmanageable member", {
+				guildId: guild.id,
+				userId: user.id,
+				roleId,
+			});
+		}
 		return;
 	}
 
-	if (!member.roles.cache.has(rewardRole.id)) {
-		await member.roles.add(rewardRole, "Leveling reward threshold reached");
-		if (previousPoints < threshold && notificationChannel?.isSendable()) {
-			await notificationChannel.send(
-				`${userMention(user.id)} reached ${threshold} leveling points and earned ${rewardRole}.`,
-			);
-		}
+	await member.roles.add(rewardRole, "Leveling reward threshold reached");
+	if (previousPoints < threshold && notificationChannel?.isSendable()) {
+		await notificationChannel.send(
+			`${userMention(user.id)} reached ${threshold} leveling points and earned ${rewardRole}.`,
+		);
 	}
 }
 

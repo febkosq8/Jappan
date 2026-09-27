@@ -82,7 +82,23 @@ export function registerDiscordHandlers(): void {
 		return;
 	});
 
-	logger.success("DISCORD", "Event handlers registered");
+	logger.success("DISCORD", "Core Discord event handlers registered");
+}
+
+function registerEventDebugHandlers(client: ReturnType<typeof getClient>): void {
+	const events = {
+		GuildMemberAdd: Events.GuildMemberAdd,
+		GuildMemberRemove: Events.GuildMemberRemove,
+		MessageCreate: Events.MessageCreate,
+		InteractionCreate: Events.InteractionCreate,
+		VoiceStateUpdate: Events.VoiceStateUpdate,
+	} as const;
+	for (const [eventName, event] of Object.entries(events)) {
+		client.on(event as string, (...args: unknown[]) => {
+			logger.debug("DISCORD", `Events.${eventName}`, { args });
+		});
+	}
+	logger.success("DISCORD", "Debug Discord event handlers registered");
 }
 
 export function registerExtendedDiscordHandlers(): void {
@@ -109,5 +125,8 @@ export function registerExtendedDiscordHandlers(): void {
 		void handleLevelingVoiceState(oldState, newState);
 	});
 
-	logger.success("DISCORD", "Extended event handlers registered");
+	logger.success("DISCORD", "Extended Discord event handlers registered");
+	if (config.ENABLE_EVENTS_DEBUG) {
+		registerEventDebugHandlers(client);
+	}
 }

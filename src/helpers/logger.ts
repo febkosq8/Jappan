@@ -2,7 +2,7 @@ import { blue, bold, cyan, dim, gray, green, magenta, red, white, yellow } from 
 import { getConfig } from "../services/config.js";
 
 export type LogDetails = Record<string, unknown>;
-export type LogLevel = "info" | "success" | "warn" | "error";
+export type LogLevel = "debug" | "info" | "success" | "warn" | "error";
 export type LogCategory =
 	| "AUTOCOMPLETE"
 	| "BOT"
@@ -13,6 +13,7 @@ export type LogCategory =
 	| "SLASH_COMMANDS";
 
 const levelColors: Record<LogLevel, (value: string) => string> = {
+	debug: gray,
 	info: blue,
 	success: green,
 	warn: yellow,
@@ -56,7 +57,7 @@ export function writeLog(level: LogLevel, category: LogCategory, message: string
 	const output = `${timestampLabel}[${label}] [${categoryLabel}] ${message}${formatDetails(details)}`;
 	const consoleLevel = level === "success" ? "log" : level;
 
-	if (level === "error" && details) {
+	if ((level === "debug" || level === "error") && details) {
 		console[consoleLevel](output, details);
 	} else {
 		console[consoleLevel](output);

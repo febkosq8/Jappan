@@ -6,6 +6,7 @@ export interface Config {
 	readonly BOT_WEBSITE: string;
 	readonly DB_URL: string;
 	readonly LOG_TIMESTAMP: boolean;
+	readonly ENABLE_EVENTS_DEBUG: boolean;
 }
 
 let loadedConfig: Config | undefined;
@@ -16,6 +17,7 @@ const configTemplate: Partial<Record<keyof Config, string>> = {
 	BOT_PFP: "https://jappan.febkosq8.me/assets/Profile-FDHZtz5Q.png",
 	BOT_WEBSITE: "https://jappan.febkosq8.me",
 	LOG_TIMESTAMP: "false",
+	ENABLE_EVENTS_DEBUG: "false",
 };
 
 function readConfigValue(name: keyof Config, required = false): string {
@@ -42,8 +44,18 @@ export function loadConfig(): Config {
 	const BOT_WEBSITE = readConfigValue("BOT_WEBSITE");
 	const DB_URL = readConfigValue("DB_URL", true);
 	const LOG_TIMESTAMP = readConfigValue("LOG_TIMESTAMP") === "true";
+	const ENABLE_EVENTS_DEBUG = readConfigValue("ENABLE_EVENTS_DEBUG") === "true";
 
-	loadedConfig = { DISCORD_TOKEN, ENVIRONMENT, BOT_NAME, BOT_PFP, BOT_WEBSITE, DB_URL, LOG_TIMESTAMP };
+	loadedConfig = {
+		DISCORD_TOKEN,
+		ENVIRONMENT,
+		BOT_NAME,
+		BOT_PFP,
+		BOT_WEBSITE,
+		DB_URL,
+		LOG_TIMESTAMP,
+		ENABLE_EVENTS_DEBUG,
+	};
 	return loadedConfig;
 }
 
