@@ -75,6 +75,22 @@ When `ENABLE_EVENTS_DEBUG=true`, a separate debug listener is registered only fo
 
 Debug output uses `logger.debug`, not direct console calls.
 
+### Button Custom IDs
+
+Buttons with payloads use the canonical doppelganger format:
+
+```text
+Action|KEY#value:KEY#value
+```
+
+Example:
+
+```text
+DeleteDoppelganger|MID#messageId:CID#channelId:UID#userId
+```
+
+Use named fields, not positional payloads. Static buttons without payloads may use a plain action ID.
+
 ### Logging
 
 Use `src/services/logger.ts` for logging. The logger delegates to `src/helpers/logger.ts` and supports `debug`, `info`, `success`, `warn`, and `error` levels. Include useful context in the details object, especially guild, user, command, role, and channel identifiers.

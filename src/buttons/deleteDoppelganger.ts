@@ -3,6 +3,7 @@ import type { ButtonInteraction } from "discord.js";
 
 import type { Config } from "../services/config.js";
 import type { ButtonData, ButtonModule } from "../services/buttonLoader.js";
+import { parseButtonCustomId } from "../helpers/button.js";
 
 const buttonData = { id: "DeleteDoppelganger" } satisfies ButtonData;
 
@@ -12,16 +13,7 @@ export async function handleDeleteDoppelganger({
 	interaction: ButtonInteraction;
 	config: Config;
 }): Promise<void> {
-	const fields = new Map(
-		interaction.customId
-			.split("|")
-			.slice(1)
-			.flatMap((payload) => payload.split(":"))
-			.map((field) => {
-				const separatorIndex = field.indexOf("#");
-				return [field.slice(0, separatorIndex), field.slice(separatorIndex + 1)] as const;
-			}),
-	);
+	const fields = parseButtonCustomId(interaction.customId);
 	const messageId = fields.get("MID");
 	const channelId = fields.get("CID");
 	const authorizedUserId = fields.get("UID");

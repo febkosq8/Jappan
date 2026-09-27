@@ -33,7 +33,7 @@ export function createLeaderboardComponents({
 	if (page > 1) {
 		buttons.addComponents(
 			new ButtonBuilder()
-				.setCustomId(`leaderboard-prev|${userId}|${page}`)
+				.setCustomId(`LeaderboardPrev|UID#${userId}:PAGE#${page}`)
 				.setLabel("Previous")
 				.setStyle(ButtonStyle.Primary),
 		);
@@ -41,7 +41,7 @@ export function createLeaderboardComponents({
 	if (page < pageCount) {
 		buttons.addComponents(
 			new ButtonBuilder()
-				.setCustomId(`leaderboard-next|${userId}|${page}`)
+				.setCustomId(`LeaderboardNext|UID#${userId}:PAGE#${page}`)
 				.setLabel("Next")
 				.setStyle(ButtonStyle.Primary),
 		);
@@ -84,13 +84,13 @@ const command: BotCommand = {
 	execute: async ({ interaction, config }) => {
 		await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 		if (!interaction.guild) {
-			await interaction.editReply(":error: This command can only be used in a guild.");
+			await interaction.editReply("⛔ This command can only be used in a guild.");
 			return;
 		}
 
 		const status = await getLevelingStatus(interaction.guild);
 		if (!status.leveling.enabled) {
-			await interaction.editReply(":error: The leveling system is currently disabled for this server.");
+			await interaction.editReply("⛔ The leveling system is currently disabled for this server.");
 			return;
 		}
 
