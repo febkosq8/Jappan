@@ -72,14 +72,16 @@ export async function getVoiceRegionLocks(guild: Guild): Promise<VoiceRegionLock
 		if (!state.voiceRegionLock) {
 			return [];
 		}
-		return [{
-			userId: state.userId,
-			userName: state.username,
-			channelId: state.voiceRegionLock.channelId,
-			channelName: state.voiceRegionLock.channelName,
-			region: state.voiceRegionLock.region,
-			fallbackRegion: state.voiceRegionLock.fallbackRegion ?? null,
-		}];
+		return [
+			{
+				userId: state.userId,
+				userName: state.username,
+				channelId: state.voiceRegionLock.channelId,
+				channelName: state.voiceRegionLock.channelName,
+				region: state.voiceRegionLock.region,
+				fallbackRegion: state.voiceRegionLock.fallbackRegion ?? null,
+			},
+		];
 	});
 }
 
