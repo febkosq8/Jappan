@@ -1,0 +1,197 @@
+# Jappan Rework Agent Guide
+
+## Project Status
+
+Jappan Rework is the TypeScript/ESM rewrite of the Jappan Discord bot. It uses Node.js, discord.js 14, Mongoose, strict TypeScript with NodeNext modules, and pnpm.
+
+This project is the active rewrite boundary. Keep new implementation under `Jappan_Rework`; do not modify the legacy `Jappan_Discord_Bot` implementation as part of this work.
+
+## Development Commands
+
+Run commands from `Jappan_Rework`:
+
+```text
+pnpm run typecheck
+pnpm run build
+pnpm run dev
+pnpm start
+```
+
+The required validation command for code changes is:
+
+```text
+pnpm run typecheck
+```
+
+Discord.js references:
+
+- API documentation: https://discord.js.org/docs/packages/discord.js/main
+- Guide: https://discordjs.guide/
+
+Required environment values are `DISCORD_TOKEN` and `DB_URL`. Optional configuration includes:
+
+- `ENVIRONMENT`, default `PRODUCTION`
+- `BOT_NAME`, default `Jappan`
+- `BOT_PFP`, default bot profile image
+- `BOT_WEBSITE`, default project website
+- `LOG_TIMESTAMP`, default `false`
+- `ENABLE_EVENTS_DEBUG`, default `false`
+
+Set `ENABLE_EVENTS_DEBUG=true` to log the extended Discord events through the shared logger.
+
+## System Design
+
+### Startup
+
+`src/index.ts` loads environment configuration, connects to MongoDB, and starts the Discord bot. `src/bot.ts` creates the Discord client, loads commands and buttons, registers Discord handlers, and logs in.
+
+The intended startup order is database readiness first, Discord connection second, and subsystem initialization after both prerequisites are available.
+
+### Layers
+
+- `src/index.ts` and `src/bot.ts`: bootstrap and lifecycle
+- `src/handlers/`: Discord event and interaction adapters
+- `src/commands/`: slash command definitions and thin command entry points
+- `src/buttons/`: button interaction implementations
+- `src/services/`: feature behavior, persistence coordination, loaders, and configuration
+- `src/models/`: Mongoose documents and schemas
+- `src/helpers/`: shared logging, command, button, and Discord utility code
+
+Handlers should receive Discord events and forward feature behavior to services. Services own business rules and persistence operations. Keep command and handler code thin.
+
+### Discord Events
+
+`src/handlers/discord.ts` registers core events and extended feature events. Multiple listeners for the same Discord.js event are intentional and supported.
+
+Core handlers cover client readiness, command deployment, Discord errors, and interaction dispatch. Extended handlers cover member join, member leave, message leveling, interaction leveling, and voice leveling.
+
+When `ENABLE_EVENTS_DEBUG=true`, a separate debug listener is registered only for the extended events:
+
+- `Events.GuildMemberAdd`
+- `Events.GuildMemberRemove`
+- `Events.MessageCreate`
+- `Events.InteractionCreate`
+- `Events.VoiceStateUpdate`
+
+Debug output uses `logger.debug`, not direct console calls.
+
+### Logging
+
+Use `src/services/logger.ts` for logging. The logger delegates to `src/helpers/logger.ts` and supports `debug`, `info`, `success`, `warn`, and `error` levels. Include useful context in the details object, especially guild, user, command, role, and channel identifiers.
+
+Do not use `console.log`, `console.info`, or `console.debug` directly in feature code.
+
+### Configuration
+
+Configuration is loaded once by `loadConfig()` and accessed through `getConfig()`. Add new environment-backed values to all of these places:
+
+1. `Config` interface
+2. `configTemplate` defaults
+3. `loadConfig()` parsing
+4. the returned configuration object
+
+Boolean values are enabled only when their environment value is exactly `"true"`.
+
+## Completed Work
+
+### Architecture and Runtime
+
+- Created the TypeScript/ESM rewrite with strict NodeNext module resolution.
+- Established bootstrap, handler, command, service, model, and helper boundaries.
+- Added command and button loaders.
+- Added database connection and shutdown lifecycle handling.
+- Added startup command registration with command ID tracking.
+- Preserved multiple Discord.js listeners where separate features need the same event.
+
+### Leveling
+
+- Added message, interaction, and voice activity leveling.
+- Added enabled-state guards before leveling work.
+- Added threshold reward role assignment.
+- Repaired missing reward roles for members who pass the threshold later.
+- Added checks for missing, managed, or bot-unmanageable reward roles.
+- Added guild-level `ManageRoles` validation.
+- Added role hierarchy validation against the bot's highest role.
+- Invalid reward configuration is disabled and administrators are notified.
+- A member who already has the reward role is short-circuited before bot permission checks.
+- The server owner is skipped silently because Discord does not allow bots to manage the owner.
+- An unmanageable non-owner member is skipped and logged without disabling the guild configuration.
+- Leveling APIs use options objects for multi-parameter operations.
+- Leaderboard retrieval and embed creation are implemented.
+
+### Member Announcements
+
+- Added join and leave announcement handling.
+- Added unavailable-channel detection and automatic configuration recovery.
+- Invalid announcement settings are disabled and administrators are notified.
+- Shared guild fallback message delivery is implemented through `sendGuildMessage`.
+- Recovery messages use direct Unicode fallback emojis because Discord does not expand bot-sent `:name:` shortcodes.
+
+### Commands and UX
+
+- Added leveling, leaderboard, member announcement, audit log, warning, clear, doppelganger, help, about, and ping command flows present in the rewrite.
+- Added button and autocomplete dispatch.
+- Added command mentions for recovery instructions.
+- Added role and permission validation for leveling setup.
+- Standardized many command rejection messages around the Unicode error indicator.
+
+### Observability
+
+- Added structured logger categories and contextual details.
+- Added a default-off `ENABLE_EVENTS_DEBUG` configuration item.
+- Added extended-event debug registration controlled by that switch.
+- Debug event output includes enum-style names such as `Events.MessageCreate` and event arguments.
+
+## Remaining Work
+
+### Priority 1: Verification
+
+- Add a Vitest test setup; no `test/` directory currently exists.
+- Test configuration defaults and boolean parsing.
+- Test leveling threshold, role hierarchy, managed-role, owner, and already-has-role paths.
+- Test member-announcement channel recovery.
+- Test command and button dispatch with mocked Discord.js objects.
+- Add database availability and reconnect tests.
+- Run `pnpm run build` as a production compilation check.
+
+### Priority 2: Runtime Efficiency and Correctness
+
+- Replace leveling read-modify-save point updates with atomic MongoDB increments to avoid concurrent update loss.
+- Reduce repeated guild settings reads on high-volume message events with a controlled cache or event-scoped cache.
+- Avoid repeated reward role and bot-member fetches after configuration validation, while preserving recovery when roles or permissions change.
+- Prevent duplicate threshold role work when multiple events arrive concurrently for the same member.
+- Rate-limit or deduplicate repeated warnings for unmanageable non-owner members.
+
+### Priority 3: Feature Parity
+
+- Compare the rewrite against `CURRENT_SETUP_DETAILS.md` and the legacy bot feature inventory.
+- Complete any missing music, moderation, audit, fun, utility, admin, and fallback operational flows.
+- Preserve equivalent operational fallback capability when slash commands are unavailable.
+- Verify all legacy persistence intent has an explicit rewrite model or migration path.
+
+### Priority 4: Reliability and Operations
+
+- Add explicit database availability guards for DB-dependent commands and event paths.
+- Return deterministic service-unavailable responses when MongoDB is down.
+- Add reconnect behavior and observable recovery logging.
+- Persist critical logs to the database in addition to console output.
+- Add correlation or request IDs for command and event traces.
+- Harden shutdown, reconnect, and error handling for production operation.
+
+### Priority 5: Data and Release Readiness
+
+- Lock down all Mongoose schemas with validation and ownership rules.
+- Document the legacy-to-rewrite data migration and verify it against a backup.
+- Add deployment and rollback instructions.
+- Validate Docker and PM2 production startup.
+- Perform a controlled production cutover only after parity and migration checks pass.
+
+## Working Rules
+
+- Prefer existing local patterns and services over new abstractions.
+- Keep changes focused and avoid unrelated refactors.
+- Preserve public behavior unless the rewrite plan explicitly allows an improvement.
+- Use structured logging with context instead of direct console output.
+- Add tests proportional to behavioral risk.
+- Do not commit changes automatically.
+- After edits, run the narrowest relevant test or typecheck, then run the full typecheck before handoff.
