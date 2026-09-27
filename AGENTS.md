@@ -191,7 +191,7 @@ Boolean values are enabled only when their environment value is exactly `"true"`
 - Pending audit migration items from `Jappan_Discord_Bot/Components/AuditHandler.js`:
   - Add executor and reason attribution through recent `Guild.fetchAuditLogs()` entries for moderation and configuration events.
   - [x] Migrate invite creation and revocation auditing.
-  - Migrate guild member profile updates, including nickname, roles, timeout, and guild-specific avatar changes (implemented; runtime verification pending).
+  - [x] Migrate guild member profile updates, including nickname, roles, timeout, guild-specific avatar changes, and timeout executor attribution.
   - Migrate ban and unban auditing.
   - Migrate channel create, update, delete, and permission-overwrite auditing.
   - Migrate role create, update, and delete auditing.
