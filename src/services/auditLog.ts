@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import {
 	AuditLogEvent,
 	EmbedBuilder,
@@ -12,6 +11,7 @@ import {
 import type {
 	APIEmbed,
 	Guild,
+	GuildChannel,
 	GuildMember,
 	Invite,
 	JSONEncodable,
@@ -26,6 +26,22 @@ import type {
 } from "discord.js";
 import type { ReadonlyCollection } from "discord.js";
 
+import {
+	MAX_EMBED_CHARACTERS_PER_MESSAGE,
+	MAX_EMBEDS_PER_MESSAGE,
+	addAuditEntryDetails,
+	addAvatarChange,
+	createAuditEventId,
+	createContentFollowUps,
+	formatAuditValue,
+	getChannelTypeLabel,
+	getEmbedCharacterCount,
+	getProfileChangeResponse,
+	getRecentChannelAuditEntry,
+	getRecentMemberUpdateExecutor,
+	getVideoQualityModeLabel,
+	isOwnBot,
+} from "../helpers/auditLog.js";
 import { formatUserMention } from "../helpers/discord.js";
 import { sendGuildMessage } from "../helpers/guildHelper.js";
 import { splitString, trimString } from "../helpers/string.js";
@@ -38,44 +54,6 @@ export interface AuditLogStatus {
 	readonly guildId: GuildDocument["guildId"];
 	readonly guildName: GuildDocument["guildName"];
 	readonly auditLog: GuildDocument["auditLog"];
-}
-
-const MAX_EMBEDS_PER_MESSAGE = 10;
-const MAX_EMBED_CHARACTERS_PER_MESSAGE = 6000;
-
-function getEmbedCharacterCount(embed: APIEmbed | JSONEncodable<APIEmbed>): number {
-	const serializedEmbed = "toJSON" in embed ? embed.toJSON() : embed;
-	return [
-		serializedEmbed.author?.name,
-		serializedEmbed.title,
-		serializedEmbed.description,
-		serializedEmbed.footer?.text,
-		...(serializedEmbed.fields ?? []).flatMap((field) => [field.name, field.value]),
-	].reduce((total, value) => total + (value?.length ?? 0), 0);
-}
-
-function createAuditEventId(): string {
-	return randomUUID();
-}
-
-function createContentFollowUps(
-	title: string,
-	content: string,
-	auditEventId: string,
-	color: Parameters<EmbedBuilder["setColor"]>[0],
-	messageId: string,
-	pageOffset: number,
-	totalPages: number,
-): EmbedBuilder[] {
-	const contentPages = splitString(content, 4000);
-	return contentPages.map((contentPage, pageIndex) =>
-		new EmbedBuilder()
-			.setColor(color)
-			.setTitle(`${title} (MID: ${messageId}) (Page ${pageOffset + pageIndex + 1}/${totalPages})`)
-			.setDescription(blockQuote(contentPage))
-			.setFooter({ text: `Audit Event ID: ${auditEventId}` })
-			.setTimestamp(),
-	);
 }
 
 export async function setAuditLog(
@@ -163,146 +141,6 @@ async function isAuditLogEnabled(guild: Guild): Promise<boolean> {
 	return status.auditLog.enabled && Boolean(status.auditLog.channelId);
 }
 
-function isOwnBot(guild: Guild, userId: string): boolean {
-	return guild.client.user?.id === userId;
-}
-
-type AuditProfile = User | PartialUser | GuildMember | PartialGuildMember;
-
-interface ProfileChangeResponse {
-	readonly usernameChanged: boolean;
-	readonly globalNameChanged: boolean;
-	readonly nicknameChanged: boolean;
-	readonly rolesChanged: boolean;
-	readonly timeoutChanged: boolean;
-	readonly timeoutChangeLabel: "Added" | "Removed" | "Updated";
-	readonly avatarChanged: boolean;
-	readonly avatarChangeLabel: "Added" | "Removed" | "Updated";
-	readonly addedRoleIds: readonly string[];
-	readonly removedRoleIds: readonly string[];
-	readonly title: string;
-	readonly description: string;
-}
-
-function getChangeLabel(
-	oldValue: string | number | null | undefined,
-	newValue: string | number | null | undefined,
-): "Added" | "Removed" | "Updated" {
-	return oldValue == null ? "Added" : newValue == null ? "Removed" : "Updated";
-}
-
-function getProfileChangeResponse(oldProfile: AuditProfile, newProfile: User | GuildMember): ProfileChangeResponse {
-	const isMemberProfile = "roles" in newProfile;
-	const oldUser = oldProfile as PartialUser | User;
-	const newUser = newProfile as User;
-	const oldMember = oldProfile as PartialGuildMember | GuildMember;
-	const newMember = newProfile as GuildMember;
-	const usernameChanged = !isMemberProfile && oldUser.username !== newUser.username;
-	const globalNameChanged = !isMemberProfile && oldUser.globalName !== newUser.globalName;
-	const nicknameChanged = isMemberProfile && oldMember.nickname !== newMember.nickname;
-	const oldRoleIds = isMemberProfile ? new Set(oldMember.roles.cache.keys()) : new Set<string>();
-	const newRoleIds = isMemberProfile ? new Set(newMember.roles.cache.keys()) : new Set<string>();
-	const addedRoleIds = [...newRoleIds].filter((roleId) => !oldRoleIds.has(roleId));
-	const removedRoleIds = [...oldRoleIds].filter((roleId) => !newRoleIds.has(roleId));
-	const rolesChanged = addedRoleIds.length > 0 || removedRoleIds.length > 0;
-	const timeoutChanged = Boolean(
-		isMemberProfile && oldMember.communicationDisabledUntilTimestamp !== newMember.communicationDisabledUntilTimestamp,
-	);
-	const timeoutChangeLabel = getChangeLabel(
-		oldMember.communicationDisabledUntilTimestamp,
-		newMember.communicationDisabledUntilTimestamp,
-	);
-	const avatarChanged = oldProfile.avatar !== newProfile.avatar;
-	const avatarChangeLabel = getChangeLabel(oldProfile.avatar, newProfile.avatar);
-	const changes = [
-		...(usernameChanged ? [{ name: "Username", label: "Updated", description: "updated their username" }] : []),
-		...(globalNameChanged
-			? [
-					{
-						name: "Display Name",
-						label: getChangeLabel(oldUser.globalName, newUser.globalName),
-						description: `${getChangeLabel(oldUser.globalName, newUser.globalName).toLowerCase()} their display name`,
-					},
-				]
-			: []),
-		...(nicknameChanged
-			? [
-					{
-						name: "Nickname",
-						label: getChangeLabel(oldMember.nickname, newMember.nickname),
-						description: `${getChangeLabel(oldMember.nickname, newMember.nickname).toLowerCase()} a server nickname`,
-					},
-				]
-			: []),
-		...(rolesChanged ? [{ name: "Roles", label: "Updated", description: "updated their roles" }] : []),
-		...(timeoutChanged
-			? [
-					{
-						name: "Timeout",
-						label: timeoutChangeLabel,
-						description:
-							timeoutChangeLabel === "Added"
-								? "was timed out"
-								: timeoutChangeLabel === "Removed"
-									? "had their timeout removed"
-									: "had their timeout updated",
-					},
-				]
-			: []),
-		...(avatarChanged
-			? [
-					{
-						name: isMemberProfile ? "Server Avatar" : "Avatar",
-						label: avatarChangeLabel,
-						description: `${avatarChangeLabel.toLowerCase()} their ${isMemberProfile ? "server " : "profile "}avatar`,
-					},
-				]
-			: []),
-	];
-	const singleChange = changes.length === 1 ? changes[0] : undefined;
-	const title = singleChange
-		? `${isMemberProfile ? "Member" : "User"} ${singleChange.name} ${singleChange.label}`
-		: `${isMemberProfile ? "Member" : "User"} Profile Updated`;
-	const description = singleChange
-		? `${formatUserMention(newProfile.id)} ${singleChange.description}.`
-		: `${formatUserMention(newProfile.id)} updated their ${isMemberProfile ? "server " : ""}profile.`;
-
-	return {
-		usernameChanged,
-		globalNameChanged,
-		nicknameChanged,
-		rolesChanged,
-		timeoutChanged,
-		timeoutChangeLabel,
-		avatarChanged,
-		avatarChangeLabel,
-		addedRoleIds,
-		removedRoleIds,
-		title,
-		description,
-	};
-}
-
-function addAvatarChange(embed: EmbedBuilder, oldAvatarUrl: string, newAvatarUrl: string, avatarLabel: string): void {
-	embed
-		.addFields(
-			{ name: `Old ${avatarLabel} (Thumbnail)`, value: `[View Avatar](${oldAvatarUrl})`, inline: true },
-			{ name: `New ${avatarLabel} (Image)`, value: `[View Avatar](${newAvatarUrl})`, inline: true },
-		)
-		.setThumbnail(oldAvatarUrl)
-		.setImage(newAvatarUrl);
-}
-
-async function getRecentMemberUpdateExecutor(member: GuildMember): Promise<string> {
-	const auditLogs = await member.guild
-		.fetchAuditLogs({ limit: 10, type: AuditLogEvent.MemberUpdate })
-		.catch(() => null);
-	const entry = auditLogs?.entries.find(
-		(auditEntry) => auditEntry.target?.id === member.id && Date.now() - auditEntry.createdTimestamp < 20_000,
-	);
-	return entry?.executor ? `${formatUserMention(entry.executor.id)} (${entry.executor.tag})` : "Unknown";
-}
-
 async function handleAuditBan(ban: GuildBan, action: "Banned" | "Unbanned"): Promise<void> {
 	if (isOwnBot(ban.guild, ban.user.id) || !(await isAuditLogEnabled(ban.guild))) {
 		return;
@@ -310,8 +148,9 @@ async function handleAuditBan(ban: GuildBan, action: "Banned" | "Unbanned"): Pro
 
 	const auditLogType = action === "Banned" ? AuditLogEvent.MemberBanAdd : AuditLogEvent.MemberBanRemove;
 	const auditLogs = await ban.guild.fetchAuditLogs({ limit: 10, type: auditLogType }).catch(() => null);
-	const entry = auditLogs?.entries.find(
-		(auditEntry) => auditEntry.target?.id === ban.user.id && Date.now() - auditEntry.createdTimestamp < 20_000,
+	const auditEntry = auditLogs?.entries.find(
+		(candidateAuditEntry) =>
+			candidateAuditEntry.target?.id === ban.user.id && Date.now() - candidateAuditEntry.createdTimestamp < 20_000,
 	);
 	const auditEventId = createAuditEventId();
 	const embed = new EmbedBuilder()
@@ -321,14 +160,173 @@ async function handleAuditBan(ban: GuildBan, action: "Banned" | "Unbanned"): Pro
 		.setDescription(`${formatUserMention(ban.user.id)} was ${action.toLowerCase()}.`)
 		.addFields({
 			name: "Action Initiated By",
-			value: entry?.executor ? `${formatUserMention(entry.executor.id)} (${entry.executor.tag})` : "Unknown",
+			value: auditEntry?.executor
+				? `${formatUserMention(auditEntry.executor.id)} (${auditEntry.executor.tag})`
+				: "Unknown",
 		})
 		.setFooter({ text: `Audit Event ID: ${auditEventId}` })
 		.setTimestamp();
-	if (entry?.reason) {
-		embed.addFields({ name: "Reason", value: entry.reason });
+	if (auditEntry?.reason) {
+		embed.addFields({ name: "Reason", value: auditEntry.reason });
 	}
 	await postAuditEvent(ban.guild, { embeds: [embed], allowedMentions: { parse: [] } });
+}
+
+export async function handleAuditChannelCreate(channel: GuildChannel): Promise<void> {
+	if (!(await isAuditLogEnabled(channel.guild))) {
+		return;
+	}
+
+	const auditEntry = await getRecentChannelAuditEntry(channel, AuditLogEvent.ChannelCreate);
+	const embed = new EmbedBuilder()
+		.setColor("DarkGreen")
+		.setTitle(`Audit Event: ${getChannelTypeLabel(channel)} Created`)
+		.setDescription(`${channelMention(channel.id)} was created.`)
+		.addFields(
+			{ name: "Name", value: channel.name },
+			{ name: "Channel", value: channelMention(channel.id) },
+			{ name: "Type", value: getChannelTypeLabel(channel), inline: true },
+		)
+		.setFooter({ text: `Audit Event ID: ${createAuditEventId()}` })
+		.setTimestamp();
+	addAuditEntryDetails(embed, auditEntry);
+	await postAuditEvent(channel.guild, { embeds: [embed], allowedMentions: { parse: [] } });
+}
+
+export async function handleAuditChannelDelete(channel: GuildChannel): Promise<void> {
+	if (!(await isAuditLogEnabled(channel.guild))) {
+		return;
+	}
+
+	const auditEntry = await getRecentChannelAuditEntry(channel, AuditLogEvent.ChannelDelete);
+	const embed = new EmbedBuilder()
+		.setColor("Red")
+		.setTitle(`Audit Event: ${getChannelTypeLabel(channel)} Deleted`)
+		.setDescription(`${channelMention(channel.id)} was deleted.`)
+		.addFields(
+			{ name: "Channel ID", value: channel.id },
+			{ name: "Name", value: channel.name },
+			{ name: "Type", value: getChannelTypeLabel(channel), inline: true },
+		)
+		.setFooter({ text: `Audit Event ID: ${createAuditEventId()}` })
+		.setTimestamp();
+	addAuditEntryDetails(embed, auditEntry);
+	await postAuditEvent(channel.guild, { embeds: [embed], allowedMentions: { parse: [] } });
+}
+
+export async function handleAuditChannelUpdate(oldChannel: GuildChannel, newChannel: GuildChannel): Promise<void> {
+	const changes: string[] = [];
+	if (oldChannel.type !== newChannel.type) {
+		changes.push(`Channel Type: \`${getChannelTypeLabel(oldChannel)}\` -> \`${getChannelTypeLabel(newChannel)}\``);
+	}
+	if (oldChannel.name !== newChannel.name) {
+		changes.push(`Name: \`${oldChannel.name}\` -> \`${newChannel.name}\``);
+	}
+	if ("nsfw" in oldChannel && "nsfw" in newChannel && oldChannel.nsfw !== newChannel.nsfw) {
+		changes.push(`NSFW: \`${oldChannel.nsfw ? "ON" : "OFF"}\` -> \`${newChannel.nsfw ? "ON" : "OFF"}\``);
+	}
+	if ("topic" in oldChannel && "topic" in newChannel && oldChannel.topic !== newChannel.topic) {
+		const oldTopic = oldChannel.topic as string | null;
+		const newTopic = newChannel.topic as string | null;
+		changes.push(`Topic: ${formatAuditValue(oldTopic)} -> ${formatAuditValue(newTopic)}`);
+	}
+	if (oldChannel.rawPosition !== newChannel.rawPosition) {
+		changes.push(`Position: \`${oldChannel.rawPosition}\` -> \`${newChannel.rawPosition}\``);
+	}
+	if (oldChannel.flags.bitfield !== newChannel.flags.bitfield) {
+		changes.push(
+			`Channel flags: ${formatAuditValue(oldChannel.flags.toArray().join(", ") || null)} -> ${formatAuditValue(newChannel.flags.toArray().join(", ") || null)}`,
+		);
+	}
+	if ("bitrate" in oldChannel && "bitrate" in newChannel && oldChannel.bitrate !== newChannel.bitrate) {
+		changes.push(`Bitrate: \`${oldChannel.bitrate}\` -> \`${newChannel.bitrate}\``);
+	}
+	if ("userLimit" in oldChannel && "userLimit" in newChannel && oldChannel.userLimit !== newChannel.userLimit) {
+		changes.push(`User Limit: \`${oldChannel.userLimit}\` -> \`${newChannel.userLimit}\``);
+	}
+	if (
+		"videoQualityMode" in oldChannel &&
+		"videoQualityMode" in newChannel &&
+		oldChannel.videoQualityMode !== newChannel.videoQualityMode
+	) {
+		const oldVideoQualityMode = oldChannel.videoQualityMode as Parameters<typeof getVideoQualityModeLabel>[0];
+		const newVideoQualityMode = newChannel.videoQualityMode as Parameters<typeof getVideoQualityModeLabel>[0];
+		changes.push(
+			`Video Quality Mode: ${formatAuditValue(getVideoQualityModeLabel(oldVideoQualityMode))} -> ${formatAuditValue(getVideoQualityModeLabel(newVideoQualityMode))}`,
+		);
+	}
+	if ("rtcRegion" in oldChannel && "rtcRegion" in newChannel && oldChannel.rtcRegion !== newChannel.rtcRegion) {
+		changes.push(
+			`RTC Region: \`${oldChannel.rtcRegion ?? "Automatic"}\` -> \`${newChannel.rtcRegion ?? "Automatic"}\``,
+		);
+	}
+	if (
+		"rateLimitPerUser" in oldChannel &&
+		"rateLimitPerUser" in newChannel &&
+		oldChannel.rateLimitPerUser !== newChannel.rateLimitPerUser
+	) {
+		changes.push(`Slowmode: \`${oldChannel.rateLimitPerUser}s\` -> \`${newChannel.rateLimitPerUser}s\``);
+	}
+	if (
+		"defaultAutoArchiveDuration" in oldChannel &&
+		"defaultAutoArchiveDuration" in newChannel &&
+		oldChannel.defaultAutoArchiveDuration !== newChannel.defaultAutoArchiveDuration
+	) {
+		const oldAutoArchiveDuration = oldChannel.defaultAutoArchiveDuration as number | null;
+		const newAutoArchiveDuration = newChannel.defaultAutoArchiveDuration as number | null;
+		changes.push(
+			`Default Thread Auto-Archive Duration: ${formatAuditValue(oldAutoArchiveDuration)} minutes -> ${formatAuditValue(newAutoArchiveDuration)} minutes`,
+		);
+	}
+	const oldOverwrites = oldChannel.permissionOverwrites.cache;
+	const newOverwrites = newChannel.permissionOverwrites.cache;
+	const overwritesChanged =
+		oldOverwrites.size !== newOverwrites.size ||
+		[...oldOverwrites.values()].some((oldOverwrite) => {
+			const newOverwrite = newOverwrites.get(oldOverwrite.id);
+			return (
+				!newOverwrite ||
+				oldOverwrite.allow.bitfield !== newOverwrite.allow.bitfield ||
+				oldOverwrite.deny.bitfield !== newOverwrite.deny.bitfield
+			);
+		});
+	if (overwritesChanged) {
+		changes.push("Permission overwrites changed");
+	}
+	if (changes.length === 0 || !(await isAuditLogEnabled(newChannel.guild))) {
+		return;
+	}
+
+	const auditEntry = await getRecentChannelAuditEntry(newChannel, AuditLogEvent.ChannelUpdate);
+	let overwriteEntry = auditEntry;
+	if (!overwriteEntry && overwritesChanged) {
+		const overwriteAuditTypes: Array<
+			AuditLogEvent.ChannelOverwriteCreate | AuditLogEvent.ChannelOverwriteUpdate | AuditLogEvent.ChannelOverwriteDelete
+		> = [
+			AuditLogEvent.ChannelOverwriteCreate,
+			AuditLogEvent.ChannelOverwriteUpdate,
+			AuditLogEvent.ChannelOverwriteDelete,
+		];
+		for (const overwriteAuditType of overwriteAuditTypes) {
+			overwriteEntry = await getRecentChannelAuditEntry(newChannel, overwriteAuditType);
+			if (overwriteEntry) {
+				break;
+			}
+		}
+	}
+	const embed = new EmbedBuilder()
+		.setColor("Yellow")
+		.setTitle("Audit Event: Channel Updated")
+		.setDescription(`${channelMention(newChannel.id)} was updated.`)
+		.addFields(
+			{ name: "Channel", value: channelMention(newChannel.id), inline: true },
+			{ name: "Type", value: getChannelTypeLabel(newChannel), inline: true },
+			{ name: "Changes", value: changes.join("\n") },
+		)
+		.setFooter({ text: `Audit Event ID: ${createAuditEventId()}` })
+		.setTimestamp();
+	addAuditEntryDetails(embed, overwriteEntry);
+	await postAuditEvent(newChannel.guild, { embeds: [embed], allowedMentions: { parse: [] } });
 }
 
 export async function handleAuditMemberBanAdd(ban: GuildBan): Promise<void> {

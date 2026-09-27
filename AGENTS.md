@@ -195,8 +195,9 @@ Boolean values are enabled only when their environment value is exactly `"true"`
   - [x] Migrate invite creation and revocation auditing.
   - [x] Migrate guild member profile updates, including nickname, roles, timeout, guild-specific avatar changes, and timeout executor attribution.
   - [x] Migrate ban and unban auditing.
-  - Migrate channel create, update, delete, and permission-overwrite auditing.
+  - [x] Migrate channel create, update, delete, and permission-overwrite auditing.
   - Migrate role create, update, and delete auditing.
+  - Add thread create, update, and delete auditing through Discord's dedicated thread events.
   - [x] Migrate user profile updates, including username and avatar changes, across guilds where the user is a member.
   - Migrate raw `guildAuditLogEntryCreate` forwarding with target, executor, reason, and changed fields.
   - Reconcile partial message-delete behavior with the legacy `fullVerbosity` setting.

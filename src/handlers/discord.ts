@@ -16,6 +16,9 @@ import {
 	handleAuditMemberBanRemove,
 	handleAuditMemberRemove,
 	handleAuditMemberUpdate,
+	handleAuditChannelCreate,
+	handleAuditChannelDelete,
+	handleAuditChannelUpdate,
 	handleAuditInviteCreate,
 	handleAuditInviteDelete,
 	handleAuditMessageBulkDelete,
@@ -115,6 +118,9 @@ function registerEventDebugHandlers(client: ReturnType<typeof getClient>, enable
 		GuildMemberUpdate: { event: Events.GuildMemberUpdate, argumentNames: ["oldMember", "newMember"] },
 		GuildBanAdd: { event: Events.GuildBanAdd, argumentNames: ["ban"] },
 		GuildBanRemove: { event: Events.GuildBanRemove, argumentNames: ["ban"] },
+		ChannelCreate: { event: Events.ChannelCreate, argumentNames: ["channel"] },
+		ChannelUpdate: { event: Events.ChannelUpdate, argumentNames: ["oldChannel", "newChannel"] },
+		ChannelDelete: { event: Events.ChannelDelete, argumentNames: ["channel"] },
 	};
 	for (const [eventName, debugEvent] of Object.entries(debugEvents)) {
 		if (!enabledEvents.includes(eventName)) {
@@ -146,6 +152,27 @@ export function registerExtendedDiscordHandlers(): void {
 
 	client.on(Events.GuildMemberUpdate, (oldMember, newMember) => {
 		void handleAuditMemberUpdate(oldMember, newMember);
+	});
+
+	client.on(Events.ChannelCreate, (channel) => {
+		if (channel.isDMBased() || channel.isThread()) {
+			return;
+		}
+		void handleAuditChannelCreate(channel);
+	});
+
+	client.on(Events.ChannelUpdate, (oldChannel, newChannel) => {
+		if (oldChannel.isDMBased() || newChannel.isDMBased() || oldChannel.isThread() || newChannel.isThread()) {
+			return;
+		}
+		void handleAuditChannelUpdate(oldChannel, newChannel);
+	});
+
+	client.on(Events.ChannelDelete, (channel) => {
+		if (channel.isDMBased() || channel.isThread()) {
+			return;
+		}
+		void handleAuditChannelDelete(channel);
 	});
 
 	client.on(Events.GuildBanAdd, (ban) => {
