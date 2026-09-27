@@ -1,7 +1,8 @@
-import { EmbedBuilder, channelMention, chatInputApplicationCommandMention, userMention } from "discord.js";
+import { EmbedBuilder, channelMention, chatInputApplicationCommandMention } from "discord.js";
 import type { Guild, GuildBasedChannel, GuildMember, PartialGuildMember } from "discord.js";
 
 import type { GuildDocument } from "../models/guild.js";
+import { formatUserMention } from "../helpers/discord.js";
 import { getCommandId } from "./commandLoader.js";
 import { getConfig } from "./config.js";
 import { getGuildSettings } from "./guild.js";
@@ -131,12 +132,12 @@ async function postAnnouncement(
 					.setTitle(event === "join" ? "New Member" : "Member Departed")
 					.setDescription(
 						event === "join"
-							? `🎉 Welcome, ${userMention(member.user.id)}! Glad to have you here.`
-							: `👋 ${userMention(member.user.id)} has left the server. We wish them well!`,
+							? `🎉 Welcome, ${formatUserMention(member.user.id)}! Glad to have you here.`
+							: `👋 ${formatUserMention(member.user.id)} has left the server. We wish them well!`,
 					)
 					.setThumbnail(member.user.displayAvatarURL({ size: 256 }))
 					.addFields(
-						{ name: "User", value: userMention(member.user.id), inline: true },
+						{ name: "User", value: formatUserMention(member.user.id), inline: true },
 						...(event === "leave" && member.joinedTimestamp
 							? [
 									{

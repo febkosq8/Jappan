@@ -33,7 +33,9 @@ export async function handleSlashCommandInteraction({
 				durationMs: Math.round(performance.now() - startedAt),
 			});
 			await interaction.reply({
-				content: `:error: I need these permissions to run this command: ${underline(missingPermissions.join(", "))}.`,
+				content: `:error: I need these permissions to run this command: ${missingPermissions
+					.map((permission) => underline(permission))
+					.join(", ")}.`,
 				flags: MessageFlags.Ephemeral,
 			});
 			return;

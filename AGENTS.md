@@ -72,6 +72,7 @@ When an event is listed in `ENABLE_EVENTS_DEBUG`, a separate debug listener is r
 - `Events.MessageCreate`
 - `Events.InteractionCreate`
 - `Events.VoiceStateUpdate`
+- `Events.GuildMemberUpdate`
 
 Debug output uses `logger.debug`, not direct console calls.
 
@@ -189,7 +190,7 @@ Boolean values are enabled only when their environment value is exactly `"true"`
 - Pending audit migration items from `Jappan_Discord_Bot/Components/AuditHandler.js`:
   - Add executor and reason attribution through recent `Guild.fetchAuditLogs()` entries for moderation and configuration events.
   - [x] Migrate invite creation and revocation auditing.
-  - Migrate guild member profile updates, including nickname, roles, and timeout changes.
+  - Migrate guild member profile updates, including nickname, roles, timeout, and guild-specific avatar changes (implemented; runtime verification pending).
   - Migrate ban and unban auditing.
   - Migrate channel create, update, delete, and permission-overwrite auditing.
   - Migrate role create, update, and delete auditing.

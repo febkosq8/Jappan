@@ -1,12 +1,13 @@
 import { randomUUID } from "node:crypto";
 import {
+	AuditLogEvent,
 	EmbedBuilder,
 	PermissionFlagsBits,
 	blockQuote,
 	channelMention,
 	chatInputApplicationCommandMention,
 	italic,
-	userMention,
+	roleMention,
 } from "discord.js";
 import type {
 	APIEmbed,
@@ -24,6 +25,7 @@ import type {
 } from "discord.js";
 import type { ReadonlyCollection } from "discord.js";
 
+import { formatUserMention } from "../helpers/discord.js";
 import { sendGuildMessage } from "../helpers/guildHelper.js";
 import { splitString, trimString } from "../helpers/string.js";
 import type { GuildDocument } from "../models/guild.js";
@@ -164,6 +166,141 @@ function isOwnBot(guild: Guild, userId: string): boolean {
 	return guild.client.user?.id === userId;
 }
 
+type AuditProfile = User | PartialUser | GuildMember | PartialGuildMember;
+
+interface ProfileChangeResponse {
+	readonly usernameChanged: boolean;
+	readonly globalNameChanged: boolean;
+	readonly nicknameChanged: boolean;
+	readonly rolesChanged: boolean;
+	readonly timeoutChanged: boolean;
+	readonly timeoutChangeLabel: "Added" | "Removed" | "Updated";
+	readonly avatarChanged: boolean;
+	readonly avatarChangeLabel: "Added" | "Removed" | "Updated";
+	readonly addedRoleIds: readonly string[];
+	readonly removedRoleIds: readonly string[];
+	readonly title: string;
+	readonly description: string;
+}
+
+function getChangeLabel(
+	oldValue: string | number | null | undefined,
+	newValue: string | number | null | undefined,
+): "Added" | "Removed" | "Updated" {
+	return oldValue == null ? "Added" : newValue == null ? "Removed" : "Updated";
+}
+
+function getProfileChangeResponse(oldProfile: AuditProfile, newProfile: User | GuildMember): ProfileChangeResponse {
+	const isMemberProfile = "roles" in newProfile;
+	const oldUser = oldProfile as PartialUser | User;
+	const newUser = newProfile as User;
+	const oldMember = oldProfile as PartialGuildMember | GuildMember;
+	const newMember = newProfile as GuildMember;
+	const usernameChanged = !isMemberProfile && oldUser.username !== newUser.username;
+	const globalNameChanged = !isMemberProfile && oldUser.globalName !== newUser.globalName;
+	const nicknameChanged = isMemberProfile && oldMember.nickname !== newMember.nickname;
+	const oldRoleIds = isMemberProfile ? new Set(oldMember.roles.cache.keys()) : new Set<string>();
+	const newRoleIds = isMemberProfile ? new Set(newMember.roles.cache.keys()) : new Set<string>();
+	const addedRoleIds = [...newRoleIds].filter((roleId) => !oldRoleIds.has(roleId));
+	const removedRoleIds = [...oldRoleIds].filter((roleId) => !newRoleIds.has(roleId));
+	const rolesChanged = addedRoleIds.length > 0 || removedRoleIds.length > 0;
+	const timeoutChanged = Boolean(
+		isMemberProfile && oldMember.communicationDisabledUntilTimestamp !== newMember.communicationDisabledUntilTimestamp,
+	);
+	const timeoutChangeLabel = getChangeLabel(
+		oldMember.communicationDisabledUntilTimestamp,
+		newMember.communicationDisabledUntilTimestamp,
+	);
+	const avatarChanged = oldProfile.avatar !== newProfile.avatar;
+	const avatarChangeLabel = getChangeLabel(oldProfile.avatar, newProfile.avatar);
+	const changes = [
+		...(usernameChanged ? [{ name: "Username", label: "Updated", description: "updated their username" }] : []),
+		...(globalNameChanged
+			? [
+					{
+						name: "Display Name",
+						label: getChangeLabel(oldUser.globalName, newUser.globalName),
+						description: `${getChangeLabel(oldUser.globalName, newUser.globalName).toLowerCase()} their display name`,
+					},
+				]
+			: []),
+		...(nicknameChanged
+			? [
+					{
+						name: "Nickname",
+						label: getChangeLabel(oldMember.nickname, newMember.nickname),
+						description: `${getChangeLabel(oldMember.nickname, newMember.nickname).toLowerCase()} a server nickname`,
+					},
+				]
+			: []),
+		...(rolesChanged ? [{ name: "Roles", label: "Updated", description: "updated their roles" }] : []),
+		...(timeoutChanged
+			? [
+					{
+						name: "Timeout",
+						label: timeoutChangeLabel,
+						description:
+							timeoutChangeLabel === "Added"
+								? "was timed out"
+								: timeoutChangeLabel === "Removed"
+									? "had their timeout removed"
+									: "had their timeout updated",
+					},
+				]
+			: []),
+		...(avatarChanged
+			? [
+					{
+						name: isMemberProfile ? "Server Avatar" : "Avatar",
+						label: avatarChangeLabel,
+						description: `${avatarChangeLabel.toLowerCase()} their ${isMemberProfile ? "server " : "profile "}avatar`,
+					},
+				]
+			: []),
+	];
+	const singleChange = changes.length === 1 ? changes[0] : undefined;
+	const title = singleChange
+		? `${isMemberProfile ? "Member" : "User"} ${singleChange.name} ${singleChange.label}`
+		: `${isMemberProfile ? "Member" : "User"} Profile Updated`;
+	const description = singleChange
+		? `${formatUserMention(newProfile.id)} ${singleChange.description}.`
+		: `${formatUserMention(newProfile.id)} updated their ${isMemberProfile ? "server " : ""}profile.`;
+
+	return {
+		usernameChanged,
+		globalNameChanged,
+		nicknameChanged,
+		rolesChanged,
+		timeoutChanged,
+		timeoutChangeLabel,
+		avatarChanged,
+		avatarChangeLabel,
+		addedRoleIds,
+		removedRoleIds,
+		title,
+		description,
+	};
+}
+
+function addAvatarChange(embed: EmbedBuilder, oldAvatarUrl: string, newAvatarUrl: string, avatarLabel: string): void {
+	embed
+		.addFields(
+			{ name: `Old ${avatarLabel} (Thumbnail)`, value: `[View Avatar](${oldAvatarUrl})`, inline: true },
+			{ name: `New ${avatarLabel} (Image)`, value: `[View Avatar](${newAvatarUrl})`, inline: true },
+		)
+		.setThumbnail(oldAvatarUrl)
+		.setImage(newAvatarUrl);
+}
+
+async function getRecentMemberUpdateExecutor(member: GuildMember): Promise<string> {
+	const auditLogs = await member.guild.fetchAuditLogs({ limit: 1, type: AuditLogEvent.MemberUpdate }).catch(() => null);
+	const entry = auditLogs?.entries.find(
+		(auditEntry) => auditEntry.target?.id === member.id && Date.now() - auditEntry.createdTimestamp < 20_000,
+	);
+	console.log("getRecentMemberUpdateExecutor", { member, auditLogs, entry });
+	return entry?.executor ? `${formatUserMention(entry.executor.id)} (${entry.executor.tag})` : "Unknown";
+}
+
 async function disableAuditLog(guild: Guild, channelId: string): Promise<void> {
 	const storedGuildData = await getGuildSettings({ guild });
 	storedGuildData.auditLog.enabled = false;
@@ -196,8 +333,8 @@ export async function handleAuditMemberAdd(member: GuildMember): Promise<void> {
 	const embed = new EmbedBuilder()
 		.setColor("Green")
 		.setTitle("Audit Event: Member Joined")
-		.setDescription(`${userMention(member.id)} joined the server.`)
-		.addFields({ name: "User", value: `${userMention(member.id)} (${member.user.tag})` })
+		.setDescription(`${formatUserMention(member.id)} joined the server.`)
+		.addFields({ name: "User", value: `${formatUserMention(member.id)} (${member.user.tag})` })
 		.setThumbnail(member.user.displayAvatarURL({ size: 256 }))
 		.setFooter({ text: `Audit Event ID: ${auditEventId}` })
 		.setTimestamp();
@@ -216,12 +353,105 @@ export async function handleAuditMemberRemove(member: GuildMember | PartialGuild
 	const embed = new EmbedBuilder()
 		.setColor("Red")
 		.setTitle("Audit Event: Member Left")
-		.setDescription(`${userMention(member.id)} left the server.`)
-		.addFields({ name: "User", value: `${userMention(member.id)} (${member.user.tag})` })
+		.setDescription(`${formatUserMention(member.id)} left the server.`)
+		.addFields({ name: "User", value: `${formatUserMention(member.id)} (${member.user.tag})` })
 		.setThumbnail(member.user.displayAvatarURL({ size: 256 }))
 		.setFooter({ text: `Audit Event ID: ${auditEventId}` })
 		.setTimestamp();
 	await postAuditEvent(member.guild, { embeds: [embed] });
+}
+
+export async function handleAuditMemberUpdate(
+	oldMember: GuildMember | PartialGuildMember,
+	newMember: GuildMember,
+): Promise<void> {
+	if (isOwnBot(newMember.guild, newMember.user.id)) {
+		return;
+	}
+
+	const profileChange = getProfileChangeResponse(oldMember, newMember);
+	if (
+		!profileChange.nicknameChanged &&
+		!profileChange.rolesChanged &&
+		!profileChange.timeoutChanged &&
+		!profileChange.avatarChanged
+	) {
+		return;
+	}
+	if (!(await isAuditLogEnabled(newMember.guild))) {
+		return;
+	}
+
+	const fields: { name: string; value: string; inline?: boolean }[] = [
+		{ name: "User", value: formatUserMention(newMember.id), inline: true },
+	];
+	if (profileChange.nicknameChanged) {
+		if (oldMember.nickname) {
+			fields.push({ name: "Old Nickname", value: oldMember.nickname, inline: true });
+		}
+		if (newMember.nickname) {
+			fields.push({ name: "New Nickname", value: newMember.nickname, inline: true });
+		}
+	}
+	if (profileChange.rolesChanged) {
+		fields.push(
+			{
+				name: "Added Roles",
+				value:
+					profileChange.addedRoleIds.length > 0
+						? profileChange.addedRoleIds.map((roleId) => roleMention(roleId)).join(" ")
+						: "No roles",
+			},
+			{
+				name: "Removed Roles",
+				value:
+					profileChange.removedRoleIds.length > 0
+						? profileChange.removedRoleIds.map((roleId) => roleMention(roleId)).join(" ")
+						: "No roles",
+			},
+		);
+	}
+	if (profileChange.timeoutChanged) {
+		fields.push({
+			name:
+				profileChange.timeoutChangeLabel === "Added"
+					? "Timed Out Until"
+					: profileChange.timeoutChangeLabel === "Removed"
+						? "Timeout Removed"
+						: "Timeout Updated Until",
+			value: newMember.communicationDisabledUntilTimestamp
+				? `<t:${Math.floor(newMember.communicationDisabledUntilTimestamp / 1000)}:F>`
+				: oldMember.communicationDisabledUntilTimestamp
+					? `<t:${Math.floor(oldMember.communicationDisabledUntilTimestamp / 1000)}:F>`
+					: "No timeout",
+		});
+		fields.push({ name: "Action Initiated By", value: await getRecentMemberUpdateExecutor(newMember) });
+	}
+	if (profileChange.avatarChanged) {
+		fields.push({
+			name: "Server Avatar Change",
+			value: profileChange.avatarChangeLabel,
+			inline: true,
+		});
+	}
+	const auditEventId = createAuditEventId();
+	const embed = new EmbedBuilder()
+		.setColor("Yellow")
+		.setTitle(`Audit Event: ${profileChange.title}`)
+		.setAuthor({ name: newMember.user.tag, iconURL: newMember.user.displayAvatarURL({ size: 256 }) })
+		.setDescription(profileChange.description)
+		.addFields(fields)
+		.setFooter({ text: `Audit Event ID: ${auditEventId}` })
+		.setTimestamp();
+	if (profileChange.avatarChanged) {
+		addAvatarChange(
+			embed,
+			oldMember.displayAvatarURL({ size: 256 }),
+			newMember.displayAvatarURL({ size: 256 }),
+			"Server Avatar",
+		);
+	}
+	await postAuditEvent(newMember.guild, { embeds: [embed], allowedMentions: { parse: [] } });
 }
 
 export async function handleAuditInviteCreate(invite: Invite): Promise<void> {
@@ -241,7 +471,7 @@ export async function handleAuditInviteCreate(invite: Invite): Promise<void> {
 	const embed = new EmbedBuilder()
 		.setColor("Aqua")
 		.setTitle("Audit Event: Invite Created")
-		.setDescription(`${userMention(invite.inviterId)} created an invite.`)
+		.setDescription(`${formatUserMention(invite.inviterId)} created an invite.`)
 		.addFields(
 			{ name: "Invite Code", value: `\`${invite.code}\``, inline: true },
 			{ name: "Channel", value: channel, inline: true },
@@ -282,10 +512,8 @@ export async function handleAuditInviteDelete(invite: Invite): Promise<void> {
 }
 
 export async function handleAuditUserUpdate(oldUser: PartialUser | User, newUser: User): Promise<void> {
-	const usernameChanged = oldUser.username !== newUser.username;
-	const globalNameChanged = oldUser.globalName !== newUser.globalName;
-	const avatarChanged = oldUser.avatar !== newUser.avatar;
-	if (!usernameChanged && !globalNameChanged && !avatarChanged) {
+	const profileChange = getProfileChangeResponse(oldUser, newUser);
+	if (!profileChange.usernameChanged && !profileChange.globalNameChanged && !profileChange.avatarChanged) {
 		return;
 	}
 
@@ -302,40 +530,33 @@ export async function handleAuditUserUpdate(oldUser: PartialUser | User, newUser
 			const auditEventId = createAuditEventId();
 			const embed = new EmbedBuilder()
 				.setColor("Yellow")
-				.setTitle("Audit Event: User Profile Updated")
+				.setTitle(`Audit Event: ${profileChange.title}`)
 				.setAuthor({ name: newUser.tag, iconURL: newUser.displayAvatarURL({ size: 256 }) })
-				.setDescription(`${userMention(newUser.id)} updated their profile.`)
-				.addFields({ name: "User", value: userMention(newUser.id), inline: true })
+				.setDescription(profileChange.description)
+				.addFields({ name: "User", value: formatUserMention(newUser.id), inline: true })
 				.setFooter({ text: `Audit Event ID: ${auditEventId}` })
 				.setTimestamp();
-			if (usernameChanged) {
+			if (profileChange.usernameChanged) {
 				embed.addFields(
 					{ name: "Old Username", value: oldUser.username ?? "Unknown", inline: true },
 					{ name: "New Username", value: newUser.username, inline: true },
 				);
 			}
-			if (globalNameChanged) {
-				embed.addFields(
-					{ name: "Old Display Name", value: oldUser.globalName ?? "None", inline: true },
-					{ name: "New Display Name", value: newUser.globalName ?? "None", inline: true },
-				);
+			if (profileChange.globalNameChanged) {
+				if (oldUser.globalName) {
+					embed.addFields({ name: "Old Display Name", value: oldUser.globalName, inline: true });
+				}
+				if (newUser.globalName) {
+					embed.addFields({ name: "New Display Name", value: newUser.globalName, inline: true });
+				}
 			}
-			if (avatarChanged) {
-				embed
-					.addFields(
-						{
-							name: "Old Avatar (Thumbnail)",
-							value: `[View Avatar](${oldUser.displayAvatarURL({ size: 256 })})`,
-							inline: true,
-						},
-						{
-							name: "New Avatar (Image)",
-							value: `[View Avatar](${newUser.displayAvatarURL({ size: 256 })})`,
-							inline: true,
-						},
-					)
-					.setThumbnail(oldUser.displayAvatarURL({ size: 256 }))
-					.setImage(newUser.displayAvatarURL({ size: 256 }));
+			if (profileChange.avatarChanged) {
+				addAvatarChange(
+					embed,
+					oldUser.displayAvatarURL({ size: 256 }),
+					newUser.displayAvatarURL({ size: 256 }),
+					"Avatar",
+				);
 			}
 			await postAuditEvent(guild, { embeds: [embed], allowedMentions: { parse: [] } });
 		}),
@@ -430,7 +651,7 @@ export async function handleAuditMessageUpdate(
 				name: "Updated Content",
 				value: blockQuote(trimString(newMessage.content || "No text content.", 1020)),
 			},
-			{ name: "Author", value: `${userMention(author.id)} (${author.tag})`, inline: true },
+			{ name: "Author", value: `${formatUserMention(author.id)} (${author.tag})`, inline: true },
 			{ name: "Channel", value: channelMention(newMessage.channel.id), inline: true },
 			{ name: "Created At", value: `<t:${Math.floor(newMessage.createdTimestamp / 1000)}:F>` },
 			{ name: "Message ID", value: newMessage.id },
@@ -469,7 +690,7 @@ export async function handleAuditMessageDelete(message: Message | PartialMessage
 				name: "Content",
 				value: trimString(message.content, 1024),
 			},
-			{ name: "Author", value: `${userMention(message.author.id)} (${message.author.tag})` },
+			{ name: "Author", value: `${formatUserMention(message.author.id)} (${message.author.tag})` },
 			{ name: "Channel", value: channelMention(message.channel.id) },
 			{ name: "Created At", value: `<t:${Math.floor(message.createdTimestamp / 1000)}:F>` },
 			{ name: "Message ID", value: message.id },
@@ -489,7 +710,7 @@ export async function handleAuditMessageDelete(message: Message | PartialMessage
 				.setTitle(`Deleted Message Follow-up (Page ${pageIndex + 1}/${pageCount})`)
 				.setDescription(
 					[
-						`**Original message (MID: ${message.id}) from ${userMention(message.author.id)} (${message.author.tag}):**`,
+						`**Original message (MID: ${message.id}) from ${formatUserMention(message.author.id)} (${message.author.tag}):**`,
 						contentPage ? blockQuote(contentPage) : "",
 						pageIndex === 0 && attachmentLinks ? `Attachments:\n${attachmentLinks}` : "",
 					]
@@ -542,7 +763,9 @@ export async function handleAuditMessageBulkDelete(
 	const pagePrefix = `Follow-up for Audit Event ID: ${auditEventId}\n\n`;
 	const maxPageContentLength = 4096 - pagePrefix.length;
 	const messageBlocks = originalMessages.flatMap((message, index) => {
-		const author = message.author ? `${userMention(message.author.id)} (${message.author.tag})` : "Unknown author";
+		const author = message.author
+			? `${formatUserMention(message.author.id)} (${message.author.tag})`
+			: "Unknown author";
 		const messageHeader = `**Message ${index + 1} (ID: ${message.id}) from ${author}:**`;
 		const continuedMessageHeader = `**Message ${index + 1} (ID: ${message.id}) from ${author} (continued):**`;
 		const attachments = [...message.attachments.values()]
@@ -693,7 +916,7 @@ export async function handleAuditVoiceState(oldState: VoiceState, newState: Voic
 				? "A member moved voice channels."
 				: "A member changed voice state settings.";
 	const fields: { name: string; value: string; inline?: boolean }[] = [
-		{ name: "User", value: `${userMention(member.id)} (${member.user.tag})`, inline: !hasChannelChange },
+		{ name: "User", value: `${formatUserMention(member.id)} (${member.user.tag})`, inline: !hasChannelChange },
 	];
 	if (hasChannelChange) {
 		if (joined) {

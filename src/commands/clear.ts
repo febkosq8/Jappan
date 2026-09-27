@@ -6,10 +6,10 @@ import {
 	MessageFlags,
 	PermissionFlagsBits,
 	SlashCommandBuilder,
-	userMention,
 } from "discord.js";
 import type { Message } from "discord.js";
 
+import { formatUserMention } from "../helpers/discord.js";
 import type { BotCommand, BotCommandData } from "../services/commandLoader.js";
 import { logger } from "../services/logger.js";
 
@@ -218,9 +218,7 @@ const command: BotCommand = {
 					.setFooter({ text: `Run ${interaction.id} | Page 1/${totalPages}` })
 					.setTimestamp()
 					.addFields(
-						...(targetUserId
-							? [{ name: "Target user", value: `${userMention(targetUserId)} (\`${targetUserId}\`)` }]
-							: []),
+						...(targetUserId ? [{ name: "Target user", value: formatUserMention(targetUserId) }] : []),
 						{ name: "Delete limit", value: count.toString() },
 						{
 							name: "Status",

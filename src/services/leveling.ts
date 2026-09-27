@@ -1,13 +1,8 @@
-import {
-	EmbedBuilder,
-	PermissionFlagsBits,
-	chatInputApplicationCommandMention,
-	roleMention,
-	userMention,
-} from "discord.js";
+import { EmbedBuilder, PermissionFlagsBits, chatInputApplicationCommandMention, roleMention } from "discord.js";
 import type { Guild, GuildMember, Interaction, Message, User, VoiceState } from "discord.js";
 
 import type { GuildDocument } from "../models/guild.js";
+import { formatUserMention } from "../helpers/discord.js";
 import GuildMemberStateModel, { type GuildMemberStateDocument } from "../models/guildMemberState.js";
 import { sendGuildMessage } from "../helpers/guildHelper.js";
 import { getCommandId } from "./commandLoader.js";
@@ -246,7 +241,7 @@ async function awardLevelingPoints({
 	await member.roles.add(rewardRole, "Leveling reward threshold reached");
 	if (previousPoints < threshold && notificationChannel?.isSendable()) {
 		await notificationChannel.send(
-			`${userMention(user.id)} reached ${threshold} leveling points and earned ${rewardRole}.`,
+			`${formatUserMention(user.id)} reached ${threshold} leveling points and earned ${rewardRole}.`,
 		);
 	}
 }
@@ -330,7 +325,7 @@ export function createLeaderboardEmbed({
 		? leaderboard.entries
 				.map(
 					(entry, index) =>
-						`${(leaderboard.page - 1) * 20 + index + 1}. ${userMention(entry.userId)} - ${entry.leveling.points} points`,
+						`${(leaderboard.page - 1) * 20 + index + 1}. ${formatUserMention(entry.userId)} - ${entry.leveling.points} points`,
 				)
 				.join("\n")
 		: "No member stats were found.";

@@ -6,6 +6,7 @@ import {
 	PermissionFlagsBits,
 	SlashCommandBuilder,
 	channelMention,
+	underline,
 } from "discord.js";
 
 import type { BotCommand, BotCommandData } from "../helpers/command.js";
@@ -17,7 +18,11 @@ const commandData = {
 	description: "Control the audit log feature for this server",
 	category: "moderator",
 	isDBDependant: true,
-	requiredBotPermissions: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages],
+	requiredBotPermissions: [
+		PermissionFlagsBits.ViewChannel,
+		PermissionFlagsBits.SendMessages,
+		PermissionFlagsBits.ViewAuditLog,
+	],
 } satisfies BotCommandData;
 
 function createStatusEmbed(
@@ -103,9 +108,12 @@ const command: BotCommand = {
 			const botMember = interaction.guild.members.me;
 			if (
 				!botMember ||
+				!botMember.permissions.has(PermissionFlagsBits.ViewAuditLog) ||
 				!channel.permissionsFor(botMember)?.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages])
 			) {
-				await interaction.editReply("⛔ I do not have permission to view and send messages in that channel.");
+				await interaction.editReply(
+					`⛔ I need ${underline("View Audit Log")}, ${underline("View Channel")}, and ${underline("Send Messages")} permissions to enable audit logging.`,
+				);
 				return;
 			}
 
