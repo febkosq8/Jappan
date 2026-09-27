@@ -128,9 +128,12 @@ The rewrite currently has:
 
 - TypeScript/ESM architecture with strict NodeNext resolution, command/button loaders, service boundaries, database lifecycle handling, and startup command registration.
 - Leveling from messages, interactions, and voice activity, including reward-role validation, recovery, hierarchy checks, and leaderboard retrieval.
+- Atomic leveling point and warning count updates to prevent concurrent read-modify-save loss.
 - Join/leave announcements with unavailable-channel recovery and administrator notification through fallback channels.
 - Audit coverage for members, roles, channels, threads, messages, invites, bans, users, voice state, permission overwrites, and raw audit-log entries, including recent executor and reason attribution.
 - Slash-command, button, and autocomplete dispatch with database availability rejection for database-dependent commands.
+- Warning setup threshold ordering and action-specific timeout/ban permission checks.
+- Database model loading and index synchronization are part of the awaited startup gate.
 - Structured logging with contextual details and configurable extended-event debugging.
 - Passing `pnpm run typecheck` and `pnpm run build` validation.
 
@@ -151,15 +154,11 @@ Fallback capability must remain available when slash commands are unavailable. A
 
 ### Priority 1: Runtime Correctness
 
-- Replace leveling read-modify-save point updates with atomic MongoDB increments to avoid concurrent update loss.
 - Reduce repeated guild settings reads on high-volume message events with a controlled cache or event-scoped cache.
 - Prevent duplicate threshold role work when multiple events arrive concurrently for the same member.
 - Complete guild-create initialization and new-guild confirmation.
 - Add presence updates and Discord reconnect/disconnect handling.
 - Add process-level `uncaughtException` and `unhandledRejection` handling.
-- Make MongoDB index synchronization part of the startup readiness gate.
-- Validate warning threshold ordering and separate warning, timeout, and ban permission checks.
-- Persist warning reasons if warning history requires them.
 
 ### Priority 2: Reliability and Verification
 
