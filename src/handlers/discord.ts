@@ -105,7 +105,7 @@ function registerEventDebugHandlers(client: ReturnType<typeof getClient>, enable
 		MessageUpdate: Events.MessageUpdate,
 	} as const;
 	for (const [eventName, event] of Object.entries(events)) {
-		if (!enabledEvents.includes(event)) {
+		if (!enabledEvents.includes(eventName)) {
 			continue;
 		}
 		logger.success("DISCORD", "Debug Discord event handlers registered", { eventName });
