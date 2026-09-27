@@ -112,34 +112,44 @@ async function postAuditEvent(guild: Guild, content: MessageCreateOptions): Prom
 
 	const embeds: Array<APIEmbed | JSONEncodable<APIEmbed>> = content.embeds ? [...content.embeds] : [];
 	let firstMessage: Message | null = null;
-	for (let start = 0; start < Math.max(embeds.length, 1); ) {
-		let end = start;
-		let pageCharacterCount = 0;
-		while (end < embeds.length && end - start < MAX_EMBEDS_PER_MESSAGE) {
-			const embed = embeds[end];
-			if (!embed) {
-				break;
+	try {
+		for (let start = 0; start < Math.max(embeds.length, 1); ) {
+			let end = start;
+			let pageCharacterCount = 0;
+			while (end < embeds.length && end - start < MAX_EMBEDS_PER_MESSAGE) {
+				const embed = embeds[end];
+				if (!embed) {
+					break;
+				}
+				const embedCharacterCount = getEmbedCharacterCount(embed);
+				if (end > start && pageCharacterCount + embedCharacterCount > MAX_EMBED_CHARACTERS_PER_MESSAGE) {
+					break;
+				}
+				pageCharacterCount += embedCharacterCount;
+				end += 1;
 			}
-			const embedCharacterCount = getEmbedCharacterCount(embed);
-			if (end > start && pageCharacterCount + embedCharacterCount > MAX_EMBED_CHARACTERS_PER_MESSAGE) {
-				break;
+			if (end === start) {
+				end += 1;
 			}
-			pageCharacterCount += embedCharacterCount;
-			end += 1;
+			const pageContent: MessageCreateOptions = {
+				...content,
+				embeds: embeds.slice(start, end),
+			};
+			if (firstMessage) {
+				pageContent.reply = { messageReference: firstMessage.id };
+			}
+			const sentMessage = await channel.send(pageContent);
+			firstMessage ??= sentMessage;
+			start = end;
 		}
-		if (end === start) {
-			end += 1;
-		}
-		const pageContent: MessageCreateOptions = {
-			...content,
-			embeds: embeds.slice(start, end),
-		};
-		if (firstMessage) {
-			pageContent.reply = { messageReference: firstMessage.id };
-		}
-		const sentMessage = await channel.send(pageContent);
-		firstMessage ??= sentMessage;
-		start = end;
+	} catch (error: unknown) {
+		logger.error("DISCORD", "Failed to send audit event", {
+			guildId: guild.id,
+			channelId,
+			error,
+		});
+		await disableAuditLog(guild, channelId);
+		return null;
 	}
 	return firstMessage;
 }
@@ -532,12 +542,18 @@ async function disableAuditLog(guild: Guild, channelId: string): Promise<void> {
 	});
 	const commandId = getCommandId("auditlog");
 	const commandMention = commandId ? chatInputApplicationCommandMention("auditlog", "on", commandId) : "`/auditlog on`";
-	await sendGuildMessage({
+	const notified = await sendGuildMessage({
 		guild,
 		content: `⚠️ Audit logging was automatically disabled because I can no longer access ${channelMention(channelId)}.\n📢 PSA for admins: please configure a new channel with ${commandMention}.`,
 		failureMessage: "Failed to notify guild about disabled audit logging",
 		details: { channelId },
 	});
+	if (!notified) {
+		logger.warn("DISCORD", "Could not notify guild that audit logging was disabled", {
+			guildId: guild.id,
+			channelId,
+		});
+	}
 }
 
 export async function handleAuditMemberAdd(member: GuildMember): Promise<void> {

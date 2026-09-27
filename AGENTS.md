@@ -171,6 +171,7 @@ Boolean values are enabled only when their environment value is exactly `"true"`
 ### Observability
 
 - Added structured logger categories and contextual details.
+- Added audit-channel send-failure recovery that disables stale configuration and notifies administrators through fallback channels.
 - Added a default-off `ENABLE_EVENTS_DEBUG` configuration item.
 - Added extended-event debug registration controlled by that switch.
 - Debug event output includes enum-style names such as `Events.MessageCreate` and event arguments.
@@ -208,7 +209,7 @@ Boolean values are enabled only when their environment value is exactly `"true"`
   - `level`: finish response consistency and runtime configuration edge cases.
   - `leaderboard`: finish pagination, button recovery, empty-state, and disabled-leveling behavior.
   - `memberannounce`: finish response consistency and join/leave configuration edge cases.
-  - `auditlog`: verify complete audit event coverage, unavailable-channel recovery, and verbosity parity.
+    - [x] `auditlog`: verify complete audit event coverage, unavailable-channel recovery, and verbosity parity.
   - `warn`: separate warning, timeout, and ban permission checks; verify threshold and audit-channel parity.
   - `clear`: support complete message pagination/history scanning and verify permission failure recovery.
   - `doppelganger`: verify webhook lifecycle, delete-button recovery, notification failure handling, and permission parity.
