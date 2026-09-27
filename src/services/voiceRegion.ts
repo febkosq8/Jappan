@@ -136,7 +136,10 @@ async function handleVoiceRegionLockDisable({
 		: "the command menu";
 	await sendGuildMessage({
 		guild,
-		content: `⚠️ The voice-region lock for ${userMention(userId)} in ${channelMention(channelId)} was automatically disabled because ${reason}.\n📢 PSA for admins: please configure a new lock with ${addLockCommand}.`,
+		content: {
+			content: `⚠️ The voice-region lock for ${userMention(userId)} in ${channelMention(channelId)} was automatically disabled because ${reason}.\n📢 PSA for admins: please configure a new lock with ${addLockCommand}.`,
+			allowedMentions: { parse: [] },
+		},
 		failureMessage: "Failed to notify guild about disabled voice region lock",
 		details: { userId, channelId, reason },
 	});
