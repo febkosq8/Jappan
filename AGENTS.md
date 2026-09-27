@@ -201,9 +201,9 @@ Boolean values are enabled only when their environment value is exactly `"true"`
   - [x] Migrate role create, update, and delete auditing.
   - [x] Add thread create, update, and delete auditing through Discord's dedicated thread events.
   - [x] Migrate user profile updates, including username and avatar changes, across guilds where the user is a member.
-  - Migrate raw `guildAuditLogEntryCreate` forwarding with target, executor, reason, and changed fields.
-  - Reconcile partial message-delete behavior with the legacy `fullVerbosity` setting.
-  - Add an explicit message-update timestamp and confirm embed-change comparison semantics.
+  - [x] Migrate raw `guildAuditLogEntryCreate` forwarding with target, executor, reason, and changed fields.
+  - [x] Reconcile partial message-delete behavior with the legacy `fullVerbosity` setting.
+  - [x] Add an explicit message-update timestamp and confirm embed-change comparison semantics.
 - Complete migrated command behavior, not only command registration:
   - `level`: finish response consistency and runtime configuration edge cases.
   - `leaderboard`: finish pagination, button recovery, empty-state, and disabled-leveling behavior.

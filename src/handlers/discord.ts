@@ -27,6 +27,7 @@ import {
 	handleAuditThreadUpdate,
 	handleAuditInviteCreate,
 	handleAuditInviteDelete,
+	handleAuditLogEntryCreate,
 	handleAuditMessageBulkDelete,
 	handleAuditMessageDelete,
 	handleAuditMessageUpdate,
@@ -120,6 +121,7 @@ function registerEventDebugHandlers(client: ReturnType<typeof getClient>, enable
 		MessageUpdate: { event: Events.MessageUpdate, argumentNames: ["oldMessage", "newMessage"] },
 		InviteCreate: { event: Events.InviteCreate, argumentNames: ["invite"] },
 		InviteDelete: { event: Events.InviteDelete, argumentNames: ["invite"] },
+		GuildAuditLogEntryCreate: { event: Events.GuildAuditLogEntryCreate, argumentNames: ["auditEntry", "guild"] },
 		UserUpdate: { event: Events.UserUpdate, argumentNames: ["oldUser", "newUser"] },
 		GuildMemberUpdate: { event: Events.GuildMemberUpdate, argumentNames: ["oldMember", "newMember"] },
 		GuildBanAdd: { event: Events.GuildBanAdd, argumentNames: ["ban"] },
@@ -225,6 +227,10 @@ export function registerExtendedDiscordHandlers(): void {
 
 	client.on(Events.InviteDelete, (invite) => {
 		void handleAuditInviteDelete(invite);
+	});
+
+	client.on(Events.GuildAuditLogEntryCreate, (auditEntry, guild) => {
+		void handleAuditLogEntryCreate(auditEntry, guild);
 	});
 
 	client.on(Events.MessageCreate, (message) => {

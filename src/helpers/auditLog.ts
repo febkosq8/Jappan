@@ -14,7 +14,7 @@ import type {
 	User,
 } from "discord.js";
 
-import { formatUserMention } from "./discord.js";
+import { formatChannelMention, formatRoleMention, formatUserMention } from "./discord.js";
 import { splitString } from "./string.js";
 
 export const MAX_EMBEDS_PER_MESSAGE = 10;
@@ -191,6 +191,51 @@ export async function getRecentAuditEntry(
 				Date.now() - candidateAuditEntry.createdTimestamp < 20_000,
 		)
 		.sort((firstEntry, secondEntry) => secondEntry.createdTimestamp - firstEntry.createdTimestamp)[0];
+}
+
+export function getAuditEntryActionLabel(action: AuditLogEvent): string {
+	const actionName = AuditLogEvent[action] ?? `Unknown Action (${String(action)})`;
+	return actionName.replace(/([a-z])([A-Z])/g, "$1 $2");
+}
+
+export function getAuditEntryTargetLabel(auditEntry: GuildAuditLogsEntry): string {
+	const target = auditEntry.target;
+	if (!target) {
+		return "None";
+	}
+	if ("user" in target && target.user) {
+		return formatUserMention(target.user as User);
+	}
+	if ("permissions" in target && "name" in target) {
+		return formatRoleMention(target as Role);
+	}
+	if ("isThread" in target && "name" in target) {
+		return formatChannelMention(target as GuildChannel | ThreadChannel);
+	}
+	if ("id" in target) {
+		return formatAuditValue(target.id);
+	}
+	return formatAuditValue(String(target));
+}
+
+function formatAuditChangeValue(value: unknown): string {
+	if (value === null || value === undefined) {
+		return "None";
+	}
+	if (typeof value === "string" || typeof value === "number") {
+		return formatAuditValue(value);
+	}
+	const serializedValue = typeof value === "object" ? JSON.stringify(value) : String(value);
+	return formatAuditValue(serializedValue ?? String(value));
+}
+
+export function getAuditEntryChangeDetails(auditEntry: GuildAuditLogsEntry): string[] {
+	return (auditEntry.changes ?? [])
+		.filter((change) => change.old !== undefined || change.new !== undefined)
+		.map(
+			(change) =>
+				`${formatAuditValue(change.key)}: ${formatAuditChangeValue(change.old)} -> ${formatAuditChangeValue(change.new)}`,
+		);
 }
 
 function getChangeLabel(

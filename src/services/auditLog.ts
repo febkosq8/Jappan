@@ -11,6 +11,7 @@ import {
 import type {
 	APIEmbed,
 	Guild,
+	GuildAuditLogsEntry,
 	GuildChannel,
 	GuildMember,
 	Invite,
@@ -36,6 +37,9 @@ import {
 	createAuditEventId,
 	createContentFollowUps,
 	formatAuditValue,
+	getAuditEntryActionLabel,
+	getAuditEntryChangeDetails,
+	getAuditEntryTargetLabel,
 	getChannelTypeLabel,
 	getEmbedCharacterCount,
 	getProfileChangeResponse,
@@ -492,6 +496,29 @@ export async function handleAuditMemberBanRemove(ban: GuildBan): Promise<void> {
 	await handleAuditBan(ban, "Unbanned");
 }
 
+export async function handleAuditLogEntryCreate(auditEntry: GuildAuditLogsEntry, guild: Guild): Promise<void> {
+	if (!(await isAuditLogEnabled(guild))) {
+		return;
+	}
+
+	const changes = getAuditEntryChangeDetails(auditEntry);
+	const embed = new EmbedBuilder()
+		.setColor("DarkGreen")
+		.setTitle(`Audit Event: ${getAuditEntryActionLabel(auditEntry.action)}`)
+		.addFields(
+			{ name: "Action", value: getAuditEntryActionLabel(auditEntry.action), inline: true },
+			{ name: "Target Type", value: auditEntry.targetType ?? "Unknown", inline: true },
+			{ name: "Target", value: getAuditEntryTargetLabel(auditEntry) },
+		)
+		.setFooter({ text: `Audit Log ID: ${auditEntry.id}` })
+		.setTimestamp();
+	if (changes.length > 0) {
+		embed.addFields(changes.map((change) => ({ name: "Changed", value: change })));
+	}
+	addAuditEntryDetails(embed, auditEntry);
+	await postAuditEvent(guild, { embeds: [embed], allowedMentions: { parse: [] } });
+}
+
 async function disableAuditLog(guild: Guild, channelId: string): Promise<void> {
 	const storedGuildData = await getGuildSettings({ guild });
 	storedGuildData.auditLog.enabled = false;
@@ -873,6 +900,10 @@ export async function handleAuditMessageUpdate(
 			},
 			{ name: "Type", value: messageChannelType, inline: true },
 			{ name: "Created At", value: `<t:${Math.floor(newMessage.createdTimestamp / 1000)}:F>` },
+			{
+				name: "Updated At",
+				value: newMessage.editedTimestamp ? `<t:${Math.floor(newMessage.editedTimestamp / 1000)}:F>` : "Unknown",
+			},
 			{ name: "Message ID", value: newMessage.id },
 		)
 		.setFooter({ text: `Audit Event ID: ${auditEventId}` })
@@ -884,16 +915,22 @@ export async function handleAuditMessageUpdate(
 }
 
 export async function handleAuditMessageDelete(message: Message | PartialMessage): Promise<void> {
-	if (!message.guild || message.partial || isOwnBot(message.guild, message.author.id)) {
+	if (!message.guild || isOwnBot(message.guild, message.author?.id ?? "")) {
 		return;
 	}
-	if (!(await isAuditLogEnabled(message.guild))) {
+	const auditStatus = await getAuditLogStatus(message.guild.id, message.guild.name);
+	if (!auditStatus.auditLog.enabled || !auditStatus.auditLog.channelId) {
+		return;
+	}
+	if (message.partial && !auditStatus.auditLog.fullVerbosity) {
 		return;
 	}
 
+	const author = message.author;
+	const content = message.content ?? "";
 	const hasOriginalEmbeds = message.embeds.length > 0;
 	const hasAttachments = message.attachments.size > 0;
-	const hasLongContent = message.content.length > 1024;
+	const hasLongContent = content.length > 1024;
 	const hasFollowUp = hasOriginalEmbeds || hasAttachments || hasLongContent;
 	const auditEventId = createAuditEventId();
 	const embed = new EmbedBuilder()
@@ -907,9 +944,12 @@ export async function handleAuditMessageDelete(message: Message | PartialMessage
 		.addFields(
 			{
 				name: "Content",
-				value: trimString(message.content, 1024),
+				value: content ? trimString(content, 1024) : "Content unavailable because the message was not cached.",
 			},
-			{ name: "Author", value: formatUserMention(message.author) },
+			{
+				name: "Author",
+				value: author ? formatUserMention(author) : "Author unavailable because the message was not cached.",
+			},
 			{
 				name: "Channel",
 				value: message.channel.isDMBased() ? channelMention(message.channel.id) : formatChannelMention(message.channel),
@@ -921,7 +961,7 @@ export async function handleAuditMessageDelete(message: Message | PartialMessage
 		.setTimestamp();
 	const auditEmbeds: Array<APIEmbed | JSONEncodable<APIEmbed>> = [embed];
 	if (hasFollowUp) {
-		const contentPages = splitString(message.content, 1700);
+		const contentPages = splitString(content, 1700);
 		const attachmentLinks = [...message.attachments.values()]
 			.map((attachment, index) => `[Attachment #${index + 1} : ${attachment.name}](${attachment.url})`)
 			.join("\n");
@@ -932,7 +972,7 @@ export async function handleAuditMessageDelete(message: Message | PartialMessage
 				.setTitle(`Deleted Message Follow-up (Page ${pageIndex + 1}/${pageCount})`)
 				.setDescription(
 					[
-						`**Original message (MID: ${message.id}) from ${formatUserMention(message.author)}:**`,
+						`**Original message (MID: ${message.id}) from ${author ? formatUserMention(author) : "Unknown author"}:**`,
 						contentPage ? blockQuote(contentPage) : "",
 						pageIndex === 0 && attachmentLinks ? `Attachments:\n${attachmentLinks}` : "",
 					]
