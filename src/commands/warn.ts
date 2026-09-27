@@ -194,12 +194,6 @@ const command: BotCommand = {
 		if (subcommand === "issue") {
 			const user = interaction.options.getUser("user", true);
 			const member = await interaction.guild.members.fetch(user.id);
-			if (!member.manageable || !member.moderatable || !member.bannable) {
-				await interaction.editReply(
-					`⛔ I cannot moderate ${user}. Their role is higher than mine or they are the server owner.`,
-				);
-				return;
-			}
 			const reason = interaction.options.getString("reason") ?? "No reason provided";
 			const storedMemberStateData = await issueWarning(interaction.guild.id, user.id, user.username);
 			const storedGuildData = await getWarningSettings(interaction.guild.id, interaction.guild.name);
@@ -226,6 +220,12 @@ const command: BotCommand = {
 				storedGuildData.warnings.banThreshold &&
 				storedMemberStateData.warnings.count >= storedGuildData.warnings.banThreshold
 			) {
+				if (!member.bannable) {
+					await interaction.editReply(
+						`Warning issued to ${user}, but I could not ban them because their role is higher than mine or they are the server owner. Total warnings: ${storedMemberStateData.warnings.count}.`,
+					);
+					return;
+				}
 				await member.ban({ reason: `Warning threshold reached: ${reason}` });
 				await interaction.editReply(
 					`${user} was warned and banned after reaching ${storedMemberStateData.warnings.count} warnings.`,
@@ -237,6 +237,12 @@ const command: BotCommand = {
 				storedGuildData.warnings.timeoutDurationHours &&
 				storedMemberStateData.warnings.count >= storedGuildData.warnings.timeoutThreshold
 			) {
+				if (!member.moderatable) {
+					await interaction.editReply(
+						`Warning issued to ${user}, but I could not time them out because their role is higher than mine or they are the server owner. Total warnings: ${storedMemberStateData.warnings.count}.`,
+					);
+					return;
+				}
 				await member.timeout(
 					storedGuildData.warnings.timeoutDurationHours * 60 * 60 * 1000,
 					`Warning threshold reached: ${reason}`,

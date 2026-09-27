@@ -1,5 +1,5 @@
 import type { GuildDocument } from "../models/guild.js";
-import type { GuildMemberStateDocument } from "../models/guildMemberState.js";
+import GuildMemberStateModel, { type GuildMemberStateDocument } from "../models/guildMemberState.js";
 import { getGuildSettings } from "./guild.js";
 import { getGuildMemberState, getOrCreateGuildMemberState } from "./guildMemberState.js";
 
@@ -53,9 +53,20 @@ export async function issueWarning(
 	userId: string,
 	username: string,
 ): Promise<GuildMemberStateDocument> {
-	const storedMemberStateData = await getOrCreateGuildMemberState(guildId, userId, username);
-	storedMemberStateData.warnings.count += 1;
-	await storedMemberStateData.save();
+	const storedMemberStateData = await GuildMemberStateModel.findOneAndUpdate(
+		{ guildId, userId },
+		{
+			$set: { username },
+			$inc: { "warnings.count": 1 },
+			$setOnInsert: { guildId, userId },
+		},
+		{ new: true, upsert: true, setDefaultsOnInsert: true },
+	).exec();
+
+	if (!storedMemberStateData) {
+		throw new Error("Failed to persist warning");
+	}
+
 	return storedMemberStateData;
 }
 
