@@ -146,15 +146,9 @@ Boolean values are enabled only when their environment value is exactly `"true"`
 
 ### Priority 1: Verification
 
-- Add a Vitest test setup; no `test/` directory currently exists.
-- Test configuration defaults and boolean parsing.
-- Test leveling threshold, role hierarchy, managed-role, owner, and already-has-role paths.
-- Test member-announcement channel recovery.
-- Test command and button dispatch with mocked Discord.js objects.
-- Add database availability and reconnect tests.
 - Run `pnpm run build` as a production compilation check.
 
-### Priority 2: Runtime Efficiency and Correctness
+### Priority 1: Runtime Efficiency and Correctness
 
 - Replace leveling read-modify-save point updates with atomic MongoDB increments to avoid concurrent update loss.
 - Reduce repeated guild settings reads on high-volume message events with a controlled cache or event-scoped cache.
@@ -162,14 +156,14 @@ Boolean values are enabled only when their environment value is exactly `"true"`
 - Prevent duplicate threshold role work when multiple events arrive concurrently for the same member.
 - Rate-limit or deduplicate repeated warnings for unmanageable non-owner members.
 
-### Priority 3: Feature Parity
+### Priority 2: Feature Parity
 
 - Compare the rewrite against `CURRENT_SETUP_DETAILS.md` and the legacy bot feature inventory.
 - Complete any missing music, moderation, audit, fun, utility, admin, and fallback operational flows.
 - Preserve equivalent operational fallback capability when slash commands are unavailable.
 - Verify all legacy persistence intent has an explicit rewrite model or migration path.
 
-### Priority 4: Reliability and Operations
+### Priority 3: Reliability and Operations
 
 - Add explicit database availability guards for DB-dependent commands and event paths.
 - Return deterministic service-unavailable responses when MongoDB is down.
@@ -178,7 +172,7 @@ Boolean values are enabled only when their environment value is exactly `"true"`
 - Add correlation or request IDs for command and event traces.
 - Harden shutdown, reconnect, and error handling for production operation.
 
-### Priority 5: Data and Release Readiness
+### Priority 4: Data and Release Readiness
 
 - Lock down all Mongoose schemas with validation and ownership rules.
 - Document the legacy-to-rewrite data migration and verify it against a backup.
