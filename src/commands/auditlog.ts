@@ -21,13 +21,19 @@ const commandData = {
 	requiredBotPermissions: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages],
 } satisfies BotCommandData;
 
-function createStatusEmbed(
-	guildName: string,
-	enabled: boolean,
-	channelId: string | null,
-	fullVerbosity: boolean,
-	config: Config,
-): EmbedBuilder {
+function createStatusEmbed({
+	guildName,
+	enabled,
+	channelId,
+	fullVerbosity,
+	config,
+}: {
+	guildName: string;
+	enabled: boolean;
+	channelId: string | null;
+	fullVerbosity: boolean;
+	config: Config;
+}): EmbedBuilder {
 	const embed = new EmbedBuilder()
 		.setColor(enabled ? "Green" : "Red")
 		.setTitle("Audit Log Settings")
@@ -115,29 +121,47 @@ const command: BotCommand = {
 
 			const fullVerbosity = interaction.options.getBoolean("full-verbosity") ?? false;
 			try {
-				await setAuditLog(interaction.guild.id, interaction.guild.name, true, channel.id, fullVerbosity);
+				await setAuditLog({
+					guildId: interaction.guild.id,
+					guildName: interaction.guild.name,
+					enabled: true,
+					channelId: channel.id,
+					fullVerbosity,
+				});
 				await channel.send({ content: "Audit log events are enabled for this channel." });
 			} catch {
-				await setAuditLog(interaction.guild.id, interaction.guild.name, false, null, false).catch(() => undefined);
+				await setAuditLog({
+					guildId: interaction.guild.id,
+					guildName: interaction.guild.name,
+					enabled: false,
+					channelId: null,
+					fullVerbosity: false,
+				}).catch(() => undefined);
 				await interaction.editReply("⛔ I could not send the confirmation message, so audit logging was not enabled.");
 				return;
 			}
 		}
 
 		if (interaction.options.getSubcommand() === "off") {
-			await setAuditLog(interaction.guild.id, interaction.guild.name, false, null, false);
+			await setAuditLog({
+				guildId: interaction.guild.id,
+				guildName: interaction.guild.name,
+				enabled: false,
+				channelId: null,
+				fullVerbosity: false,
+			});
 		}
 
 		const status = await getAuditLogStatus(interaction.guild.id, interaction.guild.name);
 		await interaction.editReply({
 			embeds: [
-				createStatusEmbed(
-					status.guildName,
-					status.auditLog.enabled,
-					status.auditLog.channelId ?? null,
-					status.auditLog.fullVerbosity,
+				createStatusEmbed({
+					guildName: status.guildName,
+					enabled: status.auditLog.enabled,
+					channelId: status.auditLog.channelId ?? null,
+					fullVerbosity: status.auditLog.fullVerbosity,
 					config,
-				),
+				}),
 			],
 		});
 	},

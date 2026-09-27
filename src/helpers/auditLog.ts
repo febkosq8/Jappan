@@ -210,15 +210,23 @@ export function createAuditEventId(): string {
 	return randomUUID();
 }
 
-export function createContentFollowUps(
-	title: string,
-	content: string,
-	auditEventId: string,
-	color: Parameters<EmbedBuilder["setColor"]>[0],
-	messageId: string,
-	pageOffset: number,
-	totalPages: number,
-): EmbedBuilder[] {
+export function createContentFollowUps({
+	title,
+	content,
+	auditEventId,
+	color,
+	messageId,
+	pageOffset,
+	totalPages,
+}: {
+	title: string;
+	content: string;
+	auditEventId: string;
+	color: Parameters<EmbedBuilder["setColor"]>[0];
+	messageId: string;
+	pageOffset: number;
+	totalPages: number;
+}): EmbedBuilder[] {
 	const contentPages = splitString(content, 4000);
 	return contentPages.map((contentPage, pageIndex) =>
 		new EmbedBuilder()
@@ -430,12 +438,17 @@ export function getProfileChangeResponse(
 	};
 }
 
-export function addAvatarChange(
-	embed: EmbedBuilder,
-	oldAvatarUrl: string,
-	newAvatarUrl: string,
-	avatarLabel: string,
-): void {
+export function addAvatarChange({
+	embed,
+	oldAvatarUrl,
+	newAvatarUrl,
+	avatarLabel,
+}: {
+	embed: EmbedBuilder;
+	oldAvatarUrl: string;
+	newAvatarUrl: string;
+	avatarLabel: string;
+}): void {
 	embed
 		.addFields(
 			{ name: `Old ${avatarLabel} (Thumbnail)`, value: `[View Avatar](${oldAvatarUrl})`, inline: true },

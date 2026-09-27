@@ -1,4 +1,10 @@
-import { EmbedBuilder, PermissionFlagsBits, chatInputApplicationCommandMention, roleMention, underline } from "discord.js";
+import {
+	EmbedBuilder,
+	PermissionFlagsBits,
+	chatInputApplicationCommandMention,
+	roleMention,
+	underline,
+} from "discord.js";
 import type { Guild, GuildMember, Interaction, Message, User, VoiceState } from "discord.js";
 
 import type { GuildDocument } from "../models/guild.js";
@@ -179,12 +185,12 @@ async function awardLevelingPoints({
 		return;
 	}
 
-	const { state: storedMemberStateData, previousPoints } = await incrementGuildMemberLevelingPoints(
-		guild.id,
-		user.id,
-		user.username,
+	const { state: storedMemberStateData, previousPoints } = await incrementGuildMemberLevelingPoints({
+		guildId: guild.id,
+		userId: user.id,
+		username: user.username,
 		points,
-	);
+	});
 
 	const { roleId, threshold } = resolvedGuildData.leveling;
 	if (!roleId || !threshold || storedMemberStateData.leveling.points < threshold || !member) {

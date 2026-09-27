@@ -41,14 +41,21 @@ function formatDuration(hours: number | null | undefined): string {
 	return `✅ ${hours} hour(s)`;
 }
 
-function createSettingsEmbed(
-	guildName: string,
-	timeoutThreshold: number | null | undefined,
-	timeoutDurationHours: number | null | undefined,
-	banThreshold: number | null | undefined,
-	auditChannelId: string | null | undefined,
-	config: Config,
-): EmbedBuilder {
+function createSettingsEmbed({
+	guildName,
+	timeoutThreshold,
+	timeoutDurationHours,
+	banThreshold,
+	auditChannelId,
+	config,
+}: {
+	guildName: string;
+	timeoutThreshold: number | null | undefined;
+	timeoutDurationHours: number | null | undefined;
+	banThreshold: number | null | undefined;
+	auditChannelId: string | null | undefined;
+	config: Config;
+}): EmbedBuilder {
 	return new EmbedBuilder()
 		.setColor("Blurple")
 		.setTitle("Warning Settings")
@@ -168,24 +175,24 @@ const command: BotCommand = {
 					return;
 				}
 			}
-			const storedGuildData = await setWarningSettings(
-				interaction.guild.id,
-				interaction.guild.name,
+			const storedGuildData = await setWarningSettings({
+				guildId: interaction.guild.id,
+				guildName: interaction.guild.name,
 				timeoutThreshold,
-				timeoutThreshold === null ? null : timeoutDurationHours,
+				timeoutDurationHours: timeoutThreshold === null ? null : timeoutDurationHours,
 				banThreshold,
-				selectedChannel?.id ?? null,
-			);
+				auditChannelId: selectedChannel?.id ?? null,
+			});
 			await interaction.editReply({
 				embeds: [
-					createSettingsEmbed(
-						storedGuildData.guildName,
-						storedGuildData.warnings.timeoutThreshold,
-						storedGuildData.warnings.timeoutDurationHours,
-						storedGuildData.warnings.banThreshold,
-						storedGuildData.warnings.auditChannelId,
+					createSettingsEmbed({
+						guildName: storedGuildData.guildName,
+						timeoutThreshold: storedGuildData.warnings.timeoutThreshold,
+						timeoutDurationHours: storedGuildData.warnings.timeoutDurationHours,
+						banThreshold: storedGuildData.warnings.banThreshold,
+						auditChannelId: storedGuildData.warnings.auditChannelId,
 						config,
-					),
+					}),
 				],
 			});
 			return;
@@ -268,14 +275,14 @@ const command: BotCommand = {
 			const status = await getWarningSettings(interaction.guild.id, interaction.guild.name);
 			await interaction.editReply({
 				embeds: [
-					createSettingsEmbed(
-						status.guildName,
-						status.warnings.timeoutThreshold,
-						status.warnings.timeoutDurationHours,
-						status.warnings.banThreshold,
-						status.warnings.auditChannelId,
+					createSettingsEmbed({
+						guildName: status.guildName,
+						timeoutThreshold: status.warnings.timeoutThreshold,
+						timeoutDurationHours: status.warnings.timeoutDurationHours,
+						banThreshold: status.warnings.banThreshold,
+						auditChannelId: status.warnings.auditChannelId,
 						config,
-					),
+					}),
 				],
 			});
 			return;
@@ -284,7 +291,12 @@ const command: BotCommand = {
 		if (subcommand === "override") {
 			const user = interaction.options.getUser("user", true);
 			const count = interaction.options.getInteger("count", true);
-			await overrideWarningCount(interaction.guild.id, user.id, user.username, count);
+			await overrideWarningCount({
+				guildId: interaction.guild.id,
+				userId: user.id,
+				username: user.username,
+				count,
+			});
 			await interaction.editReply(`Warning count for ${user} is now ${count}.`);
 		}
 	},

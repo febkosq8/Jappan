@@ -65,13 +65,19 @@ export interface AuditLogStatus {
 	readonly auditLog: GuildDocument["auditLog"];
 }
 
-export async function setAuditLog(
-	guildId: string,
-	guildName: string,
-	enabled: boolean,
-	channelId: string | null,
-	fullVerbosity: boolean,
-): Promise<AuditLogStatus> {
+export async function setAuditLog({
+	guildId,
+	guildName,
+	enabled,
+	channelId,
+	fullVerbosity,
+}: {
+	guildId: string;
+	guildName: string;
+	enabled: boolean;
+	channelId: string | null;
+	fullVerbosity: boolean;
+}): Promise<AuditLogStatus> {
 	const storedGuildData = await getGuildSettings({ guildId, guildName });
 	storedGuildData.auditLog.enabled = enabled;
 	storedGuildData.auditLog.channelId = channelId;
@@ -702,12 +708,12 @@ export async function handleAuditMemberUpdate(
 		.setTimestamp();
 	addAuditEntryDetails(embed, auditEntry);
 	if (profileChange.avatarChanged) {
-		addAvatarChange(
+		addAvatarChange({
 			embed,
-			oldMember.displayAvatarURL({ size: 256 }),
-			newMember.displayAvatarURL({ size: 256 }),
-			"Server Avatar",
-		);
+			oldAvatarUrl: oldMember.displayAvatarURL({ size: 256 }),
+			newAvatarUrl: newMember.displayAvatarURL({ size: 256 }),
+			avatarLabel: "Server Avatar",
+		});
 	}
 	await postAuditEvent(newMember.guild, { embeds: [embed], allowedMentions: { parse: [] } });
 }
@@ -813,12 +819,12 @@ export async function handleAuditUserUpdate(oldUser: PartialUser | User, newUser
 				}
 			}
 			if (profileChange.avatarChanged) {
-				addAvatarChange(
+				addAvatarChange({
 					embed,
-					oldUser.displayAvatarURL({ size: 256 }),
-					newUser.displayAvatarURL({ size: 256 }),
-					"Avatar",
-				);
+					oldAvatarUrl: oldUser.displayAvatarURL({ size: 256 }),
+					newAvatarUrl: newUser.displayAvatarURL({ size: 256 }),
+					avatarLabel: "Avatar",
+				});
 			}
 			await postAuditEvent(guild, { embeds: [embed], allowedMentions: { parse: [] } });
 		}),
@@ -863,26 +869,26 @@ export async function handleAuditMessageUpdate(
 	const totalPageCount = 1 + followUpPageCount;
 	const contentFollowUps = [
 		...(previousContentWasTrimmed
-			? createContentFollowUps(
-					"Full Previous Content",
-					previousContent,
+			? createContentFollowUps({
+					title: "Full Previous Content",
+					content: previousContent,
 					auditEventId,
-					"Orange",
-					newMessage.id,
-					1,
-					totalPageCount,
-				)
+					color: "Orange",
+					messageId: newMessage.id,
+					pageOffset: 1,
+					totalPages: totalPageCount,
+				})
 			: []),
 		...(updatedContentWasTrimmed
-			? createContentFollowUps(
-					"Full Updated Content",
-					updatedContent,
+			? createContentFollowUps({
+					title: "Full Updated Content",
+					content: updatedContent,
 					auditEventId,
-					"Orange",
-					newMessage.id,
-					1 + previousContentPageCount,
-					totalPageCount,
-				)
+					color: "Orange",
+					messageId: newMessage.id,
+					pageOffset: 1 + previousContentPageCount,
+					totalPages: totalPageCount,
+				})
 			: []),
 	];
 	const previousEmbedFollowUps = hasPreviousEmbedFollowUp

@@ -73,7 +73,12 @@ export function loadConfig(): Config {
 		ENABLE_EVENTS_DEBUG,
 	};
 	if (ADMIN_USER_IDS.length > 0) {
-		writeLog("info", "BOT", "Admin users are now loaded", { count: ADMIN_USER_IDS.length });
+		writeLog({
+			level: "info",
+			category: "BOT",
+			message: "Admin users are now loaded",
+			details: { count: ADMIN_USER_IDS.length },
+		});
 	}
 	return loadedConfig;
 }

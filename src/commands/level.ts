@@ -20,13 +20,19 @@ const commandData = {
 	requiredBotPermissions: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages],
 } satisfies BotCommandData;
 
-function createStatusEmbed(
-	guildName: string,
-	enabled: boolean,
-	threshold: number | null,
-	roleId: string | null,
-	config: Config,
-): EmbedBuilder {
+function createStatusEmbed({
+	guildName,
+	enabled,
+	threshold,
+	roleId,
+	config,
+}: {
+	guildName: string;
+	enabled: boolean;
+	threshold: number | null;
+	roleId: string | null;
+	config: Config;
+}): EmbedBuilder {
 	return new EmbedBuilder()
 		.setColor(enabled ? "Green" : "Red")
 		.setTitle("Leveling Settings")
@@ -129,13 +135,13 @@ const command: BotCommand = {
 		const status = await getLevelingStatus(interaction.guild);
 		await interaction.editReply({
 			embeds: [
-				createStatusEmbed(
-					status.guildName,
-					status.leveling.enabled,
-					status.leveling.threshold ?? null,
-					status.leveling.roleId ?? null,
+				createStatusEmbed({
+					guildName: status.guildName,
+					enabled: status.leveling.enabled,
+					threshold: status.leveling.threshold ?? null,
+					roleId: status.leveling.roleId ?? null,
 					config,
-				),
+				}),
 			],
 		});
 	},

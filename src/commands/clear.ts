@@ -153,13 +153,19 @@ const command: BotCommand = {
 				const seconds = elapsedSeconds % 60;
 				return `${minutes}m ${seconds.toString().padStart(2, "0")}s`;
 			};
-			const setChannelStat = (
-				channelMention: string,
-				status: string,
-				scanned: number,
-				deleted: number,
-				failed: number,
-			) => {
+			const setChannelStat = ({
+				channelMention,
+				status,
+				scanned,
+				deleted,
+				failed,
+			}: {
+				channelMention: string;
+				status: string;
+				scanned: number;
+				deleted: number;
+				failed: number;
+			}) => {
 				const stat = `${channelMention} | ${status} | Scanned: ${scanned} | Deleted: ${deleted} | Failed: ${failed}`;
 				const existingIndex = progressState.channelStats.findIndex((channelStat) =>
 					channelStat.startsWith(`${channelMention} |`),
@@ -250,7 +256,7 @@ const command: BotCommand = {
 				if (!channel?.isTextBased() || !("messages" in channel) || !("permissionsFor" in channel)) {
 					continue;
 				}
-				setChannelStat(channelMention, "Scanning messages...", 0, 0, 0);
+				setChannelStat({ channelMention, status: "Scanning messages...", scanned: 0, deleted: 0, failed: 0 });
 				const missingPermissions = channel
 					.permissionsFor(interaction.client.user)
 					?.missing([
@@ -260,7 +266,13 @@ const command: BotCommand = {
 					]);
 				if (missingPermissions && missingPermissions.length > 0) {
 					clearInterval(progressInterval);
-					setChannelStat(channelMention, `Stopped: missing ${missingPermissions.join(", ")}`, 0, 0, 0);
+					setChannelStat({
+						channelMention,
+						status: `Stopped: missing ${missingPermissions.join(", ")}`,
+						scanned: 0,
+						deleted: 0,
+						failed: 0,
+					});
 					await interaction.editReply({
 						embeds: createProgressEmbeds("Stopped: missing permissions", progressState.currentChannelMention),
 					});
@@ -270,9 +282,15 @@ const command: BotCommand = {
 				const messages = await channel.messages.fetch({ limit: 100 });
 				progressState.scannedMessages += messages.size;
 				progressState.currentChannelScanned = messages.size;
-				setChannelStat(channelMention, "Scanning messages...", messages.size, 0, 0);
+				setChannelStat({
+					channelMention,
+					status: "Scanning messages...",
+					scanned: messages.size,
+					deleted: 0,
+					failed: 0,
+				});
 				if (messages.size === 0) {
-					setChannelStat(channelMention, "No messages found", 0, 0, 0);
+					setChannelStat({ channelMention, status: "No messages found", scanned: 0, deleted: 0, failed: 0 });
 					await interaction.editReply({
 						embeds: createProgressEmbeds("Channel scan complete", progressState.currentChannelMention),
 					});
@@ -292,13 +310,13 @@ const command: BotCommand = {
 				progressState.currentChannelDeleted += deletionResult.deleted;
 				progressState.failedMessages += deletionResult.failed;
 				progressState.currentChannelFailed += deletionResult.failed;
-				setChannelStat(
+				setChannelStat({
 					channelMention,
-					`Complete in ${formatElapsedTime()}`,
-					progressState.currentChannelScanned,
-					progressState.currentChannelDeleted,
-					progressState.currentChannelFailed,
-				);
+					status: `Complete in ${formatElapsedTime()}`,
+					scanned: progressState.currentChannelScanned,
+					deleted: progressState.currentChannelDeleted,
+					failed: progressState.currentChannelFailed,
+				});
 				await interaction.editReply({
 					embeds: createProgressEmbeds("Channel scan complete", progressState.currentChannelMention),
 				});

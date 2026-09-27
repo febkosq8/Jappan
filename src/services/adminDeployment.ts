@@ -1,4 +1,4 @@
-import type { Client, Message } from "discord.js";
+import type { Guild, Message } from "discord.js";
 
 import { getGuildCommands } from "./commandLoader.js";
 import type { Config } from "./config.js";
@@ -16,12 +16,9 @@ function getDeploymentCommand(content: string): string | undefined {
 	return command && deploymentCommands.has(command) ? command : undefined;
 }
 
-async function setGuildCommands(client: Client, guildId: string, shouldDeploy: boolean): Promise<number> {
+async function setGuildCommands(guild: Guild, shouldDeploy: boolean): Promise<number> {
 	const guildCommands = shouldDeploy ? getGuildCommands().map((command) => command.data.toJSON()) : [];
-	const registeredCommands = await client.application?.commands.set(guildCommands, guildId);
-	if (!registeredCommands) {
-		throw new Error("Discord application is not ready.");
-	}
+	const registeredCommands = await guild.commands.set(guildCommands);
 	return registeredCommands.size;
 }
 
@@ -38,6 +35,7 @@ export async function handleAdminDeploymentMessage(message: Message, config: Con
 	if (!message.guild || !isAdminUser(message.author.id, config)) {
 		logger.warn("ADMIN", "Unauthorized deployment message attempt", {
 			command,
+			userName: message.author.tag,
 			userId: message.author.id,
 			guildId: message.guildId,
 		});
@@ -47,19 +45,26 @@ export async function handleAdminDeploymentMessage(message: Message, config: Con
 
 	try {
 		const shouldDeploy = command === "deploy";
-		const count = await setGuildCommands(message.client, message.guild.id, shouldDeploy);
+		const count = await setGuildCommands(message.guild, shouldDeploy);
 		await message.reply(
 			shouldDeploy ? `✅ Deployed ${count} guild command${count === 1 ? "" : "s"}.` : "✅ Removed all guild commands.",
 		);
 		logger.info("ADMIN", "Guild command deployment updated by message", {
 			command,
-			user: `${message.author.tag} <${message.author.id}>`,
+			userName: message.author.tag,
+			userId: message.author.id,
 			guildId: message.guild.id,
 			count,
 		});
 		return true;
 	} catch (error: unknown) {
-		logger.error("ADMIN", "Guild command deployment failed", { command, guildId: message.guild.id, error });
+		logger.error("ADMIN", "Guild command deployment failed", {
+			command,
+			userName: message.author.tag,
+			userId: message.author.id,
+			guildId: message.guild.id,
+			error,
+		});
 		await message.reply("⛔ Guild command deployment failed.");
 		return true;
 	}

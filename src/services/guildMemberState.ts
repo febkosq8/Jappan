@@ -20,12 +20,17 @@ export async function getOrCreateGuildMemberState(
 	return storedMemberStateData;
 }
 
-export async function incrementGuildMemberLevelingPoints(
-	guildId: string,
-	userId: string,
-	username: string,
-	points: number,
-): Promise<{ state: GuildMemberStateDocument; previousPoints: number }> {
+export async function incrementGuildMemberLevelingPoints({
+	guildId,
+	userId,
+	username,
+	points,
+}: {
+	guildId: string;
+	userId: string;
+	username: string;
+	points: number;
+}): Promise<{ state: GuildMemberStateDocument; previousPoints: number }> {
 	const state = await GuildMemberStateModel.findOneAndUpdate(
 		{ guildId, userId },
 		{

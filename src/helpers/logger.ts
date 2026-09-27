@@ -44,7 +44,17 @@ function formatDetails(details: LogDetails | undefined): string {
 	return values.length > 0 ? ` ${gray(`(${values.join("; ")})`)}` : "";
 }
 
-export function writeLog(level: LogLevel, category: LogCategory, message: string, details?: LogDetails): void {
+export function writeLog({
+	level,
+	category,
+	message,
+	details,
+}: {
+	level: LogLevel;
+	category: LogCategory;
+	message: string;
+	details?: LogDetails;
+}): void {
 	let timestampEnabled: boolean;
 	try {
 		timestampEnabled = getConfig("LOG_TIMESTAMP");

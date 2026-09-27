@@ -20,14 +20,21 @@ const commandData = {
 	requiredBotPermissions: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages],
 } satisfies BotCommandData;
 
-function createStatusEmbed(
-	guildName: string,
-	joinEnabled: boolean,
-	joinChannelId: string | null,
-	leaveEnabled: boolean,
-	leaveChannelId: string | null,
-	config: Config,
-): EmbedBuilder {
+function createStatusEmbed({
+	guildName,
+	joinEnabled,
+	joinChannelId,
+	leaveEnabled,
+	leaveChannelId,
+	config,
+}: {
+	guildName: string;
+	joinEnabled: boolean;
+	joinChannelId: string | null;
+	leaveEnabled: boolean;
+	leaveChannelId: string | null;
+	config: Config;
+}): EmbedBuilder {
 	const formatStatus = (enabled: boolean, channelId: string | null, action: "joins" | "leaves"): string =>
 		enabled
 			? `When a member ${action}, an announcement is sent to ${channelId ? channelMention(channelId) : "the configured channel (currently unavailable)"}.`
@@ -180,7 +187,13 @@ const command: BotCommand = {
 			}
 
 			for (const { event: selectedEvent, channel } of channels) {
-				await setMemberAnnouncement(interaction.guild.id, interaction.guild.name, selectedEvent, true, channel.id);
+				await setMemberAnnouncement({
+					guildId: interaction.guild.id,
+					guildName: interaction.guild.name,
+					event: selectedEvent,
+					enabled: true,
+					channelId: channel.id,
+				});
 				const announcementType = selectedEvent;
 				const selectedChannelMention = channelMention(channel.id);
 				await channel.send({
@@ -191,20 +204,25 @@ const command: BotCommand = {
 
 		if (subcommand === "off") {
 			const event = interaction.options.getString("event", true) as "join" | "leave" | "both";
-			await setMemberAnnouncement(interaction.guild.id, interaction.guild.name, event, false);
+			await setMemberAnnouncement({
+				guildId: interaction.guild.id,
+				guildName: interaction.guild.name,
+				event,
+				enabled: false,
+			});
 		}
 
 		const status = await getMemberAnnouncementStatus(interaction.guild);
 		await interaction.editReply({
 			embeds: [
-				createStatusEmbed(
-					interaction.guild.name,
-					status.joinEnabled,
-					status.joinChannelId ?? null,
-					status.leaveEnabled,
-					status.leaveChannelId ?? null,
+				createStatusEmbed({
+					guildName: interaction.guild.name,
+					joinEnabled: status.joinEnabled,
+					joinChannelId: status.joinChannelId ?? null,
+					leaveEnabled: status.leaveEnabled,
+					leaveChannelId: status.leaveChannelId ?? null,
 					config,
-				),
+				}),
 			],
 		});
 	},

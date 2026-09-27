@@ -11,13 +11,19 @@ import { logger } from "./logger.js";
 
 export type MemberAnnouncementEvent = "join" | "leave" | "both";
 
-export async function setMemberAnnouncement(
-	guildId: string,
-	guildName: string,
-	event: MemberAnnouncementEvent,
-	enabled: boolean,
-	channelId?: string,
-): Promise<GuildDocument> {
+export async function setMemberAnnouncement({
+	guildId,
+	guildName,
+	event,
+	enabled,
+	channelId,
+}: {
+	guildId: string;
+	guildName: string;
+	event: MemberAnnouncementEvent;
+	enabled: boolean;
+	channelId?: string;
+}): Promise<GuildDocument> {
 	const storedGuildData = await getGuildSettings({ guildId, guildName });
 	if (event === "join" || event === "both") {
 		storedGuildData.memberAnnouncements.joinEnabled = enabled;

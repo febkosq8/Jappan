@@ -7,6 +7,7 @@ import {
 	SlashCommandBuilder,
 	blockQuote,
 	channelMention,
+	userMention,
 } from "discord.js";
 
 import type { BotCommand, BotCommandData } from "../../helpers/command.js";
@@ -64,6 +65,9 @@ const command: BotCommand = {
 				)
 				.addBooleanOption((option) =>
 					option.setName("confirm").setDescription("Confirm this destructive action").setRequired(true),
+				)
+				.addStringOption((option) =>
+					option.setName("message").setDescription("Additional message to send before leaving").setRequired(false),
 				),
 		)
 		.addSubcommand((subcommand) =>
@@ -90,9 +94,11 @@ const command: BotCommand = {
 		.setContexts([InteractionContextType.Guild]),
 	execute: async ({ interaction, config }) => {
 		await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+		const invoker = { userName: interaction.user.tag, userId: interaction.user.id };
 		if (!isAdminUser(interaction.user.id, config)) {
 			logger.warn("ADMIN", "Unauthorized admin command attempt", {
 				userId: interaction.user.id,
+				userName: interaction.user.tag,
 				guildId: interaction.guildId,
 				subcommand: interaction.options.getSubcommand(),
 			});
@@ -178,15 +184,26 @@ const command: BotCommand = {
 			}
 			const guilds = [...interaction.client.guilds.cache.values()];
 			let leftGuilds = 0;
+			let skippedCurrentGuild = false;
 			for (const guild of guilds) {
+				if (guild.id === interaction.guildId) {
+					skippedCurrentGuild = true;
+					continue;
+				}
 				try {
-					await kickGuild(guild, config);
-					leftGuilds += 1;
+					const result = await kickGuild({ guild, config, invoker });
+					if (result.success) {
+						leftGuilds += 1;
+					}
 				} catch (error: unknown) {
-					logger.error("ADMIN", "Failed to leave guild during self-kick", { guildId: guild.id, error });
+					logger.error("ADMIN", "Failed to leave guild during self-kick", { ...invoker, guildId: guild.id, error });
 				}
 			}
-			await interaction.editReply(`Self-kick completed. Left ${leftGuilds} of ${guilds.length} guilds.`);
+			await interaction.editReply(
+				`Self-kick completed. Left ${leftGuilds} of ${guilds.length} guilds${
+					skippedCurrentGuild ? "; skipped the current guild" : ""
+				}.`,
+			);
 			return;
 		}
 
@@ -202,8 +219,58 @@ const command: BotCommand = {
 				await interaction.editReply("⛔ Confirmation is required for this destructive action.");
 				return;
 			}
-			await kickGuild(guild, config);
-			await interaction.editReply(`Left guild ${guild.name} (${guild.id}).`);
+			if (guild.id === interaction.guildId) {
+				await interaction.editReply("⛔ You cannot kick the guild where this command is being used.");
+				return;
+			}
+			const owner = await interaction.client.users.fetch(guild.ownerId).catch(() => null);
+			const additionalMessage = interaction.options.getString("message");
+			const kickResult = await kickGuild({
+				guild,
+				config,
+				...(additionalMessage ? { additionalMessage } : {}),
+				invoker,
+			});
+			if (!kickResult.success) {
+				await interaction.editReply("⛔ Failed to leave the guild.");
+				return;
+			}
+			const guildEmbed = new EmbedBuilder()
+				.setColor("Orange")
+				.setAuthor({ name: `${config.BOT_NAME} Admin`, iconURL: config.BOT_PFP, url: config.BOT_WEBSITE })
+				.setTitle("Left guild")
+				.addFields(
+					{ name: "Guild", value: formatGuildMention(guild) },
+					{ name: "Owner", value: owner ? formatUserMention(owner) : userMention(guild.ownerId) },
+					{ name: "Members", value: String(guild.memberCount), inline: true },
+					{ name: "Channels", value: String(guild.channels.cache.size), inline: true },
+					{ name: "Boosts", value: String(guild.premiumSubscriptionCount ?? 0), inline: true },
+					{ name: "Boost tier", value: String(guild.premiumTier), inline: true },
+					{ name: "Verification", value: String(guild.verificationLevel), inline: true },
+					{
+						name: "Created",
+						value: `<t:${Math.floor(guild.createdTimestamp / 1000)}:F>`,
+						inline: true,
+					},
+					{
+						name: "Joined",
+						value: `<t:${Math.floor(guild.joinedTimestamp / 1000)}:F>`,
+						inline: true,
+					},
+					{ name: "Locale", value: guild.preferredLocale, inline: true },
+					{
+						name: "Departure message",
+						value: kickResult.departureMessage?.messageUrl ?? "No message was posted.",
+					},
+					{ name: "Description", value: guild.description ?? "None" },
+					{ name: "Features", value: guild.features.length > 0 ? guild.features.join(", ") : "None" },
+				)
+				.setTimestamp();
+			const guildIcon = guild.iconURL();
+			if (guildIcon) {
+				guildEmbed.setThumbnail(guildIcon);
+			}
+			await interaction.editReply({ embeds: [guildEmbed] });
 			return;
 		}
 
@@ -216,7 +283,7 @@ const command: BotCommand = {
 					await interaction.editReply("⛔ Channel not found.");
 					return;
 				}
-				const messageUrl = await sendGuildAdminMessage(guild, message, config, channelId);
+				const sentMessage = await sendGuildAdminMessage({ guild, message, config, channelId, invoker });
 				const messageEmbed = new EmbedBuilder()
 					.setColor("Orange")
 					.setAuthor({ name: `${config.BOT_NAME} Admin`, iconURL: config.BOT_PFP, url: config.BOT_WEBSITE })
@@ -226,7 +293,7 @@ const command: BotCommand = {
 						{ name: "Guild", value: formatGuildMention(guild) },
 						{ name: "Channel", value: channelMention(channelId), inline: true },
 						{ name: "Channel type", value: ChannelType[channel.type] ?? String(channel.type), inline: true },
-						{ name: "Message", value: messageUrl },
+						{ name: "Message", value: sentMessage.messageUrl },
 					)
 					.setTimestamp();
 				await interaction.editReply({ embeds: [messageEmbed] });

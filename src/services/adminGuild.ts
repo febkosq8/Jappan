@@ -5,6 +5,17 @@ import type { Config } from "./config.js";
 import { formatChannelMention, formatGuildMention, formatUserMention } from "../helpers/discord.js";
 import { logger } from "./logger.js";
 import { sendGuildMessage } from "../helpers/guildHelper.js";
+import type { SentGuildMessage } from "../helpers/guildHelper.js";
+
+export interface AdminInvoker {
+	userName: string;
+	userId: string;
+}
+
+export interface KickGuildResult {
+	success: boolean;
+	departureMessage: SentGuildMessage | null;
+}
 
 export function isAdminUser(userId: string, config: Config): boolean {
 	return config.ADMIN_USER_IDS.includes(userId);
@@ -78,12 +89,19 @@ export async function getGuildChannel(client: Client, guildId: string, channelId
 	return channel;
 }
 
-export async function sendGuildAdminMessage(
-	guild: Guild,
-	message: string,
-	config: Config,
-	channelId?: string,
-): Promise<string> {
+export async function sendGuildAdminMessage({
+	guild,
+	message,
+	config,
+	channelId,
+	invoker,
+}: {
+	guild: Guild;
+	message: string;
+	config: Config;
+	channelId?: string;
+	invoker?: AdminInvoker;
+}): Promise<SentGuildMessage> {
 	const embed = new EmbedBuilder()
 		.setColor("Orange")
 		.setAuthor({ name: `${config.BOT_NAME} Admin`, iconURL: config.BOT_PFP, url: config.BOT_WEBSITE })
@@ -95,24 +113,59 @@ export async function sendGuildAdminMessage(
 		content: { embeds: [embed] },
 		failureMessage: "Failed to send admin message to guild",
 		...(channelId ? { channelId } : {}),
-		details: { guildId: guild.id },
+		details: { guildId: guild.id, ...(invoker ?? {}) },
 	});
 	if (!sentMessage) {
 		throw new Error("No suitable channel was available in that guild.");
 	}
-	return sentMessage.messageUrl;
+	return sentMessage;
 }
 
-export async function kickGuild(guild: Guild, config: Config): Promise<void> {
-	await sendGuildAdminMessage(
+export async function kickGuild({
+	guild,
+	config,
+	additionalMessage,
+	invoker,
+}: {
+	guild: Guild;
+	config: Config;
+	additionalMessage?: string;
+	invoker?: AdminInvoker;
+}): Promise<KickGuildResult> {
+	const departureMessage = await sendGuildAdminMessage({
 		guild,
-		`${config.BOT_NAME} admin has decided to remove the bot from this server.\nPlease [contact the developer](${config.BOT_WEBSITE}) for more information.`,
+		message: [
+			`${config.BOT_NAME} admin's decision has led to the removal of the bot from this server.`,
+			`Please [contact the developer](${config.BOT_WEBSITE}) for more information.`,
+			additionalMessage,
+		]
+			.filter(Boolean)
+			.join("\n"),
 		config,
-	).catch((error: unknown) => {
+		...(invoker ? { invoker } : {}),
+	}).catch((error: unknown) => {
 		logger.warn("ADMIN", "Could not send guild departure message", { guildId: guild.id, error });
+		return null;
 	});
-	await guild.leave();
-	logger.info("ADMIN", "Bot left guild", { guildId: guild.id, guildName: guild.name });
+	try {
+		await guild.leave();
+	} catch (error: unknown) {
+		logger.error("ADMIN", "Failed to leave guild", {
+			guildId: guild.id,
+			guildName: guild.name,
+			...(invoker ?? {}),
+			error,
+		});
+		return { success: false, departureMessage };
+	}
+	logger.info("ADMIN", "Bot left guild", {
+		guildId: guild.id,
+		guildName: guild.name,
+		messageChannelId: departureMessage?.channelId,
+		messageChannelName: departureMessage?.channelName,
+		...(invoker ?? {}),
+	});
+	return { success: true, departureMessage };
 }
 
 export async function getGuildInvite(guild: Guild): Promise<Invite> {

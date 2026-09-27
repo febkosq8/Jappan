@@ -9,14 +9,21 @@ export interface WarningSettings {
 	readonly warnings: GuildDocument["warnings"];
 }
 
-export async function setWarningSettings(
-	guildId: string,
-	guildName: string,
-	timeoutThreshold: number | null,
-	timeoutDurationHours: number | null,
-	banThreshold: number | null,
-	auditChannelId: string | null,
-): Promise<WarningSettings> {
+export async function setWarningSettings({
+	guildId,
+	guildName,
+	timeoutThreshold,
+	timeoutDurationHours,
+	banThreshold,
+	auditChannelId,
+}: {
+	guildId: string;
+	guildName: string;
+	timeoutThreshold: number | null;
+	timeoutDurationHours: number | null;
+	banThreshold: number | null;
+	auditChannelId: string | null;
+}): Promise<WarningSettings> {
 	if (timeoutThreshold !== null && banThreshold !== null && banThreshold <= timeoutThreshold) {
 		throw new Error("Ban threshold must be greater than the timeout threshold");
 	}
@@ -70,12 +77,17 @@ export async function issueWarning(
 	return storedMemberStateData;
 }
 
-export async function overrideWarningCount(
-	guildId: string,
-	userId: string,
-	username: string,
-	count: number,
-): Promise<GuildMemberStateDocument> {
+export async function overrideWarningCount({
+	guildId,
+	userId,
+	username,
+	count,
+}: {
+	guildId: string;
+	userId: string;
+	username: string;
+	count: number;
+}): Promise<GuildMemberStateDocument> {
 	const storedMemberStateData = await getOrCreateGuildMemberState(guildId, userId, username);
 	storedMemberStateData.warnings.count = count;
 	await storedMemberStateData.save();
