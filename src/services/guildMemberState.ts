@@ -19,3 +19,26 @@ export async function getOrCreateGuildMemberState(
 	}
 	return storedMemberStateData;
 }
+
+export async function incrementGuildMemberLevelingPoints(
+	guildId: string,
+	userId: string,
+	username: string,
+	points: number,
+): Promise<{ state: GuildMemberStateDocument; previousPoints: number }> {
+	const state = await GuildMemberStateModel.findOneAndUpdate(
+		{ guildId, userId },
+		{
+			$set: { username },
+			$inc: { "leveling.points": points },
+			$setOnInsert: { guildId, userId },
+		},
+		{ new: true, upsert: true, setDefaultsOnInsert: true },
+	).exec();
+
+	if (!state) {
+		throw new Error("Failed to update guild member leveling state");
+	}
+
+	return { state, previousPoints: state.leveling.points - points };
+}

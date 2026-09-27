@@ -8,7 +8,7 @@ import { sendGuildMessage } from "../helpers/guildHelper.js";
 import { getCommandId } from "./commandLoader.js";
 import type { Config } from "./config.js";
 import { getGuildSettings } from "./guild.js";
-import { getOrCreateGuildMemberState } from "./guildMemberState.js";
+import { incrementGuildMemberLevelingPoints } from "./guildMemberState.js";
 import { logger } from "./logger.js";
 
 export interface LeaderboardPage {
@@ -179,10 +179,12 @@ async function awardLevelingPoints({
 		return;
 	}
 
-	const storedMemberStateData = await getOrCreateGuildMemberState(guild.id, user.id, user.username);
-	const previousPoints = storedMemberStateData.leveling.points;
-	storedMemberStateData.leveling.points += points;
-	await storedMemberStateData.save();
+	const { state: storedMemberStateData, previousPoints } = await incrementGuildMemberLevelingPoints(
+		guild.id,
+		user.id,
+		user.username,
+		points,
+	);
 
 	const { roleId, threshold } = resolvedGuildData.leveling;
 	if (!roleId || !threshold || storedMemberStateData.leveling.points < threshold || !member) {

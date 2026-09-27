@@ -124,112 +124,50 @@ Boolean values are enabled only when their environment value is exactly `"true"`
 
 ## Completed Work
 
-### Architecture and Runtime
+The rewrite currently has:
 
-- Created the TypeScript/ESM rewrite with strict NodeNext module resolution.
-- Established bootstrap, handler, command, service, model, and helper boundaries.
-- Added command and button loaders.
-- Added database connection and shutdown lifecycle handling.
-- Added startup command registration with command ID tracking.
-- Preserved multiple Discord.js listeners where separate features need the same event.
-
-### Leveling
-
-- Added message, interaction, and voice activity leveling.
-- Added enabled-state guards before leveling work.
-- Added threshold reward role assignment.
-- Repaired missing reward roles for members who pass the threshold later.
-- Added checks for missing, managed, or bot-unmanageable reward roles.
-- Added guild-level `ManageRoles` validation.
-- Added role hierarchy validation against the bot's highest role.
-- Invalid reward configuration is disabled and administrators are notified.
-- A member who already has the reward role is short-circuited before bot permission checks.
-- The server owner is skipped silently because Discord does not allow bots to manage the owner.
-- An unmanageable non-owner member is skipped and logged without disabling the guild configuration.
-- Leveling APIs use options objects for multi-parameter operations.
-- Leaderboard retrieval and embed creation are implemented.
-
-### Member Announcements
-
-- Added join and leave announcement handling.
-- Added unavailable-channel detection and automatic configuration recovery.
-- Invalid announcement settings are disabled and administrators are notified.
-- Shared guild fallback message delivery is implemented through `sendGuildMessage`.
-- Recovery messages use direct Unicode fallback emojis because Discord does not expand bot-sent `:name:` shortcodes.
-
-### Commands and UX
-
-- Added initial leveling, leaderboard, member announcement, audit log, warning, clear, doppelganger, help, about, and ping command flows. These commands still require parity and edge-case completion listed below.
-- Added button and autocomplete dispatch.
-- Added command mentions for recovery instructions.
-- Completed entity-based user, channel, and thread mention formatting with consistent `(Name/ID)` labels.
-- Added role and permission validation for leveling setup.
-- Standardized many command rejection messages around the Unicode error indicator.
-- Keep `requiredBotPermissions` limited to permissions required by every subcommand; check subcommand-specific permissions inside the relevant branch instead of applying them globally.
-- Added recent audit executor and reason attribution for member, channel, thread, role, invite, ban, and user profile events, including multi-type audit lookups for member role changes.
-- Added detailed before/after permission overwrite auditing for channel roles and members.
-
-### Observability
-
-- Added structured logger categories and contextual details.
-- Added audit-channel send-failure recovery that disables stale configuration and notifies administrators through fallback channels.
-- Added a default-off `ENABLE_EVENTS_DEBUG` configuration item.
-- Added extended-event debug registration controlled by that switch.
-- Debug event output includes enum-style names such as `Events.MessageCreate` and event arguments.
+- TypeScript/ESM architecture with strict NodeNext resolution, command/button loaders, service boundaries, database lifecycle handling, and startup command registration.
+- Leveling from messages, interactions, and voice activity, including reward-role validation, recovery, hierarchy checks, and leaderboard retrieval.
+- Join/leave announcements with unavailable-channel recovery and administrator notification through fallback channels.
+- Audit coverage for members, roles, channels, threads, messages, invites, bans, users, voice state, permission overwrites, and raw audit-log entries, including recent executor and reason attribution.
+- Slash-command, button, and autocomplete dispatch with database availability rejection for database-dependent commands.
+- Structured logging with contextual details and configurable extended-event debugging.
+- Passing `pnpm run typecheck` and `pnpm run build` validation.
 
 ## Remaining Work
 
-### Priority 1: Verification
+### Priority 1: Feature Parity
 
-- Run `pnpm run build` as a production compilation check.
+The following legacy capabilities are not implemented in the rewrite:
 
-### Priority 1: Runtime Efficiency and Correctness
+- Music commands, player lifecycle, queue controls, extractors, and playlist persistence.
+- The guild-scoped `admin` command and administrative deployment/management operations.
+- The `freespeech` region-watch workflow and its persistence fields.
+- The `soundboard` command.
+- Legacy operational fallback commands for deployment, undeployment, player diagnostics, and prefix ping.
+- Legacy event/debug/error log persistence models and user playlist persistence.
+
+Fallback capability must remain available when slash commands are unavailable. Any feature removal requires owner approval and an equivalent supported mechanism.
+
+### Priority 1: Runtime Correctness
 
 - Replace leveling read-modify-save point updates with atomic MongoDB increments to avoid concurrent update loss.
 - Reduce repeated guild settings reads on high-volume message events with a controlled cache or event-scoped cache.
-- Avoid repeated reward role and bot-member fetches after configuration validation, while preserving recovery when roles or permissions change.
 - Prevent duplicate threshold role work when multiple events arrive concurrently for the same member.
-- Rate-limit or deduplicate repeated warnings for unmanageable non-owner members.
+- Complete guild-create initialization and new-guild confirmation.
+- Add presence updates and Discord reconnect/disconnect handling.
+- Add process-level `uncaughtException` and `unhandledRejection` handling.
+- Make MongoDB index synchronization part of the startup readiness gate.
+- Validate warning threshold ordering and separate warning, timeout, and ban permission checks.
+- Persist warning reasons if warning history requires them.
 
-### Priority 2: Feature Parity
+### Priority 2: Reliability and Verification
 
-- Compare the rewrite against `CURRENT_SETUP_DETAILS.md` and the legacy bot feature inventory.
-- Pending audit migration items from `Jappan_Discord_Bot/Components/AuditHandler.js`:
-  - [x] Add executor and reason attribution through recent `Guild.fetchAuditLogs()` entries for moderation and configuration events.
-  - [x] Migrate invite creation and revocation auditing.
-  - [x] Migrate guild member profile updates, including nickname, roles, timeout, guild-specific avatar changes, and timeout executor attribution.
-  - [x] Migrate ban and unban auditing.
-  - [x] Migrate channel create, update, delete, and permission-overwrite auditing.
-  - [x] Migrate role create, update, and delete auditing.
-  - [x] Add thread create, update, and delete auditing through Discord's dedicated thread events.
-  - [x] Migrate user profile updates, including username and avatar changes, across guilds where the user is a member.
-  - [x] Migrate raw `guildAuditLogEntryCreate` forwarding with target, executor, reason, and changed fields.
-  - [x] Reconcile partial message-delete behavior with the legacy `fullVerbosity` setting.
-  - [x] Add an explicit message-update timestamp and confirm embed-change comparison semantics.
-- Complete migrated command behavior, not only command registration:
-  - `level`: finish response consistency and runtime configuration edge cases.
-  - `leaderboard`: finish pagination, button recovery, empty-state, and disabled-leveling behavior.
-  - `memberannounce`: finish response consistency and join/leave configuration edge cases.
-    - [x] `auditlog`: verify complete audit event coverage, unavailable-channel recovery, and verbosity parity.
-  - `warn`: separate warning, timeout, and ban permission checks; verify threshold and audit-channel parity.
-  - `clear`: support complete message pagination/history scanning and verify permission failure recovery.
-  - `doppelganger`: verify webhook lifecycle, delete-button recovery, notification failure handling, and permission parity.
-  - `help`, `about`, and `ping`: verify final UX and error behavior against legacy expectations.
-- Replace remaining bot-sent `:error:` shortcodes with direct Unicode or shared response constants.
-- Complete any missing music, moderation, audit, fun, utility, admin, and fallback operational flows.
-- Preserve equivalent operational fallback capability when slash commands are unavailable.
-- Verify all legacy persistence intent has an explicit rewrite model or migration path.
-
-### Priority 3: Reliability and Operations
-
-- Add explicit database availability guards for DB-dependent commands and event paths.
-- Return deterministic service-unavailable responses when MongoDB is down.
-- Add reconnect behavior and observable recovery logging.
+- Add practical Vitest coverage for guild initialization, leveling concurrency, warning actions, command recovery, and database outage behavior.
 - Persist critical logs to the database in addition to console output.
 - Add correlation or request IDs for command and event traces.
-- Harden shutdown, reconnect, and error handling for production operation.
-
-### Priority 4: Data and Release Readiness
+- Add controlled reconnect and database recovery behavior with observable logging.
+- Harden shutdown and failure handling for production operation.
 
 - Lock down all Mongoose schemas with validation and ownership rules.
 - Document the legacy-to-rewrite data migration and verify it against a backup.
