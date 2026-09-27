@@ -1,4 +1,4 @@
-import { EmbedBuilder, PermissionFlagsBits } from "discord.js";
+import { EmbedBuilder, PermissionFlagsBits, userMention } from "discord.js";
 import type { Guild, GuildMember, Message, PartialGuildMember, PartialMessage, VoiceState } from "discord.js";
 
 import { sendGuildMessage } from "../helpers/guildHelper.js";
@@ -85,8 +85,8 @@ export async function handleAuditMemberAdd(member: GuildMember): Promise<void> {
 		new EmbedBuilder()
 			.setColor("Green")
 			.setTitle("Audit Event: Member Joined")
-			.setDescription(`${member} joined the server.`)
-			.addFields({ name: "User", value: `${member.user.tag} (${member.id})` })
+			.setDescription(`${userMention(member.id)} joined the server.`)
+			.addFields({ name: "User", value: `${userMention(member.id)} (${member.user.tag})` })
 			.setThumbnail(member.user.displayAvatarURL({ size: 256 }))
 			.setTimestamp(),
 	);
@@ -98,8 +98,8 @@ export async function handleAuditMemberRemove(member: GuildMember | PartialGuild
 		new EmbedBuilder()
 			.setColor("Red")
 			.setTitle("Audit Event: Member Left")
-			.setDescription(`${member.user.tag} left the server.`)
-			.addFields({ name: "User", value: `${member.user.tag} (${member.id})` })
+			.setDescription(`${userMention(member.id)} left the server.`)
+			.addFields({ name: "User", value: `${userMention(member.id)} (${member.user.tag})` })
 			.setThumbnail(member.user.displayAvatarURL({ size: 256 }))
 			.setTimestamp(),
 	);
@@ -117,7 +117,7 @@ export async function handleAuditMessageDelete(message: Message | PartialMessage
 			.setTitle("Audit Event: Message Deleted")
 			.setDescription(message.content ? message.content.slice(0, 4096) : "Message had no text content.")
 			.addFields(
-				{ name: "Author", value: `${message.author.tag} (${message.author.id})` },
+				{ name: "Author", value: `${userMention(message.author.id)} (${message.author.tag})` },
 				{ name: "Channel", value: `${message.channel}` },
 			)
 			.setTimestamp(),
@@ -146,7 +146,7 @@ export async function handleAuditVoiceState(oldState: VoiceState, newState: Voic
 			.setTitle(`Audit Event: ${title}`)
 			.setDescription(description)
 			.addFields(
-				{ name: "User", value: `${member} (${member.user.tag})` },
+				{ name: "User", value: `${userMention(member.id)} (${member.user.tag})` },
 				...(joined
 					? [{ name: "Channel", value: `<#${newState.channelId}>`, inline: true }]
 					: left
