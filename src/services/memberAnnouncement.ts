@@ -96,7 +96,7 @@ async function disableAnnouncement(
 	const commandId = getCommandId("memberannounce");
 	const commandMention = commandId
 		? chatInputApplicationCommandMention("memberannounce", "on", commandId)
-		: "`/memberannounce on`";
+		: "the command menu";
 	await sendGuildMessage({
 		guild,
 		content: `⚠️ Member ${event === "join" ? "join" : "leave"} announcements were automatically disabled because I can no longer access ${channelMention(channelId)} (channel ID: \`${channelId}\`).\n📢 PSA for admins: please configure a new channel with ${commandMention}.`,

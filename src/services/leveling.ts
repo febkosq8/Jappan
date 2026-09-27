@@ -271,7 +271,9 @@ async function disableLevelingReward({ guild, roleId, reason }: DisableLevelingR
 		});
 
 		const commandId = getCommandId("level");
-		const commandMention = commandId ? chatInputApplicationCommandMention("level", "on", commandId) : "`/level on`";
+		const commandMention = commandId
+			? chatInputApplicationCommandMention("level", "on", commandId)
+			: "the command menu";
 		const warningEmoji = "⚠️";
 		const announcementEmoji = "📢";
 		await sendGuildMessage({

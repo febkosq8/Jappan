@@ -17,6 +17,16 @@ const warningStateSchema = new Schema(
 	{ _id: false },
 );
 
+const voiceRegionLockSchema = new Schema(
+	{
+		channelId: { type: String, required: true },
+		channelName: { type: String, required: true, trim: true },
+		region: { type: String, required: true, trim: true },
+		fallbackRegion: { type: String, default: null },
+	},
+	{ _id: false },
+);
+
 const guildMemberStateSchema = new Schema(
 	{
 		guildId: { type: String, required: true, immutable: true },
@@ -24,6 +34,7 @@ const guildMemberStateSchema = new Schema(
 		username: { type: String, required: true, trim: true },
 		leveling: { type: levelingStateSchema, required: true, default: () => ({}) },
 		warnings: { type: warningStateSchema, required: true, default: () => ({}) },
+		voiceRegionLock: { type: voiceRegionLockSchema, default: null },
 	},
 	{
 		collection: "guild_member_states",
@@ -37,6 +48,8 @@ guildMemberStateSchema.index({ guildId: 1, userId: 1 }, { unique: true });
 guildMemberStateSchema.index({ guildId: 1, "leveling.points": -1 });
 
 guildMemberStateSchema.index({ guildId: 1, "warnings.count": -1 });
+
+guildMemberStateSchema.index({ guildId: 1, "voiceRegionLock.channelId": 1 });
 
 export type GuildMemberState = InferSchemaType<typeof guildMemberStateSchema>;
 export type GuildMemberStateDocument = HydratedDocument<GuildMemberState>;

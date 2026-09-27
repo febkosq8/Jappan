@@ -81,7 +81,7 @@ Primary references:
 
 - General: about, help, ping
 - Music: play, pause, skip, stop, previous, queue, nowplaying, playlist, playtop, loop, volume, shuffle, remove
-- Moderation/Config-like: warn, clear, level, memberannounce, freespeech, auditlog
+- Moderation/Config-like: warn, clear, level, memberannounce, lock-vc-region, auditlog
 - Fun: doppelganger, soundboard
 - Progression: leaderboard
 
@@ -120,6 +120,7 @@ Source: indexPost.js messageCreate path
 - DM logging path
 - message-based level checks
 - voice join/leave level checks
+- voice-channel region locking and restoration based on configured users
 - button interaction dynamic dispatch by customId
 
 Source: indexPost.js

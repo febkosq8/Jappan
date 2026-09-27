@@ -3,6 +3,7 @@ import {
 	AuditLogEvent,
 	ChannelType,
 	EmbedBuilder,
+	OverwriteType,
 	PermissionsBitField,
 	VideoQualityMode,
 	blockQuote,
@@ -134,7 +135,7 @@ function formatPermissionOverwriteTarget(
 			: never
 		: never,
 ): string {
-	if (overwrite.type === 0) {
+	if (overwrite.type === OverwriteType.Role) {
 		const role = guild.roles.cache.get(overwrite.id);
 		return role ? formatRoleMention(role) : `${roleMention(overwrite.id)} (${overwrite.id})`;
 	}

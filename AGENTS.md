@@ -129,6 +129,7 @@ The rewrite currently has:
 - TypeScript/ESM architecture with strict NodeNext resolution, command/button loaders, service boundaries, database lifecycle handling, and startup command registration.
 - Leveling from messages, interactions, and voice activity, including reward-role validation, recovery, hierarchy checks, and leaderboard retrieval.
 - Atomic leveling point and warning count updates to prevent concurrent read-modify-save loss.
+- Voice-channel region locking through `/lock-vc-region`, including persisted rules, region autocomplete, and automatic restore on leave.
 - Join/leave announcements with unavailable-channel recovery and administrator notification through fallback channels.
 - Idempotent guild-create initialization with a permission-aware welcome message and `/help` guidance.
 - Audit coverage for members, roles, channels, threads, messages, invites, bans, users, voice state, permission overwrites, and raw audit-log entries, including recent executor and reason attribution.
@@ -146,7 +147,6 @@ The following legacy capabilities are not implemented in the rewrite:
 
 - Music commands, player lifecycle, queue controls, extractors, and playlist persistence.
 - The guild-scoped `admin` command and administrative deployment/management operations.
-- The `freespeech` region-watch workflow and its persistence fields.
 - The `soundboard` command.
 - Legacy operational fallback commands for deployment, undeployment, player diagnostics, and prefix ping.
 - Legacy event/debug/error log persistence models and user playlist persistence.

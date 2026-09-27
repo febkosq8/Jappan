@@ -367,7 +367,10 @@ export async function handleAuditChannelUpdate(oldChannel: GuildChannel, newChan
 				oldOverwrite.deny.bitfield !== newOverwrite.deny.bitfield
 			);
 		});
-	if (changes.length === 0 && permissionOverwriteChanges.length === 0 || !(await isAuditLogEnabled(newChannel.guild))) {
+	if (
+		(changes.length === 0 && permissionOverwriteChanges.length === 0) ||
+		!(await isAuditLogEnabled(newChannel.guild))
+	) {
 		return;
 	}
 
@@ -545,7 +548,9 @@ async function disableAuditLog(guild: Guild, channelId: string): Promise<void> {
 		channelId,
 	});
 	const commandId = getCommandId("auditlog");
-	const commandMention = commandId ? chatInputApplicationCommandMention("auditlog", "on", commandId) : "`/auditlog on`";
+	const commandMention = commandId
+		? chatInputApplicationCommandMention("auditlog", "on", commandId)
+		: "the command menu";
 	const notified = await sendGuildMessage({
 		guild,
 		content: `⚠️ Audit logging was automatically disabled because I can no longer access ${channelMention(channelId)}.\n📢 PSA for admins: please configure a new channel with ${commandMention}.`,

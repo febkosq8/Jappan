@@ -33,7 +33,7 @@ export async function incrementGuildMemberLevelingPoints(
 			$inc: { "leveling.points": points },
 			$setOnInsert: { guildId, userId },
 		},
-		{ new: true, upsert: true, setDefaultsOnInsert: true },
+		{ returnDocument: "after", upsert: true, setDefaultsOnInsert: true },
 	).exec();
 
 	if (!state) {

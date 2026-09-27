@@ -297,7 +297,7 @@ For each migrated command/handler/path, apply this sequence before implementatio
 - Leveling progression and role assignment semantics match existing behavior.
 - Warn threshold actions (timeout/ban conditions) match current policy.
 - Audit logging emits equivalent event classes.
-- Announce and freespeech workflows remain operational.
+- Announce and voice-region-lock workflows remain operational.
 
 ### Data-Level Parity
 
@@ -356,7 +356,7 @@ Exit Criteria:
 
 ### Phase 4: Remaining Feature Migration
 
-- Announce, audit, freespeech, doppelganger, soundboard, utility/help/admin.
+- Announce, audit, voice-region-lock, doppelganger, soundboard, utility/help/admin.
 - Legacy prefix operational commands migration or approved replacement.
 
 Exit Criteria:
@@ -387,7 +387,7 @@ Exit Criteria:
   - warn escalation lifecycle
   - leveling progression and role assignment
   - audit event emission coverage
-  - announce and freespeech behavior
+  - announce and voice-region-lock behavior
 
 ### 3) Data Tests
 

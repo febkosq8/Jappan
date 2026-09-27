@@ -42,7 +42,7 @@ export async function initializeGuild(guild: DiscordGuild): Promise<void> {
 		});
 
 		const helpCommandId = getCommandId("help");
-		const helpCommand = helpCommandId ? chatInputApplicationCommandMention("help", helpCommandId) : "`/help`";
+		const helpCommand = helpCommandId ? chatInputApplicationCommandMention("help", helpCommandId) : "the command menu";
 		const config = getConfig();
 		const welcomeEmbed = new EmbedBuilder()
 			.setColor("Orange")

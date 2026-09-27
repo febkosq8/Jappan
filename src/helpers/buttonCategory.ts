@@ -15,13 +15,14 @@ export async function handleHelpCategory({
 	category: CommandCategory;
 }): Promise<void> {
 	const commands = getCommands().filter((command) => command.commandData.category === category);
-	const fields = commands.map((command) => {
-		const commandId = getCommandId(command.commandData.name);
-		return {
-			name: commandId ? `</${command.commandData.name}:${commandId}>` : `/${command.commandData.name}`,
-			value: command.commandData.description,
-		};
-	});
+	const fields = commands
+		.map((command) => {
+			const commandId = getCommandId(command.commandData.name);
+			return commandId
+				? { name: `</${command.commandData.name}:${commandId}>`, value: command.commandData.description }
+				: undefined;
+		})
+		.filter((field): field is { name: string; value: string } => field !== undefined);
 	const categoryName = category.charAt(0).toUpperCase() + category.slice(1);
 	const embed = new EmbedBuilder()
 		.setColor("Blue")

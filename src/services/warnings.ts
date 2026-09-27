@@ -60,7 +60,7 @@ export async function issueWarning(
 			$inc: { "warnings.count": 1 },
 			$setOnInsert: { guildId, userId },
 		},
-		{ new: true, upsert: true, setDefaultsOnInsert: true },
+		{ returnDocument: "after", upsert: true, setDefaultsOnInsert: true },
 	).exec();
 
 	if (!storedMemberStateData) {

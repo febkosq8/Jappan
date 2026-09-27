@@ -11,6 +11,7 @@ import { handleButtonInteraction } from "./button.js";
 import { handleSlashCommandInteraction } from "./slashCommand.js";
 import { handleMemberJoinAnnouncement, handleMemberLeaveAnnouncement } from "../services/memberAnnouncement.js";
 import { handleLevelingInteraction, handleLevelingMessage, handleLevelingVoiceState } from "../services/leveling.js";
+import { handleVoiceRegionState } from "../services/voiceRegion.js";
 import {
 	handleAuditMemberAdd,
 	handleAuditMemberBanAdd,
@@ -248,6 +249,7 @@ export function registerExtendedDiscordHandlers(): void {
 
 	client.on(Events.VoiceStateUpdate, (oldState, newState) => {
 		void handleLevelingVoiceState(oldState, newState);
+		void handleVoiceRegionState(oldState, newState);
 		void handleAuditVoiceState(oldState, newState);
 	});
 
