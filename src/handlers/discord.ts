@@ -10,6 +10,12 @@ import { handleButtonInteraction } from "./button.js";
 import { handleSlashCommandInteraction } from "./slashCommand.js";
 import { handleMemberJoinAnnouncement, handleMemberLeaveAnnouncement } from "../services/memberAnnouncement.js";
 import { handleLevelingInteraction, handleLevelingMessage, handleLevelingVoiceState } from "../services/leveling.js";
+import {
+	handleAuditMemberAdd,
+	handleAuditMemberRemove,
+	handleAuditMessageDelete,
+	handleAuditVoiceState,
+} from "../services/auditLog.js";
 
 export function registerDiscordHandlers(): void {
 	const client = getClient();
@@ -92,6 +98,7 @@ function registerEventDebugHandlers(client: ReturnType<typeof getClient>): void 
 		MessageCreate: Events.MessageCreate,
 		InteractionCreate: Events.InteractionCreate,
 		VoiceStateUpdate: Events.VoiceStateUpdate,
+		MessageDelete: Events.MessageDelete,
 	} as const;
 	for (const [eventName, event] of Object.entries(events)) {
 		client.on(event as string, (...args: unknown[]) => {
@@ -106,11 +113,13 @@ export function registerExtendedDiscordHandlers(): void {
 	const config = getConfig();
 
 	client.on(Events.GuildMemberAdd, (member) => {
-		void handleMemberJoinAnnouncement(member, config);
+		void handleMemberJoinAnnouncement(member);
+		void handleAuditMemberAdd(member);
 	});
 
 	client.on(Events.GuildMemberRemove, (member) => {
-		void handleMemberLeaveAnnouncement(member, config);
+		void handleMemberLeaveAnnouncement(member);
+		void handleAuditMemberRemove(member);
 	});
 
 	client.on(Events.MessageCreate, (message) => {
@@ -123,6 +132,11 @@ export function registerExtendedDiscordHandlers(): void {
 
 	client.on(Events.VoiceStateUpdate, (oldState, newState) => {
 		void handleLevelingVoiceState(oldState, newState);
+		void handleAuditVoiceState(oldState, newState);
+	});
+
+	client.on(Events.MessageDelete, (message) => {
+		void handleAuditMessageDelete(message);
 	});
 
 	logger.success("DISCORD", "Extended Discord event handlers registered");

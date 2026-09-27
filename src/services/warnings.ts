@@ -3,6 +3,12 @@ import type { GuildMemberStateDocument } from "../models/guildMemberState.js";
 import { getGuildSettings } from "./guild.js";
 import { getGuildMemberState, getOrCreateGuildMemberState } from "./guildMemberState.js";
 
+export interface WarningSettings {
+	readonly guildId: GuildDocument["guildId"];
+	readonly guildName: GuildDocument["guildName"];
+	readonly warnings: GuildDocument["warnings"];
+}
+
 export async function setWarningSettings(
 	guildId: string,
 	guildName: string,
@@ -10,17 +16,27 @@ export async function setWarningSettings(
 	timeoutDurationHours: number | null,
 	banThreshold: number | null,
 	auditChannelId: string | null,
-): Promise<GuildDocument> {
+): Promise<WarningSettings> {
 	const storedGuildData = await getGuildSettings({ guildId, guildName });
 	storedGuildData.warnings.timeoutThreshold = timeoutThreshold;
 	storedGuildData.warnings.timeoutDurationHours = timeoutDurationHours;
 	storedGuildData.warnings.banThreshold = banThreshold;
 	storedGuildData.warnings.auditChannelId = auditChannelId;
-	return storedGuildData.save();
+	await storedGuildData.save();
+	return {
+		guildId: storedGuildData.guildId,
+		guildName: storedGuildData.guildName,
+		warnings: storedGuildData.warnings,
+	};
 }
 
-export async function getWarningSettings(guildId: string, guildName: string): Promise<GuildDocument> {
-	return getGuildSettings({ guildId, guildName });
+export async function getWarningSettings(guildId: string, guildName: string): Promise<WarningSettings> {
+	const storedGuildData = await getGuildSettings({ guildId, guildName });
+	return {
+		guildId: storedGuildData.guildId,
+		guildName: storedGuildData.guildName,
+		warnings: storedGuildData.warnings,
+	};
 }
 
 export async function getWarningCount(guildId: string, userId: string): Promise<number> {
