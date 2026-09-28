@@ -1,8 +1,8 @@
 import type { ButtonInteraction } from "discord.js";
 
 import { executePing } from "../helpers/shared/ping.js";
-import type { Config } from "../services/config.js";
 import type { ButtonData, ButtonModule } from "../services/buttonLoader.js";
+import type { Config } from "../services/config.js";
 
 const buttonData = { id: "Ping" } satisfies ButtonData;
 

@@ -1,8 +1,8 @@
 import { MessageFlags } from "discord.js";
 
-import type { ButtonModule } from "../services/buttonLoader.js";
 import { buildLeaderboardReply } from "../commands/leaderboard.js";
 import { parseButtonCustomId } from "../helpers/button.js";
+import type { ButtonModule } from "../services/buttonLoader.js";
 
 const button: ButtonModule = {
 	buttonData: { id: "LeaderboardNext" },

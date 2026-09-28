@@ -1,12 +1,12 @@
+import type { Message } from "discord.js";
 import {
 	ChannelType,
-	InteractionContextType,
 	EmbedBuilder,
+	InteractionContextType,
 	MessageFlags,
 	PermissionFlagsBits,
 	SlashCommandBuilder,
 } from "discord.js";
-import type { Message } from "discord.js";
 
 import { formatChannelMention, formatUserMention } from "../helpers/discord.js";
 import type { BotCommand, BotCommandData } from "../services/commandLoader.js";
@@ -76,7 +76,10 @@ const command: BotCommand = {
 				.setRequired(false),
 		)
 		.addNumberOption((option) =>
-			option.setName("count").setDescription("Maximum total messages to delete; defaults to 200").setRequired(false),
+			option
+				.setName("count")
+				.setDescription("Maximum total messages to delete; defaults to 200")
+				.setRequired(false),
 		)
 		.addUserOption((option) =>
 			option.setName("username").setDescription("Only delete messages sent by this user").setRequired(false),
@@ -118,7 +121,10 @@ const command: BotCommand = {
 				? [selectedGuildChannel]
 				: [...(await interaction.guild.channels.fetch()).values()].filter(
 						(channel): channel is NonNullable<typeof channel> =>
-							channel !== null && channel.isTextBased() && "messages" in channel && "permissionsFor" in channel,
+							channel !== null &&
+							channel.isTextBased() &&
+							"messages" in channel &&
+							"permissionsFor" in channel,
 					);
 			const progressState: {
 				startedAt: number;
@@ -220,7 +226,10 @@ const command: BotCommand = {
 							name: "Status",
 							value: `${step.startsWith("Complete") ? "Complete" : step.startsWith("Stopped") ? "Stopped" : "In progress"} (${formatElapsedTime()} elapsed)`,
 						},
-						{ name: "Overall Progress", value: `${progressState.processedChannels}/${channels.length} channels` },
+						{
+							name: "Overall Progress",
+							value: `${progressState.processedChannels}/${channels.length} channels`,
+						},
 						{ name: "Step", value: `${currentChannelMention} | ${step}` },
 						{
 							name: "Message stats",
@@ -274,7 +283,10 @@ const command: BotCommand = {
 						failed: 0,
 					});
 					await interaction.editReply({
-						embeds: createProgressEmbeds("Stopped: missing permissions", progressState.currentChannelMention),
+						embeds: createProgressEmbeds(
+							"Stopped: missing permissions",
+							progressState.currentChannelMention,
+						),
 					});
 					await sendOverflowChannelStats(false);
 					return;
@@ -304,7 +316,9 @@ const command: BotCommand = {
 							message.interactionMetadata?.id !== interaction.id,
 					)
 					.slice(0, Math.max(0, count - progressState.deletedMessages))
-					.sort((firstMessage, secondMessage) => secondMessage.createdTimestamp - firstMessage.createdTimestamp);
+					.sort(
+						(firstMessage, secondMessage) => secondMessage.createdTimestamp - firstMessage.createdTimestamp,
+					);
 				const deletionResult = await deleteMessages(channel, messagesToDelete, channelName);
 				progressState.deletedMessages += deletionResult.deleted;
 				progressState.currentChannelDeleted += deletionResult.deleted;

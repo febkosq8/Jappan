@@ -1,9 +1,9 @@
-import { EmbedBuilder, MessageFlags } from "discord.js";
 import type { ButtonInteraction } from "discord.js";
+import { EmbedBuilder, MessageFlags } from "discord.js";
 
-import type { Config } from "../services/config.js";
-import type { ButtonData, ButtonModule } from "../services/buttonLoader.js";
 import { parseButtonCustomId } from "../helpers/button.js";
+import type { ButtonData, ButtonModule } from "../services/buttonLoader.js";
+import type { Config } from "../services/config.js";
 
 const buttonData = { id: "DeleteDoppelganger" } satisfies ButtonData;
 

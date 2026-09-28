@@ -176,7 +176,9 @@ const command: BotCommand = {
 				const botMember = interaction.guild.members.me;
 				if (
 					!botMember ||
-					!channel.permissionsFor(botMember)?.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages])
+					!channel
+						.permissionsFor(botMember)
+						?.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages])
 				) {
 					await interaction.editReply(
 						`⛔ I do not have permission to view and send messages in the selected ${direction} channel ${selectedChannelMention}.`,

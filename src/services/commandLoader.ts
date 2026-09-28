@@ -1,13 +1,12 @@
-import { join } from "node:path";
-import { readdir } from "node:fs/promises";
-import { fileURLToPath, pathToFileURL } from "node:url";
-import { Collection } from "discord.js";
 import type { ApplicationCommand } from "discord.js";
+import { Collection } from "discord.js";
+import { readdir } from "node:fs/promises";
+import { join } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
-import { isBotCommand } from "../helpers/command.js";
-import { logger } from "./logger.js";
-export type { BotCommand, BotCommandContext, BotCommandData, CommandCategory } from "../helpers/command.js";
 import type { BotCommand } from "../helpers/command.js";
+import { isBotCommand } from "../helpers/command.js";
+export type { BotCommand, BotCommandContext, BotCommandData, CommandCategory } from "../helpers/command.js";
 
 type CommandModule = {
 	readonly default?: unknown;

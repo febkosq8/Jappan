@@ -56,7 +56,8 @@ const command: BotCommand = {
 		const webhooks = await interaction.channel.fetchWebhooks();
 		let webhook = webhooks.find(
 			(candidate) =>
-				candidate.name === `${config.BOT_NAME} : Doppelganger` && candidate.owner?.id === interaction.client.user.id,
+				candidate.name === `${config.BOT_NAME} : Doppelganger` &&
+				candidate.owner?.id === interaction.client.user.id,
 		);
 		if (!webhook) {
 			webhook = await interaction.channel.createWebhook({

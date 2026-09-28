@@ -1,3 +1,4 @@
+import type { Guild, VoiceChannel, VoiceState } from "discord.js";
 import {
 	ChannelType,
 	PermissionFlagsBits,
@@ -6,13 +7,12 @@ import {
 	underline,
 	userMention,
 } from "discord.js";
-import type { Guild, VoiceChannel, VoiceState } from "discord.js";
 
-import GuildMemberStateModel from "../models/guildMemberState.js";
 import { sendGuildMessage } from "../helpers/guildHelper.js";
 import type { GuildMemberStateDocument } from "../models/guildMemberState.js";
-import { getGuildMemberState, getOrCreateGuildMemberState } from "./guildMemberState.js";
+import GuildMemberStateModel from "../models/guildMemberState.js";
 import { getCommandId } from "./commandLoader.js";
+import { getGuildMemberState, getOrCreateGuildMemberState } from "./guildMemberState.js";
 import { logger } from "./logger.js";
 
 export interface VoiceRegionLock {

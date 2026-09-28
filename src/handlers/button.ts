@@ -1,9 +1,9 @@
-import { MessageFlags } from "discord.js";
 import type { ButtonInteraction } from "discord.js";
+import { MessageFlags } from "discord.js";
 
+import { getButtonHandler } from "../services/buttonLoader.js";
 import type { Config } from "../services/config.js";
 import { logger } from "../services/logger.js";
-import { getButtonHandler } from "../services/buttonLoader.js";
 
 export async function handleButtonInteraction({
 	interaction,

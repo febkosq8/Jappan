@@ -1,3 +1,23 @@
+import type {
+	APIEmbed,
+	Guild,
+	GuildAuditLogsEntry,
+	GuildBan,
+	GuildChannel,
+	GuildMember,
+	Invite,
+	JSONEncodable,
+	Message,
+	MessageCreateOptions,
+	PartialGuildMember,
+	PartialMessage,
+	PartialUser,
+	ReadonlyCollection,
+	Role,
+	ThreadChannel,
+	User,
+	VoiceState,
+} from "discord.js";
 import {
 	AuditLogEvent,
 	EmbedBuilder,
@@ -6,32 +26,11 @@ import {
 	channelMention,
 	chatInputApplicationCommandMention,
 	italic,
-	roleMention,
 } from "discord.js";
-import type {
-	APIEmbed,
-	Guild,
-	GuildAuditLogsEntry,
-	GuildChannel,
-	GuildMember,
-	Invite,
-	JSONEncodable,
-	Message,
-	MessageCreateOptions,
-	GuildBan,
-	PartialGuildMember,
-	PartialMessage,
-	PartialUser,
-	Role,
-	ThreadChannel,
-	User,
-	VoiceState,
-} from "discord.js";
-import type { ReadonlyCollection } from "discord.js";
 
 import {
-	MAX_EMBED_CHARACTERS_PER_MESSAGE,
 	MAX_EMBEDS_PER_MESSAGE,
+	MAX_EMBED_CHARACTERS_PER_MESSAGE,
 	addAuditEntryDetails,
 	addAvatarChange,
 	createAuditEventId,
@@ -40,14 +39,14 @@ import {
 	getAuditEntryActionLabel,
 	getAuditEntryChangeDetails,
 	getAuditEntryTargetLabel,
-	getComparableEmbed,
 	getChannelTypeLabel,
+	getComparableEmbed,
 	getEmbedCharacterCount,
-	getProfileChangeResponse,
 	getPermissionOverwriteChangeDetails,
+	getProfileChangeResponse,
 	getRecentAuditEntry,
-	getRoleCreationDetails,
 	getRoleChangeDetails,
+	getRoleCreationDetails,
 	getVideoQualityModeLabel,
 	isOwnBot,
 } from "../helpers/auditLog.js";
@@ -120,7 +119,7 @@ async function postAuditEvent(guild: Guild, content: MessageCreateOptions): Prom
 	const embeds: Array<APIEmbed | JSONEncodable<APIEmbed>> = content.embeds ? [...content.embeds] : [];
 	let firstMessage: Message | null = null;
 	try {
-		for (let start = 0; start < Math.max(embeds.length, 1); ) {
+		for (let start = 0; start < Math.max(embeds.length, 1);) {
 			let end = start;
 			let pageCharacterCount = 0;
 			while (end < embeds.length && end - start < MAX_EMBEDS_PER_MESSAGE) {
@@ -175,7 +174,8 @@ async function handleAuditBan(ban: GuildBan, action: "Banned" | "Unbanned"): Pro
 	const auditLogs = await ban.guild.fetchAuditLogs({ limit: 10, type: auditLogType }).catch(() => null);
 	const auditEntry = auditLogs?.entries.find(
 		(candidateAuditEntry) =>
-			candidateAuditEntry.target?.id === ban.user.id && Date.now() - candidateAuditEntry.createdTimestamp < 20_000,
+			candidateAuditEntry.target?.id === ban.user.id &&
+			Date.now() - candidateAuditEntry.createdTimestamp < 20_000,
 	);
 	const auditEventId = createAuditEventId();
 	const embed = new EmbedBuilder()
@@ -384,7 +384,9 @@ export async function handleAuditChannelUpdate(oldChannel: GuildChannel, newChan
 	let overwriteEntry = auditEntry;
 	if (!overwriteEntry && overwritesChanged) {
 		const overwriteAuditTypes: Array<
-			AuditLogEvent.ChannelOverwriteCreate | AuditLogEvent.ChannelOverwriteUpdate | AuditLogEvent.ChannelOverwriteDelete
+			| AuditLogEvent.ChannelOverwriteCreate
+			| AuditLogEvent.ChannelOverwriteUpdate
+			| AuditLogEvent.ChannelOverwriteDelete
 		> = [
 			AuditLogEvent.ChannelOverwriteCreate,
 			AuditLogEvent.ChannelOverwriteUpdate,
@@ -911,7 +913,9 @@ export async function handleAuditMessageUpdate(
 	const embed = new EmbedBuilder()
 		.setColor("Orange")
 		.setTitle(
-			followUpPageCount > 0 ? `Audit Event: Message Edited (Page 1/${totalPageCount})` : "Audit Event: Message Edited",
+			followUpPageCount > 0
+				? `Audit Event: Message Edited (Page 1/${totalPageCount})`
+				: "Audit Event: Message Edited",
 		)
 		.setDescription(
 			oldMessageWasNotCached
@@ -945,7 +949,9 @@ export async function handleAuditMessageUpdate(
 			{ name: "Created At", value: `<t:${Math.floor(newMessage.createdTimestamp / 1000)}:F>` },
 			{
 				name: "Updated At",
-				value: newMessage.editedTimestamp ? `<t:${Math.floor(newMessage.editedTimestamp / 1000)}:F>` : "Unknown",
+				value: newMessage.editedTimestamp
+					? `<t:${Math.floor(newMessage.editedTimestamp / 1000)}:F>`
+					: "Unknown",
 			},
 			{ name: "Message ID", value: newMessage.id },
 		)
@@ -995,7 +1001,9 @@ export async function handleAuditMessageDelete(message: Message | PartialMessage
 			},
 			{
 				name: "Channel",
-				value: message.channel.isDMBased() ? channelMention(message.channel.id) : formatChannelMention(message.channel),
+				value: message.channel.isDMBased()
+					? channelMention(message.channel.id)
+					: formatChannelMention(message.channel),
 			},
 			{ name: "Created At", value: `<t:${Math.floor(message.createdTimestamp / 1000)}:F>` },
 			{ name: "Message ID", value: message.id },
@@ -1084,7 +1092,9 @@ export async function handleAuditMessageBulkDelete(
 			.split("\n")
 			.map((line) => `> ${line}`)
 			.join("\n");
-		const messageContent = [quotedContent, attachments ? `Attachments: ${attachments}` : ""].filter(Boolean).join("\n");
+		const messageContent = [quotedContent, attachments ? `Attachments: ${attachments}` : ""]
+			.filter(Boolean)
+			.join("\n");
 		const completeMessage = `${messageHeader}\n${messageContent}`;
 		if (completeMessage.length <= maxPageContentLength) {
 			return [completeMessage];

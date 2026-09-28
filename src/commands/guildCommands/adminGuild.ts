@@ -1,3 +1,4 @@
+import type { Guild, User } from "discord.js";
 import {
 	ChannelType,
 	EmbedBuilder,
@@ -9,10 +10,8 @@ import {
 	channelMention,
 	userMention,
 } from "discord.js";
-import type { Guild, User } from "discord.js";
 
 import type { BotCommand, BotCommandData } from "../../helpers/command.js";
-import type { Config } from "../../services/config.js";
 import { formatChannelMention, formatGuildMention, formatUserMention } from "../../helpers/discord.js";
 import {
 	getGuildChannel,
@@ -22,6 +21,7 @@ import {
 	kickGuild,
 	sendGuildAdminMessage,
 } from "../../services/adminGuild.js";
+import type { Config } from "../../services/config.js";
 import { logger } from "../../services/logger.js";
 
 const commandData = {
@@ -112,7 +112,10 @@ const command: BotCommand = {
 					option.setName("confirm").setDescription("Confirm this destructive action").setRequired(true),
 				)
 				.addStringOption((option) =>
-					option.setName("message").setDescription("Additional message to send before leaving").setRequired(false),
+					option
+						.setName("message")
+						.setDescription("Additional message to send before leaving")
+						.setRequired(false),
 				),
 		)
 		.addSubcommand((subcommand) =>
@@ -126,7 +129,10 @@ const command: BotCommand = {
 					option.setName("confirm").setDescription("Confirm this destructive action").setRequired(true),
 				)
 				.addStringOption((option) =>
-					option.setName("message").setDescription("Additional message to send before leaving").setRequired(false),
+					option
+						.setName("message")
+						.setDescription("Additional message to send before leaving")
+						.setRequired(false),
 				),
 		)
 		.addSubcommand((subcommand) =>
@@ -139,7 +145,9 @@ const command: BotCommand = {
 				.addStringOption((option) =>
 					option.setName("channel-id").setDescription("Channel ID").setAutocomplete(true).setRequired(true),
 				)
-				.addStringOption((option) => option.setName("message").setDescription("Message to send").setRequired(true)),
+				.addStringOption((option) =>
+					option.setName("message").setDescription("Message to send").setRequired(true),
+				),
 		)
 		.addSubcommand((subcommand) =>
 			subcommand
@@ -200,11 +208,17 @@ const command: BotCommand = {
 						{ name: "Type", value: ChannelType[channel.type] ?? String(channel.type), inline: true },
 						{
 							name: "Created",
-							value: channel.createdTimestamp ? `<t:${Math.floor(channel.createdTimestamp / 1000)}:F>` : "Unknown",
+							value: channel.createdTimestamp
+								? `<t:${Math.floor(channel.createdTimestamp / 1000)}:F>`
+								: "Unknown",
 							inline: true,
 						},
 						{ name: "URL", value: channel.url },
-						{ name: "Parent", value: channel.parent ? formatChannelMention(channel.parent) : "None", inline: true },
+						{
+							name: "Parent",
+							value: channel.parent ? formatChannelMention(channel.parent) : "None",
+							inline: true,
+						},
 					)
 					.setTimestamp();
 
@@ -225,7 +239,11 @@ const command: BotCommand = {
 					channelEmbed.addFields({ name: "Bitrate", value: `${channel.bitrate} bps`, inline: true });
 				}
 				if ("userLimit" in channel) {
-					channelEmbed.addFields({ name: "User limit", value: String(channel.userLimit || "Unlimited"), inline: true });
+					channelEmbed.addFields({
+						name: "User limit",
+						value: String(channel.userLimit || "Unlimited"),
+						inline: true,
+					});
 				}
 
 				await interaction.editReply({ embeds: [channelEmbed] });
@@ -241,12 +259,17 @@ const command: BotCommand = {
 				await interaction.editReply("⛔ Confirmation is required for this destructive action.");
 				return;
 			}
-			const guilds = [...interaction.client.guilds.cache.values()].filter((guild) => guild.id !== interaction.guildId);
+			const guilds = [...interaction.client.guilds.cache.values()].filter(
+				(guild) => guild.id !== interaction.guildId,
+			);
 			await interaction.editReply(`Found ${guilds.length} guilds. Starting kicks now...`);
 			const additionalMessage = interaction.options.getString("message");
 			let leftGuilds = 0;
-			const successfulKicks: { guild: Guild; owner: User | null; kickResult: Awaited<ReturnType<typeof kickGuild>> }[] =
-				[];
+			const successfulKicks: {
+				guild: Guild;
+				owner: User | null;
+				kickResult: Awaited<ReturnType<typeof kickGuild>>;
+			}[] = [];
 			for (const [guildIndex, guild] of guilds.entries()) {
 				try {
 					const result = await kickGuild({
@@ -264,10 +287,16 @@ const command: BotCommand = {
 						});
 					}
 				} catch (error: unknown) {
-					logger.error("ADMIN", "Failed to leave guild during self-kick", { ...invoker, guildId: guild.id, error });
+					logger.error("ADMIN", "Failed to leave guild during self-kick", {
+						...invoker,
+						guildId: guild.id,
+						error,
+					});
 				}
 				await interaction
-					.editReply(`Processed ${guildIndex + 1} of ${guilds.length} guilds. Successfully left ${leftGuilds}.`)
+					.editReply(
+						`Processed ${guildIndex + 1} of ${guilds.length} guilds. Successfully left ${leftGuilds}.`,
+					)
 					.catch(() => undefined);
 			}
 			const totalPages = Math.max(1, successfulKicks.length);
@@ -276,7 +305,11 @@ const command: BotCommand = {
 					embeds: [
 						new EmbedBuilder()
 							.setColor("Orange")
-							.setAuthor({ name: `${config.BOT_NAME} Admin`, iconURL: config.BOT_PFP, url: config.BOT_WEBSITE })
+							.setAuthor({
+								name: `${config.BOT_NAME} Admin`,
+								iconURL: config.BOT_PFP,
+								url: config.BOT_WEBSITE,
+							})
 							.setTitle("Self-kick completed")
 							.setDescription(`Left ${leftGuilds} of ${guilds.length} guilds.`)
 							.setFooter({ text: "Page 1 / 1" })
@@ -355,7 +388,11 @@ const command: BotCommand = {
 						{ name: "Content", value: blockQuote(message) },
 						{ name: "Guild", value: formatGuildMention(guild) },
 						{ name: "Channel", value: channelMention(channelId), inline: true },
-						{ name: "Channel type", value: ChannelType[channel.type] ?? String(channel.type), inline: true },
+						{
+							name: "Channel type",
+							value: ChannelType[channel.type] ?? String(channel.type),
+							inline: true,
+						},
 						{ name: "Message", value: sentMessage.messageUrl },
 					)
 					.setTimestamp();
@@ -388,12 +425,16 @@ const command: BotCommand = {
 						{ name: "Age", value: age, inline: true },
 						{
 							name: "Created at",
-							value: invite.createdTimestamp ? `<t:${Math.floor(invite.createdTimestamp / 1000)}:F>` : "Unknown",
+							value: invite.createdTimestamp
+								? `<t:${Math.floor(invite.createdTimestamp / 1000)}:F>`
+								: "Unknown",
 							inline: true,
 						},
 						{
 							name: "Expires at",
-							value: invite.expiresTimestamp ? `<t:${Math.floor(invite.expiresTimestamp / 1000)}:F>` : "Never",
+							value: invite.expiresTimestamp
+								? `<t:${Math.floor(invite.expiresTimestamp / 1000)}:F>`
+								: "Never",
 							inline: true,
 						},
 						{

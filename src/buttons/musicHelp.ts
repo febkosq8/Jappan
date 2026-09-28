@@ -1,7 +1,7 @@
 import type { ButtonInteraction } from "discord.js";
-import type { Config } from "../services/config.js";
-import type { ButtonData, ButtonModule } from "../services/buttonLoader.js";
 import { handleHelpCategory } from "../helpers/buttonCategory.js";
+import type { ButtonData, ButtonModule } from "../services/buttonLoader.js";
+import type { Config } from "../services/config.js";
 
 const buttonData = { id: "MusicHelp" } satisfies ButtonData;
 

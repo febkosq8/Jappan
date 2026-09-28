@@ -10,8 +10,8 @@ import {
 } from "discord.js";
 
 import type { BotCommand, BotCommandData } from "../helpers/command.js";
-import type { Config } from "../services/config.js";
 import { getAuditLogStatus, setAuditLog } from "../services/auditLog.js";
+import type { Config } from "../services/config.js";
 
 const commandData = {
 	name: "auditlog",
@@ -111,7 +111,9 @@ const command: BotCommand = {
 			if (
 				!botMember ||
 				!botMember.permissions.has(PermissionFlagsBits.ViewAuditLog) ||
-				!channel.permissionsFor(botMember)?.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages])
+				!channel
+					.permissionsFor(botMember)
+					?.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages])
 			) {
 				await interaction.editReply(
 					`⛔ I need ${underline("View Audit Log")}, ${underline("View Channel")}, and ${underline("Send Messages")} permissions to enable audit logging.`,
@@ -137,7 +139,9 @@ const command: BotCommand = {
 					channelId: null,
 					fullVerbosity: false,
 				}).catch(() => undefined);
-				await interaction.editReply("⛔ I could not send the confirmation message, so audit logging was not enabled.");
+				await interaction.editReply(
+					"⛔ I could not send the confirmation message, so audit logging was not enabled.",
+				);
 				return;
 			}
 		}

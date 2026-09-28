@@ -20,7 +20,11 @@ const command: BotCommand = {
 	data: new SlashCommandBuilder()
 		.setName(commandData.name)
 		.setDescription(commandData.description)
-		.setContexts([InteractionContextType.Guild, InteractionContextType.BotDM, InteractionContextType.PrivateChannel]),
+		.setContexts([
+			InteractionContextType.Guild,
+			InteractionContextType.BotDM,
+			InteractionContextType.PrivateChannel,
+		]),
 	execute: executePing,
 };
 

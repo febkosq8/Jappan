@@ -1,9 +1,9 @@
-import { EmbedBuilder, MessageFlags } from "discord.js";
 import type { ButtonInteraction } from "discord.js";
+import { EmbedBuilder, MessageFlags } from "discord.js";
 
+import type { CommandCategory } from "../services/commandLoader.js";
 import { getCommandId, getCommands } from "../services/commandLoader.js";
 import type { Config } from "../services/config.js";
-import type { CommandCategory } from "../services/commandLoader.js";
 
 export async function handleHelpCategory({
 	interaction,

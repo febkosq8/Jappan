@@ -1,3 +1,4 @@
+import type { Guild, GuildMember, Interaction, Message, User, VoiceState } from "discord.js";
 import {
 	EmbedBuilder,
 	PermissionFlagsBits,
@@ -5,12 +6,11 @@ import {
 	roleMention,
 	underline,
 } from "discord.js";
-import type { Guild, GuildMember, Interaction, Message, User, VoiceState } from "discord.js";
 
-import type { GuildDocument } from "../models/guild.js";
 import { formatUserMention } from "../helpers/discord.js";
-import GuildMemberStateModel, { type GuildMemberStateDocument } from "../models/guildMemberState.js";
 import { sendGuildMessage } from "../helpers/guildHelper.js";
+import type { GuildDocument } from "../models/guild.js";
+import GuildMemberStateModel, { type GuildMemberStateDocument } from "../models/guildMemberState.js";
 import { getCommandId } from "./commandLoader.js";
 import type { Config } from "./config.js";
 import { getGuildSettings } from "./guild.js";
@@ -53,7 +53,11 @@ export async function setLeveling({
 
 export async function getLevelingStatus(guild: Guild): Promise<LevelingStatus> {
 	const storedGuildData = await getGuildSettings({ guild });
-	return { guildId: storedGuildData.guildId, guildName: storedGuildData.guildName, leveling: storedGuildData.leveling };
+	return {
+		guildId: storedGuildData.guildId,
+		guildName: storedGuildData.guildName,
+		leveling: storedGuildData.leveling,
+	};
 }
 
 async function getEnabledLevelingSettings(guild: Guild): Promise<GuildDocument | null> {
@@ -109,7 +113,13 @@ export async function handleLevelingInteraction(interaction: Interaction): Promi
 				: 1;
 		const points = Math.max(1, Math.min(activityLength, 12));
 		const member = await interaction.guild.members.fetch(interaction.user.id);
-		await awardLevelingPoints({ guild: interaction.guild, user: interaction.user, member, points, storedGuildData });
+		await awardLevelingPoints({
+			guild: interaction.guild,
+			user: interaction.user,
+			member,
+			points,
+			storedGuildData,
+		});
 	} catch (error: unknown) {
 		logger.error("DISCORD", "Failed to award leveling points for interaction", {
 			guildId: interaction.guild.id,

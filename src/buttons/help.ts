@@ -1,9 +1,9 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, MessageFlags } from "discord.js";
 import type { ButtonInteraction } from "discord.js";
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, MessageFlags } from "discord.js";
 
-import type { Config } from "../services/config.js";
 import type { ButtonData, ButtonModule } from "../services/buttonLoader.js";
 import { getCommands } from "../services/commandLoader.js";
+import type { Config } from "../services/config.js";
 
 const buttonData = { id: "Help" } satisfies ButtonData;
 

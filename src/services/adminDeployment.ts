@@ -1,8 +1,10 @@
 import type { Guild, Message } from "discord.js";
+import { EmbedBuilder, channelMention } from "discord.js";
 
+import { formatGuildMention } from "../helpers/discord.js";
+import { isAdminUser } from "./adminGuild.js";
 import { getGuildCommands } from "./commandLoader.js";
 import type { Config } from "./config.js";
-import { isAdminUser } from "./adminGuild.js";
 import { logger } from "./logger.js";
 
 const deploymentCommands = new Set(["deploy", "undeployguild"]);
@@ -22,6 +24,40 @@ async function setGuildCommands(guild: Guild, shouldDeploy: boolean): Promise<nu
 	return registeredCommands.size;
 }
 
+function createDeploymentEmbed(message: Message, config: Config, command: string, status: string): EmbedBuilder {
+	return new EmbedBuilder()
+		.setColor("Orange")
+		.setAuthor({ name: config.BOT_NAME, iconURL: config.BOT_PFP, url: config.BOT_WEBSITE })
+		.setTitle("Guild command deployment results")
+		.addFields(
+			{ name: "Command", value: `\`!${command}\``, inline: true },
+			{ name: "Status", value: status, inline: true },
+			{
+				name: "Invoked guild",
+				value: message.guild ? formatGuildMention(message.guild) : "Direct message",
+				inline: true,
+			},
+			{
+				name: "Invoked channel",
+				value: message.guildId ? channelMention(message.channelId) : "Direct message",
+				inline: true,
+			},
+		)
+		.setTimestamp();
+}
+
+async function sendDeploymentResponse(
+	message: Message,
+	config: Config,
+	command: string,
+	status: string,
+): Promise<void> {
+	await message.author
+		.send({ embeds: [createDeploymentEmbed(message, config, command, status)] })
+		.catch(() => undefined);
+	await message.delete().catch(() => undefined);
+}
+
 export async function handleAdminDeploymentMessage(message: Message, config: Config): Promise<boolean> {
 	if (message.author.bot) {
 		return false;
@@ -39,15 +75,20 @@ export async function handleAdminDeploymentMessage(message: Message, config: Con
 			userId: message.author.id,
 			guildId: message.guildId,
 		});
-		await message.reply("⛔ You are not authorized to use this deployment command.");
+		await sendDeploymentResponse(message, config, command, "⛔ Unauthorized");
 		return true;
 	}
 
 	try {
 		const shouldDeploy = command === "deploy";
 		const count = await setGuildCommands(message.guild, shouldDeploy);
-		await message.reply(
-			shouldDeploy ? `✅ Deployed ${count} guild command${count === 1 ? "" : "s"}.` : "✅ Removed all guild commands.",
+		await sendDeploymentResponse(
+			message,
+			config,
+			command,
+			shouldDeploy
+				? `✅ Deployed ${count} guild command${count === 1 ? "" : "s"}`
+				: "✅ Removed all guild commands",
 		);
 		logger.info("ADMIN", "Guild command deployment updated by message", {
 			command,
@@ -65,7 +106,7 @@ export async function handleAdminDeploymentMessage(message: Message, config: Con
 			guildId: message.guild.id,
 			error,
 		});
-		await message.reply("⛔ Guild command deployment failed.");
+		await sendDeploymentResponse(message, config, command, "⛔ Failed");
 		return true;
 	}
 }

@@ -1,11 +1,11 @@
-import { MessageFlags, quote, underline } from "discord.js";
 import type { ChatInputCommandInteraction } from "discord.js";
+import { MessageFlags, underline } from "discord.js";
 
+import { getMissingBotPermissions } from "../helpers/shared/permissions.js";
 import { getCommand } from "../services/commandLoader.js";
 import type { Config } from "../services/config.js";
 import { isDatabaseConnected } from "../services/database.js";
 import { logger } from "../services/logger.js";
-import { getMissingBotPermissions } from "../helpers/shared/permissions.js";
 
 export async function handleSlashCommandInteraction({
 	interaction,

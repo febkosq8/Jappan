@@ -1,15 +1,3 @@
-import { randomUUID } from "node:crypto";
-import {
-	AuditLogEvent,
-	ChannelType,
-	EmbedBuilder,
-	OverwriteType,
-	PermissionsBitField,
-	VideoQualityMode,
-	blockQuote,
-	roleMention,
-	userMention,
-} from "discord.js";
 import type {
 	APIEmbed,
 	Guild,
@@ -23,6 +11,18 @@ import type {
 	ThreadChannel,
 	User,
 } from "discord.js";
+import {
+	AuditLogEvent,
+	ChannelType,
+	EmbedBuilder,
+	OverwriteType,
+	PermissionsBitField,
+	VideoQualityMode,
+	blockQuote,
+	roleMention,
+	userMention,
+} from "discord.js";
+import { randomUUID } from "node:crypto";
 
 import { formatChannelMention, formatRoleMention, formatUserMention } from "./discord.js";
 import { splitString } from "./string.js";
@@ -361,7 +361,8 @@ export function getProfileChangeResponse(
 		.filter((role): role is Role => Boolean(role));
 	const rolesChanged = addedRoleIds.length > 0 || removedRoleIds.length > 0;
 	const timeoutChanged = Boolean(
-		isMemberProfile && oldMember.communicationDisabledUntilTimestamp !== newMember.communicationDisabledUntilTimestamp,
+		isMemberProfile &&
+		oldMember.communicationDisabledUntilTimestamp !== newMember.communicationDisabledUntilTimestamp,
 	);
 	const timeoutChangeLabel = getChangeLabel(
 		oldMember.communicationDisabledUntilTimestamp,

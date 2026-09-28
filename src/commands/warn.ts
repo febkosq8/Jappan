@@ -167,7 +167,9 @@ const command: BotCommand = {
 					!channel ||
 					!channel.isTextBased() ||
 					!botMember ||
-					!channel.permissionsFor(botMember)?.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages])
+					!channel
+						.permissionsFor(botMember)
+						?.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages])
 				) {
 					await interaction.editReply(
 						`⛔ I cannot use ${channelMention(selectedChannel.id)} for warning audit events.`,
@@ -214,7 +216,11 @@ const command: BotCommand = {
 								.setTitle("Warning Issued")
 								.addFields(
 									{ name: "User", value: `${user}`, inline: true },
-									{ name: "Total Warnings", value: `${storedMemberStateData.warnings.count}`, inline: true },
+									{
+										name: "Total Warnings",
+										value: `${storedMemberStateData.warnings.count}`,
+										inline: true,
+									},
 									{ name: "Reason", value: reason },
 									{ name: "Issued By", value: `${interaction.user}` },
 								)

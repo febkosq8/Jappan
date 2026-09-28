@@ -1,4 +1,3 @@
-import { channelMention, roleMention, userMention } from "discord.js";
 import type {
 	Guild,
 	GuildChannel,
@@ -9,6 +8,7 @@ import type {
 	ThreadChannel,
 	User,
 } from "discord.js";
+import { channelMention, roleMention, userMention } from "discord.js";
 
 export function formatUserMention(user: User | PartialUser | GuildMember | PartialGuildMember): string {
 	const userId = user.id;

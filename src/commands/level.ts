@@ -59,9 +59,14 @@ const command: BotCommand = {
 				.setName("on")
 				.setDescription("Turn on the leveling system")
 				.addIntegerOption((option) =>
-					option.setName("threshold").setDescription("Optional points required for the reward role").setMinValue(1),
+					option
+						.setName("threshold")
+						.setDescription("Optional points required for the reward role")
+						.setMinValue(1),
 				)
-				.addRoleOption((option) => option.setName("role").setDescription("Optional role awarded at the threshold")),
+				.addRoleOption((option) =>
+					option.setName("role").setDescription("Optional role awarded at the threshold"),
+				),
 		)
 		.addSubcommand((subcommand) => subcommand.setName("off").setDescription("Turn off the leveling system"))
 		.addSubcommand((subcommand) => subcommand.setName("check").setDescription("Check the leveling status"))
@@ -93,7 +98,9 @@ const command: BotCommand = {
 
 				const selectedRole = await interaction.guild.roles.fetch(role.id);
 				if (!selectedRole) {
-					await interaction.editReply(`⛔ The selected reward role ${roleMention(role.id)} could not be found.`);
+					await interaction.editReply(
+						`⛔ The selected reward role ${roleMention(role.id)} could not be found.`,
+					);
 					return;
 				}
 				if (selectedRole.id === interaction.guild.id) {

@@ -1,10 +1,10 @@
-import { EmbedBuilder, chatInputApplicationCommandMention } from "discord.js";
 import type { Guild as DiscordGuild } from "discord.js";
+import { EmbedBuilder, chatInputApplicationCommandMention } from "discord.js";
 
-import GuildModel, { type GuildDocument } from "../models/guild.js";
 import { sendGuildMessage } from "../helpers/guildHelper.js";
-import { getConfig } from "./config.js";
+import GuildModel, { type GuildDocument } from "../models/guild.js";
 import { getCommandId } from "./commandLoader.js";
+import { getConfig } from "./config.js";
 import { logger } from "./logger.js";
 
 export interface GuildSettingsOptions {
@@ -42,7 +42,9 @@ export async function initializeGuild(guild: DiscordGuild): Promise<void> {
 		});
 
 		const helpCommandId = getCommandId("help");
-		const helpCommand = helpCommandId ? chatInputApplicationCommandMention("help", helpCommandId) : "the command menu";
+		const helpCommand = helpCommandId
+			? chatInputApplicationCommandMention("help", helpCommandId)
+			: "the command menu";
 		const config = getConfig();
 		const welcomeEmbed = new EmbedBuilder()
 			.setColor("Orange")

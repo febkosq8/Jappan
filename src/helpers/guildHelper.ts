@@ -1,8 +1,8 @@
-import { PermissionFlagsBits } from "discord.js";
 import type { Guild, MessageCreateOptions } from "discord.js";
+import { PermissionFlagsBits } from "discord.js";
 
-import type { LogDetails } from "./logger.js";
 import { logger } from "../services/logger.js";
+import type { LogDetails } from "./logger.js";
 
 export interface SendGuildMessageOptions {
 	guild: Guild;

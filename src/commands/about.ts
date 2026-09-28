@@ -38,7 +38,10 @@ const command: BotCommand = {
 		const buttons = new ActionRowBuilder<ButtonBuilder>().addComponents(
 			new ButtonBuilder().setCustomId("Ping").setLabel("Ping Stats").setStyle(ButtonStyle.Primary),
 			new ButtonBuilder().setCustomId("Help").setLabel("Help Docs").setStyle(ButtonStyle.Primary),
-			new ButtonBuilder().setLabel("Status Updates").setURL("https://discord.gg/3mRbVCjvmz").setStyle(ButtonStyle.Link),
+			new ButtonBuilder()
+				.setLabel("Status Updates")
+				.setURL("https://discord.gg/3mRbVCjvmz")
+				.setStyle(ButtonStyle.Link),
 			new ButtonBuilder().setLabel("Website").setURL(config.BOT_WEBSITE).setStyle(ButtonStyle.Link),
 		);
 		const embed = new EmbedBuilder()

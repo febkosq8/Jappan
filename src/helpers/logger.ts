@@ -4,14 +4,7 @@ import { getConfig } from "../services/config.js";
 export type LogDetails = Record<string, unknown>;
 export type LogLevel = "debug" | "info" | "success" | "warn" | "error";
 export type LogCategory =
-	| "AUTOCOMPLETE"
-	| "ADMIN"
-	| "BOT"
-	| "BUTTONS"
-	| "DATABASE"
-	| "DISCORD"
-	| "DOPPELGANGER"
-	| "SLASH_COMMANDS";
+	"AUTOCOMPLETE" | "ADMIN" | "BOT" | "BUTTONS" | "DATABASE" | "DISCORD" | "DOPPELGANGER" | "SLASH_COMMANDS";
 
 const levelColors: Record<LogLevel, (value: string) => string> = {
 	debug: gray,

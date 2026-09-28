@@ -1,5 +1,5 @@
-import { EmbedBuilder, MessageFlags } from "discord.js";
 import type { ButtonInteraction, ChatInputCommandInteraction } from "discord.js";
+import { EmbedBuilder, MessageFlags } from "discord.js";
 
 import type { Config } from "../../services/config.js";
 

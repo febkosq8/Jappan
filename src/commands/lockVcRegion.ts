@@ -11,13 +11,13 @@ import {
 } from "discord.js";
 
 import type { BotCommand, BotCommandData } from "../helpers/command.js";
+import { getCommandId } from "../services/commandLoader.js";
 import {
 	addVoiceRegionLock,
 	getVoiceRegionIds,
 	getVoiceRegionLocks,
 	removeVoiceRegionLock,
 } from "../services/voiceRegion.js";
-import { getCommandId } from "../services/commandLoader.js";
 
 const commandData = {
 	name: "lock-vc-region",
@@ -45,7 +45,11 @@ const command: BotCommand = {
 				)
 				.addUserOption((option) => option.setName("user").setDescription("User to watch").setRequired(true))
 				.addStringOption((option) =>
-					option.setName("region").setDescription("Voice region to use").setAutocomplete(true).setRequired(true),
+					option
+						.setName("region")
+						.setDescription("Voice region to use")
+						.setAutocomplete(true)
+						.setRequired(true),
 				),
 		)
 		.addSubcommand((subcommand) => subcommand.setName("check").setDescription("List active voice region locks"))
@@ -53,7 +57,9 @@ const command: BotCommand = {
 			subcommand
 				.setName("delete")
 				.setDescription("Delete a user's voice region lock")
-				.addUserOption((option) => option.setName("user").setDescription("User to stop watching").setRequired(true)),
+				.addUserOption((option) =>
+					option.setName("user").setDescription("User to stop watching").setRequired(true),
+				),
 		)
 		.setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
 		.setContexts([InteractionContextType.Guild]),
@@ -115,7 +121,10 @@ const command: BotCommand = {
 		} else {
 			embed.setDescription(
 				locks
-					.map((lock) => `${userMention(lock.userId)} in ${channelMention(lock.channelId)} -> \`${lock.region}\``)
+					.map(
+						(lock) =>
+							`${userMention(lock.userId)} in ${channelMention(lock.channelId)} -> \`${lock.region}\``,
+					)
 					.join("\n"),
 			);
 		}

@@ -1,12 +1,12 @@
-import { EmbedBuilder, channelMention, chatInputApplicationCommandMention } from "discord.js";
 import type { Guild, GuildBasedChannel, GuildMember, PartialGuildMember } from "discord.js";
+import { EmbedBuilder, channelMention, chatInputApplicationCommandMention } from "discord.js";
 
-import type { GuildDocument } from "../models/guild.js";
 import { formatUserMention } from "../helpers/discord.js";
+import { sendGuildMessage } from "../helpers/guildHelper.js";
+import type { GuildDocument } from "../models/guild.js";
 import { getCommandId } from "./commandLoader.js";
 import { getConfig } from "./config.js";
 import { getGuildSettings } from "./guild.js";
-import { sendGuildMessage } from "../helpers/guildHelper.js";
 import { logger } from "./logger.js";
 
 export type MemberAnnouncementEvent = "join" | "leave" | "both";

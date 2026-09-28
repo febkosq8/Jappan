@@ -1,42 +1,42 @@
-import { ActivityType, Events, InteractionType, PresenceUpdateStatus } from "discord.js";
 import type { Interaction } from "discord.js";
+import { ActivityType, Events, InteractionType, PresenceUpdateStatus } from "discord.js";
 
 import { getClient } from "../bot.js";
-import { getCommands, getGlobalCommands, setRegisteredCommandIds } from "../services/commandLoader.js";
-import { getConfig } from "../services/config.js";
-import { initializeGuild } from "../services/guild.js";
-import { logger } from "../services/logger.js";
-import { handleAutocompleteInteraction } from "./autocomplete.js";
-import { handleButtonInteraction } from "./button.js";
-import { handleSlashCommandInteraction } from "./slashCommand.js";
-import { handleMemberJoinAnnouncement, handleMemberLeaveAnnouncement } from "../services/memberAnnouncement.js";
-import { handleLevelingInteraction, handleLevelingMessage, handleLevelingVoiceState } from "../services/leveling.js";
-import { handleVoiceRegionState } from "../services/voiceRegion.js";
 import { handleAdminDeploymentMessage } from "../services/adminDeployment.js";
 import {
+	handleAuditChannelCreate,
+	handleAuditChannelDelete,
+	handleAuditChannelUpdate,
+	handleAuditInviteCreate,
+	handleAuditInviteDelete,
+	handleAuditLogEntryCreate,
 	handleAuditMemberAdd,
 	handleAuditMemberBanAdd,
 	handleAuditMemberBanRemove,
 	handleAuditMemberRemove,
 	handleAuditMemberUpdate,
-	handleAuditChannelCreate,
-	handleAuditChannelDelete,
-	handleAuditChannelUpdate,
+	handleAuditMessageBulkDelete,
+	handleAuditMessageDelete,
+	handleAuditMessageUpdate,
 	handleAuditRoleCreate,
 	handleAuditRoleDelete,
 	handleAuditRoleUpdate,
 	handleAuditThreadCreate,
 	handleAuditThreadDelete,
 	handleAuditThreadUpdate,
-	handleAuditInviteCreate,
-	handleAuditInviteDelete,
-	handleAuditLogEntryCreate,
-	handleAuditMessageBulkDelete,
-	handleAuditMessageDelete,
-	handleAuditMessageUpdate,
 	handleAuditUserUpdate,
 	handleAuditVoiceState,
 } from "../services/auditLog.js";
+import { getCommands, getGlobalCommands, setRegisteredCommandIds } from "../services/commandLoader.js";
+import { getConfig } from "../services/config.js";
+import { initializeGuild } from "../services/guild.js";
+import { handleLevelingInteraction, handleLevelingMessage, handleLevelingVoiceState } from "../services/leveling.js";
+import { logger } from "../services/logger.js";
+import { handleMemberJoinAnnouncement, handleMemberLeaveAnnouncement } from "../services/memberAnnouncement.js";
+import { handleVoiceRegionState } from "../services/voiceRegion.js";
+import { handleAutocompleteInteraction } from "./autocomplete.js";
+import { handleButtonInteraction } from "./button.js";
+import { handleSlashCommandInteraction } from "./slashCommand.js";
 
 export function registerDiscordHandlers(): void {
 	const client = getClient();

@@ -1,11 +1,11 @@
-import { EmbedBuilder, PermissionFlagsBits, blockQuote, userMention } from "discord.js";
 import type { Client, Guild, GuildBasedChannel, Invite } from "discord.js";
+import { EmbedBuilder, PermissionFlagsBits, blockQuote, userMention } from "discord.js";
 
-import type { Config } from "./config.js";
 import { formatChannelMention, formatGuildMention, formatUserMention } from "../helpers/discord.js";
-import { logger } from "./logger.js";
-import { sendGuildMessage } from "../helpers/guildHelper.js";
 import type { SentGuildMessage } from "../helpers/guildHelper.js";
+import { sendGuildMessage } from "../helpers/guildHelper.js";
+import type { Config } from "./config.js";
+import { logger } from "./logger.js";
 
 export interface AdminInvoker {
 	userName: string;
@@ -64,7 +64,10 @@ export async function getGuildList(client: Client, config: Config): Promise<Embe
 					{ name: "Owner", value: owner ? formatUserMention(owner) : userMention(guild.ownerId) },
 					{
 						name: "Permissions",
-						value: permissions.length > 0 ? permissions.map((permission) => `\`${permission}\``).join(", ") : "None",
+						value:
+							permissions.length > 0
+								? permissions.map((permission) => `\`${permission}\``).join(", ")
+								: "None",
 					},
 				)
 				.setTimestamp()
@@ -188,7 +191,9 @@ export async function getGuildInvite(guild: Guild): Promise<Invite> {
 			return false;
 		}
 		const channelPermissions = channel.permissionsFor(botMember);
-		return channelPermissions?.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.CreateInstantInvite]) ?? false;
+		return (
+			channelPermissions?.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.CreateInstantInvite]) ?? false
+		);
 	});
 	if (!inviteChannel || !("createInvite" in inviteChannel)) {
 		throw new Error("No channel is available where the bot can create an invite.");
@@ -196,7 +201,11 @@ export async function getGuildInvite(guild: Guild): Promise<Invite> {
 	const invite = await inviteChannel
 		.createInvite({ maxAge: 12 * 60 * 60, maxUses: 0, unique: false })
 		.catch((error: unknown) => {
-			logger.warn("ADMIN", "Could not create guild invite", { guildId: guild.id, channelId: inviteChannel.id, error });
+			logger.warn("ADMIN", "Could not create guild invite", {
+				guildId: guild.id,
+				channelId: inviteChannel.id,
+				error,
+			});
 			throw new Error("Could not create an invite in that guild.");
 		});
 	return invite;

@@ -1,7 +1,7 @@
-import { join } from "node:path";
-import { readdir } from "node:fs/promises";
-import { fileURLToPath, pathToFileURL } from "node:url";
 import type { ButtonInteraction } from "discord.js";
+import { readdir } from "node:fs/promises";
+import { join } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import type { Config } from "./config.js";
 

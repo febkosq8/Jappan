@@ -1,4 +1,3 @@
-import { SlashCommandBuilder } from "discord.js";
 import type {
 	AutocompleteInteraction,
 	ChatInputCommandInteraction,
@@ -6,6 +5,7 @@ import type {
 	SlashCommandOptionsOnlyBuilder,
 	SlashCommandSubcommandsOnlyBuilder,
 } from "discord.js";
+import { SlashCommandBuilder } from "discord.js";
 import type { Config } from "../services/config.js";
 
 export type CommandCategory = "general" | "music" | "level" | "fun" | "moderator" | "admin";

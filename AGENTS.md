@@ -193,5 +193,6 @@ Fallback capability must remain available when slash commands are unavailable. A
 - Preserve public behavior unless the rewrite plan explicitly allows an improvement.
 - Use structured logging with context instead of direct console output.
 - Add tests proportional to behavioral risk.
+- Do not mark items as completed in this guide without explicit user confirmation.
 - Do not commit changes automatically.
 - After edits, run the narrowest relevant test or typecheck, then run the full typecheck before handoff.
