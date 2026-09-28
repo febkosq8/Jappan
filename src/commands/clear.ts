@@ -9,6 +9,7 @@ import {
 } from "discord.js";
 
 import { formatChannelMention, formatUserMention } from "../helpers/discord.js";
+import { sendResponse } from "../helpers/response.js";
 import type { BotCommand, BotCommandData } from "../services/commandLoader.js";
 import { logger } from "../services/logger.js";
 
@@ -212,9 +213,10 @@ const command: BotCommand = {
 			};
 			const sendOverflowChannelStats = async (isComplete: boolean) => {
 				const totalPages = Math.ceil(progressState.channelStats.length / 10) + 1;
-				for (const embed of createChannelStatsEmbeds(totalPages, isComplete).slice(5)) {
-					await interaction.followUp({ flags: MessageFlags.Ephemeral, embeds: [embed] });
-				}
+				await sendResponse(interaction, {
+					flags: MessageFlags.Ephemeral,
+					embeds: createChannelStatsEmbeds(totalPages, isComplete).slice(5),
+				});
 			};
 			const createProgressEmbed = (step: string, currentChannelMention: string, totalPages: number) =>
 				new EmbedBuilder()

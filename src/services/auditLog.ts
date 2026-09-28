@@ -29,8 +29,6 @@ import {
 } from "discord.js";
 
 import {
-	MAX_EMBEDS_PER_MESSAGE,
-	MAX_EMBED_CHARACTERS_PER_MESSAGE,
 	addAuditEntryDetails,
 	addAvatarChange,
 	createAuditEventId,
@@ -41,7 +39,6 @@ import {
 	getAuditEntryTargetLabel,
 	getChannelTypeLabel,
 	getComparableEmbed,
-	getEmbedCharacterCount,
 	getRecentAuditEntryByTargetId,
 	getPermissionOverwriteChangeDetails,
 	getProfileChangeResponse,
@@ -53,6 +50,7 @@ import {
 } from "../helpers/auditLog.js";
 import { formatChannelMention, formatRoleMention, formatUserMention } from "../helpers/discord.js";
 import { sendGuildMessage } from "../helpers/guildHelper.js";
+import { sendResponse } from "../helpers/response.js";
 import { splitString, trimString } from "../helpers/string.js";
 import type { GuildDocument } from "../models/guild.js";
 import { getCommandId } from "./commandLoader.js";
@@ -117,38 +115,9 @@ async function postAuditEvent(guild: Guild, content: MessageCreateOptions): Prom
 		return null;
 	}
 
-	const embeds: Array<APIEmbed | JSONEncodable<APIEmbed>> = content.embeds ? [...content.embeds] : [];
 	let firstMessage: Message | null = null;
 	try {
-		for (let start = 0; start < Math.max(embeds.length, 1);) {
-			let end = start;
-			let pageCharacterCount = 0;
-			while (end < embeds.length && end - start < MAX_EMBEDS_PER_MESSAGE) {
-				const embed = embeds[end];
-				if (!embed) {
-					break;
-				}
-				const embedCharacterCount = getEmbedCharacterCount(embed);
-				if (end > start && pageCharacterCount + embedCharacterCount > MAX_EMBED_CHARACTERS_PER_MESSAGE) {
-					break;
-				}
-				pageCharacterCount += embedCharacterCount;
-				end += 1;
-			}
-			if (end === start) {
-				end += 1;
-			}
-			const pageContent: MessageCreateOptions = {
-				...content,
-				embeds: embeds.slice(start, end),
-			};
-			if (firstMessage) {
-				pageContent.reply = { messageReference: firstMessage.id };
-			}
-			const sentMessage = await channel.send(pageContent);
-			firstMessage ??= sentMessage;
-			start = end;
-		}
+		firstMessage = await sendResponse(channel, content, { replyToFirstMessage: true });
 	} catch (error: unknown) {
 		logger.error("DISCORD", "Failed to send audit event", {
 			guildId: guild.id,

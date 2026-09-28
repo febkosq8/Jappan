@@ -189,6 +189,7 @@ Fallback capability must remain available when slash commands are unavailable. A
 ## Working Rules
 
 - Prefer existing local patterns and services over new abstractions.
+- Use a destructured options object for functions with three or more parameters.
 - Keep changes focused and avoid unrelated refactors.
 - Preserve public behavior unless the rewrite plan explicitly allows an improvement.
 - Use structured logging with context instead of direct console output.

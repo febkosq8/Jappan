@@ -12,6 +12,7 @@ import {
 } from "discord.js";
 
 import type { BotCommand, BotCommandData } from "../../helpers/command.js";
+import { sendResponse } from "../../helpers/response.js";
 import { formatChannelMention, formatGuildMention, formatUserMention } from "../../helpers/discord.js";
 import {
 	getGuildChannel,
@@ -195,18 +196,11 @@ const command: BotCommand = {
 		const subcommand = interaction.options.getSubcommand();
 		if (subcommand === "list") {
 			const pages = await getGuildList(interaction.client, config);
-			const embedBatches = Array.from({ length: Math.ceil(pages.length / 10) }, (_, index) =>
-				pages.slice(index * 10, index * 10 + 10),
-			);
-			const firstBatch = embedBatches[0];
-			if (!firstBatch) {
+			if (pages.length === 0) {
 				await interaction.editReply("No guilds found.");
 				return;
 			}
-			await interaction.editReply({ embeds: firstBatch });
-			for (const embeds of embedBatches.slice(1)) {
-				await interaction.followUp({ embeds, flags: MessageFlags.Ephemeral });
-			}
+			await sendResponse(interaction, { embeds: pages, flags: MessageFlags.Ephemeral });
 			return;
 		}
 
@@ -340,12 +334,7 @@ const command: BotCommand = {
 			const selfKickEmbeds = successfulKicks.map(({ guild, owner, kickResult }, index) =>
 				createGuildLeftEmbed({ guild, config, owner, kickResult, pageNumber: index + 1, totalPages }),
 			);
-			await interaction.editReply({ embeds: selfKickEmbeds.slice(0, 10) });
-			for (const embeds of Array.from({ length: Math.ceil(selfKickEmbeds.length / 10) - 1 }, (_, index) =>
-				selfKickEmbeds.slice((index + 1) * 10, (index + 2) * 10),
-			)) {
-				await interaction.followUp({ embeds, flags: MessageFlags.Ephemeral });
-			}
+			await sendResponse(interaction, { embeds: selfKickEmbeds, flags: MessageFlags.Ephemeral });
 			return;
 		}
 

@@ -15,6 +15,7 @@ import {
 	type BotCommand,
 	type BotCommandData,
 } from "../../helpers/command.js";
+import { sendResponse } from "../../helpers/response.js";
 import { getCommands } from "../../services/commandLoader.js";
 import type { Config } from "../../services/config.js";
 import { isAdminUser } from "../../services/adminGuild.js";
@@ -170,13 +171,7 @@ const command: BotCommand = {
 			const globalCommands = await interaction.client.application.commands.fetch();
 			const guildCommands = await interaction.guild.commands.fetch();
 			const embeds = createCommandEmbeds({ config, globalCommands, guildCommands });
-			const [firstEmbed, ...remainingEmbeds] = embeds;
-			if (firstEmbed) {
-				await interaction.editReply({ embeds: [firstEmbed] });
-			}
-			for (const embed of remainingEmbeds) {
-				await interaction.followUp({ embeds: [embed], flags: MessageFlags.Ephemeral });
-			}
+			await sendResponse(interaction, { embeds, flags: MessageFlags.Ephemeral });
 			logger.info("ADMIN", "Deployment status inspected", {
 				userId: interaction.user.id,
 				userName: interaction.user.tag,
