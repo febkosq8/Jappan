@@ -117,11 +117,12 @@ async function postAuditEvent(guild: Guild, content: MessageCreateOptions): Prom
 
 	let firstMessage: Message | null = null;
 	try {
-		firstMessage = await sendResponse({
+		const sentMessages = await sendResponse({
 			destination: channel,
 			content,
 			options: { replyToFirstMessage: true },
 		});
+		firstMessage = sentMessages[0] ?? null;
 	} catch (error: unknown) {
 		logger.error("DISCORD", "Failed to send audit event", {
 			guildId: guild.id,

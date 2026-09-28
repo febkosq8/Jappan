@@ -23,8 +23,9 @@ export type ResponseDestination =
 			readonly deferred: boolean;
 			readonly replied: boolean;
 			readonly reply: (content: InteractionReplyOptions) => Promise<unknown>;
-			readonly editReply: (content: InteractionEditReplyOptions) => Promise<unknown>;
-			readonly followUp: (content: InteractionReplyOptions) => Promise<unknown>;
+			readonly fetchReply: () => Promise<Message>;
+			readonly editReply: (content: InteractionEditReplyOptions) => Promise<Message>;
+			readonly followUp: (content: InteractionReplyOptions) => Promise<Message>;
 	  };
 
 export interface SendResponseOptions {
@@ -71,34 +72,36 @@ export async function sendResponse({
 	destination: ResponseDestination;
 	content: ResponseContent;
 	options?: SendResponseOptions;
-}): Promise<Message | null> {
+}): Promise<Message[]> {
 	const pages = createResponsePages(content);
 	if ("send" in destination) {
-		let firstMessage: Message | null = null;
+		const messages: Message[] = [];
 		for (const page of pages) {
 			const pageContent =
-				options.replyToFirstMessage && firstMessage
-					? { ...page, reply: { messageReference: firstMessage.id } }
+				options.replyToFirstMessage && messages[0]
+					? { ...page, reply: { messageReference: messages[0].id } }
 					: page;
 			const message = await destination.send(pageContent as MessageCreateOptions);
-			firstMessage ??= message;
+			messages.push(message);
 		}
-		return firstMessage;
+		return messages;
 	}
 
 	const [firstPage, ...remainingPages] = pages;
 	if (!firstPage) {
-		return null;
+		return [];
 	}
+	const messages: Message[] = [];
 	if (destination.deferred) {
-		await destination.editReply(firstPage as InteractionEditReplyOptions);
+		messages.push(await destination.editReply(firstPage as InteractionEditReplyOptions));
 	} else if (destination.replied) {
-		await destination.followUp(firstPage as InteractionReplyOptions);
+		messages.push(await destination.followUp(firstPage as InteractionReplyOptions));
 	} else {
 		await destination.reply(firstPage as InteractionReplyOptions);
+		messages.push(await destination.fetchReply());
 	}
 	for (const page of remainingPages) {
-		await destination.followUp(page as InteractionReplyOptions);
+		messages.push(await destination.followUp(page as InteractionReplyOptions));
 	}
-	return null;
+	return messages;
 }
