@@ -16,7 +16,7 @@ export function formatUserMention(user: User | PartialUser | GuildMember | Parti
 	return `${userMention(userId)} (${userName}/${userId})`;
 }
 
-export function formatChannelMention(channel: GuildChannel | ThreadChannel): string {
+export function formatChannelMention(channel: Pick<GuildChannel | ThreadChannel, "id" | "name">): string {
 	const channelId = channel.id;
 	const channelName = channel.name;
 	return `${channelMention(channelId)} (${channelName}/${channelId})`;

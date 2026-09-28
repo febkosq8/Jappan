@@ -86,7 +86,10 @@ function createGuildLeftEmbed({
 			{
 				name: "Departure channel",
 				value: kickResult.departureMessage
-					? `${channelMention(kickResult.departureMessage.channelId)} (${kickResult.departureMessage.channelName})`
+					? formatChannelMention({
+							id: kickResult.departureMessage.channelId,
+							name: kickResult.departureMessage.channelName,
+						})
 					: "No message was posted.",
 				inline: true,
 			},
