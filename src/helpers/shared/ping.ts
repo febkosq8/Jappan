@@ -1,4 +1,4 @@
-import type { ButtonInteraction, ChatInputCommandInteraction, Message } from "discord.js";
+import type { ButtonInteraction, ChatInputCommandInteraction, Client, Message } from "discord.js";
 import { EmbedBuilder, MessageFlags, bold, italic } from "discord.js";
 
 import type { Config } from "../../services/config.js";
@@ -40,18 +40,25 @@ function formatLatencyValue(latency: LatencyDisplayValue): string {
 	return `${indicator} ${bold(value)}`;
 }
 
-export function calculatePing({
+export async function calculatePing({
 	interactionCreatedTimestamp,
 	replyCreatedTimestamp,
-	gatewayPing,
+	client,
+	waitTillReady = false,
 }: {
 	interactionCreatedTimestamp: number;
 	replyCreatedTimestamp: number;
-	gatewayPing: number;
-}): { botLatency: number; gatewayLatency: number } {
+	client: Client;
+	waitTillReady: boolean;
+}): Promise<{ botLatency: number; gatewayLatency: number }> {
+	const botLatency = replyCreatedTimestamp - interactionCreatedTimestamp;
+	while (waitTillReady && !client.isReady()) {
+		await new Promise((resolve) => setTimeout(resolve, 100));
+	}
+
 	return {
-		botLatency: replyCreatedTimestamp - interactionCreatedTimestamp,
-		gatewayLatency: gatewayPing,
+		botLatency,
+		gatewayLatency: client.ws.ping,
 	};
 }
 
@@ -93,10 +100,11 @@ export async function executePing({ interaction, message, config }: ExecutePingO
 	let botLatency: LatencyDisplayValue = "Calculating...";
 	let gatewayLatency: LatencyDisplayValue = "Calculating...";
 	if (isMessage(source)) {
-		({ botLatency, gatewayLatency } = calculatePing({
+		({ botLatency, gatewayLatency } = await calculatePing({
 			interactionCreatedTimestamp: source.createdTimestamp,
 			replyCreatedTimestamp: Date.now(),
-			gatewayPing: source.client.ws.ping,
+			client: source.client,
+			waitTillReady: true,
 		}));
 		await source.author.send({ embeds: [createPingEmbed({ config, botLatency, gatewayLatency })] });
 		return { botLatency, gatewayLatency };
@@ -105,10 +113,11 @@ export async function executePing({ interaction, message, config }: ExecutePingO
 	let replyEmbed = createPingEmbed({ config, botLatency, gatewayLatency });
 	await source.deferReply({ flags: MessageFlags.Ephemeral });
 	const reply = await source.editReply({ embeds: [replyEmbed] });
-	({ botLatency, gatewayLatency } = calculatePing({
+	({ botLatency, gatewayLatency } = await calculatePing({
 		interactionCreatedTimestamp: source.createdTimestamp,
 		replyCreatedTimestamp: reply.createdTimestamp,
-		gatewayPing: source.client.ws.ping,
+		client: source.client,
+		waitTillReady: false,
 	}));
 	replyEmbed = createPingEmbed({ config, botLatency, gatewayLatency });
 	await source.editReply({ embeds: [replyEmbed] });
