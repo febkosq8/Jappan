@@ -37,6 +37,7 @@ Required environment values are `DISCORD_TOKEN` and `DB_URL`. Optional configura
 - `ADMIN_USER_IDS`, optional semicolon-separated Discord user IDs authorized for admin commands
 - `LOG_TIMESTAMP`, default `false`
 - `ENABLE_EVENTS_DEBUG`, default `false`; semicolon-separated event names such as `MessageCreate;MessageUpdate`
+- `SHUTDOWN_THREASHOLD`, default `3`; fatal process shutdown after this many uncaught exceptions or unhandled rejections
 
 Set `ADMIN_USER_IDS=123456789012345678;234567890123456789` to authorize multiple admin users.
 Set `ENABLE_EVENTS_DEBUG=MessageCreate;MessageUpdate` to log only those extended Discord events through the shared logger.
@@ -137,6 +138,7 @@ The rewrite currently has:
 - Atomic leveling point and warning count updates to prevent concurrent read-modify-save loss.
 - Per-member serialization of leveling threshold role work to prevent duplicate concurrent assignments.
 - Discord shard disconnect, reconnect, and recovery event handling with structured logging.
+- Configurable process failure threshold for uncaught exceptions and unhandled rejections with graceful shutdown.
 - Voice-channel region locking through `/lock-vc-region`, including per-member persisted rules, region autocomplete, and automatic restore on leave.
 - Join/leave announcements with unavailable-channel recovery and administrator notification through fallback channels.
 - Idempotent guild-create initialization with a permission-aware welcome message and `/help` guidance.
@@ -164,10 +166,6 @@ The following legacy capabilities are not implemented in the rewrite:
 - User playlist persistence for the music system.
 
 Fallback capability must remain available when slash commands are unavailable. Any feature removal requires owner approval and an equivalent supported mechanism.
-
-### Priority 1: Runtime Correctness
-
-- Add process-level `uncaughtException` and `unhandledRejection` handling.
 
 ### Priority 2: Reliability and Verification
 

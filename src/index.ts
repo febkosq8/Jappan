@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { startBot as startDiscordBot } from "./bot.js";
-import { loadConfig } from "./services/config.js";
+import { getConfig, loadConfig } from "./services/config.js";
 import { connectDatabase } from "./services/database.js";
 import { logger } from "./services/logger.js";
 import { handleShutdown } from "./services/shutdown.js";
