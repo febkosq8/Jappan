@@ -10,6 +10,7 @@ export interface Config {
 	readonly ADMIN_USER_IDS: readonly string[];
 	readonly LOG_TIMESTAMP: boolean;
 	readonly ENABLE_EVENTS_DEBUG: readonly string[];
+	readonly SHUTDOWN_THREASHOLD: number;
 }
 
 let loadedConfig: Config | undefined;
@@ -22,6 +23,7 @@ const configTemplate: Partial<Record<keyof Config, string>> = {
 	ADMIN_USER_IDS: "",
 	LOG_TIMESTAMP: "false",
 	ENABLE_EVENTS_DEBUG: "false",
+	SHUTDOWN_THREASHOLD: "3",
 };
 
 function readConfigValue(name: keyof Config, required = false): string {
@@ -61,6 +63,11 @@ export function loadConfig(): Config {
 					.split(";")
 					.map((eventName) => eventName.trim())
 					.filter(Boolean);
+	const shutdownThresholdValue = Number.parseInt(readConfigValue("SHUTDOWN_THREASHOLD"), 10);
+	if (!Number.isInteger(shutdownThresholdValue) || shutdownThresholdValue < 1) {
+		throw new Error("SHUTDOWN_THREASHOLD must be a positive integer");
+	}
+	const SHUTDOWN_THREASHOLD = shutdownThresholdValue;
 	loadedConfig = {
 		DISCORD_TOKEN,
 		ENVIRONMENT,
@@ -71,6 +78,7 @@ export function loadConfig(): Config {
 		ADMIN_USER_IDS,
 		LOG_TIMESTAMP,
 		ENABLE_EVENTS_DEBUG,
+		SHUTDOWN_THREASHOLD,
 	};
 	if (ADMIN_USER_IDS.length > 0) {
 		writeLog({

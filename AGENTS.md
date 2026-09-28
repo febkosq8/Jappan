@@ -136,6 +136,7 @@ The rewrite currently has:
 - Leveling from messages, interactions, and voice activity, including reward-role validation, recovery, hierarchy checks, and leaderboard retrieval.
 - Atomic leveling point and warning count updates to prevent concurrent read-modify-save loss.
 - Per-member serialization of leveling threshold role work to prevent duplicate concurrent assignments.
+- Discord shard disconnect, reconnect, and recovery event handling with structured logging.
 - Voice-channel region locking through `/lock-vc-region`, including per-member persisted rules, region autocomplete, and automatic restore on leave.
 - Join/leave announcements with unavailable-channel recovery and administrator notification through fallback channels.
 - Idempotent guild-create initialization with a permission-aware welcome message and `/help` guidance.
@@ -166,7 +167,6 @@ Fallback capability must remain available when slash commands are unavailable. A
 
 ### Priority 1: Runtime Correctness
 
-- Add Discord reconnect/disconnect handling.
 - Add process-level `uncaughtException` and `unhandledRejection` handling.
 
 ### Priority 2: Reliability and Verification

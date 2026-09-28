@@ -91,6 +91,25 @@ export function registerDiscordHandlers(): void {
 		});
 	});
 
+	client.on(Events.ShardDisconnect, (closeEvent, shardId) => {
+		logger.warn("DISCORD", "Discord shard disconnected", {
+			shardId,
+			code: closeEvent.code,
+			reason: closeEvent.reason,
+		});
+	});
+
+	client.on(Events.ShardReconnecting, (shardId) => {
+		logger.info("DISCORD", "Discord shard reconnecting", { shardId });
+	});
+
+	client.on(Events.ShardReady, (shardId, unavailableGuilds) => {
+		logger.success("DISCORD", "Discord shard ready", {
+			shardId,
+			unavailableGuilds: unavailableGuilds?.size ?? 0,
+		});
+	});
+
 	client.on(Events.InteractionCreate, (interaction: Interaction) => {
 		logger.info("DISCORD", "Interaction received", {
 			type: InteractionType[interaction.type],
