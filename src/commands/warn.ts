@@ -159,6 +159,10 @@ const command: BotCommand = {
 		}
 
 		const subcommand = interaction.options.getSubcommand();
+		if (!["setup", "issue", "check", "override"].includes(subcommand)) {
+			throw new Error(`Unsupported warn subcommand: ${subcommand}`);
+		}
+
 		if (subcommand === "setup") {
 			const timeoutThreshold = interaction.options.getInteger("timeout");
 			const timeoutDurationHours = interaction.options.getInteger("timeoutduration");
@@ -284,6 +288,7 @@ const command: BotCommand = {
 			await interaction.editReply(
 				`Warning issued to ${user}. Total warnings: ${storedMemberStateData.warnings.count}.`,
 			);
+			return;
 		}
 
 		if (subcommand === "check") {
@@ -320,6 +325,7 @@ const command: BotCommand = {
 				count,
 			});
 			await interaction.editReply(`Warning count for ${user} is now ${count}.`);
+			return;
 		}
 	},
 };

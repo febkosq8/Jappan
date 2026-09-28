@@ -165,6 +165,9 @@ const command: BotCommand = {
 			await interaction.editReply("⛔ This command can only be used in a guild.");
 			return;
 		}
+		if (interaction.options.getSubcommand() !== "check-deploy") {
+			throw new Error(`Unsupported admin-deploy subcommand: ${interaction.options.getSubcommand()}`);
+		}
 
 		try {
 			const globalCommands = await interaction.client.application.commands.fetch();

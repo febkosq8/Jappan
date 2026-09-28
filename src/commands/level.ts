@@ -90,7 +90,8 @@ const command: BotCommand = {
 			return;
 		}
 
-		if (interaction.options.getSubcommand() === "on") {
+		const subcommand = interaction.options.getSubcommand();
+		if (subcommand === "on") {
 			const threshold = interaction.options.getInteger("threshold");
 			const role = interaction.options.getRole("role");
 			if ((threshold === null) !== (role === null)) {
@@ -140,7 +141,7 @@ const command: BotCommand = {
 			});
 		}
 
-		if (interaction.options.getSubcommand() === "off") {
+		if (subcommand === "off") {
 			await setLeveling({
 				guildId: interaction.guild.id,
 				guildName: interaction.guild.name,
@@ -148,6 +149,10 @@ const command: BotCommand = {
 				threshold: null,
 				roleId: null,
 			});
+		}
+
+		if (subcommand !== "on" && subcommand !== "off" && subcommand !== "check") {
+			throw new Error(`Unsupported level subcommand: ${subcommand}`);
 		}
 
 		const status = await getLevelingStatus(interaction.guild);

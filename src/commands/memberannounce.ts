@@ -225,6 +225,10 @@ const command: BotCommand = {
 			});
 		}
 
+		if (subcommand !== "on" && subcommand !== "off" && subcommand !== "check") {
+			throw new Error(`Unsupported memberannounce subcommand: ${subcommand}`);
+		}
+
 		const status = await getMemberAnnouncementStatus(interaction.guild);
 		await interaction.editReply({
 			embeds: [

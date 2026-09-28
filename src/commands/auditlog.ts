@@ -115,7 +115,8 @@ const command: BotCommand = {
 			return;
 		}
 
-		if (interaction.options.getSubcommand() === "on") {
+		const subcommand = interaction.options.getSubcommand();
+		if (subcommand === "on") {
 			const selectedChannel = interaction.options.getChannel("channel", true);
 			const channel = await interaction.guild.channels.fetch(selectedChannel.id);
 			if (!channel || !channel.isTextBased()) {
@@ -162,7 +163,7 @@ const command: BotCommand = {
 			}
 		}
 
-		if (interaction.options.getSubcommand() === "off") {
+		if (subcommand === "off") {
 			await setAuditLog({
 				guildId: interaction.guild.id,
 				guildName: interaction.guild.name,
@@ -170,6 +171,10 @@ const command: BotCommand = {
 				channelId: null,
 				fullVerbosity: false,
 			});
+		}
+
+		if (subcommand !== "on" && subcommand !== "off" && subcommand !== "check") {
+			throw new Error(`Unsupported auditlog subcommand: ${subcommand}`);
 		}
 
 		const status = await getAuditLogStatus(interaction.guild.id, interaction.guild.name);

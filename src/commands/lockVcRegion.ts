@@ -122,6 +122,10 @@ const command: BotCommand = {
 			return;
 		}
 
+		if (subcommand !== "check") {
+			throw new Error(`Unsupported lock-vc-region subcommand: ${subcommand}`);
+		}
+
 		const locks = await getVoiceRegionLocks(interaction.guild);
 		const commandId = getCommandId("lock-vc-region");
 		const addCommand = commandId
