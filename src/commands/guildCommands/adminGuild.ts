@@ -401,7 +401,7 @@ const command: BotCommand = {
 					.addFields(
 						{ name: "Content", value: blockQuote(message) },
 						{ name: "Guild", value: formatGuildMention(guild) },
-						{ name: "Channel", value: channelMention(channelId), inline: true },
+						{ name: "Channel", value: formatChannelMention(channel), inline: true },
 						{
 							name: "Channel type",
 							value: ChannelType[channel.type] ?? String(channel.type),
