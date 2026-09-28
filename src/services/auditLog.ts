@@ -42,6 +42,7 @@ import {
 	getChannelTypeLabel,
 	getComparableEmbed,
 	getEmbedCharacterCount,
+	getRecentAuditEntryByTargetId,
 	getPermissionOverwriteChangeDetails,
 	getProfileChangeResponse,
 	getRecentAuditEntry,
@@ -974,6 +975,7 @@ export async function handleAuditMessageDelete(message: Message | PartialMessage
 	if (message.partial && !auditStatus.auditLog.fullVerbosity) {
 		return;
 	}
+	const auditEntry = await getRecentAuditEntryByTargetId(message.guild, message.id, AuditLogEvent.MessageDelete);
 
 	const author = message.author;
 	const content = message.content ?? "";
@@ -1010,6 +1012,7 @@ export async function handleAuditMessageDelete(message: Message | PartialMessage
 		)
 		.setFooter({ text: `Audit Event ID: ${auditEventId}` })
 		.setTimestamp();
+	addAuditEntryDetails(embed, auditEntry);
 	const auditEmbeds: Array<APIEmbed | JSONEncodable<APIEmbed>> = [embed];
 	if (hasFollowUp) {
 		const contentPages = splitString(content, 1700);
@@ -1056,6 +1059,11 @@ export async function handleAuditMessageBulkDelete(
 	if (!(await isAuditLogEnabled(guild))) {
 		return;
 	}
+	const auditEntry = await getRecentAuditEntryByTargetId(
+		guild,
+		firstMessage.channel.id,
+		AuditLogEvent.MessageBulkDelete,
+	);
 
 	const auditEventId = createAuditEventId();
 	const embed = new EmbedBuilder()
@@ -1076,6 +1084,7 @@ export async function handleAuditMessageBulkDelete(
 		)
 		.setFooter({ text: `Audit Event ID: ${auditEventId}` })
 		.setTimestamp();
+	addAuditEntryDetails(embed, auditEntry);
 
 	const auditEmbeds: Array<APIEmbed | JSONEncodable<APIEmbed>> = [embed];
 

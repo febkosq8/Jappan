@@ -1,5 +1,10 @@
 import type { ButtonInteraction } from "discord.js";
-import { EmbedBuilder, MessageFlags } from "discord.js";
+import {
+	ApplicationCommandOptionType,
+	EmbedBuilder,
+	MessageFlags,
+	chatInputApplicationCommandMention,
+} from "discord.js";
 
 import type { CommandCategory } from "../services/commandLoader.js";
 import { getCommandId, getCommands } from "../services/commandLoader.js";
@@ -15,14 +20,47 @@ export async function handleHelpCategory({
 	category: CommandCategory;
 }): Promise<void> {
 	const commands = getCommands().filter((command) => command.commandData.category === category);
-	const fields = commands
-		.map((command) => {
-			const commandId = getCommandId(command.commandData.name);
-			return commandId
-				? { name: `</${command.commandData.name}:${commandId}>`, value: command.commandData.description }
-				: undefined;
-		})
-		.filter((field): field is { name: string; value: string } => field !== undefined);
+	const fields = [...commands.values()].flatMap((command) => {
+		const commandId = getCommandId(command.commandData.name);
+		if (!commandId) {
+			return [];
+		}
+
+		const commandDefinition = command.data.toJSON();
+		const subcommands = (commandDefinition.options ?? []).flatMap((option) => {
+			if (option.type === ApplicationCommandOptionType.Subcommand) {
+				return [
+					{
+						name: chatInputApplicationCommandMention(commandDefinition.name, option.name, commandId),
+						value: option.description,
+					},
+				];
+			}
+			if (option.type === ApplicationCommandOptionType.SubcommandGroup) {
+				return (option.options ?? [])
+					.filter((subcommand) => subcommand.type === ApplicationCommandOptionType.Subcommand)
+					.map((subcommand) => ({
+						name: chatInputApplicationCommandMention(
+							commandDefinition.name,
+							option.name,
+							subcommand.name,
+							commandId,
+						),
+						value: subcommand.description,
+					}));
+			}
+			return [];
+		});
+
+		return subcommands.length > 0
+			? subcommands
+			: [
+					{
+						name: chatInputApplicationCommandMention(commandDefinition.name, commandId),
+						value: commandDefinition.description,
+					},
+				];
+	});
 	const categoryName = category.charAt(0).toUpperCase() + category.slice(1);
 	const embed = new EmbedBuilder()
 		.setColor("Blue")

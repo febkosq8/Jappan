@@ -1,10 +1,13 @@
 import {
 	EmbedBuilder,
+	ApplicationCommandOptionType,
+	chatInputApplicationCommandMention,
 	InteractionContextType,
 	MessageFlags,
 	PermissionFlagsBits,
 	SlashCommandBuilder,
 } from "discord.js";
+import type { ApplicationCommand } from "discord.js";
 
 import type { BotCommand, BotCommandData } from "../../helpers/command.js";
 import { isAdminUser } from "../../services/adminGuild.js";
@@ -18,35 +21,99 @@ const commandData = {
 	isDBDependant: false,
 } satisfies BotCommandData;
 
-function formatCommands(commands: ReadonlyMap<string, { name: string; description: string; id: string }>): string {
-	if (commands.size === 0) {
-		return "None";
+function formatCommandEntries(command: ApplicationCommand): string[] {
+	const subcommands = command.options.flatMap((option) => {
+		if (option.type === ApplicationCommandOptionType.Subcommand) {
+			return [
+				{
+					mention: chatInputApplicationCommandMention(command.name, option.name, command.id),
+					description: option.description,
+				},
+			];
+		}
+		if (option.type === ApplicationCommandOptionType.SubcommandGroup) {
+			return (option.options ?? [])
+				.filter((subcommand) => subcommand.type === ApplicationCommandOptionType.Subcommand)
+				.map((subcommand) => ({
+					mention: chatInputApplicationCommandMention(command.name, option.name, subcommand.name, command.id),
+					description: subcommand.description,
+				}));
+		}
+		return [];
+	});
+
+	if (subcommands.length === 0) {
+		return [
+			`${chatInputApplicationCommandMention(command.name, command.id)} (\`${command.id}\`)\n${
+				command.description || "No description"
+			}`,
+		];
 	}
 
-	return [...commands.values()]
-		.map((command) => `**/${command.name}** - ${command.description || "No description"} (\`${command.id}\`)`)
-		.join("\n")
-		.slice(0, 1024);
+	return subcommands.map(
+		({ mention, description }) => `${mention} (\`${command.id}\`)\n${description || "No description"}`,
+	);
 }
 
-function createCommandEmbed({
+function getCommandEntries(commands: ReadonlyMap<string, ApplicationCommand>): string[] {
+	const entries = [...commands.values()]
+		.sort((left, right) => left.name.localeCompare(right.name))
+		.flatMap(formatCommandEntries)
+		.map((entry, index) => `${index + 1}. ${entry}`);
+	return entries.length > 0 ? entries : ["None"];
+}
+
+function createCommandEmbeds({
 	config,
 	globalCommands,
 	guildCommands,
 }: {
 	config: Config;
-	globalCommands: ReadonlyMap<string, { name: string; description: string; id: string }>;
-	guildCommands: ReadonlyMap<string, { name: string; description: string; id: string }>;
-}): EmbedBuilder {
-	return new EmbedBuilder()
-		.setColor("Orange")
-		.setAuthor({ name: `${config.BOT_NAME} Admin`, iconURL: config.BOT_PFP, url: config.BOT_WEBSITE })
-		.setTitle("Registered application commands")
-		.addFields(
-			{ name: `Global commands (${globalCommands.size})`, value: formatCommands(globalCommands) },
-			{ name: `Guild commands (${guildCommands.size})`, value: formatCommands(guildCommands) },
-		)
-		.setTimestamp();
+	globalCommands: ReadonlyMap<string, ApplicationCommand>;
+	guildCommands: ReadonlyMap<string, ApplicationCommand>;
+}): EmbedBuilder[] {
+	const globalEntries = getCommandEntries(globalCommands);
+	const guildEntries = getCommandEntries(guildCommands);
+	const sections = [
+		{
+			name: `Global commands (${globalCommands.size}) / subcommands (${globalEntries.length})`,
+			entries: globalEntries,
+		},
+		{
+			name: `Guild commands (${guildCommands.size}) / subcommands (${guildEntries.length})`,
+			entries: guildEntries,
+		},
+	];
+	const summary = `Discord currently has **${globalCommands.size} global** and **${guildCommands.size} guild** commands registered.`;
+	const pageDescriptions: string[] = [];
+	let currentPage = summary;
+
+	for (const section of sections) {
+		let sectionStarted = false;
+		for (const entry of section.entries) {
+			const addition = sectionStarted ? `\n\n${entry}` : `\n\n**${section.name}**\n${entry}`;
+			if (currentPage.length + addition.length > 4096 && currentPage !== summary) {
+				pageDescriptions.push(currentPage);
+				currentPage = `**${section.name}**\n${entry}`;
+				sectionStarted = true;
+				continue;
+			}
+			currentPage += addition;
+			sectionStarted = true;
+		}
+	}
+	pageDescriptions.push(currentPage);
+	const pageCount = pageDescriptions.length;
+
+	return Array.from({ length: pageCount }, (_, pageIndex) =>
+		new EmbedBuilder()
+			.setColor("Orange")
+			.setAuthor({ name: `${config.BOT_NAME} Admin`, iconURL: config.BOT_PFP, url: config.BOT_WEBSITE })
+			.setTitle("Registered application commands")
+			.setDescription(pageDescriptions[pageIndex] ?? summary)
+			.setFooter({ text: `Page ${pageIndex + 1} / ${pageCount}` })
+			.setTimestamp(),
+	);
 }
 
 const command: BotCommand = {
@@ -79,8 +146,9 @@ const command: BotCommand = {
 		try {
 			const globalCommands = await interaction.client.application.commands.fetch();
 			const guildCommands = await interaction.guild.commands.fetch();
+			const embeds = createCommandEmbeds({ config, globalCommands, guildCommands });
 			await interaction.editReply({
-				embeds: [createCommandEmbed({ config, globalCommands, guildCommands })],
+				embeds,
 			});
 			logger.info("ADMIN", "Deployment status inspected", {
 				userId: interaction.user.id,

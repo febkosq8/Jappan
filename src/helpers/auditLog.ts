@@ -263,9 +263,17 @@ export async function getRecentAuditEntry(
 	target: { guild: Guild; id: string },
 	types: AuditLogEvent | readonly AuditLogEvent[],
 ): Promise<GuildAuditLogsEntry | undefined> {
+	return getRecentAuditEntryByTargetId(target.guild, target.id, types);
+}
+
+export async function getRecentAuditEntryByTargetId(
+	guild: Guild,
+	targetId: string,
+	types: AuditLogEvent | readonly AuditLogEvent[],
+): Promise<GuildAuditLogsEntry | undefined> {
 	const auditTypes = Array.isArray(types) ? types : [types];
 	const auditLogs = await Promise.all(
-		auditTypes.map((type) => target.guild.fetchAuditLogs({ limit: 10, type }).catch(() => null)),
+		auditTypes.map((type) => guild.fetchAuditLogs({ limit: 10, type }).catch(() => null)),
 	);
 	return auditLogs
 		.flatMap((auditLog) => (auditLog ? [...auditLog.entries.values()] : []))
@@ -273,7 +281,7 @@ export async function getRecentAuditEntry(
 			(candidateAuditEntry) =>
 				candidateAuditEntry.target &&
 				"id" in candidateAuditEntry.target &&
-				candidateAuditEntry.target.id === target.id &&
+				candidateAuditEntry.target.id === targetId &&
 				Date.now() - candidateAuditEntry.createdTimestamp < 20_000,
 		)
 		.sort((firstEntry, secondEntry) => secondEntry.createdTimestamp - firstEntry.createdTimestamp)[0];
