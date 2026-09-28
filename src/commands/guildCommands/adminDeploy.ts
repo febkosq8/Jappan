@@ -42,7 +42,7 @@ function formatCommandEntries(command: ApplicationCommand, commandNumber: number
 	const loadedCommand = getCommands().get(command.name);
 	if (loadedCommand) {
 		return getCommandDisplayEntries(loadedCommand, command.id).map((entry) =>
-			formatCommandDisplayEntry(entry, "", String(commandNumber)),
+			formatCommandDisplayEntry({ entry, indent: "", number: String(commandNumber) }),
 		);
 	}
 
@@ -171,7 +171,10 @@ const command: BotCommand = {
 			const globalCommands = await interaction.client.application.commands.fetch();
 			const guildCommands = await interaction.guild.commands.fetch();
 			const embeds = createCommandEmbeds({ config, globalCommands, guildCommands });
-			await sendResponse(interaction, { embeds, flags: MessageFlags.Ephemeral });
+			await sendResponse({
+				destination: interaction,
+				content: { embeds, flags: MessageFlags.Ephemeral },
+			});
 			logger.info("ADMIN", "Deployment status inspected", {
 				userId: interaction.user.id,
 				userName: interaction.user.tag,

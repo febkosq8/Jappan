@@ -5,7 +5,15 @@ import type { Config } from "../../services/config.js";
 
 type PingInteraction = ButtonInteraction | ChatInputCommandInteraction;
 
-function createPingEmbed(config: Config, botLatency: string, apiLatency: string): EmbedBuilder {
+function createPingEmbed({
+	config,
+	botLatency,
+	apiLatency,
+}: {
+	config: Config;
+	botLatency: string;
+	apiLatency: string;
+}): EmbedBuilder {
 	return new EmbedBuilder()
 		.setColor("Blue")
 		.setAuthor({
@@ -30,10 +38,10 @@ export async function executePing({
 	await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 	let botLatency = "Calculating...";
 	let apiLatency = "Calculating...";
-	let replyEmbed = createPingEmbed(config, botLatency, apiLatency);
+	let replyEmbed = createPingEmbed({ config, botLatency, apiLatency });
 	const message = await interaction.editReply({ embeds: [replyEmbed] });
 	botLatency = `${message.createdTimestamp - interaction.createdTimestamp} ms`;
 	apiLatency = interaction.client.ws.ping < 0 ? "Unavailable" : `${interaction.client.ws.ping} ms`;
-	replyEmbed = createPingEmbed(config, botLatency, apiLatency);
+	replyEmbed = createPingEmbed({ config, botLatency, apiLatency });
 	await interaction.editReply({ embeds: [replyEmbed] });
 }

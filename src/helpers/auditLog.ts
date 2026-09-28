@@ -143,11 +143,15 @@ function formatPermissionOverwriteTarget(
 	return member ? formatUserMention(member) : `${userMention(overwrite.id)} (${overwrite.id})`;
 }
 
-export function getPermissionOverwriteChangeDetails(
-	guild: Guild,
-	oldOverwrites: GuildChannel["permissionOverwrites"]["cache"],
-	newOverwrites: GuildChannel["permissionOverwrites"]["cache"],
-): string[] {
+export function getPermissionOverwriteChangeDetails({
+	guild,
+	oldOverwrites,
+	newOverwrites,
+}: {
+	guild: Guild;
+	oldOverwrites: GuildChannel["permissionOverwrites"]["cache"];
+	newOverwrites: GuildChannel["permissionOverwrites"]["cache"];
+}): string[] {
 	const overwriteIds = new Set([...oldOverwrites.keys(), ...newOverwrites.keys()]);
 	return [...overwriteIds]
 		.map((overwriteId) => {
@@ -263,14 +267,18 @@ export async function getRecentAuditEntry(
 	target: { guild: Guild; id: string },
 	types: AuditLogEvent | readonly AuditLogEvent[],
 ): Promise<GuildAuditLogsEntry | undefined> {
-	return getRecentAuditEntryByTargetId(target.guild, target.id, types);
+	return getRecentAuditEntryByTargetId({ guild: target.guild, targetId: target.id, types });
 }
 
-export async function getRecentAuditEntryByTargetId(
-	guild: Guild,
-	targetId: string,
-	types: AuditLogEvent | readonly AuditLogEvent[],
-): Promise<GuildAuditLogsEntry | undefined> {
+export async function getRecentAuditEntryByTargetId({
+	guild,
+	targetId,
+	types,
+}: {
+	guild: Guild;
+	targetId: string;
+	types: AuditLogEvent | readonly AuditLogEvent[];
+}): Promise<GuildAuditLogsEntry | undefined> {
 	const auditTypes = Array.isArray(types) ? types : [types];
 	const auditLogs = await Promise.all(
 		auditTypes.map((type) => guild.fetchAuditLogs({ limit: 10, type }).catch(() => null)),

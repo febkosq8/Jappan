@@ -78,7 +78,15 @@ export async function getGuildList(client: Client, config: Config): Promise<Embe
 	return embeds;
 }
 
-export async function getGuildChannel(client: Client, guildId: string, channelId: string): Promise<GuildBasedChannel> {
+export async function getGuildChannel({
+	client,
+	guildId,
+	channelId,
+}: {
+	client: Client;
+	guildId: string;
+	channelId: string;
+}): Promise<GuildBasedChannel> {
 	const guild = await client.guilds.fetch(guildId).catch(() => null);
 	if (!guild) {
 		throw new Error("Guild not found.");

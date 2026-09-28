@@ -29,7 +29,15 @@ const commandData = {
 	],
 } satisfies BotCommandData;
 
-const deleteMessages = async (channel: object, messages: Message[], channelName: string) => {
+const deleteMessages = async ({
+	channel,
+	messages,
+	channelName,
+}: {
+	channel: object;
+	messages: Message[];
+	channelName: string;
+}) => {
 	let deleted = 0;
 	let failed = 0;
 	const bulkDeletableBefore = Date.now() - 1209600000;
@@ -207,18 +215,29 @@ const command: BotCommand = {
 				const statsPageCount = Math.ceil(progressState.channelStats.length / 10);
 				const totalPages = statsPageCount + 1;
 				return [
-					createProgressEmbed(step, currentChannelMention, totalPages),
+					createProgressEmbed({ step, currentChannelMention, totalPages }),
 					...createChannelStatsEmbeds(totalPages, step.startsWith("Complete")).slice(0, 5),
 				];
 			};
 			const sendOverflowChannelStats = async (isComplete: boolean) => {
 				const totalPages = Math.ceil(progressState.channelStats.length / 10) + 1;
-				await sendResponse(interaction, {
-					flags: MessageFlags.Ephemeral,
-					embeds: createChannelStatsEmbeds(totalPages, isComplete).slice(5),
+				await sendResponse({
+					destination: interaction,
+					content: {
+						flags: MessageFlags.Ephemeral,
+						embeds: createChannelStatsEmbeds(totalPages, isComplete).slice(5),
+					},
 				});
 			};
-			const createProgressEmbed = (step: string, currentChannelMention: string, totalPages: number) =>
+			const createProgressEmbed = ({
+				step,
+				currentChannelMention,
+				totalPages,
+			}: {
+				step: string;
+				currentChannelMention: string;
+				totalPages: number;
+			}) =>
 				new EmbedBuilder()
 					.setColor(step.startsWith("Complete") ? "Green" : "Blue")
 					.setTitle("Clear messages | Summary")
@@ -324,7 +343,7 @@ const command: BotCommand = {
 					.sort(
 						(firstMessage, secondMessage) => secondMessage.createdTimestamp - firstMessage.createdTimestamp,
 					);
-				const deletionResult = await deleteMessages(channel, messagesToDelete, channelName);
+				const deletionResult = await deleteMessages({ channel, messages: messagesToDelete, channelName });
 				progressState.deletedMessages += deletionResult.deleted;
 				progressState.currentChannelDeleted += deletionResult.deleted;
 				progressState.failedMessages += deletionResult.failed;

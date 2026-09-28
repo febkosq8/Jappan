@@ -76,20 +76,35 @@ function getRequiredUserPermissions(command: BotCommand, subcommandPermissions: 
 	];
 }
 
-function createCommandMention(commandName: string, subcommandName: string | undefined, commandId: string): string {
+function createCommandMention({
+	commandName,
+	subcommandName,
+	commandId,
+}: {
+	commandName: string;
+	subcommandName: string | undefined;
+	commandId: string;
+}): string {
 	return subcommandName
 		? chatInputApplicationCommandMention(commandName, subcommandName, commandId)
 		: chatInputApplicationCommandMention(commandName, commandId);
 }
 
-function createDisplayEntry(
-	command: BotCommand,
-	commandData: BotCommand["commandData"],
-	commandId: string | undefined,
-	parentPermissions: readonly string[],
-	parentName: string | undefined,
-	parentUserPermissions: readonly string[],
-): CommandDisplayEntry {
+function createDisplayEntry({
+	command,
+	commandData,
+	commandId,
+	parentPermissions,
+	parentName,
+	parentUserPermissions,
+}: {
+	command: BotCommand;
+	commandData: BotCommand["commandData"];
+	commandId: string | undefined;
+	parentPermissions: readonly string[];
+	parentName: string | undefined;
+	parentUserPermissions: readonly string[];
+}): CommandDisplayEntry {
 	const requiredBotPermissions = getRequiredBotPermissions(command, [
 		...parentPermissions,
 		...(commandData.requiredBotPermissions ?? []).map(String),
@@ -107,11 +122,11 @@ function createDisplayEntry(
 		...(commandId
 			? {
 					commandId,
-					mention: createCommandMention(
-						command.commandData.name,
-						parentName ? commandData.name : undefined,
+					mention: createCommandMention({
+						commandName: command.commandData.name,
+						subcommandName: parentName ? commandData.name : undefined,
 						commandId,
-					),
+					}),
 				}
 			: {}),
 	};
@@ -119,14 +134,14 @@ function createDisplayEntry(
 		return {
 			...entry,
 			subCommands: commandData.subCommands.map((subcommand) =>
-				createDisplayEntry(
+				createDisplayEntry({
 					command,
-					subcommand,
+					commandData: subcommand,
 					commandId,
-					requiredBotPermissions,
-					commandData.name,
-					requiredUserPermissions,
-				),
+					parentPermissions: requiredBotPermissions,
+					parentName: commandData.name,
+					parentUserPermissions: requiredUserPermissions,
+				}),
 			),
 		};
 	}
@@ -134,7 +149,16 @@ function createDisplayEntry(
 }
 
 export function getCommandDisplayEntries(command: BotCommand, commandId?: string): CommandDisplayEntry[] {
-	return [createDisplayEntry(command, command.commandData, commandId, [], undefined, [])];
+	return [
+		createDisplayEntry({
+			command,
+			commandData: command.commandData,
+			commandId,
+			parentPermissions: [],
+			parentName: undefined,
+			parentUserPermissions: [],
+		}),
+	];
 }
 
 export function formatCommandPermissions(permissions: readonly string[]): string {
@@ -147,11 +171,23 @@ export function formatCommandUserPermissions(permissions: readonly string[]): st
 	return `\n${bold("User access:")} ${permissions.length > 0 ? permissions.map((permission) => `\`${permission}\``).join(", ") : "Everyone"}`;
 }
 
-export function formatCommandDisplayEntry(entry: CommandDisplayEntry, indent = "", number?: string): string {
+export function formatCommandDisplayEntry({
+	entry,
+	indent = "",
+	number,
+}: {
+	entry: CommandDisplayEntry;
+	indent?: string;
+	number?: string | undefined;
+}): string {
 	const commandId = entry.commandId ? ` (\`${entry.commandId}\`)` : "";
 	const children = entry.subCommands
 		.map((subcommand, index) =>
-			formatCommandDisplayEntry(subcommand, `${indent}  `, number ? `${number}.${index + 1}` : undefined),
+			formatCommandDisplayEntry({
+				entry: subcommand,
+				indent: `${indent}  `,
+				number: number ? `${number}.${index + 1}` : undefined,
+			}),
 		)
 		.join("\n\n");
 	const entryPrefix = indent ? "• " : "";

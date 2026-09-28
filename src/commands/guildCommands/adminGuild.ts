@@ -200,17 +200,20 @@ const command: BotCommand = {
 				await interaction.editReply("No guilds found.");
 				return;
 			}
-			await sendResponse(interaction, { embeds: pages, flags: MessageFlags.Ephemeral });
+			await sendResponse({
+				destination: interaction,
+				content: { embeds: pages, flags: MessageFlags.Ephemeral },
+			});
 			return;
 		}
 
 		if (subcommand === "channel") {
 			try {
-				const channel = await getGuildChannel(
-					interaction.client,
-					interaction.options.getString("guild-id", true),
-					interaction.options.getString("channel-id", true),
-				);
+				const channel = await getGuildChannel({
+					client: interaction.client,
+					guildId: interaction.options.getString("guild-id", true),
+					channelId: interaction.options.getString("channel-id", true),
+				});
 				const channelEmbed = new EmbedBuilder()
 					.setColor("Orange")
 					.setAuthor({ name: `${config.BOT_NAME} Admin`, iconURL: config.BOT_PFP, url: config.BOT_WEBSITE })
@@ -334,7 +337,10 @@ const command: BotCommand = {
 			const selfKickEmbeds = successfulKicks.map(({ guild, owner, kickResult }, index) =>
 				createGuildLeftEmbed({ guild, config, owner, kickResult, pageNumber: index + 1, totalPages }),
 			);
-			await sendResponse(interaction, { embeds: selfKickEmbeds, flags: MessageFlags.Ephemeral });
+			await sendResponse({
+				destination: interaction,
+				content: { embeds: selfKickEmbeds, flags: MessageFlags.Ephemeral },
+			});
 			return;
 		}
 

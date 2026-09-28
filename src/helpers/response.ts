@@ -63,11 +63,15 @@ function createResponsePages(content: ResponseContent): ResponseContent[] {
 	return pages;
 }
 
-export async function sendResponse(
-	destination: ResponseDestination,
-	content: ResponseContent,
-	options: SendResponseOptions = {},
-): Promise<Message | null> {
+export async function sendResponse({
+	destination,
+	content,
+	options = {},
+}: {
+	destination: ResponseDestination;
+	content: ResponseContent;
+	options?: SendResponseOptions;
+}): Promise<Message | null> {
 	const pages = createResponsePages(content);
 	if ("send" in destination) {
 		let firstMessage: Message | null = null;

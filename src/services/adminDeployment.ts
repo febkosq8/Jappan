@@ -24,7 +24,17 @@ async function setGuildCommands(guild: Guild, shouldDeploy: boolean): Promise<nu
 	return registeredCommands.size;
 }
 
-function createDeploymentEmbed(message: Message, config: Config, command: string, status: string): EmbedBuilder {
+function createDeploymentEmbed({
+	message,
+	config,
+	command,
+	status,
+}: {
+	message: Message;
+	config: Config;
+	command: string;
+	status: string;
+}): EmbedBuilder {
 	return new EmbedBuilder()
 		.setColor("Orange")
 		.setAuthor({ name: config.BOT_NAME, iconURL: config.BOT_PFP, url: config.BOT_WEBSITE })
@@ -46,14 +56,19 @@ function createDeploymentEmbed(message: Message, config: Config, command: string
 		.setTimestamp();
 }
 
-async function sendDeploymentResponse(
-	message: Message,
-	config: Config,
-	command: string,
-	status: string,
-): Promise<void> {
+async function sendDeploymentResponse({
+	message,
+	config,
+	command,
+	status,
+}: {
+	message: Message;
+	config: Config;
+	command: string;
+	status: string;
+}): Promise<void> {
 	await message.author
-		.send({ embeds: [createDeploymentEmbed(message, config, command, status)] })
+		.send({ embeds: [createDeploymentEmbed({ message, config, command, status })] })
 		.catch(() => undefined);
 	await message.delete().catch(() => undefined);
 }
@@ -75,21 +90,21 @@ export async function handleAdminDeploymentMessage(message: Message, config: Con
 			userId: message.author.id,
 			guildId: message.guildId,
 		});
-		await sendDeploymentResponse(message, config, command, "⛔ Unauthorized");
+		await sendDeploymentResponse({ message, config, command, status: "⛔ Unauthorized" });
 		return true;
 	}
 
 	try {
 		const shouldDeploy = command === "deploy";
 		const count = await setGuildCommands(message.guild, shouldDeploy);
-		await sendDeploymentResponse(
+		await sendDeploymentResponse({
 			message,
 			config,
 			command,
-			shouldDeploy
+			status: shouldDeploy
 				? `✅ Deployed ${count} guild command${count === 1 ? "" : "s"}`
 				: "✅ Removed all guild commands",
-		);
+		});
 		logger.info("ADMIN", "Guild command deployment updated by message", {
 			command,
 			userName: message.author.tag,
@@ -106,7 +121,7 @@ export async function handleAdminDeploymentMessage(message: Message, config: Con
 			guildId: message.guild.id,
 			error,
 		});
-		await sendDeploymentResponse(message, config, command, "⛔ Failed");
+		await sendDeploymentResponse({ message, config, command, status: "⛔ Failed" });
 		return true;
 	}
 }

@@ -4,11 +4,15 @@ export async function getGuildMemberState(guildId: string, userId: string): Prom
 	return GuildMemberStateModel.findOne({ guildId, userId }).exec();
 }
 
-export async function getOrCreateGuildMemberState(
-	guildId: string,
-	userId: string,
-	username: string,
-): Promise<GuildMemberStateDocument> {
+export async function getOrCreateGuildMemberState({
+	guildId,
+	userId,
+	username,
+}: {
+	guildId: string;
+	userId: string;
+	username: string;
+}): Promise<GuildMemberStateDocument> {
 	let storedMemberStateData = await getGuildMemberState(guildId, userId);
 	if (!storedMemberStateData) {
 		return await GuildMemberStateModel.create({ guildId, userId, username });

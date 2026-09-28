@@ -216,7 +216,11 @@ const command: BotCommand = {
 			const user = interaction.options.getUser("user", true);
 			const member = await interaction.guild.members.fetch(user.id);
 			const reason = interaction.options.getString("reason") ?? "No reason provided";
-			const storedMemberStateData = await issueWarning(interaction.guild.id, user.id, user.username);
+			const storedMemberStateData = await issueWarning({
+				guildId: interaction.guild.id,
+				userId: user.id,
+				username: user.username,
+			});
 			const storedGuildData = await getWarningSettings(interaction.guild.id, interaction.guild.name);
 			if (storedGuildData.warnings.auditChannelId) {
 				const auditChannel = await interaction.guild.channels.fetch(storedGuildData.warnings.auditChannelId);

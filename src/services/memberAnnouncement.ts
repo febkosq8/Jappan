@@ -61,7 +61,7 @@ export async function getMemberAnnouncementStatus(guild: Guild): Promise<GuildDo
 
 		if (!channel?.isTextBased()) {
 			const event = announcement.enabled === "joinEnabled" ? "join" : "leave";
-			await disableAnnouncement(guild, event, channelId);
+			await disableAnnouncement({ guild, event, channelId });
 			storedGuildSettingsData.memberAnnouncements[announcement.enabled] = false;
 			storedGuildSettingsData.memberAnnouncements[announcement.channel] = null;
 		}
@@ -79,11 +79,15 @@ function isUnavailableChannelError(error: unknown): boolean {
 	return code === 10003 || code === 50001 || code === 50013;
 }
 
-async function disableAnnouncement(
-	guild: Guild,
-	event: "join" | "leave",
-	channelId: string,
-): Promise<GuildDocument["memberAnnouncements"]> {
+async function disableAnnouncement({
+	guild,
+	event,
+	channelId,
+}: {
+	guild: Guild;
+	event: "join" | "leave";
+	channelId: string;
+}): Promise<GuildDocument["memberAnnouncements"]> {
 	const storedGuildSettingsData = await getGuildSettings({ guild });
 	if (event === "join") {
 		storedGuildSettingsData.memberAnnouncements.joinEnabled = false;
@@ -113,11 +117,15 @@ async function disableAnnouncement(
 	return storedGuildSettingsData.memberAnnouncements;
 }
 
-async function postAnnouncement(
-	member: GuildMember | PartialGuildMember,
-	event: "join" | "leave",
-	channelId: string | null | undefined,
-): Promise<void> {
+async function postAnnouncement({
+	member,
+	event,
+	channelId,
+}: {
+	member: GuildMember | PartialGuildMember;
+	event: "join" | "leave";
+	channelId: string | null | undefined;
+}): Promise<void> {
 	if (!channelId) {
 		return;
 	}
@@ -125,7 +133,7 @@ async function postAnnouncement(
 	try {
 		const channel = await member.guild.channels.fetch(channelId);
 		if (!channel?.isTextBased()) {
-			await disableAnnouncement(member.guild, event, channelId);
+			await disableAnnouncement({ guild: member.guild, event, channelId });
 			return;
 		}
 		const config = getConfig();
@@ -162,7 +170,7 @@ async function postAnnouncement(
 	} catch (error: unknown) {
 		if (isUnavailableChannelError(error)) {
 			try {
-				await disableAnnouncement(member.guild, event, channelId);
+				await disableAnnouncement({ guild: member.guild, event, channelId });
 			} catch (disableError: unknown) {
 				logger.error("DISCORD", "Failed to disable unavailable member announcement channel", {
 					member,
@@ -189,7 +197,7 @@ export async function handleMemberJoinAnnouncement(member: GuildMember | Partial
 		if (!memberAnnouncements.joinEnabled) {
 			return;
 		}
-		await postAnnouncement(member, "join", memberAnnouncements.joinChannelId);
+		await postAnnouncement({ member, event: "join", channelId: memberAnnouncements.joinChannelId });
 	} catch (error: unknown) {
 		logger.error("DISCORD", "Failed to load member join announcement settings", {
 			member,
@@ -205,7 +213,7 @@ export async function handleMemberLeaveAnnouncement(member: GuildMember | Partia
 		if (!memberAnnouncements.leaveEnabled) {
 			return;
 		}
-		await postAnnouncement(member, "leave", memberAnnouncements.leaveChannelId);
+		await postAnnouncement({ member, event: "leave", channelId: memberAnnouncements.leaveChannelId });
 	} catch (error: unknown) {
 		logger.error("DISCORD", "Failed to load member leave announcement settings", {
 			member,

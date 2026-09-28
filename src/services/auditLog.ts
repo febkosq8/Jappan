@@ -117,7 +117,11 @@ async function postAuditEvent(guild: Guild, content: MessageCreateOptions): Prom
 
 	let firstMessage: Message | null = null;
 	try {
-		firstMessage = await sendResponse(channel, content, { replyToFirstMessage: true });
+		firstMessage = await sendResponse({
+			destination: channel,
+			content,
+			options: { replyToFirstMessage: true },
+		});
 	} catch (error: unknown) {
 		logger.error("DISCORD", "Failed to send audit event", {
 			guildId: guild.id,
@@ -328,11 +332,11 @@ export async function handleAuditChannelUpdate(oldChannel: GuildChannel, newChan
 	}
 	const oldOverwrites = oldChannel.permissionOverwrites.cache;
 	const newOverwrites = newChannel.permissionOverwrites.cache;
-	const permissionOverwriteChanges = getPermissionOverwriteChangeDetails(
-		newChannel.guild,
+	const permissionOverwriteChanges = getPermissionOverwriteChangeDetails({
+		guild: newChannel.guild,
 		oldOverwrites,
 		newOverwrites,
-	);
+	});
 	const overwritesChanged =
 		oldOverwrites.size !== newOverwrites.size ||
 		[...oldOverwrites.values()].some((oldOverwrite) => {
@@ -944,7 +948,11 @@ export async function handleAuditMessageDelete(message: Message | PartialMessage
 	if (message.partial && !auditStatus.auditLog.fullVerbosity) {
 		return;
 	}
-	const auditEntry = await getRecentAuditEntryByTargetId(message.guild, message.id, AuditLogEvent.MessageDelete);
+	const auditEntry = await getRecentAuditEntryByTargetId({
+		guild: message.guild,
+		targetId: message.id,
+		types: AuditLogEvent.MessageDelete,
+	});
 
 	const author = message.author;
 	const content = message.content ?? "";
@@ -1028,11 +1036,11 @@ export async function handleAuditMessageBulkDelete(
 	if (!(await isAuditLogEnabled(guild))) {
 		return;
 	}
-	const auditEntry = await getRecentAuditEntryByTargetId(
+	const auditEntry = await getRecentAuditEntryByTargetId({
 		guild,
-		firstMessage.channel.id,
-		AuditLogEvent.MessageBulkDelete,
-	);
+		targetId: firstMessage.channel.id,
+		types: AuditLogEvent.MessageBulkDelete,
+	});
 
 	const auditEventId = createAuditEventId();
 	const embed = new EmbedBuilder()

@@ -59,7 +59,7 @@ export async function addVoiceRegionLock({
 		throw new Error(`I need \`Manage Channels\` permission in <#${channelId}> to lock its region.`);
 	}
 
-	const storedMemberState = await getOrCreateGuildMemberState(guild.id, userId, userName);
+	const storedMemberState = await getOrCreateGuildMemberState({ guildId: guild.id, userId, username: userName });
 	storedMemberState.voiceRegionLock = { channelId, channelName, region, fallbackRegion: null };
 	await storedMemberState.save();
 }
@@ -101,11 +101,15 @@ async function getVoiceRegionLockStates(guildId: string, channelId?: string): Pr
 	return GuildMemberStateModel.find(query).select({ userId: 1, username: 1, voiceRegionLock: 1 }).exec();
 }
 
-function hasOtherLockedMemberInChannel(
-	channel: VoiceChannel,
-	memberId: string,
-	locks: readonly VoiceRegionLock[],
-): boolean {
+function hasOtherLockedMemberInChannel({
+	channel,
+	memberId,
+	locks,
+}: {
+	channel: VoiceChannel;
+	memberId: string;
+	locks: readonly VoiceRegionLock[];
+}): boolean {
 	return channel.members.some(
 		(member) =>
 			member.id !== memberId && locks.some((lock) => lock.userId === member.id && lock.channelId === channel.id),
@@ -189,7 +193,10 @@ export async function handleVoiceRegionState(oldState: VoiceState, newState: Voi
 		const locks = await getVoiceRegionLocks(newState.guild);
 
 		if (joinedLockedChannel) {
-			if (hasOtherLockedMemberInChannel(channel, member.id, locks) || channel.rtcRegion === lock.region) {
+			if (
+				hasOtherLockedMemberInChannel({ channel, memberId: member.id, locks }) ||
+				channel.rtcRegion === lock.region
+			) {
 				return;
 			}
 
@@ -209,7 +216,7 @@ export async function handleVoiceRegionState(oldState: VoiceState, newState: Voi
 			});
 			return;
 		} else if (leftLockedChannel) {
-			if (hasOtherLockedMemberInChannel(channel, member.id, locks)) {
+			if (hasOtherLockedMemberInChannel({ channel, memberId: member.id, locks })) {
 				return;
 			}
 			const fallbackState = (await getVoiceRegionLockStates(newState.guild.id, channel.id)).find(

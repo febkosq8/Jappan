@@ -55,11 +55,15 @@ export async function getWarningCount(guildId: string, userId: string): Promise<
 	return storedMemberStateData?.warnings.count ?? 0;
 }
 
-export async function issueWarning(
-	guildId: string,
-	userId: string,
-	username: string,
-): Promise<GuildMemberStateDocument> {
+export async function issueWarning({
+	guildId,
+	userId,
+	username,
+}: {
+	guildId: string;
+	userId: string;
+	username: string;
+}): Promise<GuildMemberStateDocument> {
 	const storedMemberStateData = await GuildMemberStateModel.findOneAndUpdate(
 		{ guildId, userId },
 		{
@@ -88,7 +92,7 @@ export async function overrideWarningCount({
 	username: string;
 	count: number;
 }): Promise<GuildMemberStateDocument> {
-	const storedMemberStateData = await getOrCreateGuildMemberState(guildId, userId, username);
+	const storedMemberStateData = await getOrCreateGuildMemberState({ guildId, userId, username });
 	storedMemberStateData.warnings.count = count;
 	await storedMemberStateData.save();
 	return storedMemberStateData;
