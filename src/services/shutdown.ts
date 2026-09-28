@@ -19,6 +19,7 @@ export function handleShutdown(signal: string, exitCode = 0): Promise<void> {
 				await disconnectDatabase();
 			}
 		} finally {
+			logger.info("BOT", "Calling process.exit", { exitCode });
 			process.exit(exitCode);
 		}
 	})();
