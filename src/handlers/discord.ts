@@ -94,9 +94,10 @@ export function registerDiscordHandlers(): void {
 	client.on(Events.InteractionCreate, (interaction: Interaction) => {
 		logger.info("DISCORD", "Interaction received", {
 			type: InteractionType[interaction.type],
-			typeId: interaction.type,
 			command: "commandName" in interaction ? interaction.commandName : undefined,
-			subcommand: interaction.isChatInputCommand() ? interaction.options.getSubcommand(false) : undefined,
+			subcommand: interaction.isChatInputCommand()
+				? (interaction.options.getSubcommand(false) ?? undefined)
+				: undefined,
 			customId: interaction.isMessageComponent() ? interaction.customId : undefined,
 			user: `${interaction.user.tag} <${interaction.user.id}>`,
 		});
@@ -118,7 +119,6 @@ export function registerDiscordHandlers(): void {
 
 		logger.warn("DISCORD", "Unhandled interaction", {
 			type: InteractionType[interaction.type],
-			typeId: interaction.type,
 			customId: interaction.isMessageComponent() ? interaction.customId : undefined,
 			user: `${interaction.user.tag} <${interaction.user.id}>`,
 		});

@@ -142,6 +142,8 @@ The rewrite currently has:
 - Slash-command, button, and autocomplete dispatch with database availability rejection for database-dependent commands.
 - Message-based guild command deployment through `!deploy` and `!unDeployGuild`, restricted to configured admin users and the guild where the message is sent.
 - Legacy `/admin` deployment operations: `/admin deploy checkdeploy` and `/admin deploy redeploy`.
+- `/admin-bot check-voice` voice connection diagnostics across all guilds.
+- `/admin-bot restart-client` graceful bot and database shutdown for process-manager restart.
 - Guild-scoped `/admin-guild` management with guild listing, channel inspection, targeted admin messages, invites, direct kicks, and self-kick progress reporting.
 - Warning setup threshold ordering and action-specific timeout/ban permission checks.
 - Database model loading and index synchronization are part of the awaited startup gate.
@@ -156,7 +158,6 @@ The rewrite currently has:
 The following legacy capabilities are not implemented in the rewrite:
 
 - Music commands, player lifecycle, queue controls, extractors, and playlist persistence.
-- Legacy `/admin` bot controls: `checkvoice`, `getstates`, `updatedebug`, `updatepingdev`, and `destroyclient`.
 - Legacy `/admin` infrastructure controls: `destroyheroku`, `destroymongo`, and `backupmongo`.
 - Legacy `/admin` maintenance operation: `cleanmemberlist`.
 - The `soundboard` command.

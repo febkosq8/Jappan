@@ -186,7 +186,7 @@ const command: BotCommand = {
 			logger.warn("ADMIN", "Unauthorized admin command attempt", {
 				userId: interaction.user.id,
 				userName: interaction.user.tag,
-				guildId: interaction.guildId,
+				guildId: interaction.guildId ?? undefined,
 				subcommand: interaction.options.getSubcommand(),
 			});
 			await interaction.editReply("⛔ You are not authorized to use this command.");

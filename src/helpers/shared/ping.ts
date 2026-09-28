@@ -1,5 +1,5 @@
 import type { ButtonInteraction, ChatInputCommandInteraction } from "discord.js";
-import { EmbedBuilder, MessageFlags } from "discord.js";
+import { EmbedBuilder, MessageFlags, italic } from "discord.js";
 
 import type { Config } from "../../services/config.js";
 
@@ -22,8 +22,14 @@ function createPingEmbed({
 			url: config.BOT_WEBSITE,
 		})
 		.addFields(
-			{ name: ":robot: Bot Latency", value: botLatency },
-			{ name: ":satellite: Gateway Latency", value: apiLatency },
+			{
+				name: ":robot: Bot Latency",
+				value: `${italic("Time from your command to the bot's reply.")}\n${botLatency}`,
+			},
+			{
+				name: ":satellite: Gateway Latency",
+				value: `${italic("Time for the bot's connection to reach Discord and return.")}\n${apiLatency}`,
+			},
 		)
 		.setTimestamp();
 }

@@ -157,7 +157,7 @@ const command: BotCommand = {
 			logger.warn("ADMIN", "Unauthorized deployment status attempt", {
 				userId: interaction.user.id,
 				userName: interaction.user.tag,
-				guildId: interaction.guildId,
+				guildId: interaction.guildId ?? undefined,
 			});
 			await interaction.editReply("⛔ You are not authorized to use this command.");
 			return;
@@ -178,7 +178,7 @@ const command: BotCommand = {
 			logger.info("ADMIN", "Deployment status inspected", {
 				userId: interaction.user.id,
 				userName: interaction.user.tag,
-				guildId: interaction.guildId,
+				guildId: interaction.guildId ?? undefined,
 				globalCommandCount: globalCommands.size,
 				guildCommandCount: guildCommands.size,
 			});
@@ -186,7 +186,7 @@ const command: BotCommand = {
 			logger.error("ADMIN", "Deployment status inspection failed", {
 				userId: interaction.user.id,
 				userName: interaction.user.tag,
-				guildId: interaction.guildId,
+				guildId: interaction.guildId ?? undefined,
 				error,
 			});
 			await interaction.editReply("⛔ Failed to retrieve the registered commands.");

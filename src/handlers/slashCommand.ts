@@ -20,6 +20,8 @@ export async function handleSlashCommandInteraction({
 		logger.warn("SLASH_COMMANDS", "Unknown Application (/) command", {
 			command: interaction.commandName,
 			user: `${interaction.user.tag} <${interaction.user.id}>`,
+			context: interaction.guildId ? "guild" : "dm",
+			guildId: interaction.guildId ?? undefined,
 		});
 		return;
 	}
@@ -38,6 +40,8 @@ export async function handleSlashCommandInteraction({
 			logger.warn("SLASH_COMMANDS", "Application (/) command rejected because bot lacks permissions", {
 				command: interaction.commandName,
 				user: `${interaction.user.tag} <${interaction.user.id}>`,
+				context: interaction.guildId ? "guild" : "dm",
+				guildId: interaction.guildId ?? undefined,
 				missingPermissions,
 				durationMs: Math.round(performance.now() - startedAt),
 			});
@@ -54,6 +58,8 @@ export async function handleSlashCommandInteraction({
 			logger.warn("SLASH_COMMANDS", "Application (/) command rejected because database is unavailable", {
 				command: interaction.commandName,
 				user: `${interaction.user.tag} <${interaction.user.id}>`,
+				context: interaction.guildId ? "guild" : "dm",
+				guildId: interaction.guildId ?? undefined,
 				durationMs: Math.round(performance.now() - startedAt),
 			});
 			await interaction.reply({
@@ -67,12 +73,16 @@ export async function handleSlashCommandInteraction({
 		logger.info("SLASH_COMMANDS", "Application (/) command executed successfully", {
 			command: interaction.commandName,
 			user: `${interaction.user.tag} <${interaction.user.id}>`,
+			context: interaction.guildId ? "guild" : "dm",
+			guildId: interaction.guildId ?? undefined,
 			durationMs: Math.round(performance.now() - startedAt),
 		});
 	} catch (error: unknown) {
 		logger.error("SLASH_COMMANDS", "Application (/) command failed", {
 			command: interaction.commandName,
 			user: `${interaction.user.tag} <${interaction.user.id}>`,
+			context: interaction.guildId ? "guild" : "dm",
+			guildId: interaction.guildId ?? undefined,
 			durationMs: Math.round(performance.now() - startedAt),
 			error,
 		});
