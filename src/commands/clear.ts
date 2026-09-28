@@ -242,7 +242,7 @@ const command: BotCommand = {
 					.setColor(step.startsWith("Complete") ? "Green" : "Blue")
 					.setTitle("Clear messages | Summary")
 					.setFooter({ text: `Run ${interaction.id} | Page 1/${totalPages}` })
-					.setTimestamp()
+
 					.addFields(
 						...(targetUser ? [{ name: "Target user", value: formatUserMention(targetUser) }] : []),
 						{ name: "Delete limit", value: count.toString() },
@@ -259,7 +259,8 @@ const command: BotCommand = {
 							name: "Message stats",
 							value: `Scanned: ${progressState.scannedMessages} | Deleted: ${progressState.deletedMessages} | Failed: ${progressState.failedMessages}`,
 						},
-					);
+					)
+					.setTimestamp();
 			progressState.summaryMessage = await interaction.editReply({
 				embeds: createProgressEmbeds("Preparing channel scan...", "Starting"),
 			});

@@ -45,8 +45,9 @@ export async function getGuildList(client: Client, config: Config): Promise<Embe
 				{ name: "Total servers", value: String(guilds.length), inline: true },
 				{ name: "Total members", value: String(totalMembers), inline: true },
 			)
-			.setTimestamp()
-			.setFooter(createFooter(0)),
+
+			.setFooter(createFooter(0))
+			.setTimestamp(),
 	];
 
 	for (const [guildIndex, guild] of guilds.entries()) {
@@ -76,8 +77,9 @@ export async function getGuildList(client: Client, config: Config): Promise<Embe
 								: "None",
 					},
 				)
-				.setTimestamp()
-				.setFooter(createFooter(guildIndex + 1)),
+
+				.setFooter(createFooter(guildIndex + 1))
+				.setTimestamp(),
 		);
 	}
 

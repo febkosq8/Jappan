@@ -133,7 +133,8 @@ export function createPlayerEmbed({
 		.setColor(color)
 		.setAuthor({ name: `${config.BOT_NAME} : Player`, iconURL: config.BOT_PFP })
 		.setTitle(title)
-		.setDescription(description);
+		.setDescription(description)
+		.setTimestamp();
 	const footerParts = [requestedBy ? `Requested by ${requestedBy}` : undefined, footerText].filter(
 		(part): part is string => Boolean(part),
 	);

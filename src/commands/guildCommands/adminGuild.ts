@@ -474,7 +474,8 @@ const command: BotCommand = {
 			embeds: [
 				new EmbedBuilder()
 					.setAuthor({ name: `${config.BOT_NAME} Admin`, iconURL: config.BOT_PFP, url: config.BOT_WEBSITE })
-					.setDescription("⛔ Unsupported admin guild operation."),
+					.setDescription("⛔ Unsupported admin guild operation.")
+					.setTimestamp(),
 			],
 		});
 	},
