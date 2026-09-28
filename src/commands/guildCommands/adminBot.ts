@@ -55,9 +55,8 @@ const command: BotCommand = {
 
 		if (!isAdminUser(interaction.user.id, config)) {
 			logger.warn("ADMIN", "Unauthorized bot control attempt", {
-				userId: interaction.user.id,
-				userName: interaction.user.tag,
-				guildId: interaction.guildId ?? undefined,
+				user: `${interaction.user.tag} <${interaction.user.id}>`,
+				guild: interaction.guild ? `${interaction.guild.name} <${interaction.guild.id}>` : undefined,
 				subcommand: interaction.options.getSubcommand(),
 			});
 			await interaction.editReply("⛔ You are not authorized to use this command.");
@@ -118,9 +117,8 @@ const command: BotCommand = {
 
 		await interaction.editReply("✅ Restarting the bot process.");
 		logger.warn("ADMIN", "Bot restart requested by admin command", {
-			userId: interaction.user.id,
-			userName: interaction.user.tag,
-			guildId: interaction.guildId ?? undefined,
+			user: `${interaction.user.tag} <${interaction.user.id}>`,
+			guild: interaction.guild ? `${interaction.guild.name} <${interaction.guild.id}>` : undefined,
 		});
 		await handleShutdown("ADMIN_RESTART_CLIENT");
 	},

@@ -86,9 +86,8 @@ export async function handleAdminDeploymentMessage(message: Message, config: Con
 	if (!message.guild || !isAdminUser(message.author.id, config)) {
 		logger.warn("ADMIN", "Unauthorized deployment message attempt", {
 			command,
-			userName: message.author.tag,
-			userId: message.author.id,
-			guildId: message.guildId,
+			user: `${message.author.tag} <${message.author.id}>`,
+			guild: message.guild ? `${message.guild.name} <${message.guild.id}>` : undefined,
 		});
 		await sendDeploymentResponse({ message, config, command, status: "⛔ Unauthorized" });
 		return true;
@@ -107,18 +106,16 @@ export async function handleAdminDeploymentMessage(message: Message, config: Con
 		});
 		logger.info("ADMIN", "Guild command deployment updated by message", {
 			command,
-			userName: message.author.tag,
-			userId: message.author.id,
-			guildId: message.guild.id,
+			user: `${message.author.tag} <${message.author.id}>`,
+			guild: `${message.guild.name} <${message.guild.id}>`,
 			count,
 		});
 		return true;
 	} catch (error: unknown) {
 		logger.error("ADMIN", "Guild command deployment failed", {
 			command,
-			userName: message.author.tag,
-			userId: message.author.id,
-			guildId: message.guild.id,
+			user: `${message.author.tag} <${message.author.id}>`,
+			guild: `${message.guild.name} <${message.guild.id}>`,
 			error,
 		});
 		await sendDeploymentResponse({ message, config, command, status: "⛔ Failed" });

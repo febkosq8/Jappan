@@ -187,9 +187,8 @@ const command: BotCommand = {
 		const invoker = { userName: interaction.user.tag, userId: interaction.user.id };
 		if (!isAdminUser(interaction.user.id, config)) {
 			logger.warn("ADMIN", "Unauthorized admin command attempt", {
-				userId: interaction.user.id,
-				userName: interaction.user.tag,
-				guildId: interaction.guildId ?? undefined,
+				user: `${interaction.user.tag} <${interaction.user.id}>`,
+				guild: interaction.guild ? `${interaction.guild.name} <${interaction.guild.id}>` : undefined,
 				subcommand: interaction.options.getSubcommand(),
 			});
 			await interaction.editReply("⛔ You are not authorized to use this command.");
@@ -307,8 +306,8 @@ const command: BotCommand = {
 					}
 				} catch (error: unknown) {
 					logger.error("ADMIN", "Failed to leave guild during self-kick", {
-						...invoker,
-						guildId: guild.id,
+						user: `${invoker.userName} <${invoker.userId}>`,
+						guild: `${guild.name} <${guild.id}>`,
 						error,
 					});
 				}

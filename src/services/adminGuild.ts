@@ -124,7 +124,10 @@ export async function sendGuildAdminMessage({
 		content: { embeds: [embed] },
 		failureMessage: "Failed to send admin message to guild",
 		...(channelId ? { channelId } : {}),
-		details: { guildId: guild.id, ...(invoker ?? {}) },
+		details: {
+			guild: `${guild.name} <${guild.id}>`,
+			...(invoker ? { user: `${invoker.userName} <${invoker.userId}>` } : {}),
+		},
 	});
 	if (!sentMessage) {
 		throw new Error("No suitable channel was available in that guild.");
@@ -155,23 +158,25 @@ export async function kickGuild({
 		config,
 		...(invoker ? { invoker } : {}),
 	}).catch((error: unknown) => {
-		logger.warn("ADMIN", "Could not send guild departure message", { guildId: guild.id, error });
+		logger.warn("ADMIN", "Could not send guild departure message", {
+			guild: `${guild.name} <${guild.id}>`,
+			error,
+		});
 		return null;
 	});
 	try {
 		await guild.leave();
 	} catch (error: unknown) {
 		logger.error("ADMIN", "Failed to leave guild", {
-			guildId: guild.id,
-			guildName: guild.name,
-			...(invoker ?? {}),
+			user: invoker ? `${invoker.userName} <${invoker.userId}>` : undefined,
+			guild: `${guild.name} <${guild.id}>`,
 			error,
 		});
 		return { success: false, departureMessage };
 	}
 	logger.info("ADMIN", "Bot left guild", {
-		guildId: guild.id,
-		guildName: guild.name,
+		user: invoker ? `${invoker.userName} <${invoker.userId}>` : undefined,
+		guild: `${guild.name} <${guild.id}>`,
 		messageChannelId: departureMessage?.channelId,
 		messageChannelName: departureMessage?.channelName,
 		...(invoker ?? {}),
@@ -210,7 +215,7 @@ export async function getGuildInvite(guild: Guild): Promise<Invite> {
 		.createInvite({ maxAge: 12 * 60 * 60, maxUses: 0, unique: false })
 		.catch((error: unknown) => {
 			logger.warn("ADMIN", "Could not create guild invite", {
-				guildId: guild.id,
+				guild: `${guild.name} <${guild.id}>`,
 				channelId: inviteChannel.id,
 				error,
 			});

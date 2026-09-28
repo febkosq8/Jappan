@@ -100,6 +100,11 @@ export function registerDiscordHandlers(): void {
 				: undefined,
 			customId: interaction.isMessageComponent() ? interaction.customId : undefined,
 			user: `${interaction.user.tag} <${interaction.user.id}>`,
+			context: "guild" in interaction && interaction.guild ? "guild" : "dm",
+			guild:
+				"guild" in interaction && interaction.guild
+					? `${interaction.guild.name} <${interaction.guild.id}>`
+					: undefined,
 		});
 
 		if (interaction.isAutocomplete()) {
@@ -121,6 +126,11 @@ export function registerDiscordHandlers(): void {
 			type: InteractionType[interaction.type],
 			customId: interaction.isMessageComponent() ? interaction.customId : undefined,
 			user: `${interaction.user.tag} <${interaction.user.id}>`,
+			context: "guild" in interaction && interaction.guild ? "guild" : "dm",
+			guild:
+				"guild" in interaction && interaction.guild
+					? `${interaction.guild.name} <${interaction.guild.id}>`
+					: undefined,
 		});
 		return;
 	});
