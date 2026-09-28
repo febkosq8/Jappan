@@ -236,8 +236,8 @@ export function updatePlayerQueueMessage({
 					title: queue.currentTrack?.title ? `🎵 ${queue.currentTrack.title}` : "🎵 Player status",
 					description: queue.currentTrack
 						? queue.node?.isPaused()
-							? "Currently paused."
-							: "Currently playing."
+							? "⏸️ Currently paused."
+							: "▶️ Currently playing."
 						: content,
 					color: "Blue",
 					...(queue.metadata.requestedByDisplay ? { requestedBy: queue.metadata.requestedByDisplay } : {}),

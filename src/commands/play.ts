@@ -105,8 +105,8 @@ const command: BotCommand = {
 			const statusMessage = await interaction.editReply({
 				embeds: [
 					createPlayerEmbed({
-						title: "▶️ Loading playback",
-						description: `Loading your ${searchResult.playlist ? "playlist" : "track"}.`,
+						title: "⏳ Loading playback",
+						description: `Waiting for your ${searchResult.playlist ? "playlist" : "track"} to start.`,
 						color: "Blue",
 						requestedBy: formatUser(member.user),
 						...(searchResult.tracks[0]?.thumbnail ? { thumbnail: searchResult.tracks[0].thumbnail } : {}),
