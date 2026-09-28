@@ -113,7 +113,11 @@ const command: BotCommand = {
 						queueSize: searchResult.tracks.length + (searchResult.playlist?.tracks.length ?? 0),
 					}),
 				],
-				components: [createPlayerControls()],
+				components: [
+					createPlayerControls({
+						queueSize: searchResult.tracks.length + (searchResult.playlist?.tracks.length ?? 0),
+					}),
+				],
 			});
 			const playResponse = await playSearchResult({
 				channel: voiceChannel.id,

@@ -2,7 +2,7 @@ import type { Interaction } from "discord.js";
 import { ActivityType, Events, InteractionType, PresenceUpdateStatus } from "discord.js";
 
 import { getClient } from "../bot.js";
-import { formatGuild, formatUser } from "../helpers/discord.js";
+import { formatChannel, formatGuild, formatUser } from "../helpers/discord.js";
 import { getPrefixCommand, handlePrefixMessage } from "../services/adminDeployment.js";
 import {
 	handleAuditChannelCreate,
@@ -122,6 +122,10 @@ export function registerDiscordHandlers(): void {
 			user: `${interaction.user.tag} <${interaction.user.id}>`,
 			context: "guild" in interaction && interaction.guild ? "guild" : "dm",
 			guild: "guild" in interaction && interaction.guild ? formatGuild(interaction.guild) : undefined,
+			channel:
+				interaction.channel && "name" in interaction.channel && typeof interaction.channel.name === "string"
+					? formatChannel({ id: interaction.channel.id, name: interaction.channel.name })
+					: undefined,
 		});
 
 		if (interaction.isAutocomplete()) {
@@ -145,6 +149,10 @@ export function registerDiscordHandlers(): void {
 			user: `${interaction.user.tag} <${interaction.user.id}>`,
 			context: "guild" in interaction && interaction.guild ? "guild" : "dm",
 			guild: "guild" in interaction && interaction.guild ? formatGuild(interaction.guild) : undefined,
+			channel:
+				interaction.channel && "name" in interaction.channel && typeof interaction.channel.name === "string"
+					? formatChannel({ id: interaction.channel.id, name: interaction.channel.name })
+					: undefined,
 		});
 		return;
 	});

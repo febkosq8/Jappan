@@ -35,29 +35,41 @@ export type PlayerVoiceChannelResult =
 export function createPlayerControls({
 	queueView = false,
 	paused = false,
+	hasCurrentTrack = false,
 	hasPrevious = false,
+	queueSize,
 	hasNext = false,
 	queuePage = 0,
 	queuePageCount = 1,
 }: {
 	queueView?: boolean;
 	paused?: boolean;
+	hasCurrentTrack?: boolean;
 	hasPrevious?: boolean;
+	queueSize?: number;
 	hasNext?: boolean;
 	queuePage?: number;
 	queuePageCount?: number;
 } = {}): ActionRowBuilder<ButtonBuilder> {
 	const controls = [
-		new ButtonBuilder()
-			.setCustomId(`PlayerControl|ACTION#queue:VIEW#${queueView ? "queue" : "nowPlaying"}`)
-			.setLabel(queueView ? "Now Playing" : "Current Queue")
-			.setStyle(ButtonStyle.Primary),
-		new ButtonBuilder()
-			.setCustomId("PlayerControl|ACTION#pause")
-			.setLabel(paused ? "▶️ Play" : "⏸️ Pause")
-			.setStyle(ButtonStyle.Secondary),
 		new ButtonBuilder().setCustomId("PlayerControl|ACTION#stop").setLabel("⏹️ Stop").setStyle(ButtonStyle.Danger),
 	];
+	if (hasCurrentTrack) {
+		controls.unshift(
+			new ButtonBuilder()
+				.setCustomId("PlayerControl|ACTION#pause")
+				.setLabel(paused ? "▶️ Play" : "⏸️ Pause")
+				.setStyle(ButtonStyle.Secondary),
+		);
+	}
+	if (queueSize !== undefined && queueSize > 0) {
+		controls.unshift(
+			new ButtonBuilder()
+				.setCustomId(`PlayerControl|ACTION#queue:VIEW#${queueView ? "queue" : "nowPlaying"}`)
+				.setLabel(queueView ? "Now Playing" : "Current Queue")
+				.setStyle(ButtonStyle.Primary),
+		);
+	}
 	if (queuePageCount > 1) {
 		controls.splice(
 			1,
@@ -233,12 +245,18 @@ export function updatePlayerQueueMessage({
 		options: {
 			embeds: [
 				createPlayerEmbed({
-					title: queue.currentTrack?.title ? `🎵 ${queue.currentTrack.title}` : "🎵 Player status",
+					title: queue.currentTrack?.title
+						? `🎵 ${queue.currentTrack.title}`
+						: queue.history?.nextTrack
+							? "⏳ Loading playback"
+							: "🎵 Nothing playing",
 					description: queue.currentTrack
 						? queue.node?.isPaused()
-							? "⏸️ Currently paused."
-							: "▶️ Currently playing."
-						: content,
+							? "⏸️ Paused"
+							: "▶️ Playing"
+						: queue.history?.nextTrack
+							? "⏳ Waiting for the next track"
+							: "Choose a track to start playback.",
 					color: "Blue",
 					...(queue.metadata.requestedByDisplay ? { requestedBy: queue.metadata.requestedByDisplay } : {}),
 					...(queue.currentTrack?.thumbnail ? { thumbnail: queue.currentTrack.thumbnail } : {}),
@@ -250,8 +268,10 @@ export function updatePlayerQueueMessage({
 				? [
 						createPlayerControls({
 							paused: queue.node?.isPaused() ?? false,
+							hasCurrentTrack: Boolean(queue.currentTrack),
 							hasPrevious: Boolean(queue.history?.previousTrack),
 							hasNext: Boolean(queue.history?.nextTrack),
+							...(queue.tracks ? { queueSize: queue.tracks.size } : {}),
 						}),
 					]
 				: [],

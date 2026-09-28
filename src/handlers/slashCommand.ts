@@ -1,6 +1,7 @@
 import type { ChatInputCommandInteraction } from "discord.js";
 import { MessageFlags, underline } from "discord.js";
 
+import { formatChannel, formatGuild } from "../helpers/discord.js";
 import { getMissingBotPermissions } from "../helpers/shared/permissions.js";
 import { getCommand } from "../services/commandLoader.js";
 import type { Config } from "../services/config.js";
@@ -31,6 +32,11 @@ export async function handleSlashCommandInteraction({
 		user: `${interaction.user.tag} <${interaction.user.id}>`,
 		context: interaction.guildId ? "guild" : "dm",
 		guildId: interaction.guildId ?? undefined,
+		guild: interaction.guild ? formatGuild(interaction.guild) : undefined,
+		channel:
+			interaction.channel && "name" in interaction.channel && typeof interaction.channel.name === "string"
+				? formatChannel({ id: interaction.channel.id, name: interaction.channel.name })
+				: undefined,
 		durationMs: Math.round(performance.now() - startedAt),
 	};
 	try {

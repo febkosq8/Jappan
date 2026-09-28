@@ -1,7 +1,7 @@
 import { MessageFlags } from "discord.js";
 
 import { parseButtonCustomId } from "../helpers/button.js";
-import { createPlayerControls, createPlayerEmbed } from "../helpers/player.js";
+import { createPlayerControls, createPlayerEmbed, updatePlayerQueueMessage } from "../helpers/player.js";
 import { splitString } from "../helpers/string.js";
 import { getPlayer } from "../services/player.js";
 import type { ButtonModule } from "../services/buttonLoader.js";
@@ -37,40 +37,31 @@ const button: ButtonModule = {
 		}
 
 		if (action === "pause") {
+			await interaction.deferUpdate();
+			if (!queue.currentTrack) {
+				return;
+			}
 			queue.node.setPaused(!queue.node.isPaused());
-			const paused = queue.node.isPaused();
-			await interaction.update({
-				components: [
-					createPlayerControls({
-						paused,
-						hasPrevious: Boolean(queue.history.previousTrack),
-						hasNext: Boolean(queue.history.nextTrack),
-					}),
-				],
-			});
-			await interaction.followUp({
-				content: paused ? "⏸️ Player paused." : "▶️ Player resumed.",
-				flags: MessageFlags.Ephemeral,
-			});
+			updatePlayerQueueMessage({ queue, content: "" });
 			return;
 		}
 
 		if (action === "previous") {
+			await interaction.deferUpdate();
 			if (!queue.history.previousTrack) {
-				await interaction.reply({ content: "⛔ There is no previous track.", flags: MessageFlags.Ephemeral });
 				return;
 			}
 			await queue.history.previous();
-			await interaction.reply({ content: "⏮️ Playing the previous track.", flags: MessageFlags.Ephemeral });
+			updatePlayerQueueMessage({ queue, content: "" });
 			return;
 		}
 
 		if (action === "skip") {
+			await interaction.deferUpdate();
 			const skipped = queue.node.skip();
-			await interaction.reply({
-				content: skipped ? "⏭️ Track skipped." : "⛔ The current track could not be skipped.",
-				flags: MessageFlags.Ephemeral,
-			});
+			if (skipped) {
+				updatePlayerQueueMessage({ queue, content: "" });
+			}
 			return;
 		}
 
@@ -115,9 +106,11 @@ const button: ButtonModule = {
 				components: [
 					createPlayerControls({
 						queueView: true,
+						queueSize: queue.tracks.size,
 						queuePage: page,
 						queuePageCount: queuePages.length,
 						paused: queue.node.isPaused(),
+						hasCurrentTrack: Boolean(queue.currentTrack),
 						hasPrevious: Boolean(queue.history.previousTrack),
 						hasNext: Boolean(queue.history.nextTrack),
 					}),
@@ -147,7 +140,9 @@ const button: ButtonModule = {
 					],
 					components: [
 						createPlayerControls({
+							queueSize: queue.tracks.size,
 							paused: queue.node.isPaused(),
+							hasCurrentTrack: Boolean(queue.currentTrack),
 							hasPrevious: Boolean(queue.history.previousTrack),
 							hasNext: Boolean(queue.history.nextTrack),
 						}),
