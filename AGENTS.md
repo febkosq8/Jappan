@@ -135,6 +135,7 @@ The rewrite currently has:
 - TypeScript/ESM architecture with strict NodeNext resolution, command/button loaders, service boundaries, database lifecycle handling, and startup command registration.
 - Leveling from messages, interactions, and voice activity, including reward-role validation, recovery, hierarchy checks, and leaderboard retrieval.
 - Atomic leveling point and warning count updates to prevent concurrent read-modify-save loss.
+- Per-member serialization of leveling threshold role work to prevent duplicate concurrent assignments.
 - Voice-channel region locking through `/lock-vc-region`, including per-member persisted rules, region autocomplete, and automatic restore on leave.
 - Join/leave announcements with unavailable-channel recovery and administrator notification through fallback channels.
 - Idempotent guild-create initialization with a permission-aware welcome message and `/help` guidance.
@@ -165,8 +166,6 @@ Fallback capability must remain available when slash commands are unavailable. A
 
 ### Priority 1: Runtime Correctness
 
-- Reduce repeated guild settings reads on high-volume message events with a controlled cache or event-scoped cache.
-- Prevent duplicate threshold role work when multiple events arrive concurrently for the same member.
 - Add Discord reconnect/disconnect handling.
 - Add process-level `uncaughtException` and `unhandledRejection` handling.
 
@@ -183,6 +182,10 @@ Fallback capability must remain available when slash commands are unavailable. A
 - Add deployment and rollback instructions.
 - Validate Docker and PM2 production startup.
 - Perform a controlled production cutover only after parity and migration checks pass.
+
+### Priority 3: Endgame
+
+- Allow caching for highly fetched database entries.
 
 ## Working Rules
 

@@ -130,6 +130,7 @@ export async function handleLevelingInteraction(interaction: Interaction): Promi
 }
 
 const voiceJoinTimes = new Map<string, number>();
+const levelingRewardOperations = new Map<string, Promise<void>>();
 
 export async function handleLevelingVoiceState(oldState: VoiceState, newState: VoiceState): Promise<void> {
 	const guild = newState.guild;
@@ -182,6 +183,17 @@ interface AwardLevelingPointsOptions {
 	storedGuildData?: GuildDocument;
 }
 
+interface AwardLevelingRewardOptions {
+	guild: Guild;
+	user: User;
+	member: GuildMember;
+	points: number;
+	previousPoints: number;
+	threshold: number;
+	roleId: string;
+	notificationChannel?: Message["channel"] | undefined;
+}
+
 async function awardLevelingPoints({
 	guild,
 	user,
@@ -207,6 +219,40 @@ async function awardLevelingPoints({
 		return;
 	}
 
+	const rewardKey = `${guild.id}:${user.id}`;
+	const previousOperation = levelingRewardOperations.get(rewardKey) ?? Promise.resolve();
+	const currentOperation = previousOperation.then(() =>
+		awardLevelingReward({
+			guild,
+			user,
+			member,
+			points: storedMemberStateData.leveling.points,
+			previousPoints,
+			threshold,
+			roleId,
+			notificationChannel,
+		}),
+	);
+	levelingRewardOperations.set(rewardKey, currentOperation);
+
+	try {
+		await currentOperation;
+	} finally {
+		if (levelingRewardOperations.get(rewardKey) === currentOperation) {
+			levelingRewardOperations.delete(rewardKey);
+		}
+	}
+}
+
+async function awardLevelingReward({
+	guild,
+	user,
+	member,
+	previousPoints,
+	threshold,
+	roleId,
+	notificationChannel,
+}: AwardLevelingRewardOptions): Promise<void> {
 	const rewardRole = await guild.roles.fetch(roleId);
 	if (!rewardRole) {
 		await disableLevelingReward({
