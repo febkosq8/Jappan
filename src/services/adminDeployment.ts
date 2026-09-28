@@ -6,16 +6,22 @@ import { isAdminUser } from "./adminGuild.js";
 import { getGuildCommands } from "./commandLoader.js";
 import type { Config } from "./config.js";
 import { logger } from "./logger.js";
+import { handlePrefixPing } from "./prefixPing.js";
 
-const deploymentCommands = new Set(["deploy", "undeployguild"]);
+type PrefixCommand = "ping" | "deployguild" | "undeployguild";
+type DeploymentCommand = Exclude<PrefixCommand, "ping">;
 
-function getDeploymentCommand(content: string): string | undefined {
+export function getPrefixCommand(content: string): PrefixCommand | undefined {
 	if (!content.startsWith("!")) {
 		return undefined;
 	}
 
 	const command = content.slice(1).trim().split(/\s+/u)[0]?.toLowerCase();
-	return command && deploymentCommands.has(command) ? command : undefined;
+	const validCommands: PrefixCommand[] = ["ping", "deployguild", "undeployguild"];
+	if (validCommands.includes(command as PrefixCommand)) {
+		return command as PrefixCommand;
+	}
+	return undefined;
 }
 
 async function setGuildCommands(guild: Guild, shouldDeploy: boolean): Promise<number> {
@@ -73,13 +79,16 @@ async function sendDeploymentResponse({
 	await message.delete().catch(() => undefined);
 }
 
-export async function handleAdminDeploymentMessage(message: Message, config: Config): Promise<boolean> {
+async function handleAdminDeploymentMessage({
+	message,
+	config,
+	command,
+}: {
+	message: Message;
+	config: Config;
+	command: DeploymentCommand;
+}): Promise<boolean> {
 	if (message.author.bot) {
-		return false;
-	}
-
-	const command = getDeploymentCommand(message.content);
-	if (!command) {
 		return false;
 	}
 
@@ -94,7 +103,7 @@ export async function handleAdminDeploymentMessage(message: Message, config: Con
 	}
 
 	try {
-		const shouldDeploy = command === "deploy";
+		const shouldDeploy = command === "deployguild";
 		const count = await setGuildCommands(message.guild, shouldDeploy);
 		await sendDeploymentResponse({
 			message,
@@ -120,5 +129,35 @@ export async function handleAdminDeploymentMessage(message: Message, config: Con
 		});
 		await sendDeploymentResponse({ message, config, command, status: "⛔ Failed" });
 		return true;
+	}
+}
+
+export async function handlePrefixMessage({
+	message,
+	config,
+	command,
+}: {
+	message: Message;
+	config: Config;
+	command: PrefixCommand;
+}): Promise<void> {
+	logger.info("ADMIN", "Prefix message received", {
+		command,
+		user: `${message.author.tag} <${message.author.id}>`,
+		guild: message.guild ? `${message.guild.name} <${message.guild.id}>` : undefined,
+		channel: message.channelId,
+	});
+	await message.react("🙌").catch(() => undefined);
+
+	switch (command) {
+		case "ping":
+			await handlePrefixPing({ message, config });
+			return;
+		case "deployguild":
+		case "undeployguild":
+			await handleAdminDeploymentMessage({ message, config, command });
+			return;
+		default:
+			return;
 	}
 }

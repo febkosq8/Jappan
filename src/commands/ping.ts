@@ -26,7 +26,9 @@ const command: BotCommand = {
 			InteractionContextType.BotDM,
 			InteractionContextType.PrivateChannel,
 		]),
-	execute: executePing,
+	execute: async ({ interaction, config }) => {
+		await executePing({ interaction, config });
+	},
 };
 
 export default command;

@@ -158,10 +158,7 @@ The rewrite currently has:
 The following legacy capabilities are not implemented in the rewrite:
 
 - Music commands, player lifecycle, queue controls, extractors, and playlist persistence.
-- Legacy `/admin` infrastructure controls: `destroyheroku`, `destroymongo`, and `backupmongo`.
-- Legacy `/admin` maintenance operation: `cleanmemberlist`.
 - The `soundboard` command.
-- Legacy operational fallback commands for test deployment, global undeployment, player diagnostics, and prefix ping.
 - Legacy event/debug/error log persistence models and user playlist persistence.
 
 Fallback capability must remain available when slash commands are unavailable. Any feature removal requires owner approval and an equivalent supported mechanism.

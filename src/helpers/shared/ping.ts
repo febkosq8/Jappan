@@ -1,11 +1,42 @@
-import type { ButtonInteraction, ChatInputCommandInteraction } from "discord.js";
+import type { ButtonInteraction, ChatInputCommandInteraction, Message } from "discord.js";
 import { EmbedBuilder, MessageFlags, italic } from "discord.js";
 
 import type { Config } from "../../services/config.js";
 
 type PingInteraction = ButtonInteraction | ChatInputCommandInteraction;
+type PingSource = PingInteraction | Message;
 
-function createPingEmbed({
+interface ExecutePingOptions {
+	readonly interaction?: PingInteraction;
+	readonly message?: Message;
+	readonly config: Config;
+}
+
+interface PingResult {
+	readonly botLatency: string;
+	readonly gatewayLatency: string;
+}
+
+function isMessage(source: PingSource): source is Message {
+	return "author" in source;
+}
+
+export function calculatePing({
+	interactionCreatedTimestamp,
+	replyCreatedTimestamp,
+	gatewayPing,
+}: {
+	interactionCreatedTimestamp: number;
+	replyCreatedTimestamp: number;
+	gatewayPing: number;
+}): { botLatency: string; gatewayLatency: string } {
+	return {
+		botLatency: `${replyCreatedTimestamp - interactionCreatedTimestamp} ms`,
+		gatewayLatency: gatewayPing < 0 ? "Unavailable" : `${gatewayPing} ms`,
+	};
+}
+
+export function createPingEmbed({
 	config,
 	botLatency,
 	apiLatency,
@@ -34,20 +65,34 @@ function createPingEmbed({
 		.setTimestamp();
 }
 
-export async function executePing({
-	interaction,
-	config,
-}: {
-	interaction: PingInteraction;
-	config: Config;
-}): Promise<void> {
-	await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+export async function executePing({ interaction, message, config }: ExecutePingOptions): Promise<PingResult> {
+	const source = interaction ?? message;
+	if (!source) {
+		throw new Error("Ping requires an interaction or message source");
+	}
+
 	let botLatency = "Calculating...";
 	let apiLatency = "Calculating...";
 	let replyEmbed = createPingEmbed({ config, botLatency, apiLatency });
-	const message = await interaction.editReply({ embeds: [replyEmbed] });
-	botLatency = `${message.createdTimestamp - interaction.createdTimestamp} ms`;
-	apiLatency = interaction.client.ws.ping < 0 ? "Unavailable" : `${interaction.client.ws.ping} ms`;
+	if (isMessage(source)) {
+		const reply = await source.author.send({ embeds: [replyEmbed] });
+		({ botLatency, gatewayLatency: apiLatency } = calculatePing({
+			interactionCreatedTimestamp: source.createdTimestamp,
+			replyCreatedTimestamp: reply.createdTimestamp,
+			gatewayPing: source.client.ws.ping,
+		}));
+		await reply.edit({ embeds: [createPingEmbed({ config, botLatency, apiLatency })] });
+		return { botLatency, gatewayLatency: apiLatency };
+	}
+
+	await source.deferReply({ flags: MessageFlags.Ephemeral });
+	const reply = await source.editReply({ embeds: [replyEmbed] });
+	({ botLatency, gatewayLatency: apiLatency } = calculatePing({
+		interactionCreatedTimestamp: source.createdTimestamp,
+		replyCreatedTimestamp: reply.createdTimestamp,
+		gatewayPing: source.client.ws.ping,
+	}));
 	replyEmbed = createPingEmbed({ config, botLatency, apiLatency });
-	await interaction.editReply({ embeds: [replyEmbed] });
+	await source.editReply({ embeds: [replyEmbed] });
+	return { botLatency, gatewayLatency: apiLatency };
 }

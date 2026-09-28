@@ -2,7 +2,7 @@ import type { Interaction } from "discord.js";
 import { ActivityType, Events, InteractionType, PresenceUpdateStatus } from "discord.js";
 
 import { getClient } from "../bot.js";
-import { handleAdminDeploymentMessage } from "../services/adminDeployment.js";
+import { getPrefixCommand, handlePrefixMessage } from "../services/adminDeployment.js";
 import {
 	handleAuditChannelCreate,
 	handleAuditChannelDelete,
@@ -285,8 +285,12 @@ export function registerExtendedDiscordHandlers(): void {
 	});
 
 	client.on(Events.MessageCreate, (message) => {
+		const prefixCommand = getPrefixCommand(message.content);
+		if (prefixCommand) {
+			void handlePrefixMessage({ message, config, command: prefixCommand });
+			return;
+		}
 		if (message.content.startsWith("!")) {
-			void handleAdminDeploymentMessage(message, config);
 			return;
 		}
 		void handleLevelingMessage(message);
