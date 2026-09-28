@@ -1,5 +1,6 @@
-import { ChannelType, InteractionContextType, PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
+import { InteractionContextType, PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
 
+import { createPlayerEmbed, getPlayerVoiceChannel } from "../helpers/player.js";
 import type { BotCommand, BotCommandData } from "../services/commandLoader.js";
 import { logger } from "../services/logger.js";
 import { playSearchResult, searchPlayer } from "../services/player.js";
@@ -46,11 +47,10 @@ const command: BotCommand = {
 				return;
 			}
 			const result = searchResponse.data;
-			console.log({ query, result, hasResults: result.hasTracks() });
 			const choices = result.playlist
 				? [{ name: `${result.playlist.title} | Playlist`.slice(0, 100), value: query }]
 				: result.tracks.slice(0, 6).map((track) => ({
-						name: track.title.slice(0, 100),
+						name: `${track.title.slice(0, 100)} | Track`,
 						value: track.url,
 					}));
 			await interaction.respond(choices);
@@ -61,49 +61,55 @@ const command: BotCommand = {
 	execute: async ({ interaction }) => {
 		await interaction.deferReply();
 
-		const member = interaction.member;
-		if (!member || typeof member !== "object" || !("voice" in member) || !member.voice.channel) {
-			await interaction.editReply("You are not in a voice channel.");
+		const voiceChannelResult = getPlayerVoiceChannel(interaction);
+		if (!voiceChannelResult.success) {
+			await interaction.editReply({ embeds: [voiceChannelResult.embed] });
 			return;
 		}
-
-		const voiceChannel = member.voice.channel;
-		if (!voiceChannel || voiceChannel.type !== ChannelType.GuildVoice || !interaction.guild) {
-			await interaction.editReply("You must join a standard voice channel to play music.");
-			return;
-		}
-		if (
-			interaction.guild.members.me?.voice.channelId &&
-			interaction.guild.members.me.voice.channelId !== voiceChannel.id
-		) {
-			await interaction.editReply("You are not in my voice channel.");
-			return;
-		}
-		if (!voiceChannel.joinable || !voiceChannel.speakable) {
-			await interaction.editReply("I cannot join and speak in your voice channel.");
-			return;
-		}
+		const { channel: voiceChannel, member } = voiceChannelResult;
 
 		const query = interaction.options.getString("query", true).trim();
 		try {
 			const searchResponse = await searchPlayer(query);
 			if (!searchResponse.success) {
-				await interaction.editReply(
-					searchResponse.error_code === "PLAYER_DOWN"
-						? "The bot's music player is currently out of service. Please check back later."
-						: "The bot's music player is not ready yet. Please try again shortly.",
-				);
+				await interaction.editReply({
+					embeds: [
+						createPlayerEmbed({
+							title:
+								searchResponse.error_code === "PLAYER_DOWN"
+									? "🤖 Player out of service"
+									: "🤖 Player not ready",
+							description:
+								searchResponse.error_code === "PLAYER_DOWN"
+									? "⚠️ The bot's music player is currently out of service.\nPlease check back later."
+									: "⚠️ The bot's music player is not ready yet.\nPlease try again shortly.",
+						}),
+					],
+				});
 				return;
 			}
 			const searchResult = searchResponse.data;
 			if (!searchResult.hasTracks()) {
-				await interaction.editReply(`No tracks found for '${query}'.`);
+				await interaction.editReply({
+					embeds: [
+						createPlayerEmbed({
+							title: "⛔ No tracks found",
+							description: `No tracks found for '${query}'.`,
+						}),
+					],
+				});
 				return;
 			}
 
-			const statusMessage = await interaction.editReply(
-				`Loading your ${searchResult.playlist ? "playlist" : "track"}.`,
-			);
+			const statusMessage = await interaction.editReply({
+				embeds: [
+					createPlayerEmbed({
+						title: "▶️ Loading playback",
+						description: `Loading your ${searchResult.playlist ? "playlist" : "track"}.`,
+						color: "Blue",
+					}),
+				],
+			});
 			const playResponse = await playSearchResult({
 				channel: voiceChannel.id,
 				member,
@@ -111,11 +117,20 @@ const command: BotCommand = {
 				statusMessage,
 			});
 			if (!playResponse.success) {
-				await interaction.editReply(
-					playResponse.error_code === "PLAYER_DOWN"
-						? "The bot's music player is currently out of service. Please check back later."
-						: "The bot's music player is not ready yet. Please try again shortly.",
-				);
+				await interaction.editReply({
+					embeds: [
+						createPlayerEmbed({
+							title:
+								playResponse.error_code === "PLAYER_DOWN"
+									? "🤖 Player out of service"
+									: "🤖 Player not ready",
+							description:
+								playResponse.error_code === "PLAYER_DOWN"
+									? "🤖 The bot's music player is currently out of service.\nPlease check back later."
+									: "🤖 The bot's music player is not ready yet.\nPlease try again shortly.",
+						}),
+					],
+				});
 			}
 		} catch (error: unknown) {
 			logger.error("PLAYER", "Failed to start playback", {
@@ -123,7 +138,14 @@ const command: BotCommand = {
 				query,
 				error,
 			});
-			await interaction.editReply("I could not start playback for that query.");
+			await interaction.editReply({
+				embeds: [
+					createPlayerEmbed({
+						title: "⛔ Playback failed",
+						description: "I could not start playback for that query.",
+					}),
+				],
+			});
 		}
 	},
 };

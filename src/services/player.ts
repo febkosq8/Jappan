@@ -1,7 +1,7 @@
 import { DefaultExtractors } from "@discord-player/extractor";
 import { load as loadExtractors } from "@extractorpack/extractorpack";
 import { Player, type SearchResult } from "discord-player";
-import type { Client, GuildMember, Message } from "discord.js";
+import type { APIInteractionGuildMember, Client, GuildMember, Message } from "discord.js";
 
 import { registerPlayerHandlers } from "../handlers/player.js";
 import { checkPlayerHealth } from "../helpers/player.js";
@@ -132,7 +132,7 @@ export async function playSearchResult({
 	statusMessage,
 }: {
 	channel: string;
-	member: GuildMember;
+	member: GuildMember | APIInteractionGuildMember;
 	searchResult: SearchResult;
 	statusMessage: Message;
 }): Promise<PlayerResult<void>> {
