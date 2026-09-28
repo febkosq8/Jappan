@@ -16,6 +16,8 @@ export interface BotCommandData {
 	readonly category: CommandCategory;
 	readonly isDBDependant?: boolean;
 	readonly requiredBotPermissions?: readonly PermissionResolvable[];
+	readonly hasSubCommands?: boolean;
+	readonly subCommands?: readonly BotCommandData[];
 }
 
 export interface BotCommandContext {
