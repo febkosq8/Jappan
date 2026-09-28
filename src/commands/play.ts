@@ -40,7 +40,12 @@ const command: BotCommand = {
 		}
 
 		try {
-			const result = await searchPlayer(query);
+			const searchResponse = await searchPlayer(query);
+			if (!searchResponse.success) {
+				await interaction.respond([]);
+				return;
+			}
+			const result = searchResponse.data;
 			console.log({ query, result, hasResults: result.hasTracks() });
 			const choices = result.playlist
 				? [{ name: `${result.playlist.title} | Playlist`.slice(0, 100), value: query }]
@@ -81,7 +86,16 @@ const command: BotCommand = {
 
 		const query = interaction.options.getString("query", true).trim();
 		try {
-			const searchResult = await searchPlayer(query);
+			const searchResponse = await searchPlayer(query);
+			if (!searchResponse.success) {
+				await interaction.editReply(
+					searchResponse.error_code === "PLAYER_DOWN"
+						? "The bot's music player is currently out of service. Please check back later."
+						: "The bot's music player is not ready yet. Please try again shortly.",
+				);
+				return;
+			}
+			const searchResult = searchResponse.data;
 			if (!searchResult.hasTracks()) {
 				await interaction.editReply(`No tracks found for '${query}'.`);
 				return;
@@ -90,7 +104,19 @@ const command: BotCommand = {
 			const statusMessage = await interaction.editReply(
 				`Loading your ${searchResult.playlist ? "playlist" : "track"}.`,
 			);
-			await playSearchResult({ channel: voiceChannel.id, member, searchResult, statusMessage });
+			const playResponse = await playSearchResult({
+				channel: voiceChannel.id,
+				member,
+				searchResult,
+				statusMessage,
+			});
+			if (!playResponse.success) {
+				await interaction.editReply(
+					playResponse.error_code === "PLAYER_DOWN"
+						? "The bot's music player is currently out of service. Please check back later."
+						: "The bot's music player is not ready yet. Please try again shortly.",
+				);
+			}
 		} catch (error: unknown) {
 			logger.error("PLAYER", "Failed to start playback", {
 				guild: interaction.guild ? `${interaction.guild.name} <${interaction.guild.id}>` : undefined,

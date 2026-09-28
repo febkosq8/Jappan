@@ -3,152 +3,42 @@ import { load as loadExtractors } from "@extractorpack/extractorpack";
 import { Player, type SearchResult } from "discord-player";
 import type { Client, GuildMember, Message } from "discord.js";
 
+import { registerPlayerHandlers } from "../handlers/player.js";
+import { checkPlayerHealth } from "../helpers/player.js";
 import { getConfig } from "./config.js";
 import { logger } from "./logger.js";
 
 let player: Player | undefined;
-let playerDownReason: string | undefined;
+let playerDown = false;
 
-const playerHealthCheckQuery = "https://www.youtube.com/playlist?list=PLUSI8zJ8UM4H6ZGVT4psbs35WnyGLCxMj";
-const playerHealthCheckMaxAttempts = 3;
-
-export interface InitializePlayerOptions {
-	readonly bypassHealthCheck?: boolean;
+export class PlayerNotInitializedError extends Error {
+	public constructor() {
+		super("Player is not initialized");
+		this.name = "PlayerNotInitializedError";
+	}
 }
 
-function updateQueueMessage(queue: { metadata: { statusMessage?: Message } }, content: string): void {
-	void queue.metadata.statusMessage?.edit(content).catch((error: unknown) => {
-		logger.warn("PLAYER", "Failed to update player status message", {
-			error: error instanceof Error ? error.message : String(error),
-		});
-	});
-}
+export type PlayerErrorCode = "PLAYER_NOT_INITIALIZED" | "PLAYER_DOWN";
 
-function registerPlayerDebugListeners(): void {
-	const initializedPlayer = getPlayer();
-	const events = initializedPlayer.events;
+export type PlayerResult<Result> =
+	| { readonly success: true; readonly data: Result }
+	| { readonly success: false; readonly error_code: PlayerErrorCode };
 
-	initializedPlayer.on("debug", (message) => {
-		logger.debug("PLAYER", message);
-	});
-	events.on("debug", (queue, message) => {
-		logger.debug("PLAYER", `Queue ${queue.guild.id}: ${message}`);
-	});
-	events.on("playerStart", (queue, track) => {
-		logger.debug("PLAYER", "Track started", {
-			guild: `${queue.guild.name} <${queue.guild.id}>`,
-			track: track.title,
-		});
-	});
-	events.on("playerFinish", (queue, track) => {
-		logger.debug("PLAYER", "Track finished", {
-			guild: `${queue.guild.name} <${queue.guild.id}>`,
-			track: track.title,
-		});
-	});
-	events.on("playerSkip", (queue, track, reason, description) => {
-		logger.debug("PLAYER", "Track skipped", {
-			guild: `${queue.guild.name} <${queue.guild.id}>`,
-			track: track.title,
-			reason,
-			description,
-		});
-	});
-	events.on("audioTrackAdd", (queue, track) => {
-		logger.debug("PLAYER", "Track added to queue", {
-			guild: `${queue.guild.name} <${queue.guild.id}>`,
-			track: track.title,
-		});
-	});
-	events.on("audioTracksAdd", (queue, tracks) => {
-		logger.debug("PLAYER", "Tracks added to queue", {
-			guild: `${queue.guild.name} <${queue.guild.id}>`,
-			count: tracks.length,
-		});
-	});
-	events.on("audioTrackRemove", (queue, track) => {
-		logger.debug("PLAYER", "Track removed from queue", {
-			guild: `${queue.guild.name} <${queue.guild.id}>`,
-			track: track.title,
-		});
-	});
-	events.on("audioTracksRemove", (queue, tracks) => {
-		logger.debug("PLAYER", "Tracks removed from queue", {
-			guild: `${queue.guild.name} <${queue.guild.id}>`,
-			count: tracks.length,
-		});
-	});
-	events.on("emptyQueue", (queue) => {
-		logger.debug("PLAYER", "Queue is empty", { guild: `${queue.guild.name} <${queue.guild.id}>` });
-	});
-	events.on("emptyChannel", (queue) => {
-		logger.debug("PLAYER", "Voice channel is empty", { guild: `${queue.guild.name} <${queue.guild.id}>` });
-	});
-	events.on("disconnect", (queue) => {
-		logger.debug("PLAYER", "Player disconnected", { guild: `${queue.guild.name} <${queue.guild.id}>` });
-	});
-	events.on("queueCreate", (queue) => {
-		logger.debug("PLAYER", "Queue created", { guild: `${queue.guild.name} <${queue.guild.id}>` });
-	});
-	events.on("queueDelete", (queue) => {
-		logger.debug("PLAYER", "Queue deleted", { guild: `${queue.guild.name} <${queue.guild.id}>` });
-	});
-	logger.info("PLAYER", "Player debug listeners loaded");
-}
-
-function registerPlayerListeners(): void {
-	const initializedPlayer = getPlayer();
-	initializedPlayer.on("error", (error) => {
-		logger.error("PLAYER", `Player error: ${error.message}`, { stack: error.stack });
-	});
-	initializedPlayer.events.on("error", (queue, error) => {
-		logger.error("PLAYER", `Queue ${queue.guild.name} <${queue.guild.id}> error: ${error.message}`, {
-			stack: error.stack,
-			track: queue.currentTrack?.title,
-		});
-	});
-	initializedPlayer.events.on("playerError", (queue, error, track) => {
-		updateQueueMessage(queue, `⚠️ Playback failed for **${track.title}**.`);
-		logger.error("PLAYER", `Track playback error: ${error.message}`, {
-			guild: `${queue.guild.name} <${queue.guild.id}>`,
-			stack: error.stack,
-			track: track.title,
-		});
-	});
-}
-
-function registerPlayerStatusListeners(): void {
-	const initializedPlayer = getPlayer();
-	const events = initializedPlayer.events;
-
-	events.on("playerStart", (queue, track) => {
-		updateQueueMessage(queue, `▶️ Started playing: **${track.title}**`);
-	});
-	events.on("playerSkip", (queue, track, reason, description) => {
-		updateQueueMessage(queue, `⚠️ Skipping: **${track.title}** (${description || reason})`);
-	});
-	events.on("audioTrackAdd", (queue, track) => {
-		updateQueueMessage(queue, `🎵 Track queued: **${track.title}**`);
-	});
-	events.on("audioTracksAdd", (queue, tracks) => {
-		updateQueueMessage(queue, `🎶 ${tracks.length} tracks queued.`);
-	});
-	events.on("emptyQueue", (queue) => {
-		updateQueueMessage(queue, "✅ Queue finished.");
-	});
-	events.on("emptyChannel", (queue) => {
-		updateQueueMessage(queue, "⚠️ The voice channel is empty. Leaving soon.");
-	});
-	events.on("disconnect", (queue) => {
-		updateQueueMessage(queue, "⚠️ Playback disconnected.");
-	});
+function getPlayerErrorCode(): PlayerErrorCode | undefined {
+	if (!player) {
+		return "PLAYER_NOT_INITIALIZED";
+	}
+	if (playerDown) {
+		return "PLAYER_DOWN";
+	}
+	return undefined;
 }
 
 export async function initializePlayer(client: Client): Promise<Player | undefined> {
 	if (player) {
 		return player;
 	}
-	if (playerDownReason) {
+	if (playerDown) {
 		return undefined;
 	}
 
@@ -163,73 +53,55 @@ export async function initializePlayer(client: Client): Promise<Player | undefin
 		await loadExtractors(initializedPlayer);
 		await initializedPlayer.extractors.loadMulti(DefaultExtractors);
 		player = initializedPlayer;
-		registerPlayerListeners();
-		registerPlayerStatusListeners();
-		if (getConfig("PLAYER_DEBUG")) {
-			registerPlayerDebugListeners();
-		}
+		registerPlayerHandlers(initializedPlayer);
 		logger.info("PLAYER", "Player initialized", {
 			extractorsCount: initializedPlayer.extractors.store.size,
 		});
 		return initializedPlayer;
 	} catch (error: unknown) {
 		player = undefined;
-		playerDownReason = error instanceof Error ? error.message : String(error);
+		playerDown = true;
 		logger.error("PLAYER", "Player is down; music commands are unavailable", {
-			error: playerDownReason,
+			error: error instanceof Error ? error.message : String(error),
 			stack: error instanceof Error ? error.stack : undefined,
 		});
 		return undefined;
 	}
 }
 
-export async function runPlayerHealthCheck({
-	bypassHealthCheck = false,
-}: InitializePlayerOptions = {}): Promise<boolean> {
+export async function runPlayerHealthCheck(): Promise<boolean> {
 	if (!player) {
-		logger.error("PLAYER", "Player health check could not run because the player is unavailable", {
-			error: playerDownReason ?? "Player has not been initialized",
-		});
+		playerDown = true;
+		logger.warn("PLAYER", "Health check could not run because the Player instance is unavailable");
 		return false;
 	}
 
+	const healthCheckMaxAttempts = getConfig("PLAYER_HEALTH_CHECK_MAX_ATTEMPTS");
+	if (healthCheckMaxAttempts === 0) {
+		playerDown = false;
+		logger.info("PLAYER", "Player health check bypassed by configuration");
+		return true;
+	}
+
 	try {
-		let healthCheckTracks = 0;
-		let healthCheckAttempt = 0;
-		for (let attempt = 1; attempt <= playerHealthCheckMaxAttempts; attempt += 1) {
-			healthCheckAttempt = attempt;
-			const healthCheckResult = await player.search(playerHealthCheckQuery, {
-				fallbackSearchEngine: "youtubeSearch",
-			});
-			healthCheckTracks = healthCheckResult.tracks.length + (healthCheckResult.playlist?.tracks.length ?? 0);
-			if (healthCheckTracks > 0 || attempt === playerHealthCheckMaxAttempts) {
-				break;
-			}
-			await new Promise((resolve) => setTimeout(resolve, 1000));
+		const healthCheckResult = await checkPlayerHealth(player);
+
+		if (healthCheckResult.tracks === 0) {
+			playerDown = true;
+			logger.warn("PLAYER", "Health check found no tracks; Player is down");
+			return false;
 		}
 
-		if (healthCheckTracks === 0) {
-			if (bypassHealthCheck) {
-				logger.debug("PLAYER", "Player health check failing but bypassed", {
-					query: playerHealthCheckQuery,
-					healthCheckTracks,
-					attempt: `${healthCheckAttempt}/${playerHealthCheckMaxAttempts}`,
-				});
-				return true;
-			}
-			throw new Error(`Player health check found no tracks for "${playerHealthCheckQuery}"`);
-		}
-
-		logger.info("PLAYER", "Player health check passed", {
-			tracks: healthCheckTracks,
-			attempt: `${healthCheckAttempt}/${playerHealthCheckMaxAttempts}`,
+		playerDown = false;
+		logger.info("PLAYER", "Health check passed", {
+			tracks: healthCheckResult.tracks,
+			attempt: `${healthCheckResult.attempt}/${healthCheckMaxAttempts}`,
 		});
 		return true;
 	} catch (error: unknown) {
-		player = undefined;
-		playerDownReason = error instanceof Error ? error.message : String(error);
-		logger.error("PLAYER", "Player is down; music commands are unavailable", {
-			error: playerDownReason,
+		playerDown = true;
+		logger.error("PLAYER", "Error occurred during health check; Player is down", {
+			error: error instanceof Error ? error.message : String(error),
 			stack: error instanceof Error ? error.stack : undefined,
 		});
 		return false;
@@ -238,14 +110,19 @@ export async function runPlayerHealthCheck({
 
 export function getPlayer(): Player {
 	if (!player) {
-		throw new Error(playerDownReason ?? "Player has not been initialized");
+		throw new PlayerNotInitializedError();
 	}
 
 	return player;
 }
 
-export async function searchPlayer(query: string): Promise<SearchResult> {
-	return getPlayer().search(query, { fallbackSearchEngine: "youtubeSearch" });
+export async function searchPlayer(query: string): Promise<PlayerResult<SearchResult>> {
+	const errorCode = getPlayerErrorCode();
+	if (errorCode) {
+		return { success: false, error_code: errorCode };
+	}
+
+	return { success: true, data: await getPlayer().search(query, { fallbackSearchEngine: "youtubeSearch" }) };
 }
 
 export async function playSearchResult({
@@ -258,7 +135,12 @@ export async function playSearchResult({
 	member: GuildMember;
 	searchResult: SearchResult;
 	statusMessage: Message;
-}): Promise<void> {
+}): Promise<PlayerResult<void>> {
+	const errorCode = getPlayerErrorCode();
+	if (errorCode) {
+		return { success: false, error_code: errorCode };
+	}
+
 	await getPlayer().play(channel, searchResult, {
 		nodeOptions: {
 			metadata: { requestedBy: member.user.id, statusMessage },
@@ -272,4 +154,5 @@ export async function playSearchResult({
 		},
 		requestedBy: member.user.id,
 	});
+	return { success: true, data: undefined };
 }

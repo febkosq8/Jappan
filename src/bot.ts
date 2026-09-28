@@ -1,5 +1,6 @@
 import { Client, GatewayIntentBits, Partials } from "discord.js";
 
+import { wait } from "./helpers/utils.js";
 import { registerDiscordHandlers, registerExtendedDiscordHandlers } from "./handlers/discord.js";
 import { loadButtons } from "./services/buttonLoader.js";
 import { loadCommands } from "./services/commandLoader.js";
@@ -39,7 +40,9 @@ export async function startBot(): Promise<void> {
 
 	logger.info("DISCORD", "Connecting to Discord");
 	await client.login(getConfig("DISCORD_TOKEN"));
-	setTimeout(() => void runPlayerHealthCheck({ bypassHealthCheck: false }), 5000);
+	await wait(5000);
+	await runPlayerHealthCheck();
+	setInterval(() => void runPlayerHealthCheck(), 6 * 60 * 60 * 1000);
 }
 
 export function getClient(): Client {
