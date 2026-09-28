@@ -7,9 +7,10 @@
 	"scripts": {
 		"build": "tsup src/index.ts --format esm",
 		"dev": "tsx watch --include \"./.env\" src/index.ts",
+		"extractors:scan": "extractorpack scan",
 		"format": "prettier --write \"src/**/*.ts\"",
 		"format:check": "prettier --check \"src/**/*.ts\"",
-		"prepare": "husky",
+		"prepare": "husky && extractorpack scan",
 		"start": "node dist/index.js",
 		"typecheck": "tsc --noEmit"
 	},
@@ -20,21 +21,28 @@
 	"author": "",
 	"license": "ISC",
 	"devDependencies": {
-		"@types/node": "26.6.2",
-		"husky": "^9.1.7",
-		"lint-staged": "^17.6.0",
+		"@extractorpack/extractorpack": "0.0.5",
+		"@types/node": "26.6.3",
+		"husky": "9.1.7",
+		"lint-staged": "17.6.0",
 		"prettier": "3.9.9",
 		"tsup": "8.5.1",
 		"tsx": "4.23.15",
 		"typescript": "7.0.2"
 	},
 	"dependencies": {
+		"@discord-player/extractor": "7.2.0",
 		"@discordjs/voice": "0.19.2",
+		"bgutils-js": "4.0.3",
 		"bufferutil": "4.1.0",
 		"colorette": "2.0.20",
+		"discord-player": "7.2.0",
+		"discord-player-youtubei": "3.1.0",
 		"discord.js": "14.27.0",
-		"dotenv": "18.0.3",
+		"dotenv": "18.0.4",
+		"googlevideo": "4.1.1",
 		"mongoose": "9.10.2",
+		"simple-ytdl-core": "1.1.1",
 		"zlib-sync": "0.1.10"
 	}
 }

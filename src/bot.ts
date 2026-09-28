@@ -5,6 +5,7 @@ import { loadButtons } from "./services/buttonLoader.js";
 import { loadCommands } from "./services/commandLoader.js";
 import { getConfig } from "./services/config.js";
 import { logger } from "./services/logger.js";
+import { initializePlayer } from "./services/player.js";
 
 let discordClient: Client | undefined;
 
@@ -34,6 +35,7 @@ export async function startBot(): Promise<void> {
 	await loadButtons();
 	registerDiscordHandlers();
 	registerExtendedDiscordHandlers();
+	await initializePlayer(client);
 
 	logger.info("DISCORD", "Connecting to Discord");
 	await client.login(getConfig("DISCORD_TOKEN"));

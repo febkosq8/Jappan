@@ -9,6 +9,7 @@ export interface Config {
 	readonly DB_URL: string;
 	readonly ADMIN_USER_IDS: readonly string[];
 	readonly LOG_TIMESTAMP: boolean;
+	readonly PLAYER_DEBUG: boolean;
 	readonly ENABLE_EVENTS_DEBUG: readonly string[];
 	readonly SHUTDOWN_THREASHOLD: number;
 }
@@ -22,6 +23,7 @@ const configTemplate: Partial<Record<keyof Config, string>> = {
 	BOT_WEBSITE: "https://jappan.febkosq8.me",
 	ADMIN_USER_IDS: "",
 	LOG_TIMESTAMP: "false",
+	PLAYER_DEBUG: "false",
 	ENABLE_EVENTS_DEBUG: "false",
 	SHUTDOWN_THREASHOLD: "3",
 };
@@ -55,6 +57,7 @@ export function loadConfig(): Config {
 		.map((userId) => userId.trim())
 		.filter(Boolean);
 	const LOG_TIMESTAMP = readConfigValue("LOG_TIMESTAMP") === "true";
+	const PLAYER_DEBUG = readConfigValue("PLAYER_DEBUG") === "true";
 	const eventsDebugValue = readConfigValue("ENABLE_EVENTS_DEBUG");
 	const ENABLE_EVENTS_DEBUG =
 		eventsDebugValue.toLowerCase() === "false"
@@ -77,6 +80,7 @@ export function loadConfig(): Config {
 		DB_URL,
 		ADMIN_USER_IDS,
 		LOG_TIMESTAMP,
+		PLAYER_DEBUG,
 		ENABLE_EVENTS_DEBUG,
 		SHUTDOWN_THREASHOLD,
 	};

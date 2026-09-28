@@ -36,6 +36,7 @@ Required environment values are `DISCORD_TOKEN` and `DB_URL`. Optional configura
 - `BOT_WEBSITE`, default project website
 - `ADMIN_USER_IDS`, optional semicolon-separated Discord user IDs authorized for admin commands
 - `LOG_TIMESTAMP`, default `false`
+- `PLAYER_DEBUG`, default `false`; enables Discord Player and queue debug/error logging
 - `ENABLE_EVENTS_DEBUG`, default `false`; semicolon-separated event names such as `MessageCreate;MessageUpdate`
 - `SHUTDOWN_THREASHOLD`, default `3`; fatal process shutdown after this many uncaught exceptions or unhandled rejections
 
