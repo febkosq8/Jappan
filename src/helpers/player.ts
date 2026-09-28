@@ -1,4 +1,4 @@
-import { Player } from "discord-player";
+import { Player, type SearchResult } from "discord-player";
 import {
 	ChannelType,
 	EmbedBuilder,
@@ -11,10 +11,12 @@ import {
 
 import { getConfig } from "../services/config.js";
 import { logger } from "../services/logger.js";
+import { wait } from "./utils.js";
 
 export interface PlayerHealthCheckResult {
 	readonly tracks: number;
 	readonly attempt: number;
+	readonly playbackChecked: boolean;
 }
 
 export type PlayerVoiceChannelResult =
@@ -102,22 +104,114 @@ export function updatePlayerQueueMessage(queue: { metadata: { statusMessage?: Me
 }
 
 export async function checkPlayerHealth(initializedPlayer: Player): Promise<PlayerHealthCheckResult> {
+	const healthCheckDebug = getConfig("PLAYER_HEALTH_DEBUG");
 	const healthCheckQuery = getConfig("PLAYER_HEALTH_CHECK_QUERY");
 	const healthCheckMaxAttempts = getConfig("PLAYER_HEALTH_CHECK_MAX_ATTEMPTS");
 	let healthCheckTracks = 0;
 	let healthCheckAttempt = 0;
+	let playbackChecked = false;
+	let healthCheckSearchResult: SearchResult | undefined;
 
 	for (let attempt = 1; attempt <= healthCheckMaxAttempts; attempt += 1) {
 		healthCheckAttempt = attempt;
-		const healthCheckResult = await initializedPlayer.search(healthCheckQuery, {
+		if (healthCheckDebug) {
+			logger.debug("PLAYER", "Starting player health-check search", { attempt, healthCheckMaxAttempts });
+		}
+		healthCheckSearchResult = await initializedPlayer.search(healthCheckQuery, {
 			fallbackSearchEngine: "youtubeSearch",
 		});
-		healthCheckTracks = healthCheckResult.tracks.length + (healthCheckResult.playlist?.tracks.length ?? 0);
+		healthCheckTracks =
+			healthCheckSearchResult.tracks.length + (healthCheckSearchResult.playlist?.tracks.length ?? 0);
+		if (healthCheckDebug) {
+			logger.debug("PLAYER", "Player health-check search completed", {
+				attempt,
+				tracks: healthCheckTracks,
+			});
+		}
 		if (healthCheckTracks > 0 || attempt === healthCheckMaxAttempts) {
 			break;
 		}
 		await new Promise((resolve) => setTimeout(resolve, 1000));
 	}
 
-	return { tracks: healthCheckTracks, attempt: healthCheckAttempt };
+	const healthCheckGuildId = getConfig("PLAYER_HEALTH_CHECK_GUILD_ID");
+	const healthCheckChannelId = getConfig("PLAYER_HEALTH_CHECK_CHANNEL_ID");
+	const healthCheckPlaybackTimeout = getConfig("PLAYER_HEALTH_CHECK_PLAYBACK_TIMEOUT");
+	const healthCheckPlaybackStabilityTimeout = getConfig("PLAYER_HEALTH_CHECK_PLAYBACK_STABILITY_TIMEOUT");
+	if (healthCheckGuildId && healthCheckChannelId && healthCheckTracks > 0) {
+		const guild = initializedPlayer.client.guilds.cache.get(healthCheckGuildId);
+		const channel = guild?.channels.cache.get(healthCheckChannelId);
+		if (!guild || !channel || channel.type !== ChannelType.GuildVoice) {
+			throw new Error("Configured player health-check guild or voice channel was not found");
+		}
+		if (!channel.joinable || !channel.speakable) {
+			throw new Error("Configured player health-check channel is not joinable or speakable");
+		}
+		if (healthCheckDebug) {
+			logger.debug("PLAYER", "Starting player health-check playback probe", {
+				guild: `${guild.name} <${guild.id}>`,
+				channel: `${channel.name} <${channel.id}>`,
+			});
+		}
+		const healthCheckTrack = healthCheckSearchResult?.tracks[0] ?? healthCheckSearchResult?.playlist?.tracks[0];
+		if (!healthCheckTrack) {
+			throw new Error("Player health-check search returned no playable track");
+		}
+
+		const { queue } = await initializedPlayer.play(channel.id, healthCheckTrack, {
+			nodeOptions: {
+				metadata: { healthCheck: true },
+				leaveOnEnd: true,
+				leaveOnEmpty: true,
+			},
+		});
+		try {
+			if (healthCheckDebug) {
+				logger.debug("PLAYER", "Waiting for player health-check playback to start", {
+					playbackTimeout: healthCheckPlaybackTimeout,
+				});
+			}
+			const playbackDeadline = Date.now() + healthCheckPlaybackTimeout;
+			while (!queue.node.isPlaying()) {
+				if (Date.now() >= playbackDeadline) {
+					throw new Error("Player health-check track did not start playing");
+				}
+				await wait(250);
+			}
+			if (healthCheckDebug) {
+				logger.debug("PLAYER", "Player health-check playback started");
+			}
+
+			if (healthCheckDebug) {
+				logger.debug("PLAYER", "Verifying player health-check playback stability", {
+					stabilityTimeout: healthCheckPlaybackStabilityTimeout,
+				});
+			}
+			const playbackStabilityDeadline = Date.now() + healthCheckPlaybackStabilityTimeout;
+			while (Date.now() < playbackStabilityDeadline) {
+				await wait(250);
+				if (!queue.node.isPlaying()) {
+					throw new Error("Player health-check track stopped during playback verification");
+				}
+			}
+			playbackChecked = true;
+			if (healthCheckDebug) {
+				logger.debug("PLAYER", "Player health-check playback stability passed", {
+					stabilityTimeout: healthCheckPlaybackStabilityTimeout,
+				});
+			}
+		} finally {
+			queue.delete();
+			if (healthCheckDebug) {
+				logger.debug("PLAYER", "Player health-check playback queue cleaned up");
+			}
+		}
+	} else if (healthCheckDebug) {
+		logger.debug("PLAYER", "Player health-check playback probe skipped", {
+			configuredGuildAndChannel: Boolean(healthCheckGuildId && healthCheckChannelId),
+			tracks: healthCheckTracks,
+		});
+	}
+
+	return { tracks: healthCheckTracks, attempt: healthCheckAttempt, playbackChecked };
 }

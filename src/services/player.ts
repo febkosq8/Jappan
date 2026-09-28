@@ -96,6 +96,7 @@ export async function runPlayerHealthCheck(): Promise<boolean> {
 		logger.info("PLAYER", "Health check passed", {
 			tracks: healthCheckResult.tracks,
 			attempt: `${healthCheckResult.attempt}/${healthCheckMaxAttempts}`,
+			playbackChecked: healthCheckResult.playbackChecked,
 		});
 		return true;
 	} catch (error: unknown) {
