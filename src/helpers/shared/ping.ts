@@ -92,18 +92,17 @@ export async function executePing({ interaction, message, config }: ExecutePingO
 
 	let botLatency: LatencyDisplayValue = "Calculating...";
 	let gatewayLatency: LatencyDisplayValue = "Calculating...";
-	let replyEmbed = createPingEmbed({ config, botLatency, gatewayLatency });
 	if (isMessage(source)) {
-		const reply = await source.author.send({ embeds: [replyEmbed] });
 		({ botLatency, gatewayLatency } = calculatePing({
 			interactionCreatedTimestamp: source.createdTimestamp,
-			replyCreatedTimestamp: reply.createdTimestamp,
+			replyCreatedTimestamp: Date.now(),
 			gatewayPing: source.client.ws.ping,
 		}));
-		await reply.edit({ embeds: [createPingEmbed({ config, botLatency, gatewayLatency })] });
+		await source.author.send({ embeds: [createPingEmbed({ config, botLatency, gatewayLatency })] });
 		return { botLatency, gatewayLatency };
 	}
 
+	let replyEmbed = createPingEmbed({ config, botLatency, gatewayLatency });
 	await source.deferReply({ flags: MessageFlags.Ephemeral });
 	const reply = await source.editReply({ embeds: [replyEmbed] });
 	({ botLatency, gatewayLatency } = calculatePing({
