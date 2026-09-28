@@ -1,5 +1,6 @@
 import { InteractionContextType, PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
 
+import { formatGuild } from "../helpers/discord.js";
 import { createPlayerEmbed, getPlayerVoiceChannel } from "../helpers/player.js";
 import type { BotCommand, BotCommandData } from "../services/commandLoader.js";
 import { logger } from "../services/logger.js";
@@ -134,7 +135,7 @@ const command: BotCommand = {
 			}
 		} catch (error: unknown) {
 			logger.error("PLAYER", "Failed to start playback", {
-				guild: interaction.guild ? `${interaction.guild.name} <${interaction.guild.id}>` : undefined,
+				guild: interaction.guild ? formatGuild(interaction.guild) : undefined,
 				query,
 				error,
 			});

@@ -13,7 +13,7 @@ import {
 
 import type { BotCommand, BotCommandData } from "../../helpers/command.js";
 import { sendResponse } from "../../helpers/response.js";
-import { formatChannelMention, formatGuildMention, formatUserMention } from "../../helpers/discord.js";
+import { formatChannelMention, formatGuild, formatGuildMention, formatUserMention } from "../../helpers/discord.js";
 import {
 	getGuildChannel,
 	getGuildInvite,
@@ -188,7 +188,7 @@ const command: BotCommand = {
 		if (!isAdminUser(interaction.user.id, config)) {
 			logger.warn("ADMIN", "Unauthorized admin command attempt", {
 				user: `${interaction.user.tag} <${interaction.user.id}>`,
-				guild: interaction.guild ? `${interaction.guild.name} <${interaction.guild.id}>` : undefined,
+				guild: interaction.guild ? formatGuild(interaction.guild) : undefined,
 				subcommand: interaction.options.getSubcommand(),
 			});
 			await interaction.editReply("⛔ You are not authorized to use this command.");
@@ -307,7 +307,7 @@ const command: BotCommand = {
 				} catch (error: unknown) {
 					logger.error("ADMIN", "Failed to leave guild during self-kick", {
 						user: `${invoker.userName} <${invoker.userId}>`,
-						guild: `${guild.name} <${guild.id}>`,
+						guild: formatGuild(guild),
 						error,
 					});
 				}

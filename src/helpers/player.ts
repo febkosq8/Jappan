@@ -11,6 +11,7 @@ import {
 
 import { getConfig } from "../services/config.js";
 import { logger } from "../services/logger.js";
+import { formatChannel, formatGuild } from "./discord.js";
 import { wait } from "./utils.js";
 
 export interface PlayerHealthCheckResult {
@@ -149,8 +150,8 @@ export async function checkPlayerHealth(initializedPlayer: Player): Promise<Play
 		}
 		if (healthCheckDebug) {
 			logger.debug("PLAYER", "Starting player health-check playback probe", {
-				guild: `${guild.name} <${guild.id}>`,
-				channel: `${channel.name} <${channel.id}>`,
+				guild: formatGuild(guild),
+				channel: formatChannel(channel),
 			});
 		}
 		const healthCheckTrack = healthCheckSearchResult?.tracks[0] ?? healthCheckSearchResult?.playlist?.tracks[0];

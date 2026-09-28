@@ -1,7 +1,13 @@
 import type { Client, Guild, GuildBasedChannel, Invite } from "discord.js";
 import { EmbedBuilder, PermissionFlagsBits, blockQuote, userMention } from "discord.js";
 
-import { formatChannelMention, formatGuildMention, formatUserMention } from "../helpers/discord.js";
+import {
+	formatChannel,
+	formatChannelMention,
+	formatGuild,
+	formatGuildMention,
+	formatUserMention,
+} from "../helpers/discord.js";
 import type { SentGuildMessage } from "../helpers/guildHelper.js";
 import { sendGuildMessage } from "../helpers/guildHelper.js";
 import type { Config } from "./config.js";
@@ -125,7 +131,7 @@ export async function sendGuildAdminMessage({
 		failureMessage: "Failed to send admin message to guild",
 		...(channelId ? { channelId } : {}),
 		details: {
-			guild: `${guild.name} <${guild.id}>`,
+			guild: formatGuild(guild),
 			...(invoker ? { user: `${invoker.userName} <${invoker.userId}>` } : {}),
 		},
 	});
@@ -159,7 +165,7 @@ export async function kickGuild({
 		...(invoker ? { invoker } : {}),
 	}).catch((error: unknown) => {
 		logger.warn("ADMIN", "Could not send guild departure message", {
-			guild: `${guild.name} <${guild.id}>`,
+			guild: formatGuild(guild),
 			error,
 		});
 		return null;
@@ -169,14 +175,14 @@ export async function kickGuild({
 	} catch (error: unknown) {
 		logger.error("ADMIN", "Failed to leave guild", {
 			user: invoker ? `${invoker.userName} <${invoker.userId}>` : undefined,
-			guild: `${guild.name} <${guild.id}>`,
+			guild: formatGuild(guild),
 			error,
 		});
 		return { success: false, departureMessage };
 	}
 	logger.info("ADMIN", "Bot left guild", {
 		user: invoker ? `${invoker.userName} <${invoker.userId}>` : undefined,
-		guild: `${guild.name} <${guild.id}>`,
+		guild: formatGuild(guild),
 		messageChannelId: departureMessage?.channelId,
 		messageChannelName: departureMessage?.channelName,
 		...(invoker ?? {}),
@@ -215,8 +221,8 @@ export async function getGuildInvite(guild: Guild): Promise<Invite> {
 		.createInvite({ maxAge: 12 * 60 * 60, maxUses: 0, unique: false })
 		.catch((error: unknown) => {
 			logger.warn("ADMIN", "Could not create guild invite", {
-				guild: `${guild.name} <${guild.id}>`,
-				channelId: inviteChannel.id,
+				guild: formatGuild(guild),
+				channel: formatChannel(inviteChannel),
 				error,
 			});
 			throw new Error("Could not create an invite in that guild.");

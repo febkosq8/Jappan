@@ -1,7 +1,7 @@
 import type { Guild, Message } from "discord.js";
 import { EmbedBuilder, channelMention } from "discord.js";
 
-import { formatGuildMention } from "../helpers/discord.js";
+import { formatGuild, formatGuildMention } from "../helpers/discord.js";
 import { isAdminUser } from "./adminGuild.js";
 import { getGuildCommands } from "./commandLoader.js";
 import type { Config } from "./config.js";
@@ -96,7 +96,7 @@ async function handleAdminDeploymentMessage({
 		logger.warn("ADMIN", "Unauthorized deployment message attempt", {
 			command,
 			user: `${message.author.tag} <${message.author.id}>`,
-			guild: message.guild ? `${message.guild.name} <${message.guild.id}>` : undefined,
+			guild: message.guild ? formatGuild(message.guild) : undefined,
 		});
 		await sendDeploymentResponse({ message, config, command, status: "⛔ Unauthorized" });
 		return true;
@@ -116,7 +116,7 @@ async function handleAdminDeploymentMessage({
 		logger.info("ADMIN", "Guild command deployment updated by message", {
 			command,
 			user: `${message.author.tag} <${message.author.id}>`,
-			guild: `${message.guild.name} <${message.guild.id}>`,
+			guild: formatGuild(message.guild),
 			count,
 		});
 		return true;
@@ -124,7 +124,7 @@ async function handleAdminDeploymentMessage({
 		logger.error("ADMIN", "Guild command deployment failed", {
 			command,
 			user: `${message.author.tag} <${message.author.id}>`,
-			guild: `${message.guild.name} <${message.guild.id}>`,
+			guild: formatGuild(message.guild),
 			error,
 		});
 		await sendDeploymentResponse({ message, config, command, status: "⛔ Failed" });
@@ -144,7 +144,7 @@ export async function handlePrefixMessage({
 	logger.info("ADMIN", "Prefix message received", {
 		command,
 		user: `${message.author.tag} <${message.author.id}>`,
-		guild: message.guild ? `${message.guild.name} <${message.guild.id}>` : undefined,
+		guild: message.guild ? formatGuild(message.guild) : undefined,
 		channel: message.channelId,
 	});
 	await message.react("🙌").catch(() => undefined);

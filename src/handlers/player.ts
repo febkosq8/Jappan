@@ -1,5 +1,6 @@
 import { Player } from "discord-player";
 
+import { formatGuild } from "../helpers/discord.js";
 import { updatePlayerQueueMessage } from "../helpers/player.js";
 import { getConfig } from "../services/config.js";
 import { logger } from "../services/logger.js";
@@ -17,7 +18,7 @@ function registerPlayerErrorHandlers(player: Player): void {
 		logger.error("PLAYER", `Player error: ${error.message}`, { stack: error.stack });
 	});
 	player.events.on("error", (queue, error) => {
-		logger.error("PLAYER", `Queue ${queue.guild.name} <${queue.guild.id}> error: ${error.message}`, {
+		logger.error("PLAYER", `Queue ${formatGuild(queue.guild)} error: ${error.message}`, {
 			stack: error.stack,
 			track: queue.currentTrack?.title,
 		});
@@ -25,7 +26,7 @@ function registerPlayerErrorHandlers(player: Player): void {
 	player.events.on("playerError", (queue, error, track) => {
 		updatePlayerQueueMessage(queue, `⚠️ Playback failed for **${track.title}**.`);
 		logger.error("PLAYER", `Track playback error: ${error.message}`, {
-			guild: `${queue.guild.name} <${queue.guild.id}>`,
+			guild: formatGuild(queue.guild),
 			stack: error.stack,
 			track: track.title,
 		});
@@ -69,19 +70,19 @@ function registerPlayerDebugHandlers(player: Player): void {
 	});
 	events.on("playerStart", (queue, track) => {
 		logger.debug("PLAYER", "Track started", {
-			guild: `${queue.guild.name} <${queue.guild.id}>`,
+			guild: formatGuild(queue.guild),
 			track: track.title,
 		});
 	});
 	events.on("playerFinish", (queue, track) => {
 		logger.debug("PLAYER", "Track finished", {
-			guild: `${queue.guild.name} <${queue.guild.id}>`,
+			guild: formatGuild(queue.guild),
 			track: track.title,
 		});
 	});
 	events.on("playerSkip", (queue, track, reason, description) => {
 		logger.debug("PLAYER", "Track skipped", {
-			guild: `${queue.guild.name} <${queue.guild.id}>`,
+			guild: formatGuild(queue.guild),
 			track: track.title,
 			reason,
 			description,
@@ -89,42 +90,42 @@ function registerPlayerDebugHandlers(player: Player): void {
 	});
 	events.on("audioTrackAdd", (queue, track) => {
 		logger.debug("PLAYER", "Track added to queue", {
-			guild: `${queue.guild.name} <${queue.guild.id}>`,
+			guild: formatGuild(queue.guild),
 			track: track.title,
 		});
 	});
 	events.on("audioTracksAdd", (queue, tracks) => {
 		logger.debug("PLAYER", "Tracks added to queue", {
-			guild: `${queue.guild.name} <${queue.guild.id}>`,
+			guild: formatGuild(queue.guild),
 			count: tracks.length,
 		});
 	});
 	events.on("audioTrackRemove", (queue, track) => {
 		logger.debug("PLAYER", "Track removed from queue", {
-			guild: `${queue.guild.name} <${queue.guild.id}>`,
+			guild: formatGuild(queue.guild),
 			track: track.title,
 		});
 	});
 	events.on("audioTracksRemove", (queue, tracks) => {
 		logger.debug("PLAYER", "Tracks removed from queue", {
-			guild: `${queue.guild.name} <${queue.guild.id}>`,
+			guild: formatGuild(queue.guild),
 			count: tracks.length,
 		});
 	});
 	events.on("emptyQueue", (queue) => {
-		logger.debug("PLAYER", "Queue is empty", { guild: `${queue.guild.name} <${queue.guild.id}>` });
+		logger.debug("PLAYER", "Queue is empty", { guild: formatGuild(queue.guild) });
 	});
 	events.on("emptyChannel", (queue) => {
-		logger.debug("PLAYER", "Voice channel is empty", { guild: `${queue.guild.name} <${queue.guild.id}>` });
+		logger.debug("PLAYER", "Voice channel is empty", { guild: formatGuild(queue.guild) });
 	});
 	events.on("disconnect", (queue) => {
-		logger.debug("PLAYER", "Player disconnected", { guild: `${queue.guild.name} <${queue.guild.id}>` });
+		logger.debug("PLAYER", "Player disconnected", { guild: formatGuild(queue.guild) });
 	});
 	events.on("queueCreate", (queue) => {
-		logger.debug("PLAYER", "Queue created", { guild: `${queue.guild.name} <${queue.guild.id}>` });
+		logger.debug("PLAYER", "Queue created", { guild: formatGuild(queue.guild) });
 	});
 	events.on("queueDelete", (queue) => {
-		logger.debug("PLAYER", "Queue deleted", { guild: `${queue.guild.name} <${queue.guild.id}>` });
+		logger.debug("PLAYER", "Queue deleted", { guild: formatGuild(queue.guild) });
 	});
 	logger.info("PLAYER", "Player debug listeners loaded");
 }

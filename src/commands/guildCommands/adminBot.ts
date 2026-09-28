@@ -8,7 +8,7 @@ import {
 } from "discord.js";
 
 import type { BotCommand, BotCommandData } from "../../helpers/command.js";
-import { formatGuildMention } from "../../helpers/discord.js";
+import { formatGuild, formatGuildMention } from "../../helpers/discord.js";
 import { sendResponse } from "../../helpers/response.js";
 import { wait } from "../../helpers/utils.js";
 import { isAdminUser } from "../../services/adminGuild.js";
@@ -57,7 +57,7 @@ const command: BotCommand = {
 		if (!isAdminUser(interaction.user.id, config)) {
 			logger.warn("ADMIN", "Unauthorized bot control attempt", {
 				user: `${interaction.user.tag} <${interaction.user.id}>`,
-				guild: interaction.guild ? `${interaction.guild.name} <${interaction.guild.id}>` : undefined,
+				guild: interaction.guild ? formatGuild(interaction.guild) : undefined,
 				subcommand: interaction.options.getSubcommand(),
 			});
 			await interaction.editReply("⛔ You are not authorized to use this command.");
@@ -134,7 +134,7 @@ const command: BotCommand = {
 
 		logger.warn("ADMIN", "Bot stop requested by admin command", {
 			user: `${interaction.user.tag} <${interaction.user.id}>`,
-			guild: interaction.guild ? `${interaction.guild.name} <${interaction.guild.id}>` : undefined,
+			guild: interaction.guild ? formatGuild(interaction.guild) : undefined,
 		});
 		await wait(5000);
 		await handleShutdown("ADMIN_STOP_BOT");

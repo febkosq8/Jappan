@@ -2,6 +2,7 @@ import type { Interaction } from "discord.js";
 import { ActivityType, Events, InteractionType, PresenceUpdateStatus } from "discord.js";
 
 import { getClient } from "../bot.js";
+import { formatGuild } from "../helpers/discord.js";
 import { getPrefixCommand, handlePrefixMessage } from "../services/adminDeployment.js";
 import {
 	handleAuditChannelCreate,
@@ -120,10 +121,7 @@ export function registerDiscordHandlers(): void {
 			customId: interaction.isMessageComponent() ? interaction.customId : undefined,
 			user: `${interaction.user.tag} <${interaction.user.id}>`,
 			context: "guild" in interaction && interaction.guild ? "guild" : "dm",
-			guild:
-				"guild" in interaction && interaction.guild
-					? `${interaction.guild.name} <${interaction.guild.id}>`
-					: undefined,
+			guild: "guild" in interaction && interaction.guild ? formatGuild(interaction.guild) : undefined,
 		});
 
 		if (interaction.isAutocomplete()) {
@@ -146,10 +144,7 @@ export function registerDiscordHandlers(): void {
 			customId: interaction.isMessageComponent() ? interaction.customId : undefined,
 			user: `${interaction.user.tag} <${interaction.user.id}>`,
 			context: "guild" in interaction && interaction.guild ? "guild" : "dm",
-			guild:
-				"guild" in interaction && interaction.guild
-					? `${interaction.guild.name} <${interaction.guild.id}>`
-					: undefined,
+			guild: "guild" in interaction && interaction.guild ? formatGuild(interaction.guild) : undefined,
 		});
 		return;
 	});

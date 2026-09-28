@@ -15,6 +15,7 @@ import {
 	type BotCommand,
 	type BotCommandData,
 } from "../../helpers/command.js";
+import { formatGuild } from "../../helpers/discord.js";
 import { sendResponse } from "../../helpers/response.js";
 import { getCommands } from "../../services/commandLoader.js";
 import type { Config } from "../../services/config.js";
@@ -156,7 +157,7 @@ const command: BotCommand = {
 		if (!isAdminUser(interaction.user.id, config)) {
 			logger.warn("ADMIN", "Unauthorized deployment status attempt", {
 				user: `${interaction.user.tag} <${interaction.user.id}>`,
-				guild: interaction.guild ? `${interaction.guild.name} <${interaction.guild.id}>` : undefined,
+				guild: interaction.guild ? formatGuild(interaction.guild) : undefined,
 			});
 			await interaction.editReply("⛔ You are not authorized to use this command.");
 			return;
@@ -179,14 +180,14 @@ const command: BotCommand = {
 			});
 			logger.info("ADMIN", "Deployment status inspected", {
 				user: `${interaction.user.tag} <${interaction.user.id}>`,
-				guild: interaction.guild ? `${interaction.guild.name} <${interaction.guild.id}>` : undefined,
+				guild: interaction.guild ? formatGuild(interaction.guild) : undefined,
 				globalCommandCount: globalCommands.size,
 				guildCommandCount: guildCommands.size,
 			});
 		} catch (error: unknown) {
 			logger.error("ADMIN", "Deployment status inspection failed", {
 				user: `${interaction.user.tag} <${interaction.user.id}>`,
-				guild: interaction.guild ? `${interaction.guild.name} <${interaction.guild.id}>` : undefined,
+				guild: interaction.guild ? formatGuild(interaction.guild) : undefined,
 				error,
 			});
 			await interaction.editReply("⛔ Failed to retrieve the registered commands.");
