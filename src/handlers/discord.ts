@@ -128,6 +128,24 @@ export function registerDiscordHandlers(): void {
 	logger.success("DISCORD", "Core Discord event handlers registered");
 }
 
+function matchesEventPattern(eventName: string, patterns: readonly string[]): boolean {
+	return patterns.some((pattern) => {
+		if (pattern === "*" || pattern === eventName) {
+			return true;
+		}
+		if (pattern.startsWith("*") && pattern.endsWith("*")) {
+			return eventName.includes(pattern.slice(1, -1));
+		}
+		if (pattern.endsWith("*") && !pattern.startsWith("*")) {
+			return eventName.startsWith(pattern.slice(0, -1));
+		}
+		if (pattern.startsWith("*") && !pattern.endsWith("*")) {
+			return eventName.endsWith(pattern.slice(1));
+		}
+		return false;
+	});
+}
+
 function registerEventDebugHandlers(client: ReturnType<typeof getClient>, enabledEvents: readonly string[]): void {
 	const debugEvents = {
 		GuildMemberAdd: { event: Events.GuildMemberAdd, argumentNames: ["member"] },
@@ -156,7 +174,7 @@ function registerEventDebugHandlers(client: ReturnType<typeof getClient>, enable
 		ThreadDelete: { event: Events.ThreadDelete, argumentNames: ["thread"] },
 	};
 	for (const [eventName, debugEvent] of Object.entries(debugEvents)) {
-		if (!enabledEvents.includes(eventName)) {
+		if (!matchesEventPattern(eventName, enabledEvents)) {
 			continue;
 		}
 		logger.success("DISCORD", "Debug Discord event handlers registered", { eventName });
