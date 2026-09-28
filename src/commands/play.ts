@@ -1,7 +1,7 @@
 import { InteractionContextType, PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
 
 import { formatGuild } from "../helpers/discord.js";
-import { createPlayerEmbed, getPlayerVoiceChannel } from "../helpers/player.js";
+import { createPlayerControls, createPlayerEmbed, getPlayerVoiceChannel } from "../helpers/player.js";
 import type { BotCommand, BotCommandData } from "../services/commandLoader.js";
 import { logger } from "../services/logger.js";
 import { playSearchResult, searchPlayer } from "../services/player.js";
@@ -110,6 +110,7 @@ const command: BotCommand = {
 						color: "Blue",
 					}),
 				],
+				components: [createPlayerControls()],
 			});
 			const playResponse = await playSearchResult({
 				channel: voiceChannel.id,

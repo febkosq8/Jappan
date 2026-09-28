@@ -24,7 +24,7 @@ function registerPlayerErrorHandlers(player: Player): void {
 		});
 	});
 	player.events.on("playerError", (queue, error, track) => {
-		updatePlayerQueueMessage(queue, `⚠️ Playback failed for **${track.title}**.`);
+		updatePlayerQueueMessage({ queue, content: `⚠️ Playback failed for **${track.title}**.` });
 		logger.error("PLAYER", `Track playback error: ${error.message}`, {
 			guild: formatGuild(queue.guild),
 			stack: error.stack,
@@ -37,25 +37,25 @@ function registerPlayerStatusHandlers(player: Player): void {
 	const events = player.events;
 
 	events.on("playerStart", (queue, track) => {
-		updatePlayerQueueMessage(queue, `▶️ Started playing: **${track.title}**`);
+		updatePlayerQueueMessage({ queue, content: `▶️ Started playing: **${track.title}**` });
 	});
 	events.on("playerSkip", (queue, track, reason, description) => {
-		updatePlayerQueueMessage(queue, `⚠️ Skipping: **${track.title}** (${description || reason})`);
+		updatePlayerQueueMessage({ queue, content: `⚠️ Skipping: **${track.title}** (${description || reason})` });
 	});
 	events.on("audioTrackAdd", (queue, track) => {
-		updatePlayerQueueMessage(queue, `🎵 Track queued: **${track.title}**`);
+		updatePlayerQueueMessage({ queue, content: `🎵 Track queued: **${track.title}**` });
 	});
 	events.on("audioTracksAdd", (queue, tracks) => {
-		updatePlayerQueueMessage(queue, `🎶 ${tracks.length} tracks queued.`);
+		updatePlayerQueueMessage({ queue, content: `🎶 ${tracks.length} tracks queued.` });
 	});
 	events.on("emptyQueue", (queue) => {
-		updatePlayerQueueMessage(queue, "✅ Queue finished.");
+		updatePlayerQueueMessage({ queue, content: "✅ Queue finished." });
 	});
 	events.on("emptyChannel", (queue) => {
-		updatePlayerQueueMessage(queue, "⚠️ The voice channel is empty. Leaving soon.");
+		updatePlayerQueueMessage({ queue, content: "🔇 No one is in the voice channel. Leaving soon." });
 	});
 	events.on("disconnect", (queue) => {
-		updatePlayerQueueMessage(queue, "⚠️ Playback disconnected.");
+		updatePlayerQueueMessage({ queue, content: "👋 Playback disconnected.", controls: false });
 	});
 }
 

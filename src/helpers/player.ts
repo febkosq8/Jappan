@@ -1,5 +1,8 @@
 import { Player, type SearchResult } from "discord-player";
 import {
+	ActionRowBuilder,
+	ButtonBuilder,
+	ButtonStyle,
 	ChannelType,
 	EmbedBuilder,
 	type APIInteractionGuildMember,
@@ -27,6 +30,51 @@ export type PlayerVoiceChannelResult =
 			readonly member: GuildMember | APIInteractionGuildMember;
 	  }
 	| { readonly success: false; readonly embed: EmbedBuilder };
+
+export function createPlayerControls({
+	queueView = false,
+	paused = false,
+	hasPrevious = false,
+	hasNext = false,
+}: {
+	queueView?: boolean;
+	paused?: boolean;
+	hasPrevious?: boolean;
+	hasNext?: boolean;
+} = {}): ActionRowBuilder<ButtonBuilder> {
+	const controls = [
+		new ButtonBuilder()
+			.setCustomId(`PlayerControl|ACTION#queue:VIEW#${queueView ? "queue" : "nowPlaying"}`)
+			.setLabel(queueView ? "Now Playing" : "Current Queue")
+			.setStyle(ButtonStyle.Primary),
+		new ButtonBuilder()
+			.setCustomId("PlayerControl|ACTION#pause")
+			.setLabel(paused ? "▶️ Play" : "⏸️ Pause")
+			.setStyle(ButtonStyle.Secondary),
+		new ButtonBuilder().setCustomId("PlayerControl|ACTION#stop").setLabel("⏹️ Stop").setStyle(ButtonStyle.Danger),
+	];
+	if (hasPrevious) {
+		controls.splice(
+			1,
+			0,
+			new ButtonBuilder()
+				.setCustomId("PlayerControl|ACTION#previous")
+				.setLabel("⏮️ Previous")
+				.setStyle(ButtonStyle.Secondary),
+		);
+	}
+	if (hasNext) {
+		controls.splice(
+			2,
+			0,
+			new ButtonBuilder()
+				.setCustomId("PlayerControl|ACTION#skip")
+				.setLabel("⏭️ Skip")
+				.setStyle(ButtonStyle.Secondary),
+		);
+	}
+	return new ActionRowBuilder<ButtonBuilder>().addComponents(...controls);
+}
 
 export function createPlayerEmbed({
 	title,
@@ -92,10 +140,32 @@ export function getPlayerVoiceChannel(interaction: ChatInputCommandInteraction):
 	return { success: true, channel: voiceChannel, member };
 }
 
-export function updatePlayerQueueMessage(queue: { metadata: { statusMessage?: Message } }, content: string): void {
+export function updatePlayerQueueMessage({
+	queue,
+	content,
+	controls = true,
+}: {
+	queue: {
+		metadata: { statusMessage?: Message };
+		node?: { isPaused(): boolean };
+		history?: { previousTrack?: unknown };
+		tracks?: { size: number };
+	};
+	content: string;
+	controls?: boolean;
+}): void {
 	void queue.metadata.statusMessage
 		?.edit({
 			embeds: [createPlayerEmbed({ title: "🎵 Player status", description: content, color: "Blue" })],
+			components: controls
+				? [
+						createPlayerControls({
+							paused: queue.node?.isPaused() ?? false,
+							hasPrevious: Boolean(queue.history?.previousTrack),
+							hasNext: (queue.tracks?.size ?? 0) > 0,
+						}),
+					]
+				: [],
 		})
 		.catch((error: unknown) => {
 			logger.warn("PLAYER", "Failed to update player status message", {
