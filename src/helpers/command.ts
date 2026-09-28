@@ -122,7 +122,9 @@ export function formatCommandDisplayEntry(entry: CommandDisplayEntry, indent = "
 			formatCommandDisplayEntry(subcommand, `${indent}  `, number ? `${number}.${index + 1}` : undefined),
 		)
 		.join("\n\n");
-	return `${indent}${number ? `${number}. ` : ""}${underline(entry.mention ?? entry.name)}${commandId}\n${indent}${bold("Description:")} ${entry.description}${formatCommandPermissions(
+	const entryPrefix = indent ? "• " : "";
+	const descriptionSeparator = "\n";
+	return `${indent}${entryPrefix}${number ? `${number}. ` : ""}${underline(entry.mention ?? entry.name)}${commandId}${descriptionSeparator}${indent}${bold("Description:")} ${entry.description}${formatCommandPermissions(
 		entry.requiredBotPermissions,
 	)}${children ? `\n\n${indent}${bold("Subcommands:")}\n${children}` : ""}`;
 }

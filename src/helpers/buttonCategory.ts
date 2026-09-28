@@ -16,20 +16,20 @@ export async function handleHelpCategory({
 	category: CommandCategory;
 }): Promise<void> {
 	const commands = getCommands().filter((command) => command.commandData.category === category);
-	const fields = [...commands.values()].flatMap((command) => {
+	const fields = [...commands.values()].flatMap((command, commandIndex) => {
 		const commandId = getCommandId(command.commandData.name);
 		if (!commandId) {
 			return [];
 		}
 
 		return getCommandDisplayEntries(command, commandId).map((entry) => ({
-			name: underline(entry.mention ?? entry.name),
+			name: `${commandIndex + 1}. ${underline(entry.mention ?? entry.name)}`,
 			value: `${bold("Description:")} ${entry.description}${formatCommandPermissions(entry.requiredBotPermissions)}${
 				entry.subCommands.length > 0
 					? `\n\n${bold("Subcommands:")}\n${entry.subCommands
 							.map(
-								(subcommand) =>
-									`- ${underline(subcommand.mention ?? subcommand.name)}\n  ${bold("Description:")} ${subcommand.description}${formatCommandPermissions(subcommand.requiredBotPermissions)}`,
+								(subcommand, subcommandIndex) =>
+									`• ${commandIndex + 1}.${subcommandIndex + 1} ${underline(subcommand.mention ?? subcommand.name)}\n  ${bold("Description:")} ${subcommand.description}${formatCommandPermissions(subcommand.requiredBotPermissions)}`,
 							)
 							.join("\n\n")}`
 					: ""
