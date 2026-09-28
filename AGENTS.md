@@ -159,7 +159,7 @@ The following legacy capabilities are not implemented in the rewrite:
 
 - Music commands, player lifecycle, queue controls, extractors, and playlist persistence.
 - The `soundboard` command.
-- Legacy event/debug/error log persistence models and user playlist persistence.
+- User playlist persistence for the music system.
 
 Fallback capability must remain available when slash commands are unavailable. Any feature removal requires owner approval and an equivalent supported mechanism.
 
@@ -173,7 +173,7 @@ Fallback capability must remain available when slash commands are unavailable. A
 ### Priority 2: Reliability and Verification
 
 - Add practical automated coverage for guild initialization, leveling concurrency, warning actions, command recovery, and database outage behavior.
-- Persist critical logs to the database in addition to console output.
+- Rely on host-managed local retention for application console logs.
 - Add correlation or request IDs for command and event traces.
 - Add controlled reconnect and database recovery behavior with observable logging.
 - Harden shutdown and failure handling for production operation.
