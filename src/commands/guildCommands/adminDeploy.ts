@@ -18,6 +18,10 @@ const commandData = {
 	name: "admin-deploy",
 	description: "Inspect the bot's registered application commands",
 	category: "admin",
+	hasSubCommands: true,
+	subCommands: [
+		{ name: "check-deploy", description: "Show the commands currently registered with Discord", category: "admin" },
+	],
 	isDBDependant: false,
 } satisfies BotCommandData;
 

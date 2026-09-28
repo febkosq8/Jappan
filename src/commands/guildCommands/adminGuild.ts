@@ -28,6 +28,19 @@ const commandData = {
 	name: "admin-guild",
 	description: "Manage the bot's guilds",
 	category: "admin",
+	hasSubCommands: true,
+	subCommands: [
+		{ name: "list", description: "List the guilds where the bot is installed", category: "admin" },
+		{ name: "channel", description: "Inspect a channel in a guild", category: "admin" },
+		{
+			name: "selfkick",
+			description: "Leave every other guild with an optional message and progress updates",
+			category: "admin",
+		},
+		{ name: "kick", description: "Leave a guild", category: "admin" },
+		{ name: "message", description: "Send an admin message to a guild", category: "admin" },
+		{ name: "invite", description: "Get or create an invite for a guild", category: "admin" },
+	],
 	isDBDependant: false,
 } satisfies BotCommandData;
 

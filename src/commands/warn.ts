@@ -22,6 +22,13 @@ const commandData = {
 	name: "warn",
 	description: "Manage warnings for this server",
 	category: "moderator",
+	hasSubCommands: true,
+	subCommands: [
+		{ name: "setup", description: "Configure warning thresholds and audit logging", category: "moderator" },
+		{ name: "issue", description: "Issue a warning to a user", category: "moderator" },
+		{ name: "check", description: "Check warning settings or a user's warning count", category: "moderator" },
+		{ name: "override", description: "Override a user's warning count", category: "moderator" },
+	],
 	isDBDependant: true,
 	requiredBotPermissions: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages],
 } satisfies BotCommandData;

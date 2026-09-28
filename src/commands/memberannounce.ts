@@ -16,6 +16,12 @@ const commandData = {
 	name: "memberannounce",
 	description: "Control member join and leave announcements for this server",
 	category: "moderator",
+	hasSubCommands: true,
+	subCommands: [
+		{ name: "on", description: "Turn on one member announcement direction", category: "moderator" },
+		{ name: "off", description: "Turn off one member announcement direction", category: "moderator" },
+		{ name: "check", description: "Check member announcement status", category: "moderator" },
+	],
 	isDBDependant: true,
 	requiredBotPermissions: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages],
 } satisfies BotCommandData;

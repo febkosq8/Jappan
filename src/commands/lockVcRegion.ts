@@ -23,6 +23,17 @@ const commandData = {
 	name: "lock-vc-region",
 	description: "Lock a voice channel to a region when a user joins",
 	category: "moderator",
+	hasSubCommands: true,
+	subCommands: [
+		{
+			name: "add",
+			description: "Lock a voice channel when a user joins",
+			category: "moderator",
+			requiredBotPermissions: [PermissionFlagsBits.ManageChannels],
+		},
+		{ name: "check", description: "List active voice region locks", category: "moderator" },
+		{ name: "delete", description: "Delete a user's voice region lock", category: "moderator" },
+	],
 	isDBDependant: true,
 	requiredBotPermissions: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages],
 } satisfies BotCommandData;

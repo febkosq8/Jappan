@@ -16,6 +16,7 @@ const commandData = {
 	description: "Get to know more about this bot",
 	category: "general",
 	isDBDependant: false,
+	hasSubCommands: false,
 	requiredBotPermissions: [
 		PermissionFlagsBits.ViewChannel,
 		PermissionFlagsBits.SendMessages,

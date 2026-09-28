@@ -8,6 +8,7 @@ const commandData = {
 	description: "Get latency information about the bot",
 	category: "general",
 	isDBDependant: false,
+	hasSubCommands: false,
 	requiredBotPermissions: [
 		PermissionFlagsBits.ViewChannel,
 		PermissionFlagsBits.SendMessages,

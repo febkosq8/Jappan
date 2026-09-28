@@ -16,6 +16,7 @@ const commandData = {
 	description: "Show the leaderboard for this server",
 	category: "level",
 	isDBDependant: true,
+	hasSubCommands: false,
 } satisfies BotCommandData;
 
 interface CreateLeaderboardComponentsOptions {

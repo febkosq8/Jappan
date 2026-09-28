@@ -24,7 +24,16 @@ export async function handleSlashCommandInteraction({
 		return;
 	}
 	try {
-		const missingPermissions = getMissingBotPermissions(interaction, command.commandData.requiredBotPermissions);
+		const hasSubCommands = command.commandData.hasSubCommands ?? false;
+		const subcommand = hasSubCommands ? interaction.options.getSubcommand() : undefined;
+		const subcommandData = subcommand
+			? command.commandData.subCommands?.find((entry) => entry.name === subcommand)
+			: undefined;
+		const requiredBotPermissions = [
+			...(command.commandData.requiredBotPermissions ?? []),
+			...(subcommandData?.requiredBotPermissions ?? []),
+		];
+		const missingPermissions = getMissingBotPermissions(interaction, requiredBotPermissions);
 		if (missingPermissions.length > 0) {
 			logger.warn("SLASH_COMMANDS", "Application (/) command rejected because bot lacks permissions", {
 				command: interaction.commandName,

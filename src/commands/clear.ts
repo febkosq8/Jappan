@@ -17,6 +17,7 @@ const commandData = {
 	description: "Delete messages from one channel or across the guild",
 	category: "moderator",
 	isDBDependant: false,
+	hasSubCommands: false,
 	requiredBotPermissions: [
 		PermissionFlagsBits.ViewChannel,
 		PermissionFlagsBits.SendMessages,

@@ -16,6 +16,7 @@ const commandData = {
 	description: "List all available commands",
 	category: "general",
 	isDBDependant: false,
+	hasSubCommands: false,
 	requiredBotPermissions: [
 		PermissionFlagsBits.ViewChannel,
 		PermissionFlagsBits.SendMessages,

@@ -18,6 +18,7 @@ const commandData = {
 	description: "Post a message that appears to come from another user",
 	category: "fun",
 	isDBDependant: false,
+	hasSubCommands: false,
 	requiredBotPermissions: [
 		PermissionFlagsBits.ViewChannel,
 		PermissionFlagsBits.SendMessages,

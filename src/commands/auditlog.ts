@@ -17,6 +17,17 @@ const commandData = {
 	name: "auditlog",
 	description: "Control the audit log feature for this server",
 	category: "moderator",
+	hasSubCommands: true,
+	subCommands: [
+		{
+			name: "on",
+			description: "Turn on the audit log system",
+			category: "moderator",
+			requiredBotPermissions: [PermissionFlagsBits.ViewAuditLog],
+		},
+		{ name: "off", description: "Turn off the audit log system", category: "moderator" },
+		{ name: "check", description: "Check the audit log status", category: "moderator" },
+	],
 	isDBDependant: true,
 	requiredBotPermissions: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages],
 } satisfies BotCommandData;

@@ -16,6 +16,12 @@ const commandData = {
 	name: "level",
 	description: "Control the leveling feature for this server",
 	category: "level",
+	hasSubCommands: true,
+	subCommands: [
+		{ name: "on", description: "Turn on the leveling system", category: "level" },
+		{ name: "off", description: "Turn off the leveling system", category: "level" },
+		{ name: "check", description: "Check the leveling status", category: "level" },
+	],
 	isDBDependant: true,
 	requiredBotPermissions: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages],
 } satisfies BotCommandData;
