@@ -8,22 +8,25 @@ import { logger } from "./logger.js";
 
 let player: Player | undefined;
 
-function registerPlayerDebugListeners(initializedPlayer: Player): void {
-	if (!getConfig("PLAYER_DEBUG")) {
-		return;
-	}
+function registerPlayerDebugListeners(): void {
+	const initializedPlayer = getPlayer();
 
 	initializedPlayer.on("debug", (message) => {
-		logger.debug("DISCORD", `Player: ${message}`);
-	});
-	initializedPlayer.on("error", (error) => {
-		logger.error("DISCORD", `Player error: ${error.message}`, { stack: error.stack });
+		logger.debug("PLAYER", message);
 	});
 	initializedPlayer.events.on("debug", (queue, message) => {
-		logger.debug("DISCORD", `Queue ${queue.guild.id}: ${message}`);
+		logger.debug("PLAYER", `Queue ${queue.guild.id}: ${message}`);
+	});
+	logger.info("PLAYER", "Player debug listeners loaded");
+}
+
+function registerPlayerListeners(): void {
+	const initializedPlayer = getPlayer();
+	initializedPlayer.on("error", (error) => {
+		logger.error("PLAYER", `Player error: ${error.message}`, { stack: error.stack });
 	});
 	initializedPlayer.events.on("error", (queue, error) => {
-		logger.error("DISCORD", `Queue ${queue.guild.id} error: ${error.message}`, {
+		logger.error("PLAYER", `Queue ${queue.guild.id} error: ${error.message}`, {
 			stack: error.stack,
 			track: queue.currentTrack?.title,
 		});
@@ -35,13 +38,20 @@ export async function initializePlayer(client: Client): Promise<Player> {
 		return player;
 	}
 
-	const initializedPlayer = new Player(client as unknown as ConstructorParameters<typeof Player>[0], {
+	const playerOptions = {
 		skipFFmpeg: false,
-	});
-	registerPlayerDebugListeners(initializedPlayer);
+	};
+	const initializedPlayer = new Player(client as unknown as ConstructorParameters<typeof Player>[0], playerOptions);
 	await loadExtractors(initializedPlayer);
 	await initializedPlayer.extractors.loadMulti(DefaultExtractors);
 	player = initializedPlayer;
+	registerPlayerListeners();
+	if (getConfig("PLAYER_DEBUG")) {
+		registerPlayerDebugListeners();
+	}
+	logger.info("PLAYER", "Player initialized", {
+		extractorsCount: initializedPlayer.extractors.store.size,
+	});
 	return initializedPlayer;
 }
 

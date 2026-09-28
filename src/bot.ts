@@ -35,7 +35,7 @@ export async function startBot(): Promise<void> {
 	await loadButtons();
 	registerDiscordHandlers();
 	registerExtendedDiscordHandlers();
-	await initializePlayer(client);
+	initializePlayer(client);
 
 	logger.info("DISCORD", "Connecting to Discord");
 	await client.login(getConfig("DISCORD_TOKEN"));
