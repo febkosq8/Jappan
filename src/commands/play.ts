@@ -1,12 +1,7 @@
-import {
-	ChannelType,
-	InteractionContextType,
-	MessageFlags,
-	PermissionFlagsBits,
-	SlashCommandBuilder,
-} from "discord.js";
+import { ChannelType, InteractionContextType, PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
 
 import type { BotCommand, BotCommandData } from "../services/commandLoader.js";
+import { logger } from "../services/logger.js";
 import { playSearchResult, searchPlayer } from "../services/player.js";
 
 const commandData = {
@@ -46,6 +41,7 @@ const command: BotCommand = {
 
 		try {
 			const result = await searchPlayer(query);
+			console.log({ query, result, hasResults: result.hasTracks() });
 			const choices = result.playlist
 				? [{ name: `${result.playlist.title} | Playlist`.slice(0, 100), value: query }]
 				: result.tracks.slice(0, 6).map((track) => ({
@@ -58,7 +54,7 @@ const command: BotCommand = {
 		}
 	},
 	execute: async ({ interaction }) => {
-		await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+		await interaction.deferReply();
 
 		const member = interaction.member;
 		if (!member || typeof member !== "object" || !("voice" in member) || !member.voice.channel) {
@@ -91,9 +87,16 @@ const command: BotCommand = {
 				return;
 			}
 
-			await playSearchResult({ channel: voiceChannel.id, member, searchResult });
-			await interaction.editReply(`Loading your ${searchResult.playlist ? "playlist" : "track"}.`);
-		} catch {
+			const statusMessage = await interaction.editReply(
+				`Loading your ${searchResult.playlist ? "playlist" : "track"}.`,
+			);
+			await playSearchResult({ channel: voiceChannel.id, member, searchResult, statusMessage });
+		} catch (error: unknown) {
+			logger.error("PLAYER", "Failed to start playback", {
+				guild: interaction.guild ? `${interaction.guild.name} <${interaction.guild.id}>` : undefined,
+				query,
+				error,
+			});
 			await interaction.editReply("I could not start playback for that query.");
 		}
 	},
