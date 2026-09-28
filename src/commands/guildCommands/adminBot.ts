@@ -10,6 +10,7 @@ import {
 import type { BotCommand, BotCommandData } from "../../helpers/command.js";
 import { formatGuildMention } from "../../helpers/discord.js";
 import { sendResponse } from "../../helpers/response.js";
+import { wait } from "../../helpers/utils.js";
 import { isAdminUser } from "../../services/adminGuild.js";
 import { logger } from "../../services/logger.js";
 import { handleShutdown } from "../../services/shutdown.js";
@@ -22,7 +23,7 @@ const commandData = {
 	hasSubCommands: true,
 	subCommands: [
 		{ name: "check-voice", description: "Show the bot's active voice connections", category: "admin" },
-		{ name: "restart-client", description: "Restart the bot process", category: "admin" },
+		{ name: "stop-bot", description: "Stop the bot process", category: "admin" },
 	],
 	isDBDependant: false,
 	requiredBotPermissions: [
@@ -42,10 +43,10 @@ const command: BotCommand = {
 		)
 		.addSubcommand((subcommand) =>
 			subcommand
-				.setName("restart-client")
-				.setDescription("Restart the bot process")
+				.setName("stop-bot")
+				.setDescription("Stop the bot process")
 				.addBooleanOption((option) =>
-					option.setName("confirm").setDescription("Confirm restarting the bot").setRequired(true),
+					option.setName("confirm").setDescription("Confirm stopping the bot").setRequired(true),
 				),
 		)
 		.setDefaultMemberPermissions(commandData.defaultMemberPermissions)
@@ -110,17 +111,33 @@ const command: BotCommand = {
 			return;
 		}
 
-		if (interaction.options.getBoolean("confirm", true) !== true) {
-			await interaction.editReply("⛔ Confirmation is required to restart the bot process.");
+		if (subcommand === "stop-bot") {
+			if (interaction.options.getBoolean("confirm", true) !== true) {
+				await interaction.editReply("⛔ Confirmation is required to stop the bot process.");
+				return;
+			}
+
+			await interaction.editReply("✅ Stopping the bot process in 5 seconds.");
 			return;
 		}
 
-		await interaction.editReply("✅ Restarting the bot process.");
-		logger.warn("ADMIN", "Bot restart requested by admin command", {
+		throw new Error(`Unsupported admin-bot subcommand: ${subcommand}`);
+	},
+	postExecute: async ({ interaction, config }) => {
+		if (
+			interaction.options.getSubcommand() !== "stop-bot" ||
+			interaction.options.getBoolean("confirm", true) !== true ||
+			!isAdminUser(interaction.user.id, config)
+		) {
+			return;
+		}
+
+		logger.warn("ADMIN", "Bot stop requested by admin command", {
 			user: `${interaction.user.tag} <${interaction.user.id}>`,
 			guild: interaction.guild ? `${interaction.guild.name} <${interaction.guild.id}>` : undefined,
 		});
-		await handleShutdown("ADMIN_RESTART_CLIENT");
+		await wait(5000);
+		await handleShutdown("ADMIN_STOP_BOT");
 	},
 };
 

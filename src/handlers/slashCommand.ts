@@ -77,6 +77,7 @@ export async function handleSlashCommandInteraction({
 			guildId: interaction.guildId ?? undefined,
 			durationMs: Math.round(performance.now() - startedAt),
 		});
+		await command.postExecute?.({ interaction, config });
 	} catch (error: unknown) {
 		logger.error("SLASH_COMMANDS", "Application (/) command failed", {
 			command: interaction.commandName,

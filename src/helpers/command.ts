@@ -36,6 +36,7 @@ export interface BotCommand {
 	readonly commandData: BotCommandData;
 	readonly data: SlashCommandBuilder | SlashCommandOptionsOnlyBuilder | SlashCommandSubcommandsOnlyBuilder;
 	readonly execute: (context: BotCommandContext) => Promise<void>;
+	readonly postExecute?: (context: BotCommandContext) => Promise<void>;
 	readonly autocomplete?: (interaction: AutocompleteInteraction) => Promise<void>;
 }
 
