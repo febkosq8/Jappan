@@ -10,9 +10,15 @@ import type {
 } from "discord.js";
 import { channelMention, roleMention, userMention } from "discord.js";
 
-export function formatUserMention(user: User | PartialUser | GuildMember | PartialGuildMember): string {
+type UserMentionSource =
+	| Pick<User, "id" | "username">
+	| Pick<PartialUser, "id" | "username">
+	| Pick<GuildMember, "id" | "displayName">
+	| Pick<PartialGuildMember, "id" | "displayName">;
+
+export function formatUserMention(user: UserMentionSource): string {
 	const userId = user.id;
-	const userName = "user" in user ? user.displayName : user.username;
+	const userName = "displayName" in user ? user.displayName : "username" in user ? user.username : userId;
 	return `${userMention(userId)} (${userName}/${userId})`;
 }
 
@@ -26,6 +32,6 @@ export function formatGuildMention(guild: Pick<Guild, "id" | "name">): string {
 	return `${guild.name} ([\`${guild.id}\`](https://discord.com/channels/${guild.id}))`;
 }
 
-export function formatRoleMention(role: Role): string {
+export function formatRoleMention(role: Pick<Role, "id" | "name">): string {
 	return `${roleMention(role.id)} (${role.name}/${role.id})`;
 }
