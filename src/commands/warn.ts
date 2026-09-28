@@ -22,6 +22,7 @@ const commandData = {
 	name: "warn",
 	description: "Manage warnings for this server",
 	category: "moderator",
+	defaultMemberPermissions: PermissionFlagsBits.ManageGuild,
 	hasSubCommands: true,
 	subCommands: [
 		{ name: "setup", description: "Configure warning thresholds and audit logging", category: "moderator" },
@@ -148,7 +149,7 @@ const command: BotCommand = {
 					option.setName("count").setDescription("New warning count").setMinValue(0).setRequired(true),
 				),
 		)
-		.setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+		.setDefaultMemberPermissions(commandData.defaultMemberPermissions)
 		.setContexts([InteractionContextType.Guild]),
 	execute: async ({ interaction, config }) => {
 		await interaction.deferReply({ flags: MessageFlags.Ephemeral });

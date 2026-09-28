@@ -23,6 +23,7 @@ const commandData = {
 	name: "lock-vc-region",
 	description: "Lock a voice channel to a region when a user joins",
 	category: "moderator",
+	defaultMemberPermissions: PermissionFlagsBits.ManageGuild,
 	hasSubCommands: true,
 	subCommands: [
 		{
@@ -76,7 +77,7 @@ const command: BotCommand = {
 					option.setName("user").setDescription("User to stop watching").setRequired(true),
 				),
 		)
-		.setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+		.setDefaultMemberPermissions(commandData.defaultMemberPermissions)
 		.setContexts([InteractionContextType.Guild]),
 	execute: async ({ interaction, config }) => {
 		await interaction.deferReply({ flags: MessageFlags.Ephemeral });

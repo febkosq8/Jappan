@@ -17,6 +17,7 @@ const commandData = {
 	name: "auditlog",
 	description: "Control the audit log feature for this server",
 	category: "moderator",
+	defaultMemberPermissions: PermissionFlagsBits.ManageGuild,
 	hasSubCommands: true,
 	subCommands: [
 		{
@@ -105,7 +106,7 @@ const command: BotCommand = {
 		)
 		.addSubcommand((subcommand) => subcommand.setName("off").setDescription("Turn off the audit log system"))
 		.addSubcommand((subcommand) => subcommand.setName("check").setDescription("Check the audit log status"))
-		.setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+		.setDefaultMemberPermissions(commandData.defaultMemberPermissions)
 		.setContexts([InteractionContextType.Guild]),
 	execute: async ({ interaction, config }) => {
 		await interaction.deferReply({ flags: MessageFlags.Ephemeral });

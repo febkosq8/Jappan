@@ -16,6 +16,7 @@ const commandData = {
 	name: "clear",
 	description: "Delete messages from one channel or across the guild",
 	category: "moderator",
+	defaultMemberPermissions: PermissionFlagsBits.ManageGuild,
 	isDBDependant: false,
 	hasSubCommands: false,
 	requiredBotPermissions: [
@@ -92,7 +93,7 @@ const command: BotCommand = {
 				.setDescription("Only delete messages containing this text (case-sensitive)")
 				.setRequired(false),
 		)
-		.setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+		.setDefaultMemberPermissions(commandData.defaultMemberPermissions)
 		.setContexts([InteractionContextType.Guild]),
 	execute: async ({ interaction, config }) => {
 		await interaction.deferReply({ flags: MessageFlags.Ephemeral });

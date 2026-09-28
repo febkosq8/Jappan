@@ -16,6 +16,7 @@ const commandData = {
 	name: "memberannounce",
 	description: "Control member join and leave announcements for this server",
 	category: "moderator",
+	defaultMemberPermissions: PermissionFlagsBits.ManageGuild,
 	hasSubCommands: true,
 	subCommands: [
 		{ name: "on", description: "Turn on one member announcement direction", category: "moderator" },
@@ -129,7 +130,7 @@ const command: BotCommand = {
 				),
 		)
 		.addSubcommand((subcommand) => subcommand.setName("check").setDescription("Check member announcement status"))
-		.setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+		.setDefaultMemberPermissions(commandData.defaultMemberPermissions)
 		.setContexts([InteractionContextType.Guild]),
 	execute: async ({ interaction, config }) => {
 		await interaction.deferReply({ flags: MessageFlags.Ephemeral });

@@ -21,6 +21,7 @@ export interface BotCommandData {
 	readonly description: string;
 	readonly category: CommandCategory;
 	readonly isDBDependant?: boolean;
+	readonly defaultMemberPermissions?: PermissionResolvable;
 	readonly requiredBotPermissions?: readonly PermissionResolvable[];
 	readonly hasSubCommands?: boolean;
 	readonly subCommands?: readonly BotCommandData[];
@@ -43,6 +44,7 @@ export interface CommandDisplayEntry {
 	readonly description: string;
 	readonly commandId?: string;
 	readonly mention?: string;
+	readonly requiredUserPermissions: readonly string[];
 	readonly requiredBotPermissions: readonly string[];
 	readonly subCommands: readonly CommandDisplayEntry[];
 }
@@ -61,6 +63,19 @@ function getRequiredBotPermissions(command: BotCommand, subcommandPermissions: r
 	];
 }
 
+function getRequiredUserPermissions(command: BotCommand, subcommandPermissions: readonly string[] = []): string[] {
+	return [
+		...new Set(
+			[
+				...(command.commandData.defaultMemberPermissions
+					? [String(command.commandData.defaultMemberPermissions)]
+					: []),
+				...subcommandPermissions,
+			].map(formatPermissionName),
+		),
+	];
+}
+
 function createCommandMention(commandName: string, subcommandName: string | undefined, commandId: string): string {
 	return subcommandName
 		? chatInputApplicationCommandMention(commandName, subcommandName, commandId)
@@ -73,14 +88,20 @@ function createDisplayEntry(
 	commandId: string | undefined,
 	parentPermissions: readonly string[],
 	parentName: string | undefined,
+	parentUserPermissions: readonly string[],
 ): CommandDisplayEntry {
 	const requiredBotPermissions = getRequiredBotPermissions(command, [
 		...parentPermissions,
 		...(commandData.requiredBotPermissions ?? []).map(String),
 	]);
+	const requiredUserPermissions = getRequiredUserPermissions(command, [
+		...parentUserPermissions,
+		...(commandData.defaultMemberPermissions ? [String(commandData.defaultMemberPermissions)] : []),
+	]);
 	const entry: CommandDisplayEntry = {
 		name: commandData.name,
 		description: commandData.description,
+		requiredUserPermissions,
 		requiredBotPermissions,
 		subCommands: [],
 		...(commandId
@@ -98,7 +119,14 @@ function createDisplayEntry(
 		return {
 			...entry,
 			subCommands: commandData.subCommands.map((subcommand) =>
-				createDisplayEntry(command, subcommand, commandId, requiredBotPermissions, commandData.name),
+				createDisplayEntry(
+					command,
+					subcommand,
+					commandId,
+					requiredBotPermissions,
+					commandData.name,
+					requiredUserPermissions,
+				),
 			),
 		};
 	}
@@ -106,13 +134,17 @@ function createDisplayEntry(
 }
 
 export function getCommandDisplayEntries(command: BotCommand, commandId?: string): CommandDisplayEntry[] {
-	return [createDisplayEntry(command, command.commandData, commandId, [], undefined)];
+	return [createDisplayEntry(command, command.commandData, commandId, [], undefined, [])];
 }
 
 export function formatCommandPermissions(permissions: readonly string[]): string {
 	return permissions.length > 0
-		? `\n${bold("Required permissions:")} ${permissions.map((permission) => `\`${permission}\``).join(", ")}`
+		? `\n${bold("Required bot permissions:")} ${permissions.map((permission) => `\`${permission}\``).join(", ")}`
 		: "";
+}
+
+export function formatCommandUserPermissions(permissions: readonly string[]): string {
+	return `\n${bold("User access:")} ${permissions.length > 0 ? permissions.map((permission) => `\`${permission}\``).join(", ") : "Everyone"}`;
 }
 
 export function formatCommandDisplayEntry(entry: CommandDisplayEntry, indent = "", number?: string): string {
@@ -124,7 +156,9 @@ export function formatCommandDisplayEntry(entry: CommandDisplayEntry, indent = "
 		.join("\n\n");
 	const entryPrefix = indent ? "• " : "";
 	const descriptionSeparator = "\n";
-	return `${indent}${entryPrefix}${number ? `${number}. ` : ""}${underline(entry.mention ?? entry.name)}${commandId}${descriptionSeparator}${indent}${bold("Description:")} ${entry.description}${formatCommandPermissions(
+	return `${indent}${entryPrefix}${number ? `${number}. ` : ""}${underline(entry.mention ?? entry.name)}${commandId}${descriptionSeparator}${indent}${bold("Description:")} ${entry.description}${formatCommandUserPermissions(
+		entry.requiredUserPermissions,
+	)}${formatCommandPermissions(
 		entry.requiredBotPermissions,
 	)}${children ? `\n\n${indent}${bold("Subcommands:")}\n${children}` : ""}`;
 }

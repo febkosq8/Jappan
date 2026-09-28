@@ -28,6 +28,7 @@ const commandData = {
 	name: "admin-guild",
 	description: "Manage the bot's guilds",
 	category: "admin",
+	defaultMemberPermissions: PermissionFlagsBits.ManageGuild,
 	hasSubCommands: true,
 	subCommands: [
 		{ name: "list", description: "List the guilds where the bot is installed", category: "admin" },
@@ -175,7 +176,7 @@ const command: BotCommand = {
 					option.setName("guild-id").setDescription("Guild ID").setAutocomplete(true).setRequired(true),
 				),
 		)
-		.setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+		.setDefaultMemberPermissions(commandData.defaultMemberPermissions)
 		.setContexts([InteractionContextType.Guild]),
 	execute: async ({ interaction, config }) => {
 		await interaction.deferReply({ flags: MessageFlags.Ephemeral });

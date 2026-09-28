@@ -24,6 +24,7 @@ const commandData = {
 	name: "admin-deploy",
 	description: "Inspect the bot's registered application commands",
 	category: "admin",
+	defaultMemberPermissions: PermissionFlagsBits.ManageGuild,
 	hasSubCommands: true,
 	subCommands: [
 		{ name: "check-deploy", description: "Show the commands currently registered with Discord", category: "admin" },
@@ -146,7 +147,7 @@ const command: BotCommand = {
 		.addSubcommand((subcommand) =>
 			subcommand.setName("check-deploy").setDescription("Show the commands currently registered with Discord"),
 		)
-		.setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+		.setDefaultMemberPermissions(commandData.defaultMemberPermissions)
 		.setContexts([InteractionContextType.Guild]),
 	execute: async ({ interaction, config }) => {
 		await interaction.deferReply({ flags: MessageFlags.Ephemeral });

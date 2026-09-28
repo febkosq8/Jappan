@@ -16,6 +16,7 @@ const commandData = {
 	name: "level",
 	description: "Control the leveling feature for this server",
 	category: "level",
+	defaultMemberPermissions: PermissionFlagsBits.ManageGuild,
 	hasSubCommands: true,
 	subCommands: [
 		{ name: "on", description: "Turn on the leveling system", category: "level" },
@@ -80,7 +81,7 @@ const command: BotCommand = {
 		)
 		.addSubcommand((subcommand) => subcommand.setName("off").setDescription("Turn off the leveling system"))
 		.addSubcommand((subcommand) => subcommand.setName("check").setDescription("Check the leveling status"))
-		.setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+		.setDefaultMemberPermissions(commandData.defaultMemberPermissions)
 		.setContexts([InteractionContextType.Guild]),
 	execute: async ({ interaction, config }) => {
 		await interaction.deferReply({ flags: MessageFlags.Ephemeral });
