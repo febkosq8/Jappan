@@ -25,6 +25,14 @@ export async function handleSlashCommandInteraction({
 		});
 		return;
 	}
+	const postExecute = command.postExecute;
+	const executionLogDetails = {
+		command: interaction.commandName,
+		user: `${interaction.user.tag} <${interaction.user.id}>`,
+		context: interaction.guildId ? "guild" : "dm",
+		guildId: interaction.guildId ?? undefined,
+		durationMs: Math.round(performance.now() - startedAt),
+	};
 	try {
 		const hasSubCommands = command.commandData.hasSubCommands ?? false;
 		const subcommand = hasSubCommands ? interaction.options.getSubcommand() : undefined;
@@ -70,14 +78,21 @@ export async function handleSlashCommandInteraction({
 		}
 
 		await command.execute({ interaction, config });
-		logger.info("SLASH_COMMANDS", "Application (/) command executed successfully", {
-			command: interaction.commandName,
-			user: `${interaction.user.tag} <${interaction.user.id}>`,
-			context: interaction.guildId ? "guild" : "dm",
-			guildId: interaction.guildId ?? undefined,
-			durationMs: Math.round(performance.now() - startedAt),
-		});
-		await command.postExecute?.({ interaction, config });
+		logger.info(
+			"SLASH_COMMANDS",
+			postExecute
+				? "Application (/) command executed successfully; running postExecute"
+				: "Application (/) command executed successfully",
+			executionLogDetails,
+		);
+		if (postExecute) {
+			await postExecute({ interaction, config });
+			logger.info(
+				"SLASH_COMMANDS",
+				"Application (/) command postExecute completed successfully",
+				executionLogDetails,
+			);
+		}
 	} catch (error: unknown) {
 		logger.error("SLASH_COMMANDS", "Application (/) command failed", {
 			command: interaction.commandName,
