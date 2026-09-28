@@ -2,7 +2,7 @@ import type { Interaction } from "discord.js";
 import { ActivityType, Events, InteractionType, PresenceUpdateStatus } from "discord.js";
 
 import { getClient } from "../bot.js";
-import { formatGuild } from "../helpers/discord.js";
+import { formatGuild, formatUser } from "../helpers/discord.js";
 import { getPrefixCommand, handlePrefixMessage } from "../services/adminDeployment.js";
 import {
 	handleAuditChannelCreate,
@@ -63,7 +63,7 @@ export function registerDiscordHandlers(): void {
 		updatePresence();
 		setInterval(updatePresence, 6 * 60 * 60 * 1000);
 		logger.success("DISCORD", "Client ready", {
-			user: readyClient.user.tag,
+			user: formatUser(readyClient.user),
 			guilds: readyClient.guilds.cache.size,
 			commands: commands.size,
 			users: readyClient.users.cache.size,
