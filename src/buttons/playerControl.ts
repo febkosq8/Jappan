@@ -2,6 +2,7 @@ import { MessageFlags } from "discord.js";
 
 import { parseButtonCustomId } from "../helpers/button.js";
 import { createPlayerControls, createPlayerEmbed } from "../helpers/player.js";
+import { splitString } from "../helpers/string.js";
 import { getPlayer } from "../services/player.js";
 import type { ButtonModule } from "../services/buttonLoader.js";
 
@@ -43,7 +44,7 @@ const button: ButtonModule = {
 					createPlayerControls({
 						paused,
 						hasPrevious: Boolean(queue.history.previousTrack),
-						hasNext: queue.tracks.size > 0,
+						hasNext: Boolean(queue.history.nextTrack),
 					}),
 				],
 			});
@@ -81,12 +82,48 @@ const button: ButtonModule = {
 						title: "⏹️ Player stopped",
 						description: "Playback has been stopped.",
 						color: "Blue",
+						requestedBy: queue.metadata.requestedByDisplay,
 					}),
 				],
 				components: [],
 			});
 			return;
 		}
+
+		const renderQueuePage = async (requestedPage: number): Promise<void> => {
+			const tracks = queue.tracks.toArray();
+			const queueBody = tracks.length
+				? tracks.map((track, index) => `${index + 1}. **${track.title}**`).join("\n")
+				: "No tracks are waiting in the queue.";
+			const queueChunks = splitString(queueBody, 2600);
+			const queuePages = queueChunks.slice(0, 2);
+			if (queueChunks.length > queuePages.length) {
+				queuePages[queuePages.length - 1] += "\n... More tracks are not shown.";
+			}
+			const page = Math.min(Math.max(requestedPage, 0), queuePages.length - 1);
+			await interaction.update({
+				embeds: [
+					createPlayerEmbed({
+						title: `🎵 Current queue (${page + 1}/${queuePages.length})`,
+						description: `▶️ Now playing: **${queue.currentTrack?.title ?? "Nothing"}**\n\n${queuePages[page] ?? "No tracks are waiting in the queue."}`,
+						color: "Blue",
+						requestedBy: queue.metadata.requestedByDisplay,
+						footerText: `Page ${page + 1}/${queuePages.length}`,
+						...(queue.currentTrack?.thumbnail ? { thumbnail: queue.currentTrack.thumbnail } : {}),
+					}),
+				],
+				components: [
+					createPlayerControls({
+						queueView: true,
+						queuePage: page,
+						queuePageCount: queuePages.length,
+						paused: queue.node.isPaused(),
+						hasPrevious: Boolean(queue.history.previousTrack),
+						hasNext: Boolean(queue.history.nextTrack),
+					}),
+				],
+			});
+		};
 
 		if (action === "queue") {
 			const view = parseButtonCustomId(interaction.customId).get("VIEW");
@@ -97,39 +134,34 @@ const button: ButtonModule = {
 						createPlayerEmbed({
 							title: "🎵 Now playing",
 							description: currentTrack
-								? `▶️ **${currentTrack.title}**`
+								? queue.node.isPaused()
+									? "Currently paused."
+									: "Currently playing."
 								: "No track is currently playing.",
 							color: "Blue",
+							requestedBy: queue.metadata.requestedByDisplay,
+							...(currentTrack?.thumbnail ? { thumbnail: currentTrack.thumbnail } : {}),
+							queueSize: queue.tracks.size,
+							...(currentTrack?.durationMS ? { durationMs: currentTrack.durationMS } : {}),
 						}),
 					],
 					components: [
 						createPlayerControls({
 							paused: queue.node.isPaused(),
 							hasPrevious: Boolean(queue.history.previousTrack),
-							hasNext: queue.tracks.size > 0,
+							hasNext: Boolean(queue.history.nextTrack),
 						}),
 					],
 				});
 				return;
 			}
-			const tracks = queue.tracks.toArray();
-			const description = tracks.length
-				? tracks
-						.map((track, index) => `${index + 1}. **${track.title}**`)
-						.join("\n")
-						.slice(0, 3900)
-				: "No tracks are waiting in the queue.";
-			await interaction.update({
-				embeds: [createPlayerEmbed({ title: "🎵 Current queue", description, color: "Blue" })],
-				components: [
-					createPlayerControls({
-						queueView: true,
-						paused: queue.node.isPaused(),
-						hasPrevious: Boolean(queue.history.previousTrack),
-						hasNext: queue.tracks.size > 0,
-					}),
-				],
-			});
+			await renderQueuePage(0);
+			return;
+		}
+
+		if (action === "queuePage") {
+			const requestedPage = Number(parseButtonCustomId(interaction.customId).get("PAGE"));
+			await renderQueuePage(Number.isFinite(requestedPage) ? requestedPage : 0);
 			return;
 		}
 

@@ -1,6 +1,6 @@
 import { InteractionContextType, PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
 
-import { formatGuild } from "../helpers/discord.js";
+import { formatGuild, formatUser } from "../helpers/discord.js";
 import { createPlayerControls, createPlayerEmbed, getPlayerVoiceChannel } from "../helpers/player.js";
 import type { BotCommand, BotCommandData } from "../services/commandLoader.js";
 import { logger } from "../services/logger.js";
@@ -108,6 +108,9 @@ const command: BotCommand = {
 						title: "▶️ Loading playback",
 						description: `Loading your ${searchResult.playlist ? "playlist" : "track"}.`,
 						color: "Blue",
+						requestedBy: formatUser(member.user),
+						...(searchResult.tracks[0]?.thumbnail ? { thumbnail: searchResult.tracks[0].thumbnail } : {}),
+						queueSize: searchResult.tracks.length + (searchResult.playlist?.tracks.length ?? 0),
 					}),
 				],
 				components: [createPlayerControls()],

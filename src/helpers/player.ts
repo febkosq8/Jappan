@@ -9,12 +9,13 @@ import {
 	type ChatInputCommandInteraction,
 	type GuildMember,
 	type Message,
+	type MessageEditOptions,
 	type VoiceChannel,
 } from "discord.js";
 
 import { getConfig } from "../services/config.js";
 import { logger } from "../services/logger.js";
-import { formatChannel, formatGuild } from "./discord.js";
+import { formatChannel, formatGuild, formatUser } from "./discord.js";
 import { wait } from "./utils.js";
 
 export interface PlayerHealthCheckResult {
@@ -36,11 +37,15 @@ export function createPlayerControls({
 	paused = false,
 	hasPrevious = false,
 	hasNext = false,
+	queuePage = 0,
+	queuePageCount = 1,
 }: {
 	queueView?: boolean;
 	paused?: boolean;
 	hasPrevious?: boolean;
 	hasNext?: boolean;
+	queuePage?: number;
+	queuePageCount?: number;
 } = {}): ActionRowBuilder<ButtonBuilder> {
 	const controls = [
 		new ButtonBuilder()
@@ -53,7 +58,23 @@ export function createPlayerControls({
 			.setStyle(ButtonStyle.Secondary),
 		new ButtonBuilder().setCustomId("PlayerControl|ACTION#stop").setLabel("⏹️ Stop").setStyle(ButtonStyle.Danger),
 	];
-	if (hasPrevious) {
+	if (queuePageCount > 1) {
+		controls.splice(
+			1,
+			0,
+			new ButtonBuilder()
+				.setCustomId(`PlayerControl|ACTION#queuePage:PAGE#${queuePage - 1}`)
+				.setLabel("◀️ Page")
+				.setStyle(ButtonStyle.Secondary)
+				.setDisabled(queuePage <= 0),
+			new ButtonBuilder()
+				.setCustomId(`PlayerControl|ACTION#queuePage:PAGE#${queuePage + 1}`)
+				.setLabel("Page ▶️")
+				.setStyle(ButtonStyle.Secondary)
+				.setDisabled(queuePage >= queuePageCount - 1),
+		);
+	}
+	if (hasPrevious && queuePageCount <= 1) {
 		controls.splice(
 			1,
 			0,
@@ -63,7 +84,7 @@ export function createPlayerControls({
 				.setStyle(ButtonStyle.Secondary),
 		);
 	}
-	if (hasNext) {
+	if (hasNext && queuePageCount <= 1) {
 		controls.splice(
 			2,
 			0,
@@ -80,17 +101,59 @@ export function createPlayerEmbed({
 	title,
 	description,
 	color = "Red",
+	requestedBy,
+	thumbnail,
+	queueSize,
+	durationMs,
+	footerText,
 }: {
 	title: string;
 	description: string;
 	color?: "Blue" | "Green" | "Orange" | "Red";
+	requestedBy?: string;
+	thumbnail?: string;
+	queueSize?: number;
+	durationMs?: number;
+	footerText?: string;
 }): EmbedBuilder {
 	const config = getConfig();
-	return new EmbedBuilder()
+	const embed = new EmbedBuilder()
 		.setColor(color)
 		.setAuthor({ name: `${config.BOT_NAME} : Player`, iconURL: config.BOT_PFP })
 		.setTitle(title)
 		.setDescription(description);
+	const footerParts = [requestedBy ? `Requested by ${requestedBy}` : undefined, footerText].filter(
+		(part): part is string => Boolean(part),
+	);
+	if (footerParts.length > 0) {
+		embed.setFooter({ text: footerParts.join(" | ") });
+	}
+	if (thumbnail) {
+		embed.setThumbnail(thumbnail);
+	}
+	if (queueSize !== undefined) {
+		embed.addFields({
+			name: "Queue",
+			value: `${queueSize} track${queueSize === 1 ? "" : "s"} waiting`,
+			inline: true,
+		});
+	}
+	if (durationMs && durationMs > 0) {
+		embed.addFields({
+			name: "Duration",
+			value: formatPlayerTime(durationMs),
+			inline: true,
+		});
+	}
+	return embed;
+}
+
+function formatPlayerTime(milliseconds: number): string {
+	const totalSeconds = Math.floor(milliseconds / 1000);
+	const hours = Math.floor(totalSeconds / 3600);
+	const minutes = Math.floor((totalSeconds % 3600) / 60);
+	const seconds = totalSeconds % 60;
+	return hours > 0 ? `${hours}h ${minutes}m ${seconds}s` : `${minutes}m ${seconds}s`;
 }
 
 export function getPlayerVoiceChannel(interaction: ChatInputCommandInteraction): PlayerVoiceChannelResult {
@@ -146,32 +209,101 @@ export function updatePlayerQueueMessage({
 	controls = true,
 }: {
 	queue: {
-		metadata: { statusMessage?: Message };
-		node?: { isPaused(): boolean };
-		history?: { previousTrack?: unknown };
+		metadata: { statusMessage?: Message; requestedByDisplay?: string };
+		guild: Parameters<typeof formatGuild>[0];
+		channel: Parameters<typeof formatChannel>[0] | null;
+		currentTrack?: { title?: string; thumbnail?: string; durationMS?: number } | null;
+		node?: { isPaused(): boolean; streamTime?: number };
+		history?: { previousTrack?: unknown; nextTrack?: unknown };
 		tracks?: { size: number };
 	};
 	content: string;
 	controls?: boolean;
 }): void {
-	void queue.metadata.statusMessage
-		?.edit({
-			embeds: [createPlayerEmbed({ title: "🎵 Player status", description: content, color: "Blue" })],
+	const statusMessage = queue.metadata.statusMessage;
+	if (!statusMessage) {
+		return;
+	}
+
+	void editPlayerStatusMessage({
+		guild: queue.guild,
+		channel: queue.channel,
+		user: queue.metadata.requestedByDisplay,
+		message: statusMessage,
+		options: {
+			embeds: [
+				createPlayerEmbed({
+					title: queue.currentTrack?.title ? `🎵 ${queue.currentTrack.title}` : "🎵 Player status",
+					description: queue.currentTrack
+						? queue.node?.isPaused()
+							? "Currently paused."
+							: "Currently playing."
+						: content,
+					color: "Blue",
+					...(queue.metadata.requestedByDisplay ? { requestedBy: queue.metadata.requestedByDisplay } : {}),
+					...(queue.currentTrack?.thumbnail ? { thumbnail: queue.currentTrack.thumbnail } : {}),
+					...(queue.tracks ? { queueSize: queue.tracks.size } : {}),
+					...(queue.currentTrack?.durationMS ? { durationMs: queue.currentTrack.durationMS } : {}),
+				}),
+			],
 			components: controls
 				? [
 						createPlayerControls({
 							paused: queue.node?.isPaused() ?? false,
 							hasPrevious: Boolean(queue.history?.previousTrack),
-							hasNext: (queue.tracks?.size ?? 0) > 0,
+							hasNext: Boolean(queue.history?.nextTrack),
 						}),
 					]
 				: [],
-		})
-		.catch((error: unknown) => {
-			logger.warn("PLAYER", "Failed to update player status message", {
-				error: error instanceof Error ? error.message : String(error),
-			});
+		},
+	}).catch((error: unknown) => {
+		logger.warn("PLAYER", "Failed to update player status message", {
+			error: error instanceof Error ? error.message : String(error),
 		});
+	});
+}
+
+async function editPlayerStatusMessage({
+	guild,
+	channel,
+	user,
+	message,
+	options,
+}: {
+	guild: Parameters<typeof formatGuild>[0];
+	channel?: Parameters<typeof formatChannel>[0] | null;
+	user?: string | undefined;
+	message: Message;
+	options: MessageEditOptions;
+}): Promise<void> {
+	const maxRateLimitRetries = 3;
+	for (let attempt = 0; ; attempt += 1) {
+		try {
+			await message.edit(options);
+			return;
+		} catch (error: unknown) {
+			if (!isRateLimitError(error) || attempt >= maxRateLimitRetries) {
+				throw error;
+			}
+			const retryDelay = 1000 * 2 ** attempt;
+			logger.warn("PLAYER", "Player status update rate limited; retrying", {
+				guild: formatGuild(guild),
+				channel: channel ? formatChannel(channel) : undefined,
+				user,
+				attempt: attempt + 1,
+				retryDelay,
+			});
+			await wait(retryDelay);
+		}
+	}
+}
+
+function isRateLimitError(error: unknown): boolean {
+	if (!error || typeof error !== "object") {
+		return false;
+	}
+	const candidate = error as { code?: number; status?: number; rawError?: { status?: number; retry_after?: number } };
+	return candidate.code === 429 || candidate.status === 429 || candidate.rawError?.status === 429;
 }
 
 export async function checkPlayerHealth(initializedPlayer: Player): Promise<PlayerHealthCheckResult> {

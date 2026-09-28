@@ -5,6 +5,7 @@ import type { APIInteractionGuildMember, Client, GuildMember, Message } from "di
 
 import { registerPlayerHandlers } from "../handlers/player.js";
 import { checkPlayerHealth } from "../helpers/player.js";
+import { formatUser } from "../helpers/discord.js";
 import { getConfig } from "./config.js";
 import { logger } from "./logger.js";
 
@@ -144,7 +145,7 @@ export async function playSearchResult({
 
 	await getPlayer().play(channel, searchResult, {
 		nodeOptions: {
-			metadata: { requestedBy: member.user.id, statusMessage },
+			metadata: { requestedBy: member.user.id, requestedByDisplay: formatUser(member.user), statusMessage },
 			bufferingTimeout: 15000,
 			leaveOnStop: true,
 			leaveOnStopCooldown: 5000,
