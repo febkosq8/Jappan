@@ -4,6 +4,7 @@ import {
 	ButtonStyle,
 	InteractionContextType,
 	MessageFlags,
+	PermissionFlagsBits,
 	SlashCommandBuilder,
 } from "discord.js";
 
@@ -17,6 +18,11 @@ const commandData = {
 	category: "level",
 	isDBDependant: true,
 	hasSubCommands: false,
+	requiredBotPermissions: [
+		PermissionFlagsBits.ViewChannel,
+		PermissionFlagsBits.SendMessages,
+		PermissionFlagsBits.EmbedLinks,
+	],
 } satisfies BotCommandData;
 
 interface CreateLeaderboardComponentsOptions {

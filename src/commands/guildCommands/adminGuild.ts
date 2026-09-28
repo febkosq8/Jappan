@@ -42,6 +42,11 @@ const commandData = {
 		{ name: "invite", description: "Get or create an invite for a guild", category: "admin" },
 	],
 	isDBDependant: false,
+	requiredBotPermissions: [
+		PermissionFlagsBits.ViewChannel,
+		PermissionFlagsBits.SendMessages,
+		PermissionFlagsBits.EmbedLinks,
+	],
 } satisfies BotCommandData;
 
 function createGuildLeftEmbed({

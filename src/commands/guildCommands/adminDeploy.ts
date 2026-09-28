@@ -9,9 +9,15 @@ import {
 } from "discord.js";
 import type { ApplicationCommand } from "discord.js";
 
-import type { BotCommand, BotCommandData } from "../../helpers/command.js";
-import { isAdminUser } from "../../services/adminGuild.js";
+import {
+	formatCommandDisplayEntry,
+	getCommandDisplayEntries,
+	type BotCommand,
+	type BotCommandData,
+} from "../../helpers/command.js";
+import { getCommands } from "../../services/commandLoader.js";
 import type { Config } from "../../services/config.js";
+import { isAdminUser } from "../../services/adminGuild.js";
 import { logger } from "../../services/logger.js";
 
 const commandData = {
@@ -23,9 +29,21 @@ const commandData = {
 		{ name: "check-deploy", description: "Show the commands currently registered with Discord", category: "admin" },
 	],
 	isDBDependant: false,
+	requiredBotPermissions: [
+		PermissionFlagsBits.ViewChannel,
+		PermissionFlagsBits.SendMessages,
+		PermissionFlagsBits.EmbedLinks,
+	],
 } satisfies BotCommandData;
 
-function formatCommandEntries(command: ApplicationCommand): string[] {
+function formatCommandEntries(command: ApplicationCommand, commandNumber: number): string[] {
+	const loadedCommand = getCommands().get(command.name);
+	if (loadedCommand) {
+		return getCommandDisplayEntries(loadedCommand, command.id).map((entry) =>
+			formatCommandDisplayEntry(entry, "", String(commandNumber)),
+		);
+	}
+
 	const subcommands = command.options.flatMap((option) => {
 		if (option.type === ApplicationCommandOptionType.Subcommand) {
 			return [
@@ -62,8 +80,7 @@ function formatCommandEntries(command: ApplicationCommand): string[] {
 function getCommandEntries(commands: ReadonlyMap<string, ApplicationCommand>): string[] {
 	const entries = [...commands.values()]
 		.sort((left, right) => left.name.localeCompare(right.name))
-		.flatMap(formatCommandEntries)
-		.map((entry, index) => `${index + 1}. ${entry}`);
+		.flatMap((command, index) => formatCommandEntries(command, index + 1));
 	return entries.length > 0 ? entries : ["None"];
 }
 
@@ -91,12 +108,13 @@ function createCommandEmbeds({
 	const summary = `Discord currently has **${globalCommands.size} global** and **${guildCommands.size} guild** commands registered.`;
 	const pageDescriptions: string[] = [];
 	let currentPage = summary;
+	const maxDescriptionLength = 4096;
 
 	for (const section of sections) {
 		let sectionStarted = false;
 		for (const entry of section.entries) {
 			const addition = sectionStarted ? `\n\n${entry}` : `\n\n**${section.name}**\n${entry}`;
-			if (currentPage.length + addition.length > 4096 && currentPage !== summary) {
+			if (currentPage.length + addition.length > maxDescriptionLength && currentPage !== summary) {
 				pageDescriptions.push(currentPage);
 				currentPage = `**${section.name}**\n${entry}`;
 				sectionStarted = true;
@@ -151,9 +169,13 @@ const command: BotCommand = {
 			const globalCommands = await interaction.client.application.commands.fetch();
 			const guildCommands = await interaction.guild.commands.fetch();
 			const embeds = createCommandEmbeds({ config, globalCommands, guildCommands });
-			await interaction.editReply({
-				embeds,
-			});
+			const [firstEmbed, ...remainingEmbeds] = embeds;
+			if (firstEmbed) {
+				await interaction.editReply({ embeds: [firstEmbed] });
+			}
+			for (const embed of remainingEmbeds) {
+				await interaction.followUp({ embeds: [embed], flags: MessageFlags.Ephemeral });
+			}
 			logger.info("ADMIN", "Deployment status inspected", {
 				userId: interaction.user.id,
 				userName: interaction.user.tag,

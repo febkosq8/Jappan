@@ -1,11 +1,7 @@
 import type { ButtonInteraction } from "discord.js";
-import {
-	ApplicationCommandOptionType,
-	EmbedBuilder,
-	MessageFlags,
-	chatInputApplicationCommandMention,
-} from "discord.js";
+import { EmbedBuilder, MessageFlags, bold, underline } from "discord.js";
 
+import { formatCommandPermissions, getCommandDisplayEntries } from "./command.js";
 import type { CommandCategory } from "../services/commandLoader.js";
 import { getCommandId, getCommands } from "../services/commandLoader.js";
 import type { Config } from "../services/config.js";
@@ -26,40 +22,19 @@ export async function handleHelpCategory({
 			return [];
 		}
 
-		const commandDefinition = command.data.toJSON();
-		const subcommands = (commandDefinition.options ?? []).flatMap((option) => {
-			if (option.type === ApplicationCommandOptionType.Subcommand) {
-				return [
-					{
-						name: chatInputApplicationCommandMention(commandDefinition.name, option.name, commandId),
-						value: option.description,
-					},
-				];
-			}
-			if (option.type === ApplicationCommandOptionType.SubcommandGroup) {
-				return (option.options ?? [])
-					.filter((subcommand) => subcommand.type === ApplicationCommandOptionType.Subcommand)
-					.map((subcommand) => ({
-						name: chatInputApplicationCommandMention(
-							commandDefinition.name,
-							option.name,
-							subcommand.name,
-							commandId,
-						),
-						value: subcommand.description,
-					}));
-			}
-			return [];
-		});
-
-		return subcommands.length > 0
-			? subcommands
-			: [
-					{
-						name: chatInputApplicationCommandMention(commandDefinition.name, commandId),
-						value: commandDefinition.description,
-					},
-				];
+		return getCommandDisplayEntries(command, commandId).map((entry) => ({
+			name: underline(entry.mention ?? entry.name),
+			value: `${bold("Description:")} ${entry.description}${formatCommandPermissions(entry.requiredBotPermissions)}${
+				entry.subCommands.length > 0
+					? `\n\n${bold("Subcommands:")}\n${entry.subCommands
+							.map(
+								(subcommand) =>
+									`- ${underline(subcommand.mention ?? subcommand.name)}\n  ${bold("Description:")} ${subcommand.description}${formatCommandPermissions(subcommand.requiredBotPermissions)}`,
+							)
+							.join("\n\n")}`
+					: ""
+			}`,
+		}));
 	});
 	const categoryName = category.charAt(0).toUpperCase() + category.slice(1);
 	const embed = new EmbedBuilder()

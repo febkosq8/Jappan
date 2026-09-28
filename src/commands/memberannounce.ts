@@ -23,7 +23,11 @@ const commandData = {
 		{ name: "check", description: "Check member announcement status", category: "moderator" },
 	],
 	isDBDependant: true,
-	requiredBotPermissions: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages],
+	requiredBotPermissions: [
+		PermissionFlagsBits.ViewChannel,
+		PermissionFlagsBits.SendMessages,
+		PermissionFlagsBits.EmbedLinks,
+	],
 } satisfies BotCommandData;
 
 function createStatusEmbed({

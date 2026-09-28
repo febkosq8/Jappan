@@ -35,7 +35,11 @@ const commandData = {
 		{ name: "delete", description: "Delete a user's voice region lock", category: "moderator" },
 	],
 	isDBDependant: true,
-	requiredBotPermissions: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages],
+	requiredBotPermissions: [
+		PermissionFlagsBits.ViewChannel,
+		PermissionFlagsBits.SendMessages,
+		PermissionFlagsBits.EmbedLinks,
+	],
 } satisfies BotCommandData;
 
 const command: BotCommand = {

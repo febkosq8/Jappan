@@ -30,7 +30,11 @@ const commandData = {
 		{ name: "override", description: "Override a user's warning count", category: "moderator" },
 	],
 	isDBDependant: true,
-	requiredBotPermissions: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages],
+	requiredBotPermissions: [
+		PermissionFlagsBits.ViewChannel,
+		PermissionFlagsBits.SendMessages,
+		PermissionFlagsBits.EmbedLinks,
+	],
 } satisfies BotCommandData;
 
 function formatThreshold(value: number | null | undefined): string {

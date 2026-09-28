@@ -21,6 +21,7 @@ const commandData = {
 	requiredBotPermissions: [
 		PermissionFlagsBits.ViewChannel,
 		PermissionFlagsBits.SendMessages,
+		PermissionFlagsBits.EmbedLinks,
 		PermissionFlagsBits.ReadMessageHistory,
 		PermissionFlagsBits.ManageMessages,
 	],
