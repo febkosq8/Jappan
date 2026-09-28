@@ -54,5 +54,6 @@ export async function disconnectBot(): Promise<void> {
 	const client = discordClient;
 	if (client?.isReady()) {
 		client.destroy();
+		logger.info("DISCORD", "Discord client disconnected");
 	}
 }
