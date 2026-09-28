@@ -1,5 +1,5 @@
 import type { ButtonInteraction, ChatInputCommandInteraction, Message } from "discord.js";
-import { EmbedBuilder, MessageFlags, italic } from "discord.js";
+import { EmbedBuilder, MessageFlags, bold, italic } from "discord.js";
 
 import type { Config } from "../../services/config.js";
 
@@ -13,12 +13,31 @@ interface ExecutePingOptions {
 }
 
 interface PingResult {
-	readonly botLatency: string;
-	readonly gatewayLatency: string;
+	readonly botLatency: number;
+	readonly gatewayLatency: number;
 }
+
+type LatencyDisplayValue = number | "Calculating...";
 
 function isMessage(source: PingSource): source is Message {
 	return "author" in source;
+}
+
+function formatLatencyValue(latency: LatencyDisplayValue): string {
+	if (typeof latency === "string") {
+		return `🟠 ${bold(latency)}`;
+	}
+
+	let indicator = "🟠";
+	if (latency > 1000) {
+		indicator = "⚠️";
+	} else if (latency >= 500) {
+		indicator = "🟡";
+	} else if (latency >= 0) {
+		indicator = "🟢";
+	}
+	const value = latency < 0 ? "Unavailable" : `${latency} ms`;
+	return `${indicator} ${bold(value)}`;
 }
 
 export function calculatePing({
@@ -29,21 +48,21 @@ export function calculatePing({
 	interactionCreatedTimestamp: number;
 	replyCreatedTimestamp: number;
 	gatewayPing: number;
-}): { botLatency: string; gatewayLatency: string } {
+}): { botLatency: number; gatewayLatency: number } {
 	return {
-		botLatency: `${replyCreatedTimestamp - interactionCreatedTimestamp} ms`,
-		gatewayLatency: gatewayPing < 0 ? "Unavailable" : `${gatewayPing} ms`,
+		botLatency: replyCreatedTimestamp - interactionCreatedTimestamp,
+		gatewayLatency: gatewayPing,
 	};
 }
 
 export function createPingEmbed({
 	config,
 	botLatency,
-	apiLatency,
+	gatewayLatency,
 }: {
 	config: Config;
-	botLatency: string;
-	apiLatency: string;
+	botLatency: LatencyDisplayValue;
+	gatewayLatency: LatencyDisplayValue;
 }): EmbedBuilder {
 	return new EmbedBuilder()
 		.setColor("Blue")
@@ -55,11 +74,11 @@ export function createPingEmbed({
 		.addFields(
 			{
 				name: ":robot: Bot Latency",
-				value: `${italic("Time from your command to the bot's reply.")}\n${botLatency}`,
+				value: `${italic("Time from your command to the bot's reply.")}\n${formatLatencyValue(botLatency)}`,
 			},
 			{
 				name: ":satellite: Gateway Latency",
-				value: `${italic("Time for the bot's connection to reach Discord and return.")}\n${apiLatency}`,
+				value: `${italic("Time for the bot's connection to reach Discord and return.")}\n${formatLatencyValue(gatewayLatency)}`,
 			},
 		)
 		.setTimestamp();
@@ -71,28 +90,28 @@ export async function executePing({ interaction, message, config }: ExecutePingO
 		throw new Error("Ping requires an interaction or message source");
 	}
 
-	let botLatency = "Calculating...";
-	let apiLatency = "Calculating...";
-	let replyEmbed = createPingEmbed({ config, botLatency, apiLatency });
+	let botLatency: LatencyDisplayValue = "Calculating...";
+	let gatewayLatency: LatencyDisplayValue = "Calculating...";
+	let replyEmbed = createPingEmbed({ config, botLatency, gatewayLatency });
 	if (isMessage(source)) {
 		const reply = await source.author.send({ embeds: [replyEmbed] });
-		({ botLatency, gatewayLatency: apiLatency } = calculatePing({
+		({ botLatency, gatewayLatency } = calculatePing({
 			interactionCreatedTimestamp: source.createdTimestamp,
 			replyCreatedTimestamp: reply.createdTimestamp,
 			gatewayPing: source.client.ws.ping,
 		}));
-		await reply.edit({ embeds: [createPingEmbed({ config, botLatency, apiLatency })] });
-		return { botLatency, gatewayLatency: apiLatency };
+		await reply.edit({ embeds: [createPingEmbed({ config, botLatency, gatewayLatency })] });
+		return { botLatency, gatewayLatency };
 	}
 
 	await source.deferReply({ flags: MessageFlags.Ephemeral });
 	const reply = await source.editReply({ embeds: [replyEmbed] });
-	({ botLatency, gatewayLatency: apiLatency } = calculatePing({
+	({ botLatency, gatewayLatency } = calculatePing({
 		interactionCreatedTimestamp: source.createdTimestamp,
 		replyCreatedTimestamp: reply.createdTimestamp,
 		gatewayPing: source.client.ws.ping,
 	}));
-	replyEmbed = createPingEmbed({ config, botLatency, apiLatency });
+	replyEmbed = createPingEmbed({ config, botLatency, gatewayLatency });
 	await source.editReply({ embeds: [replyEmbed] });
-	return { botLatency, gatewayLatency: apiLatency };
+	return { botLatency, gatewayLatency };
 }
