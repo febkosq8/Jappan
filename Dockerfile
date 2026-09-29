@@ -13,8 +13,6 @@ RUN pnpm prune --prod
 
 FROM node:24.12.0-bookworm-slim AS runtime
 
-ENV NODE_ENV=production
-
 WORKDIR /app
 
 RUN apt-get update \

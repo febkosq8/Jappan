@@ -30,7 +30,6 @@ Discord.js references:
 
 Required environment values are `DISCORD_TOKEN` and `DB_URL`. Optional configuration includes:
 
-- `NODE_ENV`, default `production`
 - `BOT_NAME`, default `Jappan`
 - `BOT_PFP`, default bot profile image
 - `BOT_WEBSITE`, default project website
