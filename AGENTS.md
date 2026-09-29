@@ -172,7 +172,7 @@ The rewrite currently has:
 - Harden shutdown and failure handling for production operation.
 
 - Lock down all Mongoose schemas with validation and ownership rules.
-- Document the legacy-to-rewrite data migration and verify it against a backup.
+- Migrate only the required legacy database data into the rewrite's new database instance and verify the migrated records against a backup.
 - Add deployment and rollback instructions.
 - Validate Docker and PM2 production startup.
 - Perform a controlled production cutover only after parity and migration checks pass.
