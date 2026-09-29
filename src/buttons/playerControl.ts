@@ -80,6 +80,14 @@ const button: ButtonModule = {
 			return;
 		}
 
+		if (action === "shuffle") {
+			await interaction.deferUpdate();
+			queue.toggleShuffle();
+			queue.metadata.shuffle = queue.isShuffling;
+			updatePlayerQueueMessage({ queue, content: "" });
+			return;
+		}
+
 		if (action === "stop") {
 			queue.delete();
 			await interaction.update({
@@ -126,6 +134,7 @@ const button: ButtonModule = {
 						queuePageCount: queuePages.length,
 						paused: queue.node.isPaused(),
 						hasCurrentTrack: Boolean(queue.currentTrack),
+						shuffle: queue.metadata.shuffle ?? false,
 						repeatMode: queue.repeatMode,
 						hasPrevious: Boolean(queue.history.previousTrack),
 						hasNext: Boolean(queue.history.nextTrack),
@@ -156,6 +165,7 @@ const button: ButtonModule = {
 								.toArray()
 								.reduce((total, track) => total + (track.durationMS ?? 0), 0),
 							...(currentTrack?.durationMS ? { durationMs: currentTrack.durationMS } : {}),
+							shuffle: queue.metadata.shuffle ?? false,
 							repeatMode: queue.repeatMode,
 						}),
 					],
@@ -164,6 +174,7 @@ const button: ButtonModule = {
 							queueSize: queue.tracks.size,
 							paused: queue.node.isPaused(),
 							hasCurrentTrack: Boolean(queue.currentTrack),
+							shuffle: queue.metadata.shuffle ?? false,
 							repeatMode: queue.repeatMode,
 							hasPrevious: Boolean(queue.history.previousTrack),
 							hasNext: Boolean(queue.history.nextTrack),

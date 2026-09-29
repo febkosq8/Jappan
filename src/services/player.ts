@@ -197,6 +197,7 @@ export async function playSearchResult({
 	searchResult,
 	statusMessage,
 	previousStatusMessage,
+	shuffle = false,
 	repeatMode = 0,
 }: {
 	channel: string;
@@ -204,6 +205,7 @@ export async function playSearchResult({
 	searchResult: SearchResult;
 	statusMessage: Message;
 	previousStatusMessage?: Message;
+	shuffle?: boolean;
 	repeatMode?: 0 | 1 | 2 | 3;
 }): Promise<PlayerResult<void>> {
 	const errorCode = getPlayerErrorCode();
@@ -213,7 +215,12 @@ export async function playSearchResult({
 
 	const { queue } = await getPlayer().play(channel, searchResult, {
 		nodeOptions: {
-			metadata: { requestedBy: member.user.id, requestedByDisplay: formatUser(member.user), statusMessage },
+			metadata: {
+				requestedBy: member.user.id,
+				requestedByDisplay: formatUser(member.user),
+				statusMessage,
+				shuffle,
+			},
 			repeatMode,
 			bufferingTimeout: 15000,
 			leaveOnStop: true,

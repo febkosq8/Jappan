@@ -87,11 +87,5 @@ export async function saveUserPlaylist({
 
 export async function findUserPlaylist(userId: string, listname: string): Promise<PlaylistEntry | undefined> {
 	const playlists = await listUserPlaylists(userId);
-	const normalizedName = listname.toLowerCase();
-	return playlists.find((entry) => entry.listname.toLowerCase() === normalizedName);
-}
-
-export async function findUserPlaylistByQuery(userId: string, query: string): Promise<PlaylistEntry | undefined> {
-	const playlists = await listUserPlaylists(userId);
-	return playlists.find((entry) => entry.query === query);
+	return playlists.find((entry) => entry.listname.toLowerCase() === listname.toLowerCase());
 }

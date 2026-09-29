@@ -55,6 +55,7 @@ export function createPlayerControls({
 	queueView = false,
 	paused = false,
 	hasCurrentTrack = false,
+	shuffle = false,
 	repeatMode = 0,
 	hasPrevious = false,
 	queueSize,
@@ -65,6 +66,7 @@ export function createPlayerControls({
 	queueView?: boolean;
 	paused?: boolean;
 	hasCurrentTrack?: boolean;
+	shuffle?: boolean;
 	repeatMode?: QueueRepeatMode;
 	hasPrevious?: boolean;
 	queueSize?: number;
@@ -85,6 +87,14 @@ export function createPlayerControls({
 	}
 	if (hasCurrentTrack) {
 		const nextRepeatMode = getNextRepeatMode(repeatMode);
+		if (queueSize !== undefined && queueSize > 1) {
+			controls.push(
+				new ButtonBuilder()
+					.setCustomId("PlayerControl|ACTION#shuffle")
+					.setLabel(shuffle ? "🔀 Off" : "🔀 On")
+					.setStyle(ButtonStyle.Secondary),
+			);
+		}
 		controls.push(
 			new ButtonBuilder()
 				.setCustomId("PlayerControl|ACTION#repeat")
@@ -153,6 +163,7 @@ export function createPlayerEmbed({
 	durationMs,
 	source,
 	repeatMode,
+	shuffle,
 	footerText,
 }: {
 	title: string;
@@ -165,6 +176,7 @@ export function createPlayerEmbed({
 	durationMs?: number;
 	source?: string;
 	repeatMode?: QueueRepeatMode;
+	shuffle?: boolean;
 	footerText?: string;
 }): EmbedBuilder {
 	const config = getConfig();
@@ -203,8 +215,20 @@ export function createPlayerEmbed({
 	}
 	if (repeatMode !== undefined) {
 		embed.addFields({
+			name: "\u200b",
+			value: "\u200b",
+			inline: true,
+		});
+		embed.addFields({
 			name: "Repeat",
 			value: getRepeatModeLabel(repeatMode),
+			inline: true,
+		});
+	}
+	if (shuffle !== undefined) {
+		embed.addFields({
+			name: "Shuffle",
+			value: shuffle ? "🔀 Enabled" : "🚫 Disabled",
 			inline: true,
 		});
 	}
@@ -278,7 +302,7 @@ export function updatePlayerQueueMessage({
 	controls = true,
 }: {
 	queue: {
-		metadata: { statusMessage?: Message; requestedByDisplay?: string };
+		metadata: { statusMessage?: Message; requestedByDisplay?: string; shuffle?: boolean };
 		guild: Parameters<typeof formatGuild>[0];
 		channel: Parameters<typeof formatChannel>[0] | null;
 		currentTrack?: { title?: string; thumbnail?: string; durationMS?: number; source?: string } | null;
@@ -324,6 +348,7 @@ export function updatePlayerQueueMessage({
 					...(queueDurationMs ? { queueDurationMs } : {}),
 					...(queue.currentTrack?.durationMS ? { durationMs: queue.currentTrack.durationMS } : {}),
 					...(queue.repeatMode !== undefined ? { repeatMode: queue.repeatMode } : {}),
+					...(queue.metadata.shuffle !== undefined ? { shuffle: queue.metadata.shuffle } : {}),
 				}),
 			],
 			components: controls
@@ -331,6 +356,7 @@ export function updatePlayerQueueMessage({
 						...createPlayerControls({
 							paused: queue.node?.isPaused() ?? false,
 							hasCurrentTrack: Boolean(queue.currentTrack),
+							shuffle: queue.metadata.shuffle ?? false,
 							hasPrevious: Boolean(queue.history?.previousTrack),
 							hasNext: Boolean(queue.history?.nextTrack),
 							...(queue.repeatMode !== undefined ? { repeatMode: queue.repeatMode } : {}),

@@ -1,13 +1,13 @@
 import { InteractionContextType, PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
 
 import { formatGuild, formatUser } from "../helpers/discord.js";
-import { createPlayerControls, createPlayerEmbed, getPlayerVoiceChannel } from "../helpers/player.js";
+import { createPlayerEmbed, getPlayerVoiceChannel } from "../helpers/player.js";
 import type { QueueRepeatMode } from "discord-player";
 import type { BotCommand, BotCommandData } from "../services/commandLoader.js";
 import { isDatabaseConnected } from "../services/database.js";
 import { logger } from "../services/logger.js";
 import { getPlayer, playSearchResult, searchPlayer } from "../services/player.js";
-import { findUserPlaylistByQuery, listUserPlaylists } from "../services/userPlaylist.js";
+import { findUserPlaylist, listUserPlaylists } from "../services/userPlaylist.js";
 
 const commandData = {
 	name: "play",
@@ -32,7 +32,7 @@ const command: BotCommand = {
 		.addStringOption((option) =>
 			option
 				.setName("query")
-				.setDescription("The song or playlist to play")
+				.setDescription("The song, playlist, or saved playlist to play")
 				.setRequired(true)
 				.setAutocomplete(true),
 		)
@@ -46,7 +46,7 @@ const command: BotCommand = {
 			: [];
 		const savedChoices = savedPlaylists.map((playlist) => ({
 			name: `${playlist.listname} | Saved Playlist`.slice(0, 100),
-			value: playlist.query,
+			value: playlist.listname,
 		}));
 		if (!query) {
 			await interaction.respond(savedChoices.slice(0, 25));
@@ -61,7 +61,7 @@ const command: BotCommand = {
 				await interaction.respond([
 					{
 						name: `${exactSavedPlaylist.listname} | Saved Playlist`.slice(0, 100),
-						value: exactSavedPlaylist.query,
+						value: exactSavedPlaylist.listname,
 					},
 				]);
 				return;
@@ -100,7 +100,7 @@ const command: BotCommand = {
 			let savedPlaylist;
 			if (isDatabaseConnected()) {
 				try {
-					savedPlaylist = await findUserPlaylistByQuery(interaction.user.id, query);
+					savedPlaylist = await findUserPlaylist(interaction.user.id, query);
 				} catch (error: unknown) {
 					logger.warn("PLAYER", "Failed to look up saved playlist; using live search", { error, query });
 				}
@@ -147,20 +147,10 @@ const command: BotCommand = {
 				embeds: [
 					createPlayerEmbed({
 						title: "⏳ Loading playback",
-						description: [
-							`Waiting for your ${searchResult.playlist ? "playlist" : "track"} to start.`,
-							`🔀 Shuffle: ${shouldShuffle ? "Enabled" : "Disabled"}`,
-							`🔁 Repeat: ${shouldLoop ? "Enabled" : "Disabled"}`,
-						].join("\n"),
+						description: `Waiting for your ${searchResult.playlist ? "playlist" : "track"} to start.`,
 						color: "Blue",
 						requestedBy: formatUser(member.user),
 						...(searchResult.tracks[0]?.thumbnail ? { thumbnail: searchResult.tracks[0].thumbnail } : {}),
-						queueSize: searchResult.tracks.length + (searchResult.playlist?.tracks.length ?? 0),
-					}),
-				],
-				components: [
-					...createPlayerControls({
-						queueSize: searchResult.tracks.length + (searchResult.playlist?.tracks.length ?? 0),
 					}),
 				],
 			});
@@ -171,6 +161,7 @@ const command: BotCommand = {
 				searchResult,
 				statusMessage,
 				previousStatusMessage,
+				shuffle: shouldShuffle,
 				repeatMode: shouldLoop ? 2 : 0,
 			});
 			if (!playResponse.success) {
