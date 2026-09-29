@@ -1,0 +1,26 @@
+FROM node:24.12.0-bookworm-slim AS build
+
+WORKDIR /app
+
+RUN corepack enable
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json extractorpack.config.mjs ./
+COPY src ./src
+
+RUN pnpm install --frozen-lockfile
+RUN pnpm run build
+RUN pnpm prune --prod
+
+FROM node:24.12.0-bookworm-slim AS runtime
+
+ENV NODE_ENV=production
+
+WORKDIR /app
+
+COPY --from=build /app/package.json ./package.json
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/dist ./dist
+
+USER node
+
+CMD ["node", "dist/index.js"]

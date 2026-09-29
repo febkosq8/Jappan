@@ -7,7 +7,7 @@ import {
 	PermissionFlagsBits,
 	SlashCommandBuilder,
 } from "discord.js";
-import type { ApplicationCommand } from "discord.js";
+import type { ApplicationCommand, Guild } from "discord.js";
 
 import {
 	formatCommandDisplayEntry,
@@ -87,6 +87,25 @@ function getCommandEntries(commands: ReadonlyMap<string, ApplicationCommand>): s
 		.sort((left, right) => left.name.localeCompare(right.name))
 		.flatMap((command, index) => formatCommandEntries(command, index + 1));
 	return entries.length > 0 ? entries : ["None"];
+}
+
+function formatGuildList(guilds: readonly Guild[]): string {
+	if (guilds.length === 0) {
+		return "None";
+	}
+
+	let value = "";
+	for (const [index, guild] of guilds.entries()) {
+		const entry = `${index + 1}. ${formatGuildMention(guild)}`;
+		const nextValue = value ? `${value}\n${entry}` : entry;
+		if (nextValue.length > 1024) {
+			const remainingCount = guilds.length - index;
+			return `${value}\n... and ${remainingCount} more.`;
+		}
+		value = nextValue;
+	}
+
+	return value;
 }
 
 function createCommandEmbeds({
@@ -187,10 +206,6 @@ const command: BotCommand = {
 			}
 			try {
 				const { undeployedGuilds, failedGuilds } = await undeployGuildCommandsGlobally(interaction.client);
-				const formatGuildList = (guilds: typeof undeployedGuilds): string =>
-					guilds.length > 0
-						? guilds.map((guild, index) => `${index + 1}. ${formatGuildMention(guild)}`).join("\n")
-						: "None";
 				const embed = new EmbedBuilder()
 					.setColor(failedGuilds.length > 0 ? "Red" : "Green")
 					.setAuthor({ name: `${config.BOT_NAME} Admin`, iconURL: config.BOT_PFP, url: config.BOT_WEBSITE })

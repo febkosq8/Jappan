@@ -169,25 +169,28 @@ async function clearDatabase(connection: mongoose.Connection): Promise<void> {
 async function migrate(): Promise<void> {
 	const { legacyUrl, newUrl } = getArguments();
 	logger.info("DATABASE", "Legacy migration started");
-	const legacyConnection = await mongoose
-		.createConnection(legacyUrl, {
-			serverSelectionTimeoutMS: 10_000,
-			readPreference: "secondaryPreferred",
-			readConcernLevel: "majority",
-			retryWrites: false,
-		})
-		.asPromise();
-	logger.info("DATABASE", "Connected to legacy database", { database: legacyConnection.name });
-	const newConnection = await mongoose.createConnection(newUrl, { serverSelectionTimeoutMS: 10_000 }).asPromise();
-	logger.info("DATABASE", "Connected to target database", { database: newConnection.name });
-	const startedAt = Date.now();
-	const elapsedTimer = setInterval(() => {
-		logger.info("DATABASE", "Legacy migration still running", {
-			elapsedSeconds: Math.floor((Date.now() - startedAt) / 1000),
-		});
-	}, 10_000);
-	elapsedTimer.unref();
+	let legacyConnection: mongoose.Connection | undefined;
+	let newConnection: mongoose.Connection | undefined;
+	let elapsedTimer: NodeJS.Timeout | undefined;
 	try {
+		legacyConnection = await mongoose
+			.createConnection(legacyUrl, {
+				serverSelectionTimeoutMS: 10_000,
+				readPreference: "secondaryPreferred",
+				readConcernLevel: "majority",
+				retryWrites: false,
+			})
+			.asPromise();
+		logger.info("DATABASE", "Connected to legacy database", { database: legacyConnection.name });
+		newConnection = await mongoose.createConnection(newUrl, { serverSelectionTimeoutMS: 10_000 }).asPromise();
+		logger.info("DATABASE", "Connected to target database", { database: newConnection.name });
+		const startedAt = Date.now();
+		elapsedTimer = setInterval(() => {
+			logger.info("DATABASE", "Legacy migration still running", {
+				elapsedSeconds: Math.floor((Date.now() - startedAt) / 1000),
+			});
+		}, 10_000);
+		elapsedTimer.unref();
 		if (!legacyConnection.db || !newConnection.db) {
 			throw new Error("MongoDB database handles were not available after connecting");
 		}
@@ -274,9 +277,11 @@ async function migrate(): Promise<void> {
 			migratedPlaylists,
 		});
 	} finally {
-		clearInterval(elapsedTimer);
+		if (elapsedTimer) {
+			clearInterval(elapsedTimer);
+		}
 		logger.info("DATABASE", "Closing migration database connections");
-		await Promise.all([legacyConnection.close(), newConnection.close()]);
+		await Promise.all([legacyConnection?.close(), newConnection?.close()]);
 		logger.info("DATABASE", "Migration database connections closed");
 	}
 }

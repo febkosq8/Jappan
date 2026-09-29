@@ -156,6 +156,7 @@ The rewrite currently has:
 - Guild-scoped `/admin-guild` management with guild listing, channel inspection, targeted admin messages, invites, direct kicks, and self-kick progress reporting.
 - Warning setup threshold ordering and action-specific timeout/ban permission checks.
 - Database model loading and index synchronization are part of the awaited startup gate.
+- Required legacy database data was migrated into the rewrite's new database instance.
 - Structured logging with contextual details and configurable extended-event debugging.
 - Music playback through `/play`, including autocomplete, track and playlist search, Discord Player lifecycle management, queue controls, and extractor loading.
 - User playlist persistence through `/playlist add`, `/playlist remove`, `/playlist check`, and saved playlist playback through `/play`, including shuffle and loop settings.
@@ -170,9 +171,7 @@ The rewrite currently has:
 - Add correlation or request IDs for command and event traces.
 - Add controlled reconnect and database recovery behavior with observable logging.
 - Harden shutdown and failure handling for production operation.
-
 - Lock down all Mongoose schemas with validation and ownership rules.
-- Migrate only the required legacy database data into the rewrite's new database instance and verify the migrated records against a backup.
 - Add deployment and rollback instructions.
 - Validate Docker and PM2 production startup.
 - Perform a controlled production cutover only after parity and migration checks pass.

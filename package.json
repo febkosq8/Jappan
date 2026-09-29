@@ -4,6 +4,9 @@
 	"description": "Jappan - Discord Bot",
 	"type": "module",
 	"main": "dist/index.js",
+	"engines": {
+		"node": ">=24.12.0"
+	},
 	"scripts": {
 		"build": "tsup src/index.ts --format esm",
 		"dev": "tsx watch --include \"./.env\" src/index.ts",
