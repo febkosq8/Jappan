@@ -1,4 +1,4 @@
-import { blue, bold, cyan, dim, gray, green, magenta, red, white, yellow } from "colorette";
+import { blue, bold, cyan, dim, gray, green, magenta, red, yellow } from "colorette";
 import { getConfig } from "../services/config.js";
 
 export type LogDetails = Record<string, unknown>;
@@ -23,7 +23,7 @@ const levelColors: Record<LogLevel, (value: string) => string> = {
 };
 
 const categoryColors: Record<LogCategory, (value: string) => string> = {
-	AUTOCOMPLETE: white,
+	AUTOCOMPLETE: yellow,
 	ADMIN: red,
 	BOT: magenta,
 	BUTTONS: yellow,
@@ -31,7 +31,7 @@ const categoryColors: Record<LogCategory, (value: string) => string> = {
 	DISCORD: blue,
 	DOPPELGANGER: red,
 	PLAYER: cyan,
-	SLASH_COMMANDS: green,
+	SLASH_COMMANDS: yellow,
 };
 
 function formatDetails(details: LogDetails | undefined): string {

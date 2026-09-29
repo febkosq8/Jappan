@@ -31,6 +31,7 @@ export function formatChannel(channel: Pick<GuildChannel | ThreadChannel, "id" |
 
 export function formatInteractionLogDetails(interaction: Interaction): Record<string, unknown> {
 	return {
+		interactionId: interaction.id,
 		type: InteractionType[interaction.type],
 		command: "commandName" in interaction ? interaction.commandName : undefined,
 		subcommand: interaction.isChatInputCommand()

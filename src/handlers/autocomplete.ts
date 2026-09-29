@@ -34,6 +34,11 @@ export async function handleAutocompleteInteraction({
 
 	try {
 		await command.autocomplete(interaction);
+		logger.info(
+			"AUTOCOMPLETE",
+			"Application command autocomplete executed successfully",
+			formatInteractionLogDetails(interaction),
+		);
 	} catch (error: unknown) {
 		if (isUnknownInteractionError(error)) {
 			logger.info(
