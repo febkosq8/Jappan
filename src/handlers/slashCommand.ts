@@ -1,7 +1,7 @@
 import type { ChatInputCommandInteraction } from "discord.js";
 import { MessageFlags, underline } from "discord.js";
 
-import { formatChannel, formatGuild } from "../helpers/discord.js";
+import { formatInteractionLogDetails } from "../helpers/discord.js";
 import { getMissingBotPermissions } from "../helpers/shared/permissions.js";
 import { getCommand } from "../services/commandLoader.js";
 import type { Config } from "../services/config.js";
@@ -18,25 +18,12 @@ export async function handleSlashCommandInteraction({
 	const startedAt = performance.now();
 	const command = getCommand(interaction.commandName);
 	if (!command) {
-		logger.warn("SLASH_COMMANDS", "Unknown Application (/) command", {
-			command: interaction.commandName,
-			user: `${interaction.user.tag} <${interaction.user.id}>`,
-			context: interaction.guildId ? "guild" : "dm",
-			guildId: interaction.guildId ?? undefined,
-		});
+		logger.warn("SLASH_COMMANDS", "Unknown Application (/) command", formatInteractionLogDetails(interaction));
 		return;
 	}
 	const postExecute = command.postExecute;
 	const executionLogDetails = {
-		command: interaction.commandName,
-		user: `${interaction.user.tag} <${interaction.user.id}>`,
-		context: interaction.guildId ? "guild" : "dm",
-		guildId: interaction.guildId ?? undefined,
-		guild: interaction.guild ? formatGuild(interaction.guild) : undefined,
-		channel:
-			interaction.channel && "name" in interaction.channel && typeof interaction.channel.name === "string"
-				? formatChannel({ id: interaction.channel.id, name: interaction.channel.name })
-				: undefined,
+		...formatInteractionLogDetails(interaction),
 		durationMs: Math.round(performance.now() - startedAt),
 	};
 	try {
@@ -52,10 +39,7 @@ export async function handleSlashCommandInteraction({
 		const missingPermissions = getMissingBotPermissions(interaction, requiredBotPermissions);
 		if (missingPermissions.length > 0) {
 			logger.warn("SLASH_COMMANDS", "Application (/) command rejected because bot lacks permissions", {
-				command: interaction.commandName,
-				user: `${interaction.user.tag} <${interaction.user.id}>`,
-				context: interaction.guildId ? "guild" : "dm",
-				guildId: interaction.guildId ?? undefined,
+				...formatInteractionLogDetails(interaction),
 				missingPermissions,
 				durationMs: Math.round(performance.now() - startedAt),
 			});
@@ -70,10 +54,7 @@ export async function handleSlashCommandInteraction({
 
 		if (command.commandData.isDBDependant && !isDatabaseConnected()) {
 			logger.warn("SLASH_COMMANDS", "Application (/) command rejected because database is unavailable", {
-				command: interaction.commandName,
-				user: `${interaction.user.tag} <${interaction.user.id}>`,
-				context: interaction.guildId ? "guild" : "dm",
-				guildId: interaction.guildId ?? undefined,
+				...formatInteractionLogDetails(interaction),
 				durationMs: Math.round(performance.now() - startedAt),
 			});
 			await interaction.reply({
@@ -101,10 +82,7 @@ export async function handleSlashCommandInteraction({
 		}
 	} catch (error: unknown) {
 		logger.error("SLASH_COMMANDS", "Application (/) command failed", {
-			command: interaction.commandName,
-			user: `${interaction.user.tag} <${interaction.user.id}>`,
-			context: interaction.guildId ? "guild" : "dm",
-			guildId: interaction.guildId ?? undefined,
+			...formatInteractionLogDetails(interaction),
 			durationMs: Math.round(performance.now() - startedAt),
 			error,
 		});

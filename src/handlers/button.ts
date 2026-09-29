@@ -1,6 +1,7 @@
 import type { ButtonInteraction } from "discord.js";
 import { MessageFlags } from "discord.js";
 
+import { formatInteractionLogDetails } from "../helpers/discord.js";
 import { getButtonHandler } from "../services/buttonLoader.js";
 import type { Config } from "../services/config.js";
 import { logger } from "../services/logger.js";
@@ -15,10 +16,7 @@ export async function handleButtonInteraction({
 	const startedAt = performance.now();
 	const handler = getButtonHandler(interaction.customId);
 	if (!handler) {
-		logger.warn("BUTTONS", "Unknown button interaction", {
-			customId: interaction.customId,
-			user: `${interaction.user.tag} <${interaction.user.id}>`,
-		});
+		logger.warn("BUTTONS", "Unknown button interaction", formatInteractionLogDetails(interaction));
 		await interaction.reply({ content: "⛔ This button is no longer available.", flags: MessageFlags.Ephemeral });
 		return;
 	}
@@ -26,14 +24,13 @@ export async function handleButtonInteraction({
 	try {
 		await handler({ interaction, config });
 		logger.info("BUTTONS", "Button interaction executed successfully", {
-			customId: interaction.customId,
-			user: `${interaction.user.tag} <${interaction.user.id}>`,
+			...formatInteractionLogDetails(interaction),
 			durationMs: Math.round(performance.now() - startedAt),
 		});
 	} catch (error: unknown) {
 		logger.error("BUTTONS", "Button interaction failed", {
+			...formatInteractionLogDetails(interaction),
 			customId: interaction.customId,
-			user: `${interaction.user.tag} <${interaction.user.id}>`,
 			error,
 		});
 		if (!interaction.replied && !interaction.deferred) {

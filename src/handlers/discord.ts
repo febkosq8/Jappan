@@ -1,8 +1,8 @@
 import type { Interaction } from "discord.js";
-import { ActivityType, Events, InteractionType, PresenceUpdateStatus } from "discord.js";
+import { ActivityType, Events, PresenceUpdateStatus } from "discord.js";
 
 import { getClient } from "../bot.js";
-import { formatChannel, formatGuild, formatUser } from "../helpers/discord.js";
+import { formatInteractionLogDetails, formatUser } from "../helpers/discord.js";
 import { getPrefixCommand, handlePrefixMessage } from "../services/adminDeployment.js";
 import {
 	handleAuditChannelCreate,
@@ -112,21 +112,7 @@ export function registerDiscordHandlers(): void {
 	});
 
 	client.on(Events.InteractionCreate, (interaction: Interaction) => {
-		logger.info("DISCORD", "Interaction received", {
-			type: InteractionType[interaction.type],
-			command: "commandName" in interaction ? interaction.commandName : undefined,
-			subcommand: interaction.isChatInputCommand()
-				? (interaction.options.getSubcommand(false) ?? undefined)
-				: undefined,
-			customId: interaction.isMessageComponent() ? interaction.customId : undefined,
-			user: `${interaction.user.tag} <${interaction.user.id}>`,
-			context: "guild" in interaction && interaction.guild ? "guild" : "dm",
-			guild: "guild" in interaction && interaction.guild ? formatGuild(interaction.guild) : undefined,
-			channel:
-				interaction.channel && "name" in interaction.channel && typeof interaction.channel.name === "string"
-					? formatChannel({ id: interaction.channel.id, name: interaction.channel.name })
-					: undefined,
-		});
+		logger.info("DISCORD", "Interaction received", formatInteractionLogDetails(interaction));
 
 		if (interaction.isAutocomplete()) {
 			void handleAutocompleteInteraction({ interaction, config });
@@ -143,17 +129,7 @@ export function registerDiscordHandlers(): void {
 			return;
 		}
 
-		logger.warn("DISCORD", "Unhandled interaction", {
-			type: InteractionType[interaction.type],
-			customId: interaction.isMessageComponent() ? interaction.customId : undefined,
-			user: `${interaction.user.tag} <${interaction.user.id}>`,
-			context: "guild" in interaction && interaction.guild ? "guild" : "dm",
-			guild: "guild" in interaction && interaction.guild ? formatGuild(interaction.guild) : undefined,
-			channel:
-				interaction.channel && "name" in interaction.channel && typeof interaction.channel.name === "string"
-					? formatChannel({ id: interaction.channel.id, name: interaction.channel.name })
-					: undefined,
-		});
+		logger.warn("DISCORD", "Unhandled interaction", formatInteractionLogDetails(interaction));
 		return;
 	});
 

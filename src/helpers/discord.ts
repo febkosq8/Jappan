@@ -2,13 +2,14 @@ import type {
 	Guild,
 	GuildChannel,
 	GuildMember,
+	Interaction,
 	PartialGuildMember,
 	PartialUser,
 	Role,
 	ThreadChannel,
 	User,
 } from "discord.js";
-import { channelMention, roleMention, userMention } from "discord.js";
+import { channelMention, InteractionType, roleMention, userMention } from "discord.js";
 
 type UserMentionSource =
 	| Pick<User, "id" | "username">
@@ -26,6 +27,24 @@ export function formatGuild(guild: Pick<Guild, "id" | "name">): string {
 
 export function formatChannel(channel: Pick<GuildChannel | ThreadChannel, "id" | "name">): string {
 	return `${channel.name} <${channel.id}>`;
+}
+
+export function formatInteractionLogDetails(interaction: Interaction): Record<string, unknown> {
+	return {
+		type: InteractionType[interaction.type],
+		command: "commandName" in interaction ? interaction.commandName : undefined,
+		user: formatUser(interaction.user),
+		context: "guild" in interaction && interaction.guild ? "guild" : "dm",
+		guild: "guild" in interaction && interaction.guild ? formatGuild(interaction.guild) : undefined,
+		channel:
+			interaction.channel && "name" in interaction.channel && typeof interaction.channel.name === "string"
+				? formatChannel({ id: interaction.channel.id, name: interaction.channel.name })
+				: undefined,
+		subcommand: interaction.isChatInputCommand()
+			? (interaction.options.getSubcommand(false) ?? undefined)
+			: undefined,
+		customId: interaction.isMessageComponent() ? interaction.customId : undefined,
+	};
 }
 
 export function formatRole(role: Pick<Role, "id" | "name">): string {

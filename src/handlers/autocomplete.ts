@@ -1,5 +1,6 @@
 import type { AutocompleteInteraction } from "discord.js";
 
+import { formatInteractionLogDetails } from "../helpers/discord.js";
 import { getCommands } from "../services/commandLoader.js";
 import type { Config } from "../services/config.js";
 import { logger } from "../services/logger.js";
@@ -17,10 +18,11 @@ export async function handleAutocompleteInteraction({
 }): Promise<void> {
 	const command = getCommands().get(interaction.commandName);
 	if (!command) {
-		logger.warn("AUTOCOMPLETE", "Unknown application command for autocomplete", {
-			command: interaction.commandName,
-			user: `${interaction.user.tag} <${interaction.user.id}>`,
-		});
+		logger.warn(
+			"AUTOCOMPLETE",
+			"Unknown application command for autocomplete",
+			formatInteractionLogDetails(interaction),
+		);
 		await interaction.respond([]);
 		return;
 	}
@@ -34,15 +36,16 @@ export async function handleAutocompleteInteraction({
 		await command.autocomplete(interaction);
 	} catch (error: unknown) {
 		if (isUnknownInteractionError(error)) {
-			logger.debug("AUTOCOMPLETE", "Autocomplete interaction expired before it could be answered", {
-				command: interaction.commandName,
-			});
+			logger.debug(
+				"DISCORD",
+				"Autocomplete interaction expired before it could be answered",
+				formatInteractionLogDetails(interaction),
+			);
 			return;
 		}
 
 		logger.error("AUTOCOMPLETE", "Application command autocomplete failed", {
-			command: interaction.commandName,
-			user: `${interaction.user.tag} <${interaction.user.id}>`,
+			...formatInteractionLogDetails(interaction),
 			error,
 		});
 
@@ -51,9 +54,11 @@ export async function handleAutocompleteInteraction({
 				await interaction.respond([]);
 			} catch (fallbackError: unknown) {
 				if (isUnknownInteractionError(fallbackError)) {
-					logger.debug("AUTOCOMPLETE", "Autocomplete interaction expired before fallback response", {
-						command: interaction.commandName,
-					});
+					logger.debug(
+						"AUTOCOMPLETE",
+						"Autocomplete interaction expired before fallback response",
+						formatInteractionLogDetails(interaction),
+					);
 					return;
 				}
 				throw fallbackError;
