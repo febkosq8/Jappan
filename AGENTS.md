@@ -137,6 +137,5 @@ Boolean values are enabled only when their environment value is exactly `"true"`
 - Keep changes focused and avoid unrelated refactors.
 - Preserve public behavior unless an explicitly requested change allows an improvement.
 - Use structured logging with context instead of direct console output.
-- Do not mark items as completed in this guide without explicit user confirmation.
 - Do not commit changes automatically.
 - After edits, run the narrowest relevant test or typecheck, then run the full typecheck before handoff.
