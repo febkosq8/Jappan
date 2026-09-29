@@ -36,7 +36,7 @@ export async function handleAutocompleteInteraction({
 		await command.autocomplete(interaction);
 	} catch (error: unknown) {
 		if (isUnknownInteractionError(error)) {
-			logger.debug(
+			logger.info(
 				"DISCORD",
 				"Autocomplete interaction expired before it could be answered",
 				formatInteractionLogDetails(interaction),
