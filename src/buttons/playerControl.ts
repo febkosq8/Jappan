@@ -2,7 +2,12 @@ import { MessageFlags } from "discord.js";
 import type { QueueRepeatMode } from "discord-player";
 
 import { parseButtonCustomId } from "../helpers/button.js";
-import { createPlayerControls, createPlayerEmbed, updatePlayerQueueMessage } from "../helpers/player.js";
+import {
+	createPlayerControls,
+	createPlayerEmbed,
+	getNextRepeatMode,
+	updatePlayerQueueMessage,
+} from "../helpers/player.js";
 import { splitString } from "../helpers/string.js";
 import { getPlayer } from "../services/player.js";
 import type { ButtonModule } from "../services/buttonLoader.js";
@@ -68,7 +73,7 @@ const button: ButtonModule = {
 
 		if (action === "repeat") {
 			await interaction.deferUpdate();
-			const nextRepeatMode = (queue.repeatMode === 3 ? 0 : queue.repeatMode + 1) as QueueRepeatMode;
+			const nextRepeatMode = getNextRepeatMode(queue.repeatMode as QueueRepeatMode);
 			queue.setRepeatMode(nextRepeatMode);
 			updatePlayerQueueMessage({ queue, content: "" });
 			return;

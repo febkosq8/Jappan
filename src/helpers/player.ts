@@ -33,6 +33,14 @@ export type PlayerVoiceChannelResult =
 	  }
 	| { readonly success: false; readonly embed: EmbedBuilder };
 
+export function getNextRepeatMode(repeatMode: QueueRepeatMode): QueueRepeatMode {
+	return (repeatMode === 3 ? 0 : repeatMode + 1) as QueueRepeatMode;
+}
+
+function getRepeatModeLabel(repeatMode: QueueRepeatMode): string {
+	return repeatMode === 1 ? "🔂 Track" : repeatMode === 2 ? "🔁 Queue" : repeatMode === 3 ? "🔀 Auto" : "🔁 Off";
+}
+
 export function createPlayerControls({
 	queueView = false,
 	paused = false,
@@ -64,19 +72,12 @@ export function createPlayerControls({
 		);
 	}
 	if (hasCurrentTrack) {
+		const nextRepeatMode = getNextRepeatMode(repeatMode);
 		controls.push(
 			new ButtonBuilder()
 				.setCustomId("PlayerControl|ACTION#repeat")
-				.setLabel(
-					repeatMode === 1
-						? "🔂 Track"
-						: repeatMode === 2
-							? "🔁 Queue"
-							: repeatMode === 3
-								? "🔀 Auto"
-								: "🔁 Off",
-				)
-				.setStyle(repeatMode === 0 ? ButtonStyle.Secondary : ButtonStyle.Success),
+				.setLabel(getRepeatModeLabel(nextRepeatMode))
+				.setStyle(ButtonStyle.Secondary),
 			new ButtonBuilder()
 				.setCustomId("PlayerControl|ACTION#pause")
 				.setLabel(paused ? "▶️ Play" : "⏸️ Pause")
