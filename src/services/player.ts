@@ -1,6 +1,6 @@
 import { DefaultExtractors } from "@discord-player/extractor";
 import { load as loadExtractors } from "@extractorpack/extractorpack";
-import { Player, type SearchResult } from "discord-player";
+import { Player, type SearchOptions, type SearchResult } from "discord-player";
 import type { APIInteractionGuildMember, Client, GuildMember, Message } from "discord.js";
 
 import { registerPlayerHandlers } from "../handlers/player.js";
@@ -30,6 +30,15 @@ export type PlayerResult<Result> =
 	| { readonly success: true; readonly data: Result }
 	| { readonly success: false; readonly error_code: PlayerErrorCode };
 
+export interface ActivePlayerSession {
+	readonly guild: { readonly id: string; readonly name: string };
+	readonly channel: { readonly id: string; readonly name: string } | null;
+	readonly user: { readonly id: string; readonly username: string } | null;
+	readonly queueSize: number;
+	readonly nowPlaying: string | null;
+	readonly playerState: "Playing" | "Paused";
+}
+
 function getPlayerErrorCode(): PlayerErrorCode | undefined {
 	if (!player) {
 		return "PLAYER_NOT_INITIALIZED";
@@ -49,7 +58,7 @@ export async function initializePlayer(client: Client): Promise<Player | undefin
 	}
 
 	try {
-		const playerOptions = {
+		const playerOptions: ConstructorParameters<typeof Player>[1] = {
 			skipFFmpeg: false,
 		};
 		const initializedPlayer = new Player(
@@ -123,6 +132,27 @@ export function getPlayer(): Player {
 	return player;
 }
 
+export function getActivePlayerSessions(): ActivePlayerSession[] {
+	if (!player) {
+		return [];
+	}
+
+	return [...player.nodes.cache.values()].map((queue) => {
+		const userId = queue.metadata.requestedBy ?? null;
+		const user = userId ? queue.guild.client.users.cache.get(userId) : undefined;
+		return {
+			guild: { id: queue.guild.id, name: queue.guild.name },
+			channel: queue.channel ? { id: queue.channel.id, name: queue.channel.name } : null,
+			user: userId
+				? { id: userId, username: user?.username ?? queue.metadata.requestedByDisplay ?? userId }
+				: null,
+			queueSize: queue.tracks.size,
+			nowPlaying: queue.currentTrack?.title ?? null,
+			playerState: queue.node.isPaused() ? "Paused" : "Playing",
+		};
+	});
+}
+
 export async function shutdownPlayer(): Promise<void> {
 	if (!player) {
 		return;
@@ -146,13 +176,19 @@ export async function shutdownPlayer(): Promise<void> {
 	}
 }
 
-export async function searchPlayer(query: string): Promise<PlayerResult<SearchResult>> {
+export async function searchPlayer(
+	query: string,
+	searchOptions = {} as SearchOptions,
+): Promise<PlayerResult<SearchResult>> {
 	const errorCode = getPlayerErrorCode();
 	if (errorCode) {
 		return { success: false, error_code: errorCode };
 	}
 
-	return { success: true, data: await getPlayer().search(query, { fallbackSearchEngine: "youtubeSearch" }) };
+	return {
+		success: true,
+		data: await getPlayer().search(query, { fallbackSearchEngine: "youtubeSearch", ...searchOptions }),
+	};
 }
 
 export async function playSearchResult({

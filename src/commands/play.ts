@@ -43,7 +43,7 @@ const command: BotCommand = {
 		}
 
 		try {
-			const searchResponse = await searchPlayer(query);
+			const searchResponse = await searchPlayer(query, { requestedBy: interaction.user.id });
 			if (!searchResponse.success) {
 				await interaction.respond([]);
 				return;
@@ -72,7 +72,7 @@ const command: BotCommand = {
 
 		const query = interaction.options.getString("query", true).trim();
 		try {
-			const searchResponse = await searchPlayer(query);
+			const searchResponse = await searchPlayer(query, { requestedBy: interaction.user.id });
 			if (!searchResponse.success) {
 				await interaction.editReply({
 					embeds: [

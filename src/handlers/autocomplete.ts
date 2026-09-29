@@ -4,6 +4,10 @@ import { getCommands } from "../services/commandLoader.js";
 import type { Config } from "../services/config.js";
 import { logger } from "../services/logger.js";
 
+function isUnknownInteractionError(error: unknown): boolean {
+	return typeof error === "object" && error !== null && "code" in error && error.code === 10062;
+}
+
 export async function handleAutocompleteInteraction({
 	interaction,
 	config: _config,
@@ -29,6 +33,13 @@ export async function handleAutocompleteInteraction({
 	try {
 		await command.autocomplete(interaction);
 	} catch (error: unknown) {
+		if (isUnknownInteractionError(error)) {
+			logger.debug("AUTOCOMPLETE", "Autocomplete interaction expired before it could be answered", {
+				command: interaction.commandName,
+			});
+			return;
+		}
+
 		logger.error("AUTOCOMPLETE", "Application command autocomplete failed", {
 			command: interaction.commandName,
 			user: `${interaction.user.tag} <${interaction.user.id}>`,
@@ -36,7 +47,17 @@ export async function handleAutocompleteInteraction({
 		});
 
 		if (!interaction.responded) {
-			await interaction.respond([]);
+			try {
+				await interaction.respond([]);
+			} catch (fallbackError: unknown) {
+				if (isUnknownInteractionError(fallbackError)) {
+					logger.debug("AUTOCOMPLETE", "Autocomplete interaction expired before fallback response", {
+						command: interaction.commandName,
+					});
+					return;
+				}
+				throw fallbackError;
+			}
 		}
 	}
 }

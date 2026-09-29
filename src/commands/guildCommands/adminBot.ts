@@ -1,5 +1,4 @@
 import {
-	channelMention,
 	EmbedBuilder,
 	InteractionContextType,
 	MessageFlags,
@@ -8,11 +7,19 @@ import {
 } from "discord.js";
 
 import type { BotCommand, BotCommandData } from "../../helpers/command.js";
-import { formatGuild, formatGuildMention } from "../../helpers/discord.js";
+import {
+	formatChannel,
+	formatChannelMention,
+	formatGuild,
+	formatGuildMention,
+	formatUser,
+	formatUserMention,
+} from "../../helpers/discord.js";
 import { sendResponse } from "../../helpers/response.js";
 import { wait } from "../../helpers/utils.js";
 import { isAdminUser } from "../../services/adminGuild.js";
 import { logger } from "../../services/logger.js";
+import { getActivePlayerSessions } from "../../services/player.js";
 import { handleShutdown } from "../../services/shutdown.js";
 
 const commandData = {
@@ -22,7 +29,7 @@ const commandData = {
 	defaultMemberPermissions: PermissionFlagsBits.ManageGuild,
 	hasSubCommands: true,
 	subCommands: [
-		{ name: "check-voice", description: "Show the bot's active voice connections", category: "admin" },
+		{ name: "check-player", description: "Show active player and voice sessions", category: "admin" },
 		{ name: "stop-bot", description: "Stop the bot process", category: "admin" },
 	],
 	isDBDependant: false,
@@ -39,7 +46,7 @@ const command: BotCommand = {
 		.setName(commandData.name)
 		.setDescription(commandData.description)
 		.addSubcommand((subcommand) =>
-			subcommand.setName("check-voice").setDescription("Show the bot's active voice connections"),
+			subcommand.setName("check-player").setDescription("Show active player and voice sessions"),
 		)
 		.addSubcommand((subcommand) =>
 			subcommand
@@ -65,48 +72,59 @@ const command: BotCommand = {
 		}
 
 		const subcommand = interaction.options.getSubcommand();
-		if (subcommand === "check-voice") {
-			let connectionNumber = 0;
-			const embeds = [...interaction.client.guilds.cache.values()].flatMap((guild) => {
-				const voiceState = guild.members.me?.voice;
+		if (subcommand === "check-player") {
+			const sessions = getActivePlayerSessions();
+			const embeds = sessions.map((session, index) => {
+				const guild = interaction.client.guilds.cache.get(session.guild.id);
+				const voiceState = guild?.members.me?.voice;
 				const channel = voiceState?.channel;
-				if (!channel) {
-					return [];
-				}
-
-				connectionNumber += 1;
-				return [
-					new EmbedBuilder()
-						.setColor("DarkButNotBlack")
-						.setTitle(`Active voice connection #${connectionNumber}`)
-						.addFields(
-							{ name: "Guild", value: formatGuildMention(guild) },
-							{ name: "Channel", value: `${channelMention(channel.id)} (${channel.name})` },
-							{ name: "Member count", value: String(channel.members.size), inline: true },
-							{ name: "Session ID", value: voiceState.sessionId ?? "Unknown", inline: true },
-							{
-								name: "Server deaf",
-								value: voiceState.serverDeaf ? "Active" : "Not active",
-								inline: true,
-							},
-							{
-								name: "Server mute",
-								value: voiceState.serverMute ? "Active" : "Not active",
-								inline: true,
-							},
-						)
-						.setTimestamp(),
-				];
+				return new EmbedBuilder()
+					.setColor("DarkButNotBlack")
+					.setTitle(`Active player session #${index + 1}`)
+					.addFields(
+						{ name: "🏠 Guild", value: formatGuildMention(session.guild) },
+						{
+							name: "🔊 Channel",
+							value: channel ? formatChannelMention(channel) : "Unknown channel",
+						},
+						{
+							name: "👤 User",
+							value: session.user ? formatUserMention(session.user) : "Unknown user",
+						},
+						{ name: "📚 Queue size", value: String(session.queueSize), inline: true },
+						{ name: "🎵 Now playing", value: session.nowPlaying ?? "Nothing", inline: true },
+						{
+							name: "Player state",
+							value: session.playerState === "Paused" ? "⏸️ Paused" : "▶️ Playing",
+							inline: true,
+						},
+						{
+							name: "👥 Member count",
+							value: channel ? String(channel.members.size) : "Unknown",
+							inline: true,
+						},
+						{ name: "🪪 Session ID", value: voiceState?.sessionId ?? "Unknown", inline: true },
+						{
+							name: "Server deaf",
+							value: voiceState?.serverDeaf ? "🔇 Active" : "🔊 Not active",
+							inline: true,
+						},
+						{
+							name: "Server mute",
+							value: voiceState?.serverMute ? "🔇 Muted" : "🎙️ Not muted",
+							inline: true,
+						},
+					)
+					.setTimestamp();
 			});
-
-			if (embeds.length === 0) {
-				await interaction.editReply("✅ Voice status analysis: no active voice connections found.");
-				return;
-			}
 
 			await sendResponse({
 				destination: interaction,
-				content: { embeds, flags: MessageFlags.Ephemeral },
+				content: {
+					content: `Found ${sessions.length} guild${sessions.length === 1 ? "" : "s"} with active player session${sessions.length === 1 ? "" : "s"}.`,
+					embeds,
+					flags: MessageFlags.Ephemeral,
+				},
 			});
 			return;
 		}
