@@ -132,6 +132,10 @@ export function getPlayer(): Player {
 	return player;
 }
 
+export function isPlayerAvailable(): boolean {
+	return player !== undefined && !playerDown;
+}
+
 export function getActivePlayerSessions(): ActivePlayerSession[] {
 	if (!player) {
 		return [];

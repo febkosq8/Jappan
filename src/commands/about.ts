@@ -10,6 +10,8 @@ import {
 
 import type { BotCommand, BotCommandData } from "../services/commandLoader.js";
 import { isDatabaseConnected } from "../services/database.js";
+import { isPlayerAvailable } from "../services/player.js";
+import { getBotVersion } from "../helpers/utils.js";
 
 const commandData = {
 	name: "about",
@@ -49,14 +51,19 @@ const command: BotCommand = {
 			.setColor("Blue")
 			.setTitle(`Find help regarding ${config.BOT_NAME} here`)
 			.setAuthor({ name: `${config.BOT_NAME} : About`, iconURL: config.BOT_PFP, url: config.BOT_WEBSITE })
-			.setDescription("I am a simple Discord bot made to make someone's life easier.")
+			.setDescription("I am a simple bot made to make life easier")
 			.addFields(
-				{ name: "Features", value: "Application (/) commands, moderation tools, and utility commands" },
 				{
-					name: "Status",
-					value: `Server active since ${uptime}\nDatabase: ${isDatabaseConnected() ? "Connected" : "Unavailable"}`,
+					name: "Features",
+					value: "Music playback, playlists, soundboard, leveling, moderation, audit logging, and voice-region controls",
 				},
-				{ name: "Know More", value: "Interact below" },
+				{ name: "Bot Status", value: `v${getBotVersion()} active since ${uptime}` },
+				{
+					name: "Database Status",
+					value: isDatabaseConnected() ? "💚 Connected" : "💔 Unavailable",
+					inline: true,
+				},
+				{ name: "Player Status", value: isPlayerAvailable() ? "💚 Available" : "💔 Unavailable", inline: true },
 			)
 			.setTimestamp();
 		await interaction.editReply({ embeds: [embed], components: [buttons] });

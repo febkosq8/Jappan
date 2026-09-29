@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { startBot as startDiscordBot } from "./bot.js";
+import { getBotVersion } from "./helpers/utils.js";
 import { getConfig, loadConfig } from "./services/config.js";
 import { connectDatabase } from "./services/database.js";
 import { logger } from "./services/logger.js";
@@ -23,6 +24,7 @@ function handleProcessFailure(type: "Uncaught exception" | "Unhandled promise re
 
 export async function startBot(): Promise<void> {
 	loadConfig();
+	logger.info("BOT", `Initialization started v${getBotVersion()}`);
 	process.once("SIGINT", () => void handleShutdown("SIGINT"));
 	process.once("SIGTERM", () => void handleShutdown("SIGTERM"));
 	process.on("uncaughtException", (error: Error) => {
