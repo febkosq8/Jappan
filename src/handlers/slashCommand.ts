@@ -22,10 +22,10 @@ export async function handleSlashCommandInteraction({
 		return;
 	}
 	const postExecute = command.postExecute;
-	const executionLogDetails = {
+	const getExecutionLogDetails = () => ({
 		...formatInteractionLogDetails(interaction),
 		durationMs: Math.round(performance.now() - startedAt),
-	};
+	});
 	try {
 		const hasSubCommands = command.commandData.hasSubCommands ?? false;
 		const subcommand = hasSubCommands ? interaction.options.getSubcommand() : undefined;
@@ -39,9 +39,8 @@ export async function handleSlashCommandInteraction({
 		const missingPermissions = getMissingBotPermissions(interaction, requiredBotPermissions);
 		if (missingPermissions.length > 0) {
 			logger.warn("SLASH_COMMANDS", "Application (/) command rejected because bot lacks permissions", {
-				...formatInteractionLogDetails(interaction),
+				...getExecutionLogDetails(),
 				missingPermissions,
-				durationMs: Math.round(performance.now() - startedAt),
 			});
 			await interaction.reply({
 				content: `⛔ I need these permissions to run this command: ${missingPermissions
@@ -54,8 +53,7 @@ export async function handleSlashCommandInteraction({
 
 		if (command.commandData.isDBDependant && !isDatabaseConnected()) {
 			logger.warn("SLASH_COMMANDS", "Application (/) command rejected because database is unavailable", {
-				...formatInteractionLogDetails(interaction),
-				durationMs: Math.round(performance.now() - startedAt),
+				...getExecutionLogDetails(),
 			});
 			await interaction.reply({
 				content: "⛔ The bot is temporarily unavailable. Please try again later.",
@@ -70,20 +68,19 @@ export async function handleSlashCommandInteraction({
 			postExecute
 				? "Application (/) command executed successfully; running postExecute"
 				: "Application (/) command executed successfully",
-			executionLogDetails,
+			getExecutionLogDetails(),
 		);
 		if (postExecute) {
 			await postExecute({ interaction, config });
 			logger.info(
 				"SLASH_COMMANDS",
 				"Application (/) command postExecute completed successfully",
-				executionLogDetails,
+				getExecutionLogDetails(),
 			);
 		}
 	} catch (error: unknown) {
 		logger.error("SLASH_COMMANDS", "Application (/) command failed", {
-			...formatInteractionLogDetails(interaction),
-			durationMs: Math.round(performance.now() - startedAt),
+			...getExecutionLogDetails(),
 			error,
 		});
 

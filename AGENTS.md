@@ -113,6 +113,10 @@ Do not display raw user, channel, role, or command IDs or names when a Discord m
 
 Permission names in ordinary Discord message content must use Discord underlining via `underline(...)`. Permission names inside embed descriptions, fields, or other embed text must use Markdown backticks instead.
 
+### Discord Embeds
+
+Every `EmbedBuilder` embed must set both an author and a timestamp. Use the configured bot identity for the author when configuration is available.
+
 ### Logging
 
 Use `src/services/logger.ts` for logging. The logger delegates to `src/helpers/logger.ts` and supports `debug`, `info`, `success`, `warn`, and `error` levels. Include useful context in the details object, especially guild, user, command, role, and channel identifiers.

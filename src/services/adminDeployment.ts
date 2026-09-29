@@ -16,11 +16,44 @@ export async function undeployGuildCommandsGlobally(client: Client): Promise<{
 	failedGuilds: Guild[];
 }> {
 	const guilds = [...client.guilds.cache.values()];
-	const results = await Promise.allSettled(guilds.map((guild) => guild.commands.set([])));
+	const undeployedGuilds: Guild[] = [];
+	const failedGuilds: Guild[] = [];
+
+	for (const guild of guilds) {
+		try {
+			const existingCommands = await guild.commands.fetch();
+			if (existingCommands.size === 0) {
+				logger.info("ADMIN", "Guild command undeployment skipped", {
+					guild: formatGuild(guild),
+					reason: "No guild commands registered",
+				});
+				continue;
+			}
+
+			const startedAt = performance.now();
+			logger.info("ADMIN", "Guild command undeployment started", {
+				guild: formatGuild(guild),
+				existingCommandCount: existingCommands.size,
+			});
+			await guild.commands.set([]);
+			undeployedGuilds.push(guild);
+			logger.info("ADMIN", "Guild commands undeployed", {
+				guild: formatGuild(guild),
+				removedCommandCount: existingCommands.size,
+				durationMs: Math.round(performance.now() - startedAt),
+			});
+		} catch (error: unknown) {
+			failedGuilds.push(guild);
+			logger.error("ADMIN", "Guild command undeployment failed", {
+				guild: formatGuild(guild),
+				error,
+			});
+		}
+	}
 
 	return {
-		undeployedGuilds: guilds.filter((_, index) => results[index]?.status === "fulfilled"),
-		failedGuilds: guilds.filter((_, index) => results[index]?.status === "rejected"),
+		undeployedGuilds,
+		failedGuilds,
 	};
 }
 

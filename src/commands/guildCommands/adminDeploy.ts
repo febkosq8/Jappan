@@ -15,7 +15,7 @@ import {
 	type BotCommand,
 	type BotCommandData,
 } from "../../helpers/command.js";
-import { formatGuild } from "../../helpers/discord.js";
+import { formatGuild, formatGuildMention } from "../../helpers/discord.js";
 import { sendResponse } from "../../helpers/response.js";
 import { undeployGuildCommandsGlobally } from "../../services/adminDeployment.js";
 import { getCommands } from "../../services/commandLoader.js";
@@ -152,7 +152,15 @@ const command: BotCommand = {
 			subcommand.setName("check-deploy").setDescription("Show the commands currently registered with Discord"),
 		)
 		.addSubcommand((subcommand) =>
-			subcommand.setName("undeploy-guilds").setDescription("Remove guild commands from every installed guild"),
+			subcommand
+				.setName("undeploy-guilds")
+				.setDescription("Remove guild commands from every installed guild")
+				.addBooleanOption((option) =>
+					option
+						.setName("confirm")
+						.setDescription("Confirm removing guild commands from all guilds")
+						.setRequired(true),
+				),
 		)
 		.setDefaultMemberPermissions(commandData.defaultMemberPermissions)
 		.setContexts([InteractionContextType.Guild]),
@@ -173,13 +181,29 @@ const command: BotCommand = {
 		}
 		const subcommand = interaction.options.getSubcommand();
 		if (subcommand === "undeploy-guilds") {
+			if (interaction.options.getBoolean("confirm", true) !== true) {
+				await interaction.editReply("⛔ Confirmation is required to remove guild commands.");
+				return;
+			}
 			try {
 				const { undeployedGuilds, failedGuilds } = await undeployGuildCommandsGlobally(interaction.client);
-				const failedGuildList = failedGuilds.map((guild) => formatGuild(guild)).join(", ");
-				const failureMessage = failedGuilds.length > 0 ? ` Failed: ${failedGuildList}.` : "";
-				await interaction.editReply(
-					`✅ Removed guild commands from ${undeployedGuilds.length} guild${undeployedGuilds.length === 1 ? "" : "s"}.${failureMessage}`,
-				);
+				const formatGuildList = (guilds: typeof undeployedGuilds): string =>
+					guilds.length > 0
+						? guilds.map((guild, index) => `${index + 1}. ${formatGuildMention(guild)}`).join("\n")
+						: "None";
+				const embed = new EmbedBuilder()
+					.setColor(failedGuilds.length > 0 ? "Red" : "Green")
+					.setAuthor({ name: `${config.BOT_NAME} Admin`, iconURL: config.BOT_PFP, url: config.BOT_WEBSITE })
+					.setTitle("Guild command undeployment results")
+					.setDescription(
+						`Removed guild commands from ${undeployedGuilds.length} guild${undeployedGuilds.length === 1 ? "" : "s"}.`,
+					)
+					.addFields(
+						{ name: `Succeeded (${undeployedGuilds.length})`, value: formatGuildList(undeployedGuilds) },
+						{ name: `Failed (${failedGuilds.length})`, value: formatGuildList(failedGuilds) },
+					)
+					.setTimestamp();
+				await interaction.editReply({ embeds: [embed] });
 				logger.info("ADMIN", "Guild commands undeployed globally", {
 					user: `${interaction.user.tag} <${interaction.user.id}>`,
 					guild: interaction.guild ? formatGuild(interaction.guild) : undefined,
