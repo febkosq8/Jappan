@@ -54,7 +54,7 @@ const button: ButtonModule = {
 
 		if (action === "previous") {
 			await interaction.deferUpdate();
-			if (!queue.history.previousTrack) {
+			if (queue.node.isPaused() || !queue.history.previousTrack) {
 				return;
 			}
 			await queue.history.previous();
@@ -64,6 +64,9 @@ const button: ButtonModule = {
 
 		if (action === "skip") {
 			await interaction.deferUpdate();
+			if (queue.node.isPaused()) {
+				return;
+			}
 			queue.node.skip();
 			await updatePlayerQueueMessage({ queue, content: "" });
 			return;

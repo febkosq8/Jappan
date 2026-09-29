@@ -112,7 +112,7 @@ export function createPlayerControls({
 				.setStyle(ButtonStyle.Secondary),
 		);
 	}
-	if (hasPrevious && queuePageCount <= 1) {
+	if (hasPrevious && !paused && queuePageCount <= 1) {
 		controls.push(
 			new ButtonBuilder()
 				.setCustomId("PlayerControl|ACTION#previous")
@@ -120,7 +120,7 @@ export function createPlayerControls({
 				.setStyle(ButtonStyle.Secondary),
 		);
 	}
-	if (hasNext && queuePageCount <= 1) {
+	if (hasNext && !paused && queuePageCount <= 1) {
 		controls.push(
 			new ButtonBuilder()
 				.setCustomId("PlayerControl|ACTION#skip")
