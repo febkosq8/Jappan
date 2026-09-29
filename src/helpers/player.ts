@@ -174,7 +174,7 @@ export function createPlayerEmbed({
 	if (queueSize !== undefined) {
 		embed.addFields({
 			name: "Queue",
-			value: `${queueSize} track${queueSize === 1 ? "" : "s"} waiting${queueSize > 1 && queueDurationMs ? ` [${formatPlayerTime(queueDurationMs)}]` : ""}`,
+			value: `${queueSize} track${queueSize === 1 ? "" : "s"} waiting${queueSize > 1 && queueDurationMs ? `\n[Runtime: ${formatPlayerTime(queueDurationMs)}]` : ""}`,
 			inline: true,
 		});
 	}
@@ -188,7 +188,7 @@ export function createPlayerEmbed({
 	if (repeatMode !== undefined) {
 		embed.addFields({
 			name: "Repeat",
-			value: repeatMode === 1 ? "Track" : repeatMode === 2 ? "Queue" : repeatMode === 3 ? "Autoplay" : "Off",
+			value: getRepeatModeLabel(repeatMode),
 			inline: true,
 		});
 	}
