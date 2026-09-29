@@ -63,8 +63,10 @@ export function createPlayerControls({
 	queuePageCount?: number;
 } = {}): ActionRowBuilder<ButtonBuilder>[] {
 	const controls: ButtonBuilder[] = [];
+	const viewControls: ButtonBuilder[] = [];
+	const paginationControls: ButtonBuilder[] = [];
 	if (queueSize !== undefined && queueSize > 0) {
-		controls.push(
+		viewControls.push(
 			new ButtonBuilder()
 				.setCustomId(`PlayerControl|ACTION#queue:VIEW#${queueView ? "queue" : "nowPlaying"}`)
 				.setLabel(queueView ? "Now Playing" : "Current Queue")
@@ -84,18 +86,20 @@ export function createPlayerControls({
 				.setStyle(ButtonStyle.Secondary),
 		);
 	}
-	if (queuePageCount > 1) {
-		controls.push(
+	if (queuePageCount > 1 && queuePage > 0) {
+		paginationControls.push(
 			new ButtonBuilder()
 				.setCustomId(`PlayerControl|ACTION#queuePage:PAGE#${queuePage - 1}`)
 				.setLabel("◀️ Page")
-				.setStyle(ButtonStyle.Secondary)
-				.setDisabled(queuePage <= 0),
+				.setStyle(ButtonStyle.Secondary),
+		);
+	}
+	if (queuePageCount > 1 && queuePage < queuePageCount - 1) {
+		paginationControls.push(
 			new ButtonBuilder()
 				.setCustomId(`PlayerControl|ACTION#queuePage:PAGE#${queuePage + 1}`)
 				.setLabel("Page ▶️")
-				.setStyle(ButtonStyle.Secondary)
-				.setDisabled(queuePage >= queuePageCount - 1),
+				.setStyle(ButtonStyle.Secondary),
 		);
 	}
 	if (hasPrevious && queuePageCount <= 1) {
@@ -118,8 +122,12 @@ export function createPlayerControls({
 		new ButtonBuilder().setCustomId("PlayerControl|ACTION#stop").setLabel("⏹️ Stop").setStyle(ButtonStyle.Danger),
 	);
 	const rows: ActionRowBuilder<ButtonBuilder>[] = [];
-	for (let index = 0; index < controls.length; index += 5) {
-		rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(...controls.slice(index, index + 5)));
+	if (paginationControls.length > 0) {
+		rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(...paginationControls));
+	}
+	const remainingControls = [...viewControls, ...controls];
+	for (let index = 0; index < remainingControls.length; index += 5) {
+		rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(...remainingControls.slice(index, index + 5)));
 	}
 	return rows;
 }
@@ -131,6 +139,7 @@ export function createPlayerEmbed({
 	requestedBy,
 	thumbnail,
 	queueSize,
+	queueDurationMs,
 	durationMs,
 	repeatMode,
 	footerText,
@@ -141,6 +150,7 @@ export function createPlayerEmbed({
 	requestedBy?: string;
 	thumbnail?: string;
 	queueSize?: number;
+	queueDurationMs?: number;
 	durationMs?: number;
 	repeatMode?: QueueRepeatMode;
 	footerText?: string;
@@ -164,7 +174,7 @@ export function createPlayerEmbed({
 	if (queueSize !== undefined) {
 		embed.addFields({
 			name: "Queue",
-			value: `${queueSize} track${queueSize === 1 ? "" : "s"} waiting`,
+			value: `${queueSize} track${queueSize === 1 ? "" : "s"} waiting${queueSize > 1 && queueDurationMs ? ` [${formatPlayerTime(queueDurationMs)}]` : ""}`,
 			inline: true,
 		});
 	}
@@ -185,12 +195,18 @@ export function createPlayerEmbed({
 	return embed;
 }
 
-function formatPlayerTime(milliseconds: number): string {
+export function formatPlayerTime(milliseconds: number): string {
 	const totalSeconds = Math.floor(milliseconds / 1000);
-	const hours = Math.floor(totalSeconds / 3600);
+	const totalHours = Math.floor(totalSeconds / 3600);
+	const days = Math.floor(totalHours / 24);
+	const hours = totalHours % 24;
 	const minutes = Math.floor((totalSeconds % 3600) / 60);
 	const seconds = totalSeconds % 60;
-	return hours > 0 ? `${hours}h ${minutes}m ${seconds}s` : `${minutes}m ${seconds}s`;
+	return days > 0
+		? `${days}d ${hours}h ${minutes}m ${seconds}s`
+		: totalHours > 0
+			? `${hours}h ${minutes}m ${seconds}s`
+			: `${minutes}m ${seconds}s`;
 }
 
 export function getPlayerVoiceChannel(interaction: ChatInputCommandInteraction): PlayerVoiceChannelResult {
@@ -252,7 +268,7 @@ export function updatePlayerQueueMessage({
 		currentTrack?: { title?: string; thumbnail?: string; durationMS?: number } | null;
 		node?: { isPaused(): boolean; streamTime?: number };
 		history?: { previousTrack?: unknown; nextTrack?: unknown };
-		tracks?: { size: number };
+		tracks?: { size: number; toArray(): Array<{ durationMS?: number }> };
 		repeatMode?: QueueRepeatMode;
 	};
 	content: string;
@@ -262,6 +278,7 @@ export function updatePlayerQueueMessage({
 	if (!statusMessage) {
 		return Promise.resolve();
 	}
+	const queueDurationMs = queue.tracks?.toArray().reduce((total, track) => total + (track.durationMS ?? 0), 0);
 
 	return editPlayerStatusMessage({
 		guild: queue.guild,
@@ -287,6 +304,7 @@ export function updatePlayerQueueMessage({
 					...(queue.metadata.requestedByDisplay ? { requestedBy: queue.metadata.requestedByDisplay } : {}),
 					...(queue.currentTrack?.thumbnail ? { thumbnail: queue.currentTrack.thumbnail } : {}),
 					...(queue.tracks ? { queueSize: queue.tracks.size } : {}),
+					...(queueDurationMs ? { queueDurationMs } : {}),
 					...(queue.currentTrack?.durationMS ? { durationMs: queue.currentTrack.durationMS } : {}),
 					...(queue.repeatMode !== undefined ? { repeatMode: queue.repeatMode } : {}),
 				}),

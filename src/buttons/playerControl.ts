@@ -101,7 +101,7 @@ const button: ButtonModule = {
 				? tracks.map((track, index) => `${index + 1}. **${track.title}**`).join("\n")
 				: "No tracks are waiting in the queue.";
 			const queueChunks = splitString(queueBody, 2600);
-			const queuePages = queueChunks.slice(0, 2);
+			const queuePages = queueChunks.slice(0, 3);
 			if (queueChunks.length > queuePages.length) {
 				queuePages[queuePages.length - 1] += "\n... More tracks are not shown.";
 			}
@@ -150,6 +150,9 @@ const button: ButtonModule = {
 							requestedBy: queue.metadata.requestedByDisplay,
 							...(currentTrack?.thumbnail ? { thumbnail: currentTrack.thumbnail } : {}),
 							queueSize: queue.tracks.size,
+							queueDurationMs: queue.tracks
+								.toArray()
+								.reduce((total, track) => total + (track.durationMS ?? 0), 0),
 							...(currentTrack?.durationMS ? { durationMs: currentTrack.durationMS } : {}),
 							repeatMode: queue.repeatMode,
 						}),
