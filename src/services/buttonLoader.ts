@@ -1,9 +1,17 @@
 import type { ButtonInteraction } from "discord.js";
-import { readdir } from "node:fs/promises";
-import { join } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
 
 import type { Config } from "./config.js";
+import deleteDoppelganger from "../buttons/deleteDoppelganger.js";
+import funHelp from "../buttons/funHelp.js";
+import generalHelp from "../buttons/generalHelp.js";
+import help from "../buttons/help.js";
+import leaderboardNext from "../buttons/leaderboardNext.js";
+import leaderboardPrev from "../buttons/leaderboardPrev.js";
+import levelHelp from "../buttons/levelHelp.js";
+import modHelp from "../buttons/modHelp.js";
+import musicHelp from "../buttons/musicHelp.js";
+import ping from "../buttons/ping.js";
+import playerControl from "../buttons/playerControl.js";
 
 export type ButtonHandler = ({
 	interaction,
@@ -22,9 +30,19 @@ export interface ButtonModule {
 	readonly execute: ButtonHandler;
 }
 
-type ButtonModuleImport = {
-	readonly default?: unknown;
-};
+const buttonModules: readonly unknown[] = [
+	deleteDoppelganger,
+	funHelp,
+	generalHelp,
+	help,
+	leaderboardNext,
+	leaderboardPrev,
+	levelHelp,
+	modHelp,
+	musicHelp,
+	ping,
+	playerControl,
+];
 
 let loadedButtons: Map<string, ButtonHandler> | undefined;
 
@@ -41,30 +59,18 @@ function isButtonModule(value: unknown): value is ButtonModule {
 }
 
 export async function loadButtons(): Promise<Map<string, ButtonHandler>> {
-	const buttonDirectory = fileURLToPath(new URL("../buttons", import.meta.url));
-	const entries = await readdir(buttonDirectory, { withFileTypes: true });
 	const buttons = new Map<string, ButtonHandler>();
 
-	for (const entry of entries) {
-		if (
-			!entry.isFile() ||
-			entry.name.endsWith(".d.ts") ||
-			!(entry.name.endsWith(".ts") || entry.name.endsWith(".js"))
-		) {
-			continue;
+	for (const buttonModule of buttonModules) {
+		if (!isButtonModule(buttonModule)) {
+			throw new Error("Invalid button module");
 		}
 
-		const buttonPath = join(buttonDirectory, entry.name);
-		const buttonModule = (await import(pathToFileURL(buttonPath).href)) as ButtonModuleImport;
-		if (!isButtonModule(buttonModule.default)) {
-			throw new Error(`Invalid button module: ${entry.name}`);
+		if (buttons.has(buttonModule.buttonData.id)) {
+			throw new Error(`Duplicate button: ${buttonModule.buttonData.id}`);
 		}
 
-		if (buttons.has(buttonModule.default.buttonData.id)) {
-			throw new Error(`Duplicate button: ${buttonModule.default.buttonData.id}`);
-		}
-
-		buttons.set(buttonModule.default.buttonData.id, buttonModule.default.execute);
+		buttons.set(buttonModule.buttonData.id, buttonModule.execute);
 	}
 
 	loadedButtons = buttons;

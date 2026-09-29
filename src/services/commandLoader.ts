@@ -1,56 +1,71 @@
 import type { ApplicationCommand } from "discord.js";
 import { Collection } from "discord.js";
-import { readdir } from "node:fs/promises";
-import { join } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
 
 import type { BotCommand } from "../helpers/command.js";
 import { isBotCommand } from "../helpers/command.js";
+import about from "../commands/about.js";
+import auditlog from "../commands/auditlog.js";
+import clear from "../commands/clear.js";
+import doppelganger from "../commands/doppelganger.js";
+import help from "../commands/help.js";
+import leaderboard from "../commands/leaderboard.js";
+import level from "../commands/level.js";
+import lockVcRegion from "../commands/lockVcRegion.js";
+import memberannounce from "../commands/memberannounce.js";
+import ping from "../commands/ping.js";
+import play from "../commands/play.js";
+import playlist from "../commands/playlist.js";
+import soundboard from "../commands/soundboard.js";
+import warn from "../commands/warn.js";
+import adminBot from "../commands/guildCommands/adminBot.js";
+import adminDeploy from "../commands/guildCommands/adminDeploy.js";
+import adminGuild from "../commands/guildCommands/adminGuild.js";
 export type { BotCommand, BotCommandContext, BotCommandData, CommandCategory } from "../helpers/command.js";
 
-type CommandModule = {
-	readonly default?: unknown;
-};
+const globalCommandModules: readonly unknown[] = [
+	about,
+	auditlog,
+	clear,
+	doppelganger,
+	help,
+	leaderboard,
+	level,
+	lockVcRegion,
+	memberannounce,
+	ping,
+	play,
+	playlist,
+	soundboard,
+	warn,
+];
+const guildCommandModules: readonly unknown[] = [adminBot, adminDeploy, adminGuild];
 
 let loadedCommands: Collection<string, BotCommand> | undefined;
 let loadedGlobalCommands: Collection<string, BotCommand> | undefined;
 let loadedGuildCommands: Collection<string, BotCommand> | undefined;
 let registeredCommandIds: Collection<string, string> | undefined;
 
-async function loadCommandDirectory(commandDirectory: string): Promise<Collection<string, BotCommand>> {
-	const entries = await readdir(commandDirectory, { withFileTypes: true });
+async function loadCommandModules(modules: readonly unknown[]): Promise<Collection<string, BotCommand>> {
 	const commands = new Collection<string, BotCommand>();
 
-	for (const entry of entries) {
-		if (
-			!entry.isFile() ||
-			entry.name.endsWith(".d.ts") ||
-			!(entry.name.endsWith(".ts") || entry.name.endsWith(".js"))
-		) {
-			continue;
+	for (const commandModule of modules) {
+		if (!isBotCommand(commandModule)) {
+			throw new Error("Invalid command module");
 		}
 
-		const commandPath = join(commandDirectory, entry.name);
-		const commandModule = (await import(pathToFileURL(commandPath).href)) as CommandModule;
-		if (!isBotCommand(commandModule.default)) {
-			throw new Error(`Invalid command module: ${entry.name}`);
+		if (commands.has(commandModule.data.name)) {
+			throw new Error(`Duplicate command: ${commandModule.data.name}`);
 		}
 
-		if (commands.has(commandModule.default.data.name)) {
-			throw new Error(`Duplicate command: ${commandModule.default.data.name}`);
-		}
-
-		commands.set(commandModule.default.data.name, commandModule.default);
+		commands.set(commandModule.data.name, commandModule);
 	}
 
 	return commands;
 }
 
 export async function loadCommands(): Promise<Collection<string, BotCommand>> {
-	const commandDirectory = fileURLToPath(new URL("../commands", import.meta.url));
-	const guildCommandDirectory = join(commandDirectory, "guildCommands");
-	loadedGlobalCommands = await loadCommandDirectory(commandDirectory);
-	loadedGuildCommands = await loadCommandDirectory(guildCommandDirectory);
+	loadedGlobalCommands = await loadCommandModules(globalCommandModules);
+	loadedGuildCommands = await loadCommandModules(guildCommandModules);
 	loadedCommands = new Collection([...loadedGlobalCommands, ...loadedGuildCommands]);
 	return loadedCommands;
 }

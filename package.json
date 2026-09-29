@@ -8,7 +8,7 @@
 		"node": ">=24.12.0"
 	},
 	"scripts": {
-		"build": "tsup src/index.ts --format esm",
+		"build": "tsup src/index.ts --format esm --external @extractorpack/extractorpack",
 		"dev": "tsx watch --include \"./.env\" src/index.ts",
 		"extractors:scan": "extractorpack scan",
 		"format": "prettier --write \"src/**/*.ts\"",

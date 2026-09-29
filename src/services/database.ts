@@ -1,6 +1,8 @@
 import mongoose from "mongoose";
 
-import { loadModels } from "../helpers/database.js";
+import "../models/guild.js";
+import "../models/guildMemberState.js";
+import "../models/userPlaylist.js";
 import { getConfig } from "./config.js";
 import { logger } from "./logger.js";
 
@@ -42,8 +44,6 @@ class DatabaseManager {
 	}
 
 	private static async syncIndexes(): Promise<void> {
-		await loadModels();
-
 		for (const modelName of mongoose.modelNames()) {
 			try {
 				await mongoose.model(modelName).syncIndexes();
