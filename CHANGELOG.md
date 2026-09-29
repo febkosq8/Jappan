@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.0.0] - 2026-09-29
 
-This release delivers the TypeScript rewrite of the Jappan Discord bot with expanded administration, leveling, music, and reliability features.
+This release delivers the TypeScript rewrite of the Jappan Discord bot, with stability and reliability as major areas of focus alongside expanded administration, leveling, and music features.
 
 ### Added
 

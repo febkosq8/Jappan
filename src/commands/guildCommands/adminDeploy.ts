@@ -17,6 +17,7 @@ import {
 } from "../../helpers/command.js";
 import { formatGuild } from "../../helpers/discord.js";
 import { sendResponse } from "../../helpers/response.js";
+import { undeployGuildCommandsGlobally } from "../../services/adminDeployment.js";
 import { getCommands } from "../../services/commandLoader.js";
 import type { Config } from "../../services/config.js";
 import { isAdminUser } from "../../services/adminGuild.js";
@@ -30,6 +31,7 @@ const commandData = {
 	hasSubCommands: true,
 	subCommands: [
 		{ name: "check-deploy", description: "Show the commands currently registered with Discord", category: "admin" },
+		{ name: "undeploy-guilds", description: "Remove guild commands from every installed guild", category: "admin" },
 	],
 	isDBDependant: false,
 	requiredBotPermissions: [
@@ -149,6 +151,9 @@ const command: BotCommand = {
 		.addSubcommand((subcommand) =>
 			subcommand.setName("check-deploy").setDescription("Show the commands currently registered with Discord"),
 		)
+		.addSubcommand((subcommand) =>
+			subcommand.setName("undeploy-guilds").setDescription("Remove guild commands from every installed guild"),
+		)
 		.setDefaultMemberPermissions(commandData.defaultMemberPermissions)
 		.setContexts([InteractionContextType.Guild]),
 	execute: async ({ interaction, config }) => {
@@ -166,32 +171,63 @@ const command: BotCommand = {
 			await interaction.editReply("⛔ This command can only be used in a guild.");
 			return;
 		}
-		if (interaction.options.getSubcommand() !== "check-deploy") {
-			throw new Error(`Unsupported admin-deploy subcommand: ${interaction.options.getSubcommand()}`);
+		const subcommand = interaction.options.getSubcommand();
+		if (subcommand === "undeploy-guilds") {
+			try {
+				const { undeployedGuilds, failedGuilds } = await undeployGuildCommandsGlobally(interaction.client);
+				const failedGuildList = failedGuilds.map((guild) => formatGuild(guild)).join(", ");
+				const failureMessage = failedGuilds.length > 0 ? ` Failed: ${failedGuildList}.` : "";
+				await interaction.editReply(
+					`✅ Removed guild commands from ${undeployedGuilds.length} guild${undeployedGuilds.length === 1 ? "" : "s"}.${failureMessage}`,
+				);
+				logger.info("ADMIN", "Guild commands undeployed globally", {
+					user: `${interaction.user.tag} <${interaction.user.id}>`,
+					guild: interaction.guild ? formatGuild(interaction.guild) : undefined,
+					undeployedGuildCount: undeployedGuilds.length,
+					failedGuildCount: failedGuilds.length,
+				});
+			} catch (error: unknown) {
+				logger.error("ADMIN", "Global guild command undeployment failed", {
+					user: `${interaction.user.tag} <${interaction.user.id}>`,
+					guild: interaction.guild ? formatGuild(interaction.guild) : undefined,
+					error,
+				});
+				await interaction.editReply("⛔ Failed to remove the guild commands.");
+			}
+			return;
+		}
+		if (subcommand === "check-deploy") {
+			try {
+				const globalCommands = await interaction.client.application.commands.fetch();
+				const guildCommands = await interaction.guild.commands.fetch();
+				const embeds = createCommandEmbeds({ config, globalCommands, guildCommands });
+				await sendResponse({
+					destination: interaction,
+					content: { embeds, flags: MessageFlags.Ephemeral },
+				});
+				logger.info("ADMIN", "Deployment status inspected", {
+					user: `${interaction.user.tag} <${interaction.user.id}>`,
+					guild: interaction.guild ? formatGuild(interaction.guild) : undefined,
+					globalCommandCount: globalCommands.size,
+					guildCommandCount: guildCommands.size,
+				});
+			} catch (error: unknown) {
+				logger.error("ADMIN", "Deployment status inspection failed", {
+					user: `${interaction.user.tag} <${interaction.user.id}>`,
+					guild: interaction.guild ? formatGuild(interaction.guild) : undefined,
+					error,
+				});
+				await interaction.editReply("⛔ Failed to retrieve the registered commands.");
+			}
+			return;
 		}
 
-		try {
-			const globalCommands = await interaction.client.application.commands.fetch();
-			const guildCommands = await interaction.guild.commands.fetch();
-			const embeds = createCommandEmbeds({ config, globalCommands, guildCommands });
-			await sendResponse({
-				destination: interaction,
-				content: { embeds, flags: MessageFlags.Ephemeral },
-			});
-			logger.info("ADMIN", "Deployment status inspected", {
-				user: `${interaction.user.tag} <${interaction.user.id}>`,
-				guild: interaction.guild ? formatGuild(interaction.guild) : undefined,
-				globalCommandCount: globalCommands.size,
-				guildCommandCount: guildCommands.size,
-			});
-		} catch (error: unknown) {
-			logger.error("ADMIN", "Deployment status inspection failed", {
-				user: `${interaction.user.tag} <${interaction.user.id}>`,
-				guild: interaction.guild ? formatGuild(interaction.guild) : undefined,
-				error,
-			});
-			await interaction.editReply("⛔ Failed to retrieve the registered commands.");
-		}
+		logger.error("ADMIN", "Unsupported admin-deploy subcommand", {
+			user: `${interaction.user.tag} <${interaction.user.id}>`,
+			guild: interaction.guild ? formatGuild(interaction.guild) : undefined,
+			subcommand,
+		});
+		await interaction.editReply("⛔ Unsupported admin-deploy subcommand.");
 	},
 };
 

@@ -1,4 +1,4 @@
-import type { Guild, Message } from "discord.js";
+import type { Client, Guild, Message } from "discord.js";
 import { EmbedBuilder, channelMention } from "discord.js";
 
 import { formatGuild, formatGuildMention } from "../helpers/discord.js";
@@ -10,6 +10,19 @@ import { handlePrefixPing } from "./prefixPing.js";
 
 type PrefixCommand = "ping" | "deployguild" | "undeployguild";
 type DeploymentCommand = Exclude<PrefixCommand, "ping">;
+
+export async function undeployGuildCommandsGlobally(client: Client): Promise<{
+	undeployedGuilds: Guild[];
+	failedGuilds: Guild[];
+}> {
+	const guilds = [...client.guilds.cache.values()];
+	const results = await Promise.allSettled(guilds.map((guild) => guild.commands.set([])));
+
+	return {
+		undeployedGuilds: guilds.filter((_, index) => results[index]?.status === "fulfilled"),
+		failedGuilds: guilds.filter((_, index) => results[index]?.status === "rejected"),
+	};
+}
 
 export function getPrefixCommand(content: string): PrefixCommand | undefined {
 	if (!content.startsWith("!")) {
