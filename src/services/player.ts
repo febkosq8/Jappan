@@ -197,12 +197,14 @@ export async function playSearchResult({
 	searchResult,
 	statusMessage,
 	previousStatusMessage,
+	repeatMode = 0,
 }: {
 	channel: string;
 	member: GuildMember | APIInteractionGuildMember;
 	searchResult: SearchResult;
 	statusMessage: Message;
 	previousStatusMessage?: Message;
+	repeatMode?: 0 | 1 | 2 | 3;
 }): Promise<PlayerResult<void>> {
 	const errorCode = getPlayerErrorCode();
 	if (errorCode) {
@@ -212,6 +214,7 @@ export async function playSearchResult({
 	const { queue } = await getPlayer().play(channel, searchResult, {
 		nodeOptions: {
 			metadata: { requestedBy: member.user.id, requestedByDisplay: formatUser(member.user), statusMessage },
+			repeatMode,
 			bufferingTimeout: 15000,
 			leaveOnStop: true,
 			leaveOnStopCooldown: 5000,
