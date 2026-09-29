@@ -39,7 +39,7 @@ const configTemplate: Partial<Record<keyof Config, string>> = {
 };
 
 function readConfigValue(name: keyof Config, required = false): string {
-	const value = process.env[name]?.trim();
+	const value = process.env[name]?.trim().replace(/^("|')(.*)\1$/, "$2");
 	if (value) {
 		return value;
 	}

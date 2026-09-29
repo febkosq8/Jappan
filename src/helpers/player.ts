@@ -485,6 +485,12 @@ export async function checkPlayerHealth(initializedPlayer: Player): Promise<Play
 	if (healthCheckGuildId && healthCheckChannelId && healthCheckTracks > 0) {
 		const guild = initializedPlayer.client.guilds.cache.get(healthCheckGuildId);
 		const channel = guild?.channels.cache.get(healthCheckChannelId);
+		if (healthCheckDebug) {
+			logger.debug("PLAYER", "Player health-check playback probe initialized", {
+				healthCheckGuildId,
+				healthCheckChannelId,
+			});
+		}
 		if (!guild || !channel || channel.type !== ChannelType.GuildVoice) {
 			throw new Error("Configured player health-check guild or voice channel was not found");
 		}
