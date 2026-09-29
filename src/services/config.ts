@@ -1,7 +1,7 @@
 import { writeLog } from "../helpers/logger.js";
 
 export interface Config {
-	readonly ENVIRONMENT: string;
+	readonly NODE_ENV: string;
 	readonly DISCORD_TOKEN: string;
 	BOT_NAME: string;
 	BOT_PFP: string;
@@ -24,7 +24,7 @@ export interface Config {
 let loadedConfig: Config | undefined;
 
 const configTemplate: Partial<Record<keyof Config, string>> = {
-	ENVIRONMENT: "PRODUCTION",
+	NODE_ENV: "production",
 	BOT_NAME: "Jappan",
 	BOT_PFP: "https://jappan.febkosq8.me/assets/Profile-FDHZtz5Q.png",
 	BOT_WEBSITE: "https://jappan.febkosq8.me",
@@ -58,7 +58,7 @@ function readConfigValue(name: keyof Config, required = false): string {
 
 export function loadConfig(): Config {
 	const DISCORD_TOKEN = readConfigValue("DISCORD_TOKEN", true);
-	const ENVIRONMENT = readConfigValue("ENVIRONMENT");
+	const NODE_ENV = readConfigValue("NODE_ENV");
 	const BOT_NAME = readConfigValue("BOT_NAME");
 	const BOT_PFP = readConfigValue("BOT_PFP");
 	const BOT_WEBSITE = readConfigValue("BOT_WEBSITE");
@@ -113,7 +113,7 @@ export function loadConfig(): Config {
 	const SHUTDOWN_THREASHOLD = shutdownThresholdValue;
 	loadedConfig = {
 		DISCORD_TOKEN,
-		ENVIRONMENT,
+		NODE_ENV,
 		BOT_NAME,
 		BOT_PFP,
 		BOT_WEBSITE,
