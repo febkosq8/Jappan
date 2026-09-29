@@ -163,8 +163,6 @@ The rewrite currently has:
 
 ### Priority 2: Reliability and Verification
 
-- Add practical automated coverage for guild initialization, leveling concurrency, warning actions, command recovery, and database outage behavior.
-- Rely on host-managed local retention for application console logs.
 - Add correlation or request IDs for command and event traces.
 - Add controlled reconnect and database recovery behavior with observable logging.
 - Harden shutdown and failure handling for production operation.

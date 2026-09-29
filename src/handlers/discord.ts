@@ -73,14 +73,14 @@ export function registerDiscordHandlers(): void {
 	client.once(Events.ClientReady, async (readyClient) => {
 		try {
 			const globalCommands = getGlobalCommands();
-			logger.info("SLASH_COMMANDS", `Starting to update #${globalCommands.size} global Application (/) commands`);
+			logger.info("BOT", `Starting to update #${globalCommands.size} global Application (/) commands`);
 			const registeredCommands = await readyClient.application.commands.set(
 				globalCommands.map((command) => command.data.toJSON()),
 			);
 			setRegisteredCommandIds(registeredCommands);
-			logger.success("SLASH_COMMANDS", `#${globalCommands.size} global Application (/) commands updated`);
+			logger.success("BOT", `#${globalCommands.size} global Application (/) commands updated`);
 		} catch (error: unknown) {
-			logger.error("SLASH_COMMANDS", "Failed to update Application (/) commands", { error });
+			logger.error("BOT", "Failed to update Application (/) commands", { error });
 		}
 	});
 

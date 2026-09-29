@@ -20,6 +20,10 @@
 	"keywords": [],
 	"author": "",
 	"license": "ISC",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/febkosq8/Jappan.git"
+	},
 	"devDependencies": {
 		"@extractorpack/extractorpack": "0.0.5",
 		"@types/node": "26.6.3",
