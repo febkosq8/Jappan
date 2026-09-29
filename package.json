@@ -13,7 +13,7 @@
 		"extractors:scan": "extractorpack scan",
 		"format": "prettier --write \"src/**/*.ts\"",
 		"format:check": "prettier --check \"src/**/*.ts\"",
-		"migrate:legacy": "tsx src/scripts/migrateLegacyData.ts",
+		"migrate:v1tov2": "tsx src/scripts/migrateV1ToV2.ts",
 		"prepare": "husky && extractorpack scan",
 		"start": "node dist/index.js",
 		"typecheck": "tsc --noEmit"
