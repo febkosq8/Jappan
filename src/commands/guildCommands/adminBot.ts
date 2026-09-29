@@ -19,7 +19,7 @@ import { sendResponse } from "../../helpers/response.js";
 import { wait } from "../../helpers/utils.js";
 import { isAdminUser } from "../../services/adminGuild.js";
 import { logger } from "../../services/logger.js";
-import { getActivePlayerSessions } from "../../services/player.js";
+import { getActivePlayerSessions, runPlayerHealthCheck } from "../../services/player.js";
 import { handleShutdown } from "../../services/shutdown.js";
 
 const commandData = {
@@ -30,6 +30,7 @@ const commandData = {
 	hasSubCommands: true,
 	subCommands: [
 		{ name: "check-player", description: "Show active player and voice sessions", category: "admin" },
+		{ name: "refresh-player-health", description: "Refresh the player health status", category: "admin" },
 		{ name: "stop-bot", description: "Stop the bot process", category: "admin" },
 	],
 	isDBDependant: false,
@@ -47,6 +48,9 @@ const command: BotCommand = {
 		.setDescription(commandData.description)
 		.addSubcommand((subcommand) =>
 			subcommand.setName("check-player").setDescription("Show active player and voice sessions"),
+		)
+		.addSubcommand((subcommand) =>
+			subcommand.setName("refresh-player-health").setDescription("Refresh the player health status"),
 		)
 		.addSubcommand((subcommand) =>
 			subcommand
@@ -126,6 +130,16 @@ const command: BotCommand = {
 					flags: MessageFlags.Ephemeral,
 				},
 			});
+			return;
+		}
+
+		if (subcommand === "refresh-player-health") {
+			const playerHealthy = await runPlayerHealthCheck();
+			await interaction.editReply(
+				playerHealthy
+					? "💚 Health status refresh completed. Player is available."
+					: "💔 Health status refresh completed. Player is unavailable.",
+			);
 			return;
 		}
 
