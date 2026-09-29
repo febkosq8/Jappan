@@ -64,10 +64,8 @@ const button: ButtonModule = {
 
 		if (action === "skip") {
 			await interaction.deferUpdate();
-			const skipped = queue.node.skip();
-			if (skipped) {
-				updatePlayerQueueMessage({ queue, content: "" });
-			}
+			queue.node.skip();
+			await updatePlayerQueueMessage({ queue, content: "" });
 			return;
 		}
 
