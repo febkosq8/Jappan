@@ -20,7 +20,7 @@
 			"label": "Run Docker Container",
 			"type": "process",
 			"command": "docker",
-			"args": ["run", "--rm", "--env-file", ".env", "jappan:${input:version}"],
+			"args": ["run", "--rm", "--name", "jappan", "--env-file", ".env", "jappan:${input:version}"],
 			"problemMatcher": []
 		}
 	]
