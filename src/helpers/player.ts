@@ -41,6 +41,16 @@ function getRepeatModeLabel(repeatMode: QueueRepeatMode): string {
 	return repeatMode === 1 ? "🔂 Track" : repeatMode === 2 ? "🔁 Queue" : repeatMode === 3 ? "🔀 Auto" : "🚫 Off";
 }
 
+function getPlayerSourceLabel(source: string): string {
+	return source.toLowerCase() === "youtube"
+		? "YouTube"
+		: source.toLowerCase() === "spotify"
+			? "Spotify"
+			: source.toLowerCase() === "soundcloud"
+				? "SoundCloud"
+				: source;
+}
+
 export function createPlayerControls({
 	queueView = false,
 	paused = false,
@@ -141,6 +151,7 @@ export function createPlayerEmbed({
 	queueSize,
 	queueDurationMs,
 	durationMs,
+	source,
 	repeatMode,
 	footerText,
 }: {
@@ -152,6 +163,7 @@ export function createPlayerEmbed({
 	queueSize?: number;
 	queueDurationMs?: number;
 	durationMs?: number;
+	source?: string;
 	repeatMode?: QueueRepeatMode;
 	footerText?: string;
 }): EmbedBuilder {
@@ -160,7 +172,11 @@ export function createPlayerEmbed({
 		.setColor(color)
 		.setAuthor({ name: `${config.BOT_NAME} : Player`, iconURL: config.BOT_PFP })
 		.setTitle(title)
-		.setDescription(description)
+		.setDescription(
+			source && /playing/i.test(description)
+				? description.replace(/playing/i, (status) => `${status} via ${getPlayerSourceLabel(source)}`)
+				: description,
+		)
 		.setTimestamp();
 	const footerParts = [requestedBy ? `Requested by ${requestedBy}` : undefined, footerText].filter(
 		(part): part is string => Boolean(part),
@@ -265,7 +281,7 @@ export function updatePlayerQueueMessage({
 		metadata: { statusMessage?: Message; requestedByDisplay?: string };
 		guild: Parameters<typeof formatGuild>[0];
 		channel: Parameters<typeof formatChannel>[0] | null;
-		currentTrack?: { title?: string; thumbnail?: string; durationMS?: number } | null;
+		currentTrack?: { title?: string; thumbnail?: string; durationMS?: number; source?: string } | null;
 		node?: { isPaused(): boolean; streamTime?: number };
 		history?: { previousTrack?: unknown; nextTrack?: unknown };
 		tracks?: { size: number; toArray(): Array<{ durationMS?: number }> };
@@ -303,6 +319,7 @@ export function updatePlayerQueueMessage({
 					color: "Blue",
 					...(queue.metadata.requestedByDisplay ? { requestedBy: queue.metadata.requestedByDisplay } : {}),
 					...(queue.currentTrack?.thumbnail ? { thumbnail: queue.currentTrack.thumbnail } : {}),
+					...(queue.currentTrack?.source ? { source: queue.currentTrack.source } : {}),
 					...(queue.tracks ? { queueSize: queue.tracks.size } : {}),
 					...(queueDurationMs ? { queueDurationMs } : {}),
 					...(queue.currentTrack?.durationMS ? { durationMs: queue.currentTrack.durationMS } : {}),

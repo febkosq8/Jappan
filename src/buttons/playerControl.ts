@@ -149,6 +149,7 @@ const button: ButtonModule = {
 							color: "Blue",
 							requestedBy: queue.metadata.requestedByDisplay,
 							...(currentTrack?.thumbnail ? { thumbnail: currentTrack.thumbnail } : {}),
+							...(currentTrack?.source ? { source: currentTrack.source } : {}),
 							queueSize: queue.tracks.size,
 							queueDurationMs: queue.tracks
 								.toArray()
