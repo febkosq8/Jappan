@@ -38,8 +38,12 @@ const configTemplate: Partial<Record<keyof Config, string>> = {
 	SHUTDOWN_THREASHOLD: "3",
 };
 
+function normalizeConfigValue(value: string): string {
+	return value.trim().replace(/^("|')(.*)\1$/, "$2");
+}
+
 function readConfigValue(name: keyof Config, required = false): string {
-	const value = process.env[name]?.trim().replace(/^("|')(.*)\1$/, "$2");
+	const value = process.env[name] === undefined ? undefined : normalizeConfigValue(process.env[name]);
 	if (value) {
 		return value;
 	}
@@ -93,8 +97,12 @@ export function loadConfig(): Config {
 		throw new Error("PLAYER_HEALTH_CHECK_PLAYBACK_STABILITY_TIMEOUT must be at least 1000 milliseconds");
 	}
 	const PLAYER_HEALTH_CHECK_PLAYBACK_STABILITY_TIMEOUT = playerHealthCheckPlaybackStabilityTimeoutValue;
-	const PLAYER_HEALTH_CHECK_GUILD_ID = process.env.PLAYER_HEALTH_CHECK_GUILD_ID?.trim() || undefined;
-	const PLAYER_HEALTH_CHECK_CHANNEL_ID = process.env.PLAYER_HEALTH_CHECK_CHANNEL_ID?.trim() || undefined;
+	const PLAYER_HEALTH_CHECK_GUILD_ID = process.env.PLAYER_HEALTH_CHECK_GUILD_ID
+		? normalizeConfigValue(process.env.PLAYER_HEALTH_CHECK_GUILD_ID) || undefined
+		: undefined;
+	const PLAYER_HEALTH_CHECK_CHANNEL_ID = process.env.PLAYER_HEALTH_CHECK_CHANNEL_ID
+		? normalizeConfigValue(process.env.PLAYER_HEALTH_CHECK_CHANNEL_ID) || undefined
+		: undefined;
 	const eventsDebugValue = readConfigValue("ENABLE_EVENTS_DEBUG");
 	const ENABLE_EVENTS_DEBUG =
 		eventsDebugValue.toLowerCase() === "false"
