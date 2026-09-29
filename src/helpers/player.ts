@@ -1,10 +1,11 @@
-import { Player, type SearchResult } from "discord-player";
+import { Player, type QueueRepeatMode, type SearchResult } from "discord-player";
 import {
 	ActionRowBuilder,
 	ButtonBuilder,
 	ButtonStyle,
 	ChannelType,
 	EmbedBuilder,
+	userMention,
 	type APIInteractionGuildMember,
 	type ChatInputCommandInteraction,
 	type GuildMember,
@@ -36,6 +37,7 @@ export function createPlayerControls({
 	queueView = false,
 	paused = false,
 	hasCurrentTrack = false,
+	repeatMode = 0,
 	hasPrevious = false,
 	queueSize,
 	hasNext = false,
@@ -45,35 +47,44 @@ export function createPlayerControls({
 	queueView?: boolean;
 	paused?: boolean;
 	hasCurrentTrack?: boolean;
+	repeatMode?: QueueRepeatMode;
 	hasPrevious?: boolean;
 	queueSize?: number;
 	hasNext?: boolean;
 	queuePage?: number;
 	queuePageCount?: number;
-} = {}): ActionRowBuilder<ButtonBuilder> {
-	const controls = [
-		new ButtonBuilder().setCustomId("PlayerControl|ACTION#stop").setLabel("⏹️ Stop").setStyle(ButtonStyle.Danger),
-	];
-	if (hasCurrentTrack) {
-		controls.unshift(
-			new ButtonBuilder()
-				.setCustomId("PlayerControl|ACTION#pause")
-				.setLabel(paused ? "▶️ Play" : "⏸️ Pause")
-				.setStyle(ButtonStyle.Secondary),
-		);
-	}
+} = {}): ActionRowBuilder<ButtonBuilder>[] {
+	const controls: ButtonBuilder[] = [];
 	if (queueSize !== undefined && queueSize > 0) {
-		controls.unshift(
+		controls.push(
 			new ButtonBuilder()
 				.setCustomId(`PlayerControl|ACTION#queue:VIEW#${queueView ? "queue" : "nowPlaying"}`)
 				.setLabel(queueView ? "Now Playing" : "Current Queue")
 				.setStyle(ButtonStyle.Primary),
 		);
 	}
+	if (hasCurrentTrack) {
+		controls.push(
+			new ButtonBuilder()
+				.setCustomId("PlayerControl|ACTION#repeat")
+				.setLabel(
+					repeatMode === 1
+						? "🔂 Track"
+						: repeatMode === 2
+							? "🔁 Queue"
+							: repeatMode === 3
+								? "🔀 Auto"
+								: "🔁 Off",
+				)
+				.setStyle(repeatMode === 0 ? ButtonStyle.Secondary : ButtonStyle.Success),
+			new ButtonBuilder()
+				.setCustomId("PlayerControl|ACTION#pause")
+				.setLabel(paused ? "▶️ Play" : "⏸️ Pause")
+				.setStyle(ButtonStyle.Secondary),
+		);
+	}
 	if (queuePageCount > 1) {
-		controls.splice(
-			1,
-			0,
+		controls.push(
 			new ButtonBuilder()
 				.setCustomId(`PlayerControl|ACTION#queuePage:PAGE#${queuePage - 1}`)
 				.setLabel("◀️ Page")
@@ -87,9 +98,7 @@ export function createPlayerControls({
 		);
 	}
 	if (hasPrevious && queuePageCount <= 1) {
-		controls.splice(
-			1,
-			0,
+		controls.push(
 			new ButtonBuilder()
 				.setCustomId("PlayerControl|ACTION#previous")
 				.setLabel("⏮️ Previous")
@@ -97,16 +106,21 @@ export function createPlayerControls({
 		);
 	}
 	if (hasNext && queuePageCount <= 1) {
-		controls.splice(
-			2,
-			0,
+		controls.push(
 			new ButtonBuilder()
 				.setCustomId("PlayerControl|ACTION#skip")
 				.setLabel("⏭️ Skip")
 				.setStyle(ButtonStyle.Secondary),
 		);
 	}
-	return new ActionRowBuilder<ButtonBuilder>().addComponents(...controls);
+	controls.push(
+		new ButtonBuilder().setCustomId("PlayerControl|ACTION#stop").setLabel("⏹️ Stop").setStyle(ButtonStyle.Danger),
+	);
+	const rows: ActionRowBuilder<ButtonBuilder>[] = [];
+	for (let index = 0; index < controls.length; index += 5) {
+		rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(...controls.slice(index, index + 5)));
+	}
+	return rows;
 }
 
 export function createPlayerEmbed({
@@ -117,6 +131,7 @@ export function createPlayerEmbed({
 	thumbnail,
 	queueSize,
 	durationMs,
+	repeatMode,
 	footerText,
 }: {
 	title: string;
@@ -126,6 +141,7 @@ export function createPlayerEmbed({
 	thumbnail?: string;
 	queueSize?: number;
 	durationMs?: number;
+	repeatMode?: QueueRepeatMode;
 	footerText?: string;
 }): EmbedBuilder {
 	const config = getConfig();
@@ -155,6 +171,13 @@ export function createPlayerEmbed({
 		embed.addFields({
 			name: "Duration",
 			value: formatPlayerTime(durationMs),
+			inline: true,
+		});
+	}
+	if (repeatMode !== undefined) {
+		embed.addFields({
+			name: "Repeat",
+			value: repeatMode === 1 ? "Track" : repeatMode === 2 ? "Queue" : repeatMode === 3 ? "Autoplay" : "Off",
 			inline: true,
 		});
 	}
@@ -229,16 +252,17 @@ export function updatePlayerQueueMessage({
 		node?: { isPaused(): boolean; streamTime?: number };
 		history?: { previousTrack?: unknown; nextTrack?: unknown };
 		tracks?: { size: number };
+		repeatMode?: QueueRepeatMode;
 	};
 	content: string;
 	controls?: boolean;
-}): void {
+}): Promise<void> {
 	const statusMessage = queue.metadata.statusMessage;
 	if (!statusMessage) {
-		return;
+		return Promise.resolve();
 	}
 
-	void editPlayerStatusMessage({
+	return editPlayerStatusMessage({
 		guild: queue.guild,
 		channel: queue.channel,
 		user: queue.metadata.requestedByDisplay,
@@ -263,15 +287,17 @@ export function updatePlayerQueueMessage({
 					...(queue.currentTrack?.thumbnail ? { thumbnail: queue.currentTrack.thumbnail } : {}),
 					...(queue.tracks ? { queueSize: queue.tracks.size } : {}),
 					...(queue.currentTrack?.durationMS ? { durationMs: queue.currentTrack.durationMS } : {}),
+					...(queue.repeatMode !== undefined ? { repeatMode: queue.repeatMode } : {}),
 				}),
 			],
 			components: controls
 				? [
-						createPlayerControls({
+						...createPlayerControls({
 							paused: queue.node?.isPaused() ?? false,
 							hasCurrentTrack: Boolean(queue.currentTrack),
 							hasPrevious: Boolean(queue.history?.previousTrack),
 							hasNext: Boolean(queue.history?.nextTrack),
+							...(queue.repeatMode !== undefined ? { repeatMode: queue.repeatMode } : {}),
 							...(queue.tracks ? { queueSize: queue.tracks.size } : {}),
 						}),
 					]
@@ -281,6 +307,25 @@ export function updatePlayerQueueMessage({
 		logger.warn("PLAYER", "Failed to update player status message", {
 			error: error instanceof Error ? error.message : String(error),
 		});
+	});
+}
+
+export async function markPlayerStatusMessageReplaced({
+	message,
+	requestedById,
+}: {
+	message: Message;
+	requestedById?: string;
+}): Promise<void> {
+	await message.edit({
+		embeds: [
+			createPlayerEmbed({
+				title: "🎵 Newer playback request",
+				description: `A newer play request${requestedById ? ` by ${userMention(requestedById)}` : ""} was added.\nCheck the latest player embed for current playback.`,
+				color: "Blue",
+			}),
+		],
+		components: [],
 	});
 }
 

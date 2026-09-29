@@ -2,9 +2,10 @@ import { InteractionContextType, PermissionFlagsBits, SlashCommandBuilder } from
 
 import { formatGuild, formatUser } from "../helpers/discord.js";
 import { createPlayerControls, createPlayerEmbed, getPlayerVoiceChannel } from "../helpers/player.js";
+import type { QueueRepeatMode } from "discord-player";
 import type { BotCommand, BotCommandData } from "../services/commandLoader.js";
 import { logger } from "../services/logger.js";
-import { playSearchResult, searchPlayer } from "../services/player.js";
+import { getPlayer, playSearchResult, searchPlayer } from "../services/player.js";
 
 const commandData = {
 	name: "play",
@@ -114,16 +115,18 @@ const command: BotCommand = {
 					}),
 				],
 				components: [
-					createPlayerControls({
+					...createPlayerControls({
 						queueSize: searchResult.tracks.length + (searchResult.playlist?.tracks.length ?? 0),
 					}),
 				],
 			});
+			const previousStatusMessage = getPlayer().queues.get(interaction.guildId!)?.metadata.statusMessage;
 			const playResponse = await playSearchResult({
 				channel: voiceChannel.id,
 				member,
 				searchResult,
 				statusMessage,
+				previousStatusMessage,
 			});
 			if (!playResponse.success) {
 				await interaction.editReply({

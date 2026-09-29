@@ -4,7 +4,7 @@ import { Player, type SearchResult } from "discord-player";
 import type { APIInteractionGuildMember, Client, GuildMember, Message } from "discord.js";
 
 import { registerPlayerHandlers } from "../handlers/player.js";
-import { checkPlayerHealth } from "../helpers/player.js";
+import { checkPlayerHealth, markPlayerStatusMessageReplaced, updatePlayerQueueMessage } from "../helpers/player.js";
 import { formatUser } from "../helpers/discord.js";
 import { getConfig } from "./config.js";
 import { logger } from "./logger.js";
@@ -132,18 +132,20 @@ export async function playSearchResult({
 	member,
 	searchResult,
 	statusMessage,
+	previousStatusMessage,
 }: {
 	channel: string;
 	member: GuildMember | APIInteractionGuildMember;
 	searchResult: SearchResult;
 	statusMessage: Message;
+	previousStatusMessage?: Message;
 }): Promise<PlayerResult<void>> {
 	const errorCode = getPlayerErrorCode();
 	if (errorCode) {
 		return { success: false, error_code: errorCode };
 	}
 
-	await getPlayer().play(channel, searchResult, {
+	const { queue } = await getPlayer().play(channel, searchResult, {
 		nodeOptions: {
 			metadata: { requestedBy: member.user.id, requestedByDisplay: formatUser(member.user), statusMessage },
 			bufferingTimeout: 15000,
@@ -156,5 +158,13 @@ export async function playSearchResult({
 		},
 		requestedBy: member.user.id,
 	});
+	if (previousStatusMessage && previousStatusMessage.id !== statusMessage.id) {
+		await markPlayerStatusMessageReplaced({
+			message: previousStatusMessage,
+			requestedById: member.user.id,
+		});
+	}
+	queue.metadata.statusMessage = statusMessage;
+	await updatePlayerQueueMessage({ queue, content: "" });
 	return { success: true, data: undefined };
 }

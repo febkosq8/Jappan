@@ -1,4 +1,5 @@
 import { MessageFlags } from "discord.js";
+import type { QueueRepeatMode } from "discord-player";
 
 import { parseButtonCustomId } from "../helpers/button.js";
 import { createPlayerControls, createPlayerEmbed, updatePlayerQueueMessage } from "../helpers/player.js";
@@ -65,6 +66,14 @@ const button: ButtonModule = {
 			return;
 		}
 
+		if (action === "repeat") {
+			await interaction.deferUpdate();
+			const nextRepeatMode = (queue.repeatMode === 3 ? 0 : queue.repeatMode + 1) as QueueRepeatMode;
+			queue.setRepeatMode(nextRepeatMode);
+			updatePlayerQueueMessage({ queue, content: "" });
+			return;
+		}
+
 		if (action === "stop") {
 			queue.delete();
 			await interaction.update({
@@ -104,13 +113,14 @@ const button: ButtonModule = {
 					}),
 				],
 				components: [
-					createPlayerControls({
+					...createPlayerControls({
 						queueView: true,
 						queueSize: queue.tracks.size,
 						queuePage: page,
 						queuePageCount: queuePages.length,
 						paused: queue.node.isPaused(),
 						hasCurrentTrack: Boolean(queue.currentTrack),
+						repeatMode: queue.repeatMode,
 						hasPrevious: Boolean(queue.history.previousTrack),
 						hasNext: Boolean(queue.history.nextTrack),
 					}),
@@ -136,13 +146,15 @@ const button: ButtonModule = {
 							...(currentTrack?.thumbnail ? { thumbnail: currentTrack.thumbnail } : {}),
 							queueSize: queue.tracks.size,
 							...(currentTrack?.durationMS ? { durationMs: currentTrack.durationMS } : {}),
+							repeatMode: queue.repeatMode,
 						}),
 					],
 					components: [
-						createPlayerControls({
+						...createPlayerControls({
 							queueSize: queue.tracks.size,
 							paused: queue.node.isPaused(),
 							hasCurrentTrack: Boolean(queue.currentTrack),
+							repeatMode: queue.repeatMode,
 							hasPrevious: Boolean(queue.history.previousTrack),
 							hasNext: Boolean(queue.history.nextTrack),
 						}),
