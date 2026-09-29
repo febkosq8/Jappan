@@ -122,33 +122,34 @@ const command: BotCommand = {
 			return;
 		}
 
-		if (subcommand !== "check") {
-			throw new Error(`Unsupported lock-vc-region subcommand: ${subcommand}`);
+		if (subcommand === "check") {
+			const locks = await getVoiceRegionLocks(interaction.guild);
+			const commandId = getCommandId("lock-vc-region");
+			const addCommand = commandId
+				? chatInputApplicationCommandMention("lock-vc-region", "add", commandId)
+				: "the command menu";
+			const embed = new EmbedBuilder()
+				.setColor("DarkGold")
+				.setTitle(`Voice Region Locks: ${interaction.guild.name}`)
+				.setAuthor({ name: config.BOT_NAME, iconURL: config.BOT_PFP, url: config.BOT_WEBSITE })
+				.setTimestamp();
+			if (locks.length === 0) {
+				embed.setDescription(`No voice region locks are configured.\nUse ${addCommand} to create one.`);
+			} else {
+				embed.setDescription(
+					locks
+						.map(
+							(lock) =>
+								`${userMention(lock.userId)} in ${channelMention(lock.channelId)} -> \`${lock.region}\``,
+						)
+						.join("\n"),
+				);
+			}
+			await interaction.editReply({ embeds: [embed] });
+			return;
 		}
 
-		const locks = await getVoiceRegionLocks(interaction.guild);
-		const commandId = getCommandId("lock-vc-region");
-		const addCommand = commandId
-			? chatInputApplicationCommandMention("lock-vc-region", "add", commandId)
-			: "the command menu";
-		const embed = new EmbedBuilder()
-			.setColor("DarkGold")
-			.setTitle(`Voice Region Locks: ${interaction.guild.name}`)
-			.setAuthor({ name: config.BOT_NAME, iconURL: config.BOT_PFP, url: config.BOT_WEBSITE })
-			.setTimestamp();
-		if (locks.length === 0) {
-			embed.setDescription(`No voice region locks are configured.\nUse ${addCommand} to create one.`);
-		} else {
-			embed.setDescription(
-				locks
-					.map(
-						(lock) =>
-							`${userMention(lock.userId)} in ${channelMention(lock.channelId)} -> \`${lock.region}\``,
-					)
-					.join("\n"),
-			);
-		}
-		await interaction.editReply({ embeds: [embed] });
+		await interaction.editReply("⛔ Unsupported lock-vc-region subcommand.");
 	},
 	autocomplete: async (interaction) => {
 		if (!interaction.guild) {

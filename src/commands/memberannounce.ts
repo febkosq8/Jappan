@@ -225,23 +225,24 @@ const command: BotCommand = {
 			});
 		}
 
-		if (subcommand !== "on" && subcommand !== "off" && subcommand !== "check") {
-			throw new Error(`Unsupported memberannounce subcommand: ${subcommand}`);
+		if (subcommand === "on" || subcommand === "off" || subcommand === "check") {
+			const status = await getMemberAnnouncementStatus(interaction.guild);
+			await interaction.editReply({
+				embeds: [
+					createStatusEmbed({
+						guildName: interaction.guild.name,
+						joinEnabled: status.joinEnabled,
+						joinChannelId: status.joinChannelId ?? null,
+						leaveEnabled: status.leaveEnabled,
+						leaveChannelId: status.leaveChannelId ?? null,
+						config,
+					}),
+				],
+			});
+			return;
 		}
 
-		const status = await getMemberAnnouncementStatus(interaction.guild);
-		await interaction.editReply({
-			embeds: [
-				createStatusEmbed({
-					guildName: interaction.guild.name,
-					joinEnabled: status.joinEnabled,
-					joinChannelId: status.joinChannelId ?? null,
-					leaveEnabled: status.leaveEnabled,
-					leaveChannelId: status.leaveChannelId ?? null,
-					config,
-				}),
-			],
-		});
+		await interaction.editReply("⛔ Unsupported memberannounce subcommand.");
 	},
 };
 

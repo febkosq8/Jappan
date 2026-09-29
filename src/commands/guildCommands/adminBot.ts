@@ -154,16 +154,20 @@ const command: BotCommand = {
 		}
 
 		if (subcommand === "stop-bot") {
-			if (interaction.options.getBoolean("confirm", true) !== true) {
-				await interaction.editReply("⛔ Confirmation is required to stop the bot process.");
+			if (interaction.options.getBoolean("confirm", true) === true) {
+				await interaction.editReply("✅ Stopping the bot process in 5 seconds.");
 				return;
 			}
-
-			await interaction.editReply("✅ Stopping the bot process in 5 seconds.");
+			await interaction.editReply("⛔ Confirmation is required to stop the bot process.");
 			return;
 		}
 
-		throw new Error(`Unsupported admin-bot subcommand: ${subcommand}`);
+		logger.error("ADMIN", "Unsupported admin-bot subcommand", {
+			user: `${interaction.user.tag} <${interaction.user.id}>`,
+			guild: interaction.guild ? formatGuild(interaction.guild) : undefined,
+			subcommand,
+		});
+		await interaction.editReply("⛔ Unsupported admin-bot subcommand.");
 	},
 	postExecute: async ({ interaction, config }) => {
 		if (

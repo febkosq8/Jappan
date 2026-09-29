@@ -151,22 +151,23 @@ const command: BotCommand = {
 			});
 		}
 
-		if (subcommand !== "on" && subcommand !== "off" && subcommand !== "check") {
-			throw new Error(`Unsupported level subcommand: ${subcommand}`);
+		if (subcommand === "on" || subcommand === "off" || subcommand === "check") {
+			const status = await getLevelingStatus(interaction.guild);
+			await interaction.editReply({
+				embeds: [
+					createStatusEmbed({
+						guildName: status.guildName,
+						enabled: status.leveling.enabled,
+						threshold: status.leveling.threshold ?? null,
+						roleId: status.leveling.roleId ?? null,
+						config,
+					}),
+				],
+			});
+			return;
 		}
 
-		const status = await getLevelingStatus(interaction.guild);
-		await interaction.editReply({
-			embeds: [
-				createStatusEmbed({
-					guildName: status.guildName,
-					enabled: status.leveling.enabled,
-					threshold: status.leveling.threshold ?? null,
-					roleId: status.leveling.roleId ?? null,
-					config,
-				}),
-			],
-		});
+		await interaction.editReply("⛔ Unsupported level subcommand.");
 	},
 };
 

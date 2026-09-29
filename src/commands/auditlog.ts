@@ -173,22 +173,23 @@ const command: BotCommand = {
 			});
 		}
 
-		if (subcommand !== "on" && subcommand !== "off" && subcommand !== "check") {
-			throw new Error(`Unsupported auditlog subcommand: ${subcommand}`);
+		if (subcommand === "on" || subcommand === "off" || subcommand === "check") {
+			const status = await getAuditLogStatus(interaction.guild.id, interaction.guild.name);
+			await interaction.editReply({
+				embeds: [
+					createStatusEmbed({
+						guildName: status.guildName,
+						enabled: status.auditLog.enabled,
+						channelId: status.auditLog.channelId ?? null,
+						fullVerbosity: status.auditLog.fullVerbosity,
+						config,
+					}),
+				],
+			});
+			return;
 		}
 
-		const status = await getAuditLogStatus(interaction.guild.id, interaction.guild.name);
-		await interaction.editReply({
-			embeds: [
-				createStatusEmbed({
-					guildName: status.guildName,
-					enabled: status.auditLog.enabled,
-					channelId: status.auditLog.channelId ?? null,
-					fullVerbosity: status.auditLog.fullVerbosity,
-					config,
-				}),
-			],
-		});
+		await interaction.editReply("⛔ Unsupported auditlog subcommand.");
 	},
 };
 
