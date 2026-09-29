@@ -1,6 +1,6 @@
 # Jappan
 
-Jappan is a TypeScript Discord bot made to make life easier through music playback, fun commands, moderation, leveling, audit logging, playlists, and server administration features.
+Jappan is a Discord bot made to make life easier through music playback, fun commands, moderation, leveling, audit logging, playlists, and server administration features.
 
 ## Links
 
