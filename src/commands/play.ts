@@ -1,7 +1,7 @@
 import { InteractionContextType, PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
 
 import { formatGuild, formatUser } from "../helpers/discord.js";
-import { createPlayerEmbed, getPlayerVoiceChannel } from "../helpers/player.js";
+import { createPlayerEmbed, getValidatedPlayerVoiceChannel } from "../helpers/player.js";
 import type { QueueRepeatMode } from "discord-player";
 import type { BotCommand, BotCommandData } from "../services/commandLoader.js";
 import { isDatabaseConnected } from "../services/database.js";
@@ -86,7 +86,7 @@ const command: BotCommand = {
 	execute: async ({ interaction }) => {
 		await interaction.deferReply();
 
-		const voiceChannelResult = getPlayerVoiceChannel(interaction);
+		const voiceChannelResult = getValidatedPlayerVoiceChannel(interaction);
 		if (!voiceChannelResult.success) {
 			await interaction.editReply({ embeds: [voiceChannelResult.embed] });
 			return;

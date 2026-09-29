@@ -1,6 +1,6 @@
 import { DefaultExtractors } from "@discord-player/extractor";
 import { load as loadExtractors } from "@extractorpack/extractorpack";
-import { Player, type SearchOptions, type SearchResult } from "discord-player";
+import { Player, type PlayerNodeInitializerOptions, type SearchOptions, type SearchResult } from "discord-player";
 import type { APIInteractionGuildMember, Client, GuildMember, Message } from "discord.js";
 
 import { registerPlayerHandlers } from "../handlers/player.js";
@@ -199,6 +199,7 @@ export async function playSearchResult({
 	previousStatusMessage,
 	shuffle = false,
 	repeatMode = 0,
+	playNodeOptions,
 }: {
 	channel: string;
 	member: GuildMember | APIInteractionGuildMember;
@@ -207,6 +208,7 @@ export async function playSearchResult({
 	previousStatusMessage?: Message;
 	shuffle?: boolean;
 	repeatMode?: 0 | 1 | 2 | 3;
+	playNodeOptions?: PlayerNodeInitializerOptions<Record<string, unknown>>["nodeOptions"];
 }): Promise<PlayerResult<void>> {
 	const errorCode = getPlayerErrorCode();
 	if (errorCode) {
@@ -229,6 +231,7 @@ export async function playSearchResult({
 			leaveOnEndCooldown: 15000,
 			leaveOnEmpty: true,
 			leaveOnEmptyCooldown: 300000,
+			...playNodeOptions,
 		},
 		requestedBy: member.user.id,
 	});

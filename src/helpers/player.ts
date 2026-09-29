@@ -249,7 +249,7 @@ export function formatPlayerTime(milliseconds: number): string {
 			: `${minutes}m ${seconds}s`;
 }
 
-export function getPlayerVoiceChannel(interaction: ChatInputCommandInteraction): PlayerVoiceChannelResult {
+export function getValidatedPlayerVoiceChannel(interaction: ChatInputCommandInteraction): PlayerVoiceChannelResult {
 	const member = interaction.member;
 	if (!member || typeof member !== "object" || !("voice" in member) || !member.voice.channel) {
 		return {
