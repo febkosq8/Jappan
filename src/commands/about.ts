@@ -55,7 +55,7 @@ const command: BotCommand = {
 			.addFields(
 				{
 					name: "Features",
-					value: "Music playback, playlists, soundboard, leveling, moderation, audit logging, and voice-region controls",
+					value: "Music playback, playlists, soundboard, fun commands, leveling, moderation, audit logging, and voice-region controls",
 				},
 				{ name: "Bot Status", value: `v${getBotVersion()} active since ${uptime}` },
 				{

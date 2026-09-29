@@ -66,6 +66,8 @@ Handlers should receive Discord events and forward feature behavior to services.
 
 Files directly under `src/commands/` are global commands; `src/commands/guildCommands/` contains guild-scoped commands deployed separately. Commands that require the database must set `commandData.isDBDependant: true`; dispatch uses this flag to reject them when the database is unavailable.
 
+Command categories are `general`, `music`, `level`, `fun`, `moderator`, and `admin`.
+
 ### Discord Events
 
 `src/handlers/discord.ts` registers core events and extended feature events. Multiple listeners for the same Discord.js event are intentional and supported. Keep event adapters thin; feature behavior belongs in services.
