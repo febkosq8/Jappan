@@ -154,6 +154,7 @@ The rewrite currently has:
 - Database model loading and index synchronization are part of the awaited startup gate.
 - Structured logging with contextual details and configurable extended-event debugging.
 - Music playback through `/play`, including autocomplete, track and playlist search, Discord Player lifecycle management, queue controls, and extractor loading.
+- User playlist persistence through `/playlist add`, `/playlist remove`, `/playlist check`, and saved playlist playback through `/play`, including shuffle and loop settings.
 - Online bot presence with the legacy playing activity and periodic guild/user count refresh.
 - Passing `pnpm run typecheck` and `pnpm run build` validation.
 
@@ -163,7 +164,6 @@ The rewrite currently has:
 
 The following legacy capabilities are not implemented in the rewrite:
 
-- User playlist persistence for the music system.
 - The `soundboard` command.
 
 Fallback capability must remain available when slash commands are unavailable. Any feature removal requires owner approval and an equivalent supported mechanism.
