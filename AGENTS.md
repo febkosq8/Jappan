@@ -147,12 +147,13 @@ The rewrite currently has:
 - Slash-command, button, and autocomplete dispatch with database availability rejection for database-dependent commands.
 - Message-based guild command deployment through `!deploy` and `!unDeployGuild`, restricted to configured admin users and the guild where the message is sent.
 - Legacy `/admin` deployment operations: `/admin deploy checkdeploy` and `/admin deploy redeploy`.
-- `/admin-bot check-voice` voice connection diagnostics across all guilds.
+- `/admin-bot check-player` active player and voice connection diagnostics across all guilds.
 - `/admin-bot stop-bot` graceful bot and database shutdown for process-manager control.
 - Guild-scoped `/admin-guild` management with guild listing, channel inspection, targeted admin messages, invites, direct kicks, and self-kick progress reporting.
 - Warning setup threshold ordering and action-specific timeout/ban permission checks.
 - Database model loading and index synchronization are part of the awaited startup gate.
 - Structured logging with contextual details and configurable extended-event debugging.
+- Music playback through `/play`, including autocomplete, track and playlist search, Discord Player lifecycle management, queue controls, and extractor loading.
 - Online bot presence with the legacy playing activity and periodic guild/user count refresh.
 - Passing `pnpm run typecheck` and `pnpm run build` validation.
 
@@ -162,9 +163,8 @@ The rewrite currently has:
 
 The following legacy capabilities are not implemented in the rewrite:
 
-- Music commands, player lifecycle, queue controls, extractors, and playlist persistence.
-- The `soundboard` command.
 - User playlist persistence for the music system.
+- The `soundboard` command.
 
 Fallback capability must remain available when slash commands are unavailable. Any feature removal requires owner approval and an equivalent supported mechanism.
 
