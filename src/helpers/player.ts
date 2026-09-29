@@ -38,7 +38,7 @@ export function getNextRepeatMode(repeatMode: QueueRepeatMode): QueueRepeatMode 
 }
 
 function getRepeatModeLabel(repeatMode: QueueRepeatMode): string {
-	return repeatMode === 1 ? "🔂 Track" : repeatMode === 2 ? "🔁 Queue" : repeatMode === 3 ? "🔀 Auto" : "🔁 Off";
+	return repeatMode === 1 ? "🔂 Track" : repeatMode === 2 ? "🔁 Queue" : repeatMode === 3 ? "🔀 Auto" : "🚫 Off";
 }
 
 export function createPlayerControls({
