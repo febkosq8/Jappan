@@ -33,6 +33,10 @@ export function formatInteractionLogDetails(interaction: Interaction): Record<st
 	return {
 		type: InteractionType[interaction.type],
 		command: "commandName" in interaction ? interaction.commandName : undefined,
+		subcommand: interaction.isChatInputCommand()
+			? (interaction.options.getSubcommand(false) ?? undefined)
+			: undefined,
+		customId: interaction.isMessageComponent() ? interaction.customId : undefined,
 		user: formatUser(interaction.user),
 		context: "guild" in interaction && interaction.guild ? "guild" : "dm",
 		guild: "guild" in interaction && interaction.guild ? formatGuild(interaction.guild) : undefined,
@@ -40,10 +44,6 @@ export function formatInteractionLogDetails(interaction: Interaction): Record<st
 			interaction.channel && "name" in interaction.channel && typeof interaction.channel.name === "string"
 				? formatChannel({ id: interaction.channel.id, name: interaction.channel.name })
 				: undefined,
-		subcommand: interaction.isChatInputCommand()
-			? (interaction.options.getSubcommand(false) ?? undefined)
-			: undefined,
-		customId: interaction.isMessageComponent() ? interaction.customId : undefined,
 	};
 }
 

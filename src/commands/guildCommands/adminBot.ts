@@ -134,12 +134,22 @@ const command: BotCommand = {
 		}
 
 		if (subcommand === "refresh-player-health") {
+			logger.info("PLAYER", "Starting player health check via manual invocation", {
+				user: `${interaction.user.tag} <${interaction.user.id}>`,
+				guild: interaction.guild ? formatGuild(interaction.guild) : undefined,
+			});
 			const playerHealthy = await runPlayerHealthCheck();
-			await interaction.editReply(
-				playerHealthy
-					? "💚 Health status refresh completed. Player is available."
-					: "💔 Health status refresh completed. Player is unavailable.",
-			);
+			const healthEmbed = new EmbedBuilder()
+				.setColor(playerHealthy ? "Green" : "Red")
+				.setAuthor({
+					name: `${config.BOT_NAME} : Player Health`,
+					iconURL: config.BOT_PFP,
+					url: config.BOT_WEBSITE,
+				})
+				.setTitle("Player Health Refresh")
+				.setDescription(playerHealthy ? "💚 Player is available." : "💔 Player is unavailable.")
+				.setTimestamp();
+			await interaction.editReply({ embeds: [healthEmbed] });
 			return;
 		}
 
