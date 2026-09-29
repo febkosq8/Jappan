@@ -365,6 +365,19 @@ export async function markPlayerStatusMessageReplaced({
 	});
 }
 
+export async function markPlayerStatusMessageShutdown(message: Message): Promise<void> {
+	await message.edit({
+		embeds: [
+			createPlayerEmbed({
+				title: "⏹️ Player stopped",
+				description: "Playback stopped because the bot is shutting down.",
+				color: "Blue",
+			}),
+		],
+		components: [],
+	});
+}
+
 async function editPlayerStatusMessage({
 	guild,
 	channel,

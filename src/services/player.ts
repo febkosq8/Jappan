@@ -4,7 +4,12 @@ import { Player, type SearchResult } from "discord-player";
 import type { APIInteractionGuildMember, Client, GuildMember, Message } from "discord.js";
 
 import { registerPlayerHandlers } from "../handlers/player.js";
-import { checkPlayerHealth, markPlayerStatusMessageReplaced, updatePlayerQueueMessage } from "../helpers/player.js";
+import {
+	checkPlayerHealth,
+	markPlayerStatusMessageReplaced,
+	markPlayerStatusMessageShutdown,
+	updatePlayerQueueMessage,
+} from "../helpers/player.js";
 import { formatUser } from "../helpers/discord.js";
 import { getConfig } from "./config.js";
 import { logger } from "./logger.js";
@@ -116,6 +121,29 @@ export function getPlayer(): Player {
 	}
 
 	return player;
+}
+
+export async function shutdownPlayer(): Promise<void> {
+	if (!player) {
+		return;
+	}
+
+	const activePlayer = player;
+	player = undefined;
+	try {
+		const statusUpdates = [...activePlayer.nodes.cache.values()]
+			.map((queue) => queue.metadata.statusMessage)
+			.filter((message): message is Message => Boolean(message))
+			.map((message) => markPlayerStatusMessageShutdown(message));
+		await Promise.allSettled(statusUpdates);
+		await activePlayer.destroy();
+		logger.info("PLAYER", "All active player queues stopped");
+	} catch (error: unknown) {
+		logger.error("PLAYER", "Failed to stop all active player queues", {
+			error: error instanceof Error ? error.message : String(error),
+			stack: error instanceof Error ? error.stack : undefined,
+		});
+	}
 }
 
 export async function searchPlayer(query: string): Promise<PlayerResult<SearchResult>> {
