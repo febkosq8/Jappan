@@ -12,6 +12,7 @@ export type LogCategory =
 	| "DATABASE"
 	| "DISCORD"
 	| "DOPPELGANGER"
+	| "HTTP"
 	| "PLAYER"
 	| "SLASH_COMMANDS";
 
@@ -32,6 +33,7 @@ const categoryColors: Record<LogCategory, (value: string) => string> = {
 	DATABASE: cyan,
 	DISCORD: blue,
 	DOPPELGANGER: red,
+	HTTP: cyan,
 	PLAYER: cyan,
 	SLASH_COMMANDS: yellow,
 };

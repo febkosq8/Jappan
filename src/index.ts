@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { startApp } from "./app.js";
 import { startBot as startDiscordBot } from "./bot.js";
 import { getBotVersion } from "./helpers/utils.js";
 import { getConfig, loadConfig } from "./services/config.js";
@@ -33,6 +34,7 @@ export async function startBot(): Promise<void> {
 	process.on("unhandledRejection", (reason: unknown) => {
 		handleProcessFailure("Unhandled promise rejection", reason);
 	});
+	await startApp();
 	await connectDatabase();
 	await startDiscordBot();
 }

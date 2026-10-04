@@ -2,6 +2,7 @@ import { writeLog } from "../helpers/logger.js";
 
 export interface Config {
 	readonly DISCORD_TOKEN: string;
+	readonly PORT: number;
 	BOT_NAME: string;
 	BOT_PFP: string;
 	readonly BOT_WEBSITE: string;
@@ -23,6 +24,7 @@ export interface Config {
 let loadedConfig: Config | undefined;
 
 const configTemplate: Partial<Record<keyof Config, string>> = {
+	PORT: "3000",
 	BOT_NAME: "Jappan",
 	BOT_PFP: "https://jappan.febkosq8.me/assets/Profile-FDHZtz5Q.png",
 	BOT_WEBSITE: "https://jappan.febkosq8.me",
@@ -60,6 +62,11 @@ function readConfigValue(name: keyof Config, required = false): string {
 
 export function loadConfig(): Config {
 	const DISCORD_TOKEN = readConfigValue("DISCORD_TOKEN", true);
+	const portValue = Number.parseInt(readConfigValue("PORT"), 10);
+	if (!Number.isInteger(portValue) || portValue < 1 || portValue > 65535) {
+		throw new Error("PORT must be an integer between 1 and 65535");
+	}
+	const PORT = portValue;
 	const BOT_NAME = readConfigValue("BOT_NAME");
 	const BOT_PFP = readConfigValue("BOT_PFP");
 	const BOT_WEBSITE = readConfigValue("BOT_WEBSITE");
@@ -118,6 +125,7 @@ export function loadConfig(): Config {
 	const SHUTDOWN_THREASHOLD = shutdownThresholdValue;
 	loadedConfig = {
 		DISCORD_TOKEN,
+		PORT,
 		BOT_NAME,
 		BOT_PFP,
 		BOT_WEBSITE,
