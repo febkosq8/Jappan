@@ -28,12 +28,13 @@
 	],
 	"author": "Febkosq8",
 	"license": "ISC",
+	"packageManager": "pnpm@12.9.0",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/febkosq8/Jappan.git"
 	},
 	"devDependencies": {
-		"@types/node": "26.6.3",
+		"@types/node": "26.6.4",
 		"husky": "9.1.7",
 		"lint-staged": "17.6.0",
 		"prettier": "3.9.9",
@@ -51,9 +52,9 @@
 		"discord-player": "7.2.0",
 		"discord-player-youtubei": "3.1.0",
 		"discord.js": "14.27.0",
-		"dotenv": "18.0.4",
+		"dotenv": "18.0.5",
 		"googlevideo": "4.1.1",
-		"mongoose": "9.10.2",
+		"mongoose": "9.10.4",
 		"simple-ytdl-core": "1.1.1",
 		"zlib-sync": "0.1.10"
 	}
