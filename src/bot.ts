@@ -1,10 +1,12 @@
 import { Client, GatewayIntentBits, Partials } from "discord.js";
 
 import { wait } from "./helpers/utils.js";
+import { registerCronHandlers } from "./handlers/cron.js";
 import { registerDiscordHandlers, registerExtendedDiscordHandlers } from "./handlers/discord.js";
 import { loadButtons } from "./services/buttonLoader.js";
 import { loadCommands } from "./services/commandLoader.js";
 import { getConfig } from "./services/config.js";
+import { startCronJobs } from "./services/cron.js";
 import { logger } from "./services/logger.js";
 import { initializePlayer, runPlayerHealthCheck } from "./services/player.js";
 
@@ -37,12 +39,13 @@ export async function startBot(): Promise<void> {
 	registerDiscordHandlers();
 	registerExtendedDiscordHandlers();
 	await initializePlayer(client);
+	registerCronHandlers(client);
 
 	logger.info("DISCORD", "Connecting to Discord");
 	await client.login(getConfig("DISCORD_TOKEN"));
 	await wait(5000);
 	await runPlayerHealthCheck();
-	setInterval(() => void runPlayerHealthCheck(), 6 * 60 * 60 * 1000);
+	startCronJobs();
 }
 
 export function getClient(): Client {

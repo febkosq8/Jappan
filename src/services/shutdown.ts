@@ -1,5 +1,6 @@
 import { disconnectBot, isBotConnected } from "../bot.js";
 import { disconnectDatabase, isDatabaseConnected } from "./database.js";
+import { stopCronJobs } from "./cron.js";
 import { logger } from "./logger.js";
 import { shutdownPlayer } from "./player.js";
 
@@ -17,6 +18,7 @@ export function handleShutdown(signal: string, exitCode = 0): Promise<void> {
 		try {
 			await Promise.race([
 				(async () => {
+					stopCronJobs();
 					if (isBotConnected()) {
 						await shutdownPlayer();
 						await disconnectBot();

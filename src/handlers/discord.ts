@@ -1,5 +1,6 @@
 import type { Interaction } from "discord.js";
 import { ActivityType, Events, PresenceUpdateStatus } from "discord.js";
+import type { Client } from "discord.js";
 
 import { getClient } from "../bot.js";
 import { formatInteractionLogDetails, formatUser } from "../helpers/discord.js";
@@ -39,6 +40,23 @@ import { handleAutocompleteInteraction } from "./autocomplete.js";
 import { handleButtonInteraction } from "./button.js";
 import { handleSlashCommandInteraction } from "./slashCommand.js";
 
+export function updatePresence(client: Client): void {
+	if (!client.isReady()) {
+		return;
+	}
+
+	client.user.setPresence({
+		activities: [
+			{
+				name: "Existential crisis",
+				type: ActivityType.Playing,
+				state: `on ${client.guilds.cache.size} servers & ${client.users.cache.size} users`,
+			},
+		],
+		status: PresenceUpdateStatus.Online,
+	});
+}
+
 export function registerDiscordHandlers(): void {
 	const client = getClient();
 	const commands = getCommands();
@@ -48,20 +66,6 @@ export function registerDiscordHandlers(): void {
 		const config = getConfig();
 		config.BOT_NAME = readyClient.user.username;
 		config.BOT_PFP = readyClient.user.displayAvatarURL({ size: 256 });
-		const updatePresence = () => {
-			readyClient.user.setPresence({
-				activities: [
-					{
-						name: "Existential crisis",
-						type: ActivityType.Playing,
-						state: `on ${readyClient.guilds.cache.size} servers & ${readyClient.users.cache.size} users`,
-					},
-				],
-				status: PresenceUpdateStatus.Online,
-			});
-		};
-		updatePresence();
-		setInterval(updatePresence, 6 * 60 * 60 * 1000);
 		logger.success("DISCORD", "Client ready", {
 			user: formatUser(readyClient.user),
 			guilds: readyClient.guilds.cache.size,

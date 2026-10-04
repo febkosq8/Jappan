@@ -8,6 +8,7 @@ export type LogCategory =
 	| "ADMIN"
 	| "BOT"
 	| "BUTTONS"
+	| "CRON"
 	| "DATABASE"
 	| "DISCORD"
 	| "DOPPELGANGER"
@@ -27,6 +28,7 @@ const categoryColors: Record<LogCategory, (value: string) => string> = {
 	ADMIN: red,
 	BOT: magenta,
 	BUTTONS: yellow,
+	CRON: cyan,
 	DATABASE: cyan,
 	DISCORD: blue,
 	DOPPELGANGER: red,
