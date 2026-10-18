@@ -83,16 +83,21 @@ jobs:
                         throw new Error(`Changelog section for version ${version} is empty`);
                       }
 
-                      const dockerPull = process.env.PUBLISH_DOCKER === "true"
-                        ? `docker pull ${process.env.IMAGE_NAME.toLowerCase()}:${version}\n\n`
+                      const dockerImage = `${process.env.IMAGE_NAME.toLowerCase()}:${version}`;
+                      const dockerNotes = process.env.PUBLISH_DOCKER === "true"
+                        ? `\n\n### Docker image\n\n\`\`\`sh\ndocker pull ${dockerImage}\n\`\`\``
                         : "";
-                      const notes = `${dockerPull}${changelog}`;
+                      const notes = `## Jappan v${version}\n\n${changelog}${dockerNotes}`;
                       const delimiter = `NOTES_${randomUUID()}`;
                       appendFileSync(
                         process.env.GITHUB_OUTPUT,
                         `release_notes<<${delimiter}\n${notes}\n${delimiter}\n`,
                       );
-                      summary += `\n### Release changelog\n\n${notes}\n`;
+                      summary += `\n### Release changelog\n\n#### Jappan v${version}\n\n${changelog}`;
+                      if (dockerNotes) {
+                        summary += `\n\n##### Docker image\n\n\`\`\`sh\ndocker pull ${dockerImage}\n\`\`\``;
+                      }
+                      summary += "\n";
                     }
 
                     appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${summary}\n`);
