@@ -6,6 +6,7 @@ export interface Config {
 	BOT_NAME: string;
 	BOT_PFP: string;
 	readonly BOT_WEBSITE: string;
+	readonly BACKEND_URL: string;
 	readonly DB_URL: string;
 	readonly ADMIN_USER_IDS: readonly string[];
 	readonly LOG_TIMESTAMP: boolean;
@@ -28,6 +29,7 @@ const configTemplate: Partial<Record<keyof Config, string>> = {
 	BOT_NAME: "Jappan",
 	BOT_PFP: "https://jappan.febkosq8.me/assets/Profile-FDHZtz5Q.png",
 	BOT_WEBSITE: "https://jappan.febkosq8.me",
+	BACKEND_URL: "https://api-jappan.febkosq8.me",
 	ADMIN_USER_IDS: "",
 	LOG_TIMESTAMP: "false",
 	PLAYER_DEBUG: "false",
@@ -70,6 +72,7 @@ export function loadConfig(): Config {
 	const BOT_NAME = readConfigValue("BOT_NAME");
 	const BOT_PFP = readConfigValue("BOT_PFP");
 	const BOT_WEBSITE = readConfigValue("BOT_WEBSITE");
+	const BACKEND_URL = readConfigValue("BACKEND_URL").replace(/\/+$/, "");
 	const DB_URL = readConfigValue("DB_URL", true);
 	const adminUserIdsValue = readConfigValue("ADMIN_USER_IDS");
 	const ADMIN_USER_IDS = adminUserIdsValue
@@ -129,6 +132,7 @@ export function loadConfig(): Config {
 		BOT_NAME,
 		BOT_PFP,
 		BOT_WEBSITE,
+		BACKEND_URL,
 		DB_URL,
 		ADMIN_USER_IDS,
 		LOG_TIMESTAMP,

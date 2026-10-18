@@ -7,7 +7,7 @@ import { isPlayerAvailable } from "../services/player.js";
 
 const serviceHealthSchema = z.object({ healthy: z.boolean() });
 
-export default defineRouter("/health", [
+export default defineRouter("/public/health", [
 	{
 		method: "get",
 		path: "/db",
