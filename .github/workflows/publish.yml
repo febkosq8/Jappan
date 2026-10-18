@@ -229,6 +229,7 @@ jobs:
               uses: actions/checkout@v4
 
             - name: Create and push Git tag
+              id: tag
               if: inputs.create_tag
               env:
                   VERSION: ${{ needs.prepare.outputs.version }}
@@ -238,6 +239,7 @@ jobs:
                   git push origin "$tag"
 
             - name: Create GitHub release
+              id: release
               if: inputs.create_release
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -249,6 +251,36 @@ jobs:
                       --title "$tag" \
                       --verify-tag \
                       --notes "$RELEASE_NOTES"
+
+            - name: Write publish summary
+              if: always()
+              env:
+                  VERSION: ${{ needs.prepare.outputs.version }}
+                  JOB_STATUS: ${{ job.status }}
+                  TAG_OUTCOME: ${{ steps.tag.outcome }}
+                  RELEASE_OUTCOME: ${{ steps.release.outcome }}
+              run: |
+                  report() {
+                      case "$2" in
+                          success) echo "> - ✅ $1" ;;
+                          failure) echo "> - ❌ $1" ;;
+                      esac
+                  }
+                  if [ "$JOB_STATUS" = "success" ]; then
+                      alert="NOTE"
+                      title="Published \`v${VERSION}\` to GitHub."
+                  else
+                      alert="WARNING"
+                      title="Publishing \`v${VERSION}\` to GitHub did not complete successfully."
+                  fi
+                  {
+                      echo
+                      echo "> [!${alert}]"
+                      echo "> ${title}"
+                      echo ">"
+                      report "Git tag \`v${VERSION}\`" "$TAG_OUTCOME"
+                      report "GitHub release \`v${VERSION}\`" "$RELEASE_OUTCOME"
+                  } >> "$GITHUB_STEP_SUMMARY"
 
     docker:
         needs: [prepare, github-publish]
@@ -315,3 +347,25 @@ jobs:
                       printf '%d. %s\n' "$number" "$tag"
                       number=$((number + 1))
                   done
+
+            - name: Write publish summary
+              if: always()
+              env:
+                  VERSION: ${{ needs.prepare.outputs.version }}
+                  JOB_STATUS: ${{ job.status }}
+                  TAGS: ${{ steps.meta.outputs.tags }}
+              run: |
+                  {
+                      echo
+                      if [ "$JOB_STATUS" = "success" ]; then
+                          echo "> [!NOTE]"
+                          echo "> Published Docker image \`${VERSION}\`."
+                          echo ">"
+                          printf '%s\n' "$TAGS" | while IFS= read -r tag; do
+                              [ -n "$tag" ] && echo "> - ✅ \`${tag}\`"
+                          done
+                      else
+                          echo "> [!WARNING]"
+                          echo "> Publishing Docker image \`${VERSION}\` did not complete successfully."
+                      fi
+                  } >> "$GITHUB_STEP_SUMMARY"

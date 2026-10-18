@@ -201,6 +201,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - name: Delete GitHub release
+              id: release
               if: inputs.delete_release
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -208,11 +209,42 @@ jobs:
               run: gh release delete "v${VERSION}" --yes --repo "$GITHUB_REPOSITORY"
 
             - name: Delete Git tag
+              id: tag
               if: inputs.delete_tag
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   VERSION: ${{ needs.prepare.outputs.version }}
               run: gh api --method DELETE "/repos/${GITHUB_REPOSITORY}/git/refs/tags/v${VERSION}"
+
+            - name: Write unpublish summary
+              if: always()
+              env:
+                  VERSION: ${{ needs.prepare.outputs.version }}
+                  JOB_STATUS: ${{ job.status }}
+                  TAG_OUTCOME: ${{ steps.tag.outcome }}
+                  RELEASE_OUTCOME: ${{ steps.release.outcome }}
+              run: |
+                  report() {
+                      case "$2" in
+                          success) echo "> - ✅ $1" ;;
+                          failure) echo "> - ❌ $1" ;;
+                      esac
+                  }
+                  if [ "$JOB_STATUS" = "success" ]; then
+                      alert="NOTE"
+                      title="Removed \`v${VERSION}\` from GitHub."
+                  else
+                      alert="WARNING"
+                      title="Removing \`v${VERSION}\` from GitHub did not complete successfully."
+                  fi
+                  {
+                      echo
+                      echo "> [!${alert}]"
+                      echo "> ${title}"
+                      echo ">"
+                      report "Deleted GitHub release \`v${VERSION}\`" "$RELEASE_OUTCOME"
+                      report "Deleted Git tag \`v${VERSION}\`" "$TAG_OUTCOME"
+                  } >> "$GITHUB_STEP_SUMMARY"
 
     docker-unpublish:
         needs: [prepare, check, approval, github-unpublish]
@@ -242,3 +274,26 @@ jobs:
                           "/users/${GITHUB_REPOSITORY_OWNER}/packages/container/${package_name}/versions/${VERSION_ID}"
                       echo "Deleted Docker package version ${VERSION_ID}."
                   fi
+
+            - name: Write unpublish summary
+              if: always()
+              env:
+                  VERSION: ${{ needs.prepare.outputs.version }}
+                  JOB_STATUS: ${{ job.status }}
+                  DELETE_PACKAGE: ${{ needs.check.outputs.docker_delete_package }}
+              run: |
+                  if [ "$DELETE_PACKAGE" = "true" ]; then
+                      target="the Docker container package (it held the last tagged version)"
+                  else
+                      target="Docker image version \`${VERSION}\`"
+                  fi
+                  {
+                      echo
+                      if [ "$JOB_STATUS" = "success" ]; then
+                          echo "> [!NOTE]"
+                          echo "> Deleted ${target}."
+                      else
+                          echo "> [!WARNING]"
+                          echo "> Deleting ${target} did not complete successfully."
+                      fi
+                  } >> "$GITHUB_STEP_SUMMARY"
