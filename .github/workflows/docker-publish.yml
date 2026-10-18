@@ -57,6 +57,9 @@ jobs:
                   IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
                   TAGS: ${{ steps.meta.outputs.tags }}
               run: |
-                  echo "Docker image: $IMAGE"
-                  echo "Tags:"
-                  echo "$TAGS"
+                  number=1
+                  printf '%s\n' "$TAGS" | while IFS= read -r tag; do
+                      [ -n "$tag" ] || continue
+                      printf '%d. %s/%s\n' "$number" "$IMAGE" "${tag##*:}"
+                      number=$((number + 1))
+                  done
