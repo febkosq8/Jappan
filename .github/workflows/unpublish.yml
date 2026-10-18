@@ -64,6 +64,7 @@ jobs:
         runs-on: ubuntu-latest
         outputs:
             docker_version_id: ${{ steps.docker-version.outputs.version_id }}
+            docker_delete_package: ${{ steps.docker-version.outputs.delete_package }}
         steps:
             - name: Checkout
               uses: actions/checkout@v4
@@ -117,32 +118,58 @@ jobs:
               run: |
                   package_name="${GITHUB_REPOSITORY#*/}"
                   package_name="${package_name,,}"
-                  matches=$(gh api --paginate \
-                      --jq '.[] | select(.metadata.container.tags | index(env.VERSION)) | [.id, (.metadata.container.tags | join(","))] | @tsv' \
+                  versions=$(gh api --paginate \
+                      --jq '.[] | [.id, (.metadata.container.tags | join(","))] | @tsv' \
                       "/users/${GITHUB_REPOSITORY_OWNER}/packages/container/${package_name}/versions?per_page=100")
 
-                  if [ -z "$matches" ]; then
+                  if [ -z "$versions" ]; then
                       echo "::error::Docker image version ${VERSION} does not exist; nothing to delete."
                       exit 1
                   fi
 
-                  mapfile -t versions <<< "$matches"
-                  if [ "${#versions[@]}" -ne 1 ]; then
+                  mapfile -t versions <<< "$versions"
+                  matches=()
+                  tagged_version_count=0
+                  for entry in "${versions[@]}"; do
+                      IFS=$'\t' read -r candidate_id tags <<< "$entry"
+                      if [ -n "$tags" ]; then
+                          tagged_version_count=$((tagged_version_count + 1))
+                      fi
+                      case ",${tags}," in
+                          *,"${VERSION}",*) matches+=("$entry") ;;
+                      esac
+                  done
+
+                  if [ "${#matches[@]}" -eq 0 ]; then
+                      echo "::error::Docker image version ${VERSION} does not exist; nothing to delete."
+                      exit 1
+                  fi
+
+                  if [ "${#matches[@]}" -ne 1 ]; then
                       echo "::error::Found multiple Docker image versions tagged ${VERSION}; refusing ambiguous deletion."
                       exit 1
                   fi
 
-                  IFS=$'\t' read -r version_id tags <<< "${versions[0]}"
+                  IFS=$'\t' read -r version_id tags <<< "${matches[0]}"
                   if [[ ! "$version_id" =~ ^[0-9]+$ ]]; then
                       echo "::error::GitHub returned an invalid Docker package version ID."
                       exit 1
                   fi
 
                   echo "version_id=${version_id}" >> "$GITHUB_OUTPUT"
+                  if [ "$tagged_version_count" -eq 1 ]; then
+                      echo "delete_package=true" >> "$GITHUB_OUTPUT"
+                  else
+                      echo "delete_package=false" >> "$GITHUB_OUTPUT"
+                  fi
                   {
                       echo
                       echo "Docker package version ID: \`${version_id}\`"
                       echo "Docker tags on that version: \`${tags}\`"
+                      if [ "$tagged_version_count" -eq 1 ]; then
+                          echo
+                          echo "**This is the last tagged Docker version. Unpublishing it will delete the entire container package.**"
+                      fi
                   } | tee -a "$GITHUB_STEP_SUMMARY"
 
     approval:
@@ -188,9 +215,16 @@ jobs:
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   VERSION_ID: ${{ needs.check.outputs.docker_version_id }}
+                  DELETE_PACKAGE: ${{ needs.check.outputs.docker_delete_package }}
               run: |
                   package_name="${GITHUB_REPOSITORY#*/}"
                   package_name="${package_name,,}"
-                  gh api --method DELETE \
-                      "/users/${GITHUB_REPOSITORY_OWNER}/packages/container/${package_name}/versions/${VERSION_ID}"
-                  echo "Deleted Docker package version ${VERSION_ID}."
+                  if [ "$DELETE_PACKAGE" = "true" ]; then
+                      gh api --method DELETE \
+                          "/users/${GITHUB_REPOSITORY_OWNER}/packages/container/${package_name}"
+                      echo "Deleted Docker container package ${package_name} because it contained the last tagged version."
+                  else
+                      gh api --method DELETE \
+                          "/users/${GITHUB_REPOSITORY_OWNER}/packages/container/${package_name}/versions/${VERSION_ID}"
+                      echo "Deleted Docker package version ${VERSION_ID}."
+                  fi
