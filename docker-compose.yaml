@@ -1,0 +1,9 @@
+services:
+    jappan:
+        image: ghcr.io/febkosq8/jappan:latest
+        container_name: jappan
+        restart: unless-stopped
+        env_file:
+            - .env
+        ports:
+            - "${PORT:-3030}:${PORT:-3030}"

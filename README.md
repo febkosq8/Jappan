@@ -43,6 +43,20 @@ Jappan is a Discord bot made to make life easier through music playback, fun com
 3. Copy `.env.example` to `.env`.
 4. Set the required `DISCORD_TOKEN` and `DB_URL` values. Review `.env.example` for optional settings.
 
+### Docker
+
+The Jappan image is published to [GitHub Container Registry](https://github.com/febkosq8/Jappan/pkgs/container/jappan).
+
+To run Jappan, you only need Docker Compose, the [docker-compose.yaml](./docker-compose.yaml) file, and an `.env` file in the same folder. You do not need to clone the source code, install Node.js or pnpm, or build the image yourself; Compose pulls the published image.
+
+Copy the [`.env.example`](./.env.example) file to `.env` in the same folder as `docker-compose.yaml`, then update its values, including `DISCORD_TOKEN` and `DB_URL`. `DB_URL` must point to a MongoDB server reachable from the container; `localhost` inside the container is not your host machine. Then run:
+
+```text
+docker compose up -d
+```
+
+Compose loads variables from the adjacent `.env` file, restarts the bot unless it is stopped, and publishes the configured `PORT` (3030 by default). Run `docker compose pull` to fetch the latest image again. View logs with `docker compose logs -f` and stop the bot with `docker compose down`.
+
 ### Commands
 
 ```text

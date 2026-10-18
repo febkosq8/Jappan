@@ -25,7 +25,7 @@ export interface Config {
 let loadedConfig: Config | undefined;
 
 const configTemplate: Partial<Record<keyof Config, string>> = {
-	PORT: "3000",
+	PORT: "3030",
 	BOT_NAME: "Jappan",
 	BOT_PFP: "https://jappan.febkosq8.me/assets/Profile-FDHZtz5Q.png",
 	BOT_WEBSITE: "https://jappan.febkosq8.me",
