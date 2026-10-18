@@ -47,13 +47,13 @@ Choose one of the two options below. Both need the `.env` file from [Configurati
 The image is published to [GitHub Container Registry](https://github.com/febkosq8/Jappan/pkgs/container/jappan). You only need Docker Compose, [docker-compose.yaml](./docker-compose.yaml), and the `.env` file in the same folder. No clone, Node.js, or pnpm is needed; Compose pulls the published image.
 
 1. Put `docker-compose.yaml` and `.env` in the same folder. `DB_URL` must point to a MongoDB server reachable from the container; `localhost` inside the container is not your host machine.
-2. Create the log file before the first run, otherwise Docker creates a directory with that name:
+2. Create the log folder before the first run, otherwise Docker creates it owned by root and the container's `node` user cannot write to it:
 
     ```text
-    mkdir -p logs && touch logs/docker.log
+    mkdir -p logs
     ```
 
-    The container's `node` user must be able to write to it.
+    Compose creates `logs/docker.log` on first start.
 
 3. Start the bot:
 
