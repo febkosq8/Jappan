@@ -1,6 +1,7 @@
 import type { ErrorRequestHandler, Express, NextFunction, Request, Response } from "express";
 
-import { healthRouteHandler } from "../routes/health.js";
+import base from "../routes/base.js";
+import health from "../routes/health.js";
 import { logger } from "../services/logger.js";
 
 const REQUEST_TIMEOUT_MS = 5 * 60 * 1000;
@@ -65,7 +66,8 @@ function handleNotFound(request: Request, response: Response): void {
 
 export function registerHttpHandlers(app: Express): void {
 	app.use(processRequest);
-	app.get("/health", healthRouteHandler);
+	app.use("/health", health);
+	app.use("/", base);
 	app.use(handleNotFound);
 	app.use(handleError);
 }
