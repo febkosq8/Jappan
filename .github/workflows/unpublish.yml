@@ -205,7 +205,7 @@ jobs:
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   VERSION: ${{ needs.prepare.outputs.version }}
-              run: gh release delete "v${VERSION}" --yes
+              run: gh release delete "v${VERSION}" --yes --repo "$GITHUB_REPOSITORY"
 
             - name: Delete Git tag
               if: inputs.delete_tag
