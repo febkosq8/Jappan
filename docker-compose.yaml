@@ -5,5 +5,8 @@ services:
         restart: unless-stopped
         env_file:
             - .env
+        volumes:
+            - ./logs/docker.log:/app/docker.log
+        command: ["bash", "-c", "exec node dist/index.js > >(tee -a /app/docker.log) 2>&1"]
         ports:
             - "${PORT:-3030}:${PORT:-3030}"
