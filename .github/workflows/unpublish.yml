@@ -6,15 +6,15 @@ on:
             delete_tag:
                 description: Delete the version Git tag
                 type: boolean
-                default: false
+                default: true
             delete_release:
                 description: Delete the GitHub release
                 type: boolean
-                default: false
+                default: true
             delete_docker:
                 description: Delete the Docker image version
                 type: boolean
-                default: false
+                default: true
 
 permissions:
     contents: write
