@@ -57,7 +57,7 @@ export function getOpenApiDocument(routers: readonly RouterDefinition[]) {
 
 	return {
 		openapi: "3.0.3",
-		servers: [{ url: getConfig("BACKEND_URL") }],
+		servers: [{ url: "/" }],
 		info: {
 			title: `${getConfig("BOT_NAME")} API`,
 			description: `HTTP API for ${getConfig("BOT_NAME")}`,
