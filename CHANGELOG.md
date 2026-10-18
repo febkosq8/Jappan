@@ -5,11 +5,11 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.0.1] - Unreleased
 
-### Added
+### Fixed
 
-- Continued reliability, deployment, and migration improvements for the TypeScript rewrite.
+- Prevented `/clear` from submitting an empty interaction response when there are no overflow statistics.
 
 ## [2.0.0] - 2026-09-29
 
@@ -161,7 +161,7 @@ This release delivers the TypeScript rewrite of the Jappan Discord bot, with sta
 
 - Added the `/warn` command and documentation.
 
-[unreleased]: https://github.com/febkosq8/Jappan/compare/v2.0.0...HEAD
+[2.0.1]: https://github.com/febkosq8/Jappan/compare/v2.0.0...HEAD
 [2.0.0]: https://github.com/febkosq8/Jappan/releases/tag/v2.0.0
 [1.4.5]: https://github.com/febkosq8/Jappan/releases/tag/v1.4.5
 [1.4.4]: https://github.com/febkosq8/Jappan/releases/tag/v1.4.4

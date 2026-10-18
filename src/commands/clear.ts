@@ -221,11 +221,14 @@ const command: BotCommand = {
 			};
 			const sendOverflowChannelStats = async (isComplete: boolean) => {
 				const totalPages = Math.ceil(progressState.channelStats.length / 10) + 1;
+				const embeds = createChannelStatsEmbeds(totalPages, isComplete).slice(5);
+				if (embeds.length === 0) return;
+
 				await sendResponse({
 					destination: interaction,
 					content: {
 						flags: MessageFlags.Ephemeral,
-						embeds: createChannelStatsEmbeds(totalPages, isComplete).slice(5),
+						embeds,
 					},
 				});
 			};
