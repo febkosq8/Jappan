@@ -117,7 +117,7 @@ jobs:
                       let notes = sections.join("\n\n");
                       if (process.env.PUBLISH_DOCKER === "true") {
                         const dockerImage = `${process.env.IMAGE_NAME.toLowerCase()}:${version}`;
-                        notes = `Pull the Docker image for this release:\n\n\`\`\`sh\ndocker pull ${dockerImage}\n\`\`\`\n\n${notes}`;
+                        notes = `Pull the Docker image for this release:\n\n\`\`\`sh\ndocker pull ${dockerImage}\n\`\`\`\n\n---\n\n${notes}`;
                       }
                       const delimiter = `NOTES_${randomUUID()}`;
                       appendFileSync(
