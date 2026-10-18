@@ -3,6 +3,10 @@ name: Publish
 on:
     workflow_dispatch:
         inputs:
+            version_override:
+                description: Version to publish instead of the package.json version (leave empty to use package.json)
+                type: string
+                default: ""
             create_tag:
                 description: Create and push the version Git tag
                 type: boolean
@@ -41,12 +45,17 @@ jobs:
                   CREATE_TAG: ${{ inputs.create_tag }}
                   PUBLISH_DOCKER: ${{ inputs.publish_docker }}
                   IMAGE_NAME: ${{ env.REGISTRY }}/${{ github.repository }}
+                  VERSION_OVERRIDE: ${{ inputs.version_override }}
               run: |
                   node --input-type=module -e '
                     import { appendFileSync, readFileSync } from "node:fs";
                     import { randomUUID } from "node:crypto";
 
-                    const version = JSON.parse(readFileSync("package.json", "utf8")).version;
+                    const override = process.env.VERSION_OVERRIDE.trim();
+                    if (override && !/^[0-9A-Za-z][0-9A-Za-z._-]*$/.test(override)) {
+                      throw new Error(`Invalid version override: ${override}`);
+                    }
+                    const version = override || JSON.parse(readFileSync("package.json", "utf8")).version;
                     appendFileSync(process.env.GITHUB_OUTPUT, `version=${version}\n`);
 
                     let summary = `## Publish preview\n\nVersion: \`v${version}\`\n\n`;
@@ -87,6 +96,7 @@ jobs:
                     }
 
                     appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${summary}\n`);
+                    console.log(summary);
                   '
 
     check:

@@ -3,6 +3,10 @@ name: Unpublish
 on:
     workflow_dispatch:
         inputs:
+            version_override:
+                description: Version to unpublish instead of the package.json version (leave empty to use package.json)
+                type: string
+                default: ""
             delete_tag:
                 description: Delete the version Git tag
                 type: boolean
@@ -35,8 +39,15 @@ jobs:
                   DELETE_TAG: ${{ inputs.delete_tag }}
                   DELETE_RELEASE: ${{ inputs.delete_release }}
                   DELETE_DOCKER: ${{ inputs.delete_docker }}
+                  VERSION_OVERRIDE: ${{ inputs.version_override }}
               run: |
-                  version=$(node -p "require('./package.json').version")
+                  version="${VERSION_OVERRIDE//[[:space:]]/}"
+                  if [ -z "$version" ]; then
+                      version=$(node -p "require('./package.json').version")
+                  elif [[ ! "$version" =~ ^[0-9A-Za-z][0-9A-Za-z._-]*$ ]]; then
+                      echo "::error::Invalid version override: ${version}"
+                      exit 1
+                  fi
                   echo "value=${version}" >> "$GITHUB_OUTPUT"
                   {
                       echo "## Unpublish preview"
@@ -46,7 +57,7 @@ jobs:
                       echo "- Delete Git tag: ${DELETE_TAG}"
                       echo "- Delete GitHub release: ${DELETE_RELEASE}"
                       echo "- Delete Docker image version: ${DELETE_DOCKER}"
-                  } >> "$GITHUB_STEP_SUMMARY"
+                  } | tee -a "$GITHUB_STEP_SUMMARY"
 
     check:
         needs: prepare
@@ -132,7 +143,7 @@ jobs:
                       echo
                       echo "Docker package version ID: \`${version_id}\`"
                       echo "Docker tags on that version: \`${tags}\`"
-                  } >> "$GITHUB_STEP_SUMMARY"
+                  } | tee -a "$GITHUB_STEP_SUMMARY"
 
     approval:
         needs: [prepare, check]
