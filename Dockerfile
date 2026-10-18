@@ -1,4 +1,4 @@
-FROM node:24.12.0-bookworm-slim AS build
+FROM node:24.22.0-bookworm-slim AS build
 
 WORKDIR /app
 
@@ -15,7 +15,7 @@ RUN pnpm install --frozen-lockfile
 RUN pnpm run build
 RUN pnpm prune --prod
 
-FROM node:24.12.0-bookworm-slim AS runtime
+FROM node:24.22.0-bookworm-slim AS runtime
 
 WORKDIR /app
 
