@@ -25,53 +25,86 @@ env:
     IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-    publish:
+    prepare:
+        runs-on: ubuntu-latest
+        outputs:
+            version: ${{ steps.release-info.outputs.version }}
+            release_notes: ${{ steps.release-info.outputs.release_notes }}
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Prepare release preview
+              id: release-info
+              env:
+                  CREATE_RELEASE: ${{ inputs.create_release }}
+                  CREATE_TAG: ${{ inputs.create_tag }}
+                  PUBLISH_DOCKER: ${{ inputs.publish_docker }}
+              run: |
+                  node --input-type=module -e '
+                    import { appendFileSync, readFileSync } from "node:fs";
+                    import { randomUUID } from "node:crypto";
+
+                    const version = JSON.parse(readFileSync("package.json", "utf8")).version;
+                    appendFileSync(process.env.GITHUB_OUTPUT, `version=${version}\n`);
+
+                    let summary = `## Publish preview\n\nVersion: \`v${version}\`\n\n`;
+                    summary += `- Create Git tag: ${process.env.CREATE_TAG}\n`;
+                    summary += `- Create GitHub release: ${process.env.CREATE_RELEASE}\n`;
+                    summary += `- Publish Docker image: ${process.env.PUBLISH_DOCKER}\n`;
+                    if (process.env.CREATE_RELEASE === "true") {
+                      const heading = `## [${version}]`;
+                      const lines = readFileSync("CHANGELOG.md", "utf8").split(/\r?\n/);
+                      const start = lines.findIndex(
+                        (line) => line === heading || line.startsWith(`${heading} -`),
+                      );
+
+                      if (start === -1) {
+                        throw new Error(`No changelog section found for version ${version}`);
+                      }
+
+                      let end = lines.findIndex(
+                        (line, index) => index > start && line.startsWith("## ["),
+                      );
+                      if (end === -1) end = lines.length;
+
+                      const notes = lines.slice(start + 1, end).join("\n").trim();
+                      if (!notes) {
+                        throw new Error(`Changelog section for version ${version} is empty`);
+                      }
+
+                      const delimiter = `NOTES_${randomUUID()}`;
+                      appendFileSync(
+                        process.env.GITHUB_OUTPUT,
+                        `release_notes<<${delimiter}\n${notes}\n${delimiter}\n`,
+                      );
+                      summary += `\n### Release changelog\n\n${notes}\n`;
+                    }
+
+                    appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${summary}\n`);
+                  '
+
+    approval:
+        needs: prepare
+        if: inputs.create_tag || inputs.create_release || inputs.publish_docker
+        runs-on: ubuntu-latest
+        environment: Jappan-Env
+        steps:
+            - name: Approve publish preview
+              run: echo "Publish preview approved."
+
+    github-publish:
+        needs: [prepare, approval]
+        if: inputs.create_tag || inputs.create_release || inputs.publish_docker
         runs-on: ubuntu-latest
         steps:
             - name: Checkout
               uses: actions/checkout@v4
 
-            - name: Set up Docker Buildx
-              if: inputs.publish_docker
-              uses: docker/setup-buildx-action@v3
-
-            - name: Log in to GitHub Container Registry
-              if: inputs.publish_docker
-              uses: docker/login-action@v3
-              with:
-                  registry: ${{ env.REGISTRY }}
-                  username: ${{ github.actor }}
-                  password: ${{ secrets.GITHUB_TOKEN }}
-
-            - name: Read version from package.json
-              id: version
-              run: echo "value=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
-
-            - name: Extract metadata
-              if: inputs.publish_docker
-              id: meta
-              uses: docker/metadata-action@v5
-              with:
-                  images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-                  tags: |
-                      type=raw,value=${{ steps.version.outputs.value }}
-                      type=raw,value=latest
-
-            - name: Build and push Docker image
-              if: inputs.publish_docker
-              uses: docker/build-push-action@v6
-              with:
-                  context: .
-                  push: true
-                  tags: ${{ steps.meta.outputs.tags }}
-                  labels: ${{ steps.meta.outputs.labels }}
-                  cache-from: type=gha
-                  cache-to: type=gha,mode=max
-
             - name: Create and push Git tag
               if: inputs.create_tag
               env:
-                  VERSION: ${{ steps.version.outputs.value }}
+                  VERSION: ${{ needs.prepare.outputs.version }}
               run: |
                   tag="v${VERSION}"
                   git tag "$tag" "$GITHUB_SHA"
@@ -81,16 +114,53 @@ jobs:
               if: inputs.create_release
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-                  VERSION: ${{ steps.version.outputs.value }}
+                  VERSION: ${{ needs.prepare.outputs.version }}
+                  RELEASE_NOTES: ${{ needs.prepare.outputs.release_notes }}
               run: |
                   tag="v${VERSION}"
                   gh release create "$tag" \
                       --title "$tag" \
                       --verify-tag \
-                      --generate-notes
+                      --notes "$RELEASE_NOTES"
+
+    docker:
+        needs: [prepare, github-publish]
+        if: inputs.publish_docker && needs.github-publish.result == 'success'
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+
+            - name: Log in to GitHub Container Registry
+              uses: docker/login-action@v3
+              with:
+                  registry: ${{ env.REGISTRY }}
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Extract metadata
+              id: meta
+              uses: docker/metadata-action@v5
+              with:
+                  images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+                  tags: |
+                      type=raw,value=${{ needs.prepare.outputs.version }}
+                      type=raw,value=latest
+
+            - name: Build and push Docker image
+              uses: docker/build-push-action@v6
+              with:
+                  context: .
+                  push: true
+                  tags: ${{ steps.meta.outputs.tags }}
+                  labels: ${{ steps.meta.outputs.labels }}
+                  cache-from: type=gha
+                  cache-to: type=gha,mode=max
 
             - name: Print published image and tags
-              if: success() && inputs.publish_docker
               env:
                   TAGS: ${{ steps.meta.outputs.tags }}
               run: |
