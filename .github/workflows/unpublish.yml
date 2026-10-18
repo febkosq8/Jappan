@@ -31,7 +31,7 @@ jobs:
             version: ${{ steps.version.outputs.value }}
         steps:
             - name: Checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@v7
 
             - name: Read version and prepare unpublish preview
               id: version
@@ -67,7 +67,7 @@ jobs:
             docker_delete_package: ${{ steps.docker-version.outputs.delete_package }}
         steps:
             - name: Checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@v7
 
             - name: Check Git tag exists
               if: inputs.delete_tag
