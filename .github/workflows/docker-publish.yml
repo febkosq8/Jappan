@@ -1,0 +1,65 @@
+name: Build and push Docker image
+
+on:
+    workflow_dispatch:
+
+permissions:
+    contents: read
+    packages: write
+
+env:
+    REGISTRY: ghcr.io
+    IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+    build-and-push:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+
+            - name: Log in to GitHub Container Registry
+              uses: docker/login-action@v3
+              with:
+                  registry: ${{ env.REGISTRY }}
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Read version from package.json
+              id: version
+              run: echo "value=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
+            - name: Extract metadata
+              id: meta
+              uses: docker/metadata-action@v5
+              with:
+                  images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+                  tags: |
+                      type=raw,value=${{ steps.version.outputs.value }}
+                      type=raw,value=latest
+
+            - name: Build and push
+              uses: docker/build-push-action@v6
+              with:
+                  context: .
+                  push: true
+                  tags: ${{ steps.meta.outputs.tags }}
+                  labels: ${{ steps.meta.outputs.labels }}
+                  cache-from: type=gha
+                  cache-to: type=gha,mode=max
+
+            - name: Print published image and tags
+              if: success()
+              env:
+                  IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+                  TAGS: ${{ steps.meta.outputs.tags }}
+              run: |
+                  number=1
+                  printf '%s\n' "$TAGS" | while IFS= read -r tag; do
+                      [ -n "$tag" ] || continue
+                      printf '%d. %s/%s\n' "$number" "$IMAGE" "${tag##*:}"
+                      number=$((number + 1))
+                  done

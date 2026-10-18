@@ -1,23 +1,33 @@
-# Use a Node.js base image with a specific version
-FROM node:22.12.0-bullseye
+FROM node:24.22.0-bookworm-slim AS build
 
-# Set the working directory inside the container
-WORKDIR /
+WORKDIR /app
 
-# Copy the package.json and package-lock.json files
-COPY package*.json ./
+RUN apt-get update \
+	&& apt-get install --no-install-recommends --yes python3 make g++ \
+	&& rm -rf /var/lib/apt/lists/*
 
-# Update package list and install ffmpeg
-RUN apt update && apt install -y ffmpeg
+RUN corepack enable
 
-# Clean cache
-RUN npm cache clean --force
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json extractorpack.config.mjs ./
+COPY src ./src
 
-# Install dependencies
-RUN npm install
+RUN pnpm install --frozen-lockfile
+RUN pnpm run build
+RUN pnpm prune --prod
 
-# Copy the rest of the application code
-COPY . .
+FROM node:24.22.0-bookworm-slim AS runtime
 
-# Define the command to start the Node.js application
-CMD [ "node", "index.js" ]
+WORKDIR /app
+
+RUN apt-get update \
+	&& apt-get install --no-install-recommends --yes ffmpeg \
+	&& rm -rf /var/lib/apt/lists/*
+
+COPY --from=build /app/package.json ./package.json
+COPY --from=build /app/extractorpack.config.mjs ./extractorpack.config.mjs
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/dist ./dist
+
+USER node
+
+CMD ["node", "dist/index.js"]

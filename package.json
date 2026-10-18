@@ -1,36 +1,67 @@
 {
 	"name": "jappan",
-	"version": "1.4.4",
-	"description": "A simple discord bot made to make someone's life easier",
-	"main": "index.js",
+	"version": "2.0.0",
+	"description": "Jappan - Discord Bot",
+	"type": "module",
+	"main": "dist/index.js",
+	"engines": {
+		"node": ">=24.22.0"
+	},
 	"scripts": {
-		"start": "node index.js",
-		"dev": "nodemon index.js",
-		"prettier": "prettier --write ."
+		"build": "tsup src/index.ts --format esm --external @extractorpack/extractorpack",
+		"dev": "tsx watch --include \"./.env\" src/index.ts",
+		"extractors:scan": "extractorpack scan",
+		"format": "prettier --write \"src/**/*.ts\"",
+		"format:check": "prettier --check \"src/**/*.ts\"",
+		"migrate:v1tov2": "tsx src/scripts/migrateV1ToV2.ts",
+		"prepare": "husky && extractorpack scan",
+		"start": "node dist/index.js",
+		"typecheck": "tsc --noEmit"
+	},
+	"lint-staged": {
+		"*.{ts,js,json,yml,yaml,md}": "prettier --write"
 	},
 	"keywords": [
 		"discord",
-		"music",
-		"fun",
-		"bot"
+		"bot",
+		"music"
 	],
 	"author": "Febkosq8",
-	"dependencies": {
-		"@discord-player/equalizer": "0.2.3",
-		"@discord-player/extractor": "4.5.1",
-		"@discord-player/utils": "0.2.2",
-		"@discordjs/voice": "0.18.0",
-		"axios": "1.7.9",
-		"colorette": "2.0.20",
-		"discord-player": "6.7.1",
-		"discord-player-youtubei": "1.3.5",
-		"discord.js": "14.16.3",
-		"dotenv": "16.4.7",
-		"mediaplex": "1.0.0",
-		"mongoose": "8.8.3"
+	"license": "ISC",
+	"packageManager": "pnpm@12.9.0",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/febkosq8/Jappan.git"
 	},
 	"devDependencies": {
-		"nodemon": "3.1.7",
-		"prettier": "3.4.2"
+		"@types/express": "5.0.6",
+		"@types/node": "26.6.5",
+		"@types/swagger-ui-express": "4.1.8",
+		"husky": "9.1.7",
+		"lint-staged": "17.6.0",
+		"prettier": "3.9.10",
+		"tsup": "8.5.1",
+		"tsx": "4.23.15",
+		"typescript": "7.0.2"
+	},
+	"dependencies": {
+		"@discord-player/extractor": "7.2.0",
+		"@discordjs/voice": "0.19.2",
+		"@extractorpack/extractorpack": "0.0.5",
+		"bgutils-js": "4.0.3",
+		"bufferutil": "4.1.0",
+		"colorette": "2.0.20",
+		"cron": "4.4.0",
+		"discord-player": "7.2.0",
+		"discord-player-youtubei": "3.1.0",
+		"discord.js": "14.27.0",
+		"dotenv": "18.0.8",
+		"express": "5.3.0",
+		"googlevideo": "4.1.1",
+		"mongoose": "9.11.2",
+		"simple-ytdl-core": "1.1.1",
+		"swagger-ui-express": "5.0.1",
+		"zlib-sync": "0.1.10",
+		"zod": "4.6.7"
 	}
 }

@@ -1,7 +1,0 @@
-{
-	"events": {
-		"start": "cls || clear"
-	},
-	"ignore": ["node_modules", "assets"],
-	"watch": [".", ".env"]
-}

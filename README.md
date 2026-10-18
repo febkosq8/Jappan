@@ -1,37 +1,88 @@
-## Jappan
+# Jappan
 
-A simple discord bot made to make someone's life easier
+Jappan is a Discord bot made to make life easier through music playback, fun commands, moderation, leveling, audit logging, playlists, and server administration features.
 
-Currently features Music Playback, Fun Commands, Leveling System & Moderation Tools
+## Links
 
-- Try the bot over at [REKT Gaming](https://discord.gg/3mRbVCjvmz)
+- [Try Jappan in REKT Gaming](https://discord.gg/3mRbVCjvmz)
+- [Invite Jappan to your server](https://discord.com/api/oauth2/authorize?client_id=732230135671029831&permissions=8&scope=applications.commands%20bot)
+- [Jappan website](https://jappan.febkosq8.me/)
+- [Report a bug or suggest an improvement](https://github.com/febkosq8/Jappan/issues)
 
-- Prefer to invite the bot to your own server, use the [Invite Link](https://discord.com/api/oauth2/authorize?client_id=732230135671029831&permissions=8&scope=applications.commands%20bot)
+## Features
 
-- Use [Issues](https://github.com/febkosq8/Jappan/issues) to give feedback / suggestions or report bugs
+- Music playback with search, playlists, queue controls, looping, shuffling, and player diagnostics
+- Fun commands and soundboard playback
+- Leveling from messages, interactions, and voice activity
+- Moderation tools including warnings and message cleanup
+- Audit logging for server activity and Discord entities
+- Voice-channel region locking
+- Member join and leave announcements
+- Guild administration, command deployment, and bot management tools
 
-- Checkout our own [website](https://jappan.febkosq8.me) for more info including features, status updates, team.
+## Technical Bits
 
-Built using [Discord.js v14.16.3](https://github.com/discordjs/discord.js), [Discord-Player v6.7.1](https://github.com/Androz2091/discord-player), [Node.js v22.12.0](https://nodejs.org/en/) and hosted on [Heroku](https://www.heroku.com/).
+### Stack
 
-#
+- Runtime: [Node.js](https://nodejs.org/)
+- Language: TypeScript with strict mode and NodeNext modules
+- Discord framework: [discord.js](https://discord.js.org/)
+- Music framework: [Discord Player](https://discord-player.js.org/)
+- Database: MongoDB with [Mongoose](https://mongoosejs.com/)
+- Package manager: [pnpm](https://pnpm.io/)
 
-## Reason for this repository
+### Setup
 
-- This is not supposed to be a definitive guide on how to build a discord bot.
+1. Install pnpm and the required Node.js runtime.
+2. Install dependencies:
 
-- The `.env` and `config.json` files are not provided by design, to discourage people to not use this as a clone and use bot repo.
+    ```text
+    pnpm install
+    ```
 
-- This repository is to showcase the ways to implement various commands/packages (discord.js, discord-player, etc).
+3. Copy `.env.example` to `.env`.
+4. Set the required `DISCORD_TOKEN` and `DB_URL` values. Review `.env.example` for optional settings.
 
-- Most of the implementation should be fairly simple to understand. Feel free to drop me a DM on Discord : Febkosq8#8685, to clarify doubt's.
+### Commands
 
-_Actual development work happens over at another private repo._
+```text
+pnpm run dev           # Start the development watcher
+pnpm run typecheck     # Check TypeScript without emitting files
+pnpm run build         # Build the production bundle
+pnpm start             # Start the production bundle
+pnpm run format        # Format TypeScript files
+pnpm run format:check  # Check TypeScript formatting
+```
 
-#
+There is currently no automated test script. Use typecheck, build, and focused manual verification when validating changes.
 
-## Change Log
+### Migration
 
-Find the changelog over [here](https://github.com/febkosq8/Jappan/blob/main/ChangeLog.md)
+The v1-to-v2 migration is a one-time, environment-dependent operation:
 
-#
+```text
+pnpm run migrate:v1tov2 -- <v1-db-url> <v2-db-url>
+```
+
+The migration clears the v2 destination database after a 10-second cancellation window. Create a backup of the destination database before running it. Press `Ctrl+C` during the cancellation window to stop the migration.
+
+### Project Structure
+
+- `src/index.ts` and `src/bot.ts`: application bootstrap and lifecycle
+- `src/commands/`: global slash commands
+- `src/commands/guildCommands/`: guild-scoped slash commands
+- `src/buttons/`: button interaction implementations
+- `src/handlers/`: Discord event and interaction adapters
+- `src/services/`: feature behavior, persistence coordination, loaders, and configuration
+- `src/models/`: Mongoose models and schemas
+- `src/helpers/`: shared utilities and formatting helpers
+
+Handlers and command entry points should remain thin. Business rules and persistence operations belong in services.
+
+### Documentation
+
+- [discord.js documentation](https://discord.js.org/docs/packages/discord.js/main)
+- [Discord.js guide](https://discordjs.guide/)
+- [Discord Player documentation](https://discord-player.js.org/)
+- [Mongoose documentation](https://mongoosejs.com/docs/)
+- [pnpm documentation](https://pnpm.io/)
