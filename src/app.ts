@@ -8,6 +8,10 @@ import { logger } from "./services/logger.js";
 const app = express();
 let server: Server | undefined;
 
+app.disable("x-powered-by");
+app.disable("etag");
+app.use(express.json({ limit: "25mb" }));
+app.use(express.urlencoded({ limit: "25mb", extended: false }));
 registerHttpHandlers(app);
 
 export function startApp(): Promise<void> {
@@ -16,10 +20,6 @@ export function startApp(): Promise<void> {
 	}
 
 	const port = getConfig("PORT");
-	app.use(express.json({ limit: "25mb" }));
-	app.use(express.urlencoded({ limit: "25mb", extended: false }));
-	app.disable("x-powered-by");
-	app.disable("etag");
 	return new Promise((resolve, reject) => {
 		const httpServer = app.listen(port, () => {
 			server = httpServer;
