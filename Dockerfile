@@ -19,7 +19,7 @@ FROM node:24.22.0-bookworm-slim AS runtime
 
 LABEL org.opencontainers.image.source="https://github.com/febkosq8/Jappan" \
 	org.opencontainers.image.description="Jappan is a Discord bot made to make life easier through music playback, fun commands, moderation, leveling, audit logging, playlists, and server administration features." \
-	org.opencontainers.image.licenses="ISC"
+	org.opencontainers.image.licenses="CC-BY-NC-4.0"
 
 WORKDIR /app
 

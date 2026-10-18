@@ -27,7 +27,7 @@
 		"music"
 	],
 	"author": "Febkosq8",
-	"license": "ISC",
+	"license": "CC-BY-NC-4.0",
 	"packageManager": "pnpm@12.9.0",
 	"repository": {
 		"type": "git",

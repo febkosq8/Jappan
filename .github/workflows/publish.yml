@@ -320,7 +320,12 @@ jobs:
                   labels: |
                       org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
                       org.opencontainers.image.description=${{ steps.readme.outputs.description }}
-                      org.opencontainers.image.licenses=ISC
+                      org.opencontainers.image.licenses=CC-BY-NC-4.0
+                      org.opencontainers.image.version=${{ needs.prepare.outputs.version }}
+                  annotations: |
+                      org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+                      org.opencontainers.image.description=${{ steps.readme.outputs.description }}
+                      org.opencontainers.image.licenses=CC-BY-NC-4.0
                       org.opencontainers.image.version=${{ needs.prepare.outputs.version }}
                   tags: |
                       type=raw,value=${{ needs.prepare.outputs.version }}
