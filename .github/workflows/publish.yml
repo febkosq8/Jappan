@@ -40,6 +40,7 @@ jobs:
                   CREATE_RELEASE: ${{ inputs.create_release }}
                   CREATE_TAG: ${{ inputs.create_tag }}
                   PUBLISH_DOCKER: ${{ inputs.publish_docker }}
+                  IMAGE_NAME: ${{ env.REGISTRY }}/${{ github.repository }}
               run: |
                   node --input-type=module -e '
                     import { appendFileSync, readFileSync } from "node:fs";
@@ -68,11 +69,15 @@ jobs:
                       );
                       if (end === -1) end = lines.length;
 
-                      const notes = lines.slice(start + 1, end).join("\n").trim();
-                      if (!notes) {
+                      const changelog = lines.slice(start + 1, end).join("\n").trim();
+                      if (!changelog) {
                         throw new Error(`Changelog section for version ${version} is empty`);
                       }
 
+                      const dockerPull = process.env.PUBLISH_DOCKER === "true"
+                        ? `docker pull ${process.env.IMAGE_NAME.toLowerCase()}:${version}\n\n`
+                        : "";
+                      const notes = `${dockerPull}${changelog}`;
                       const delimiter = `NOTES_${randomUUID()}`;
                       appendFileSync(
                         process.env.GITHUB_OUTPUT,
@@ -84,8 +89,80 @@ jobs:
                     appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${summary}\n`);
                   '
 
-    approval:
+    check:
         needs: prepare
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Ensure version tag does not exist
+              if: inputs.create_tag
+              env:
+                  VERSION: ${{ needs.prepare.outputs.version }}
+              run: |
+                  tag="v${VERSION}"
+                  existing_tag=$(git ls-remote --tags origin "refs/tags/${tag}")
+                  if [ -n "$existing_tag" ]; then
+                      echo "::error::Git tag ${tag} already exists; refusing to publish this version."
+                      exit 1
+                  fi
+
+            - name: Ensure GitHub release does not exist
+              if: inputs.create_release
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  VERSION: ${{ needs.prepare.outputs.version }}
+              run: |
+                  tag="v${VERSION}"
+                  status=$(curl --silent --show-error \
+                      --output "$RUNNER_TEMP/release.json" \
+                      --write-out '%{http_code}' \
+                      --header "Authorization: Bearer ${GH_TOKEN}" \
+                      --header "Accept: application/vnd.github+json" \
+                      "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/releases/tags/${tag}")
+
+                  if [ "$status" = "200" ]; then
+                      echo "::error::GitHub release ${tag} already exists; refusing to publish this version."
+                      exit 1
+                  elif [ "$status" != "404" ]; then
+                      echo "::error::Could not check GitHub release ${tag} (HTTP ${status})."
+                      cat "$RUNNER_TEMP/release.json"
+                      exit 1
+                  fi
+
+            - name: Set up Docker Buildx for image check
+              if: inputs.publish_docker
+              uses: docker/setup-buildx-action@v3
+
+            - name: Log in to GitHub Container Registry for image check
+              if: inputs.publish_docker
+              uses: docker/login-action@v3
+              with:
+                  registry: ${{ env.REGISTRY }}
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Ensure Docker image version does not exist
+              if: inputs.publish_docker
+              env:
+                  VERSION: ${{ needs.prepare.outputs.version }}
+                  IMAGE_NAME: ${{ env.IMAGE_NAME }}
+              run: |
+                  image="${REGISTRY}/${IMAGE_NAME,,}:${VERSION}"
+                  if output=$(docker buildx imagetools inspect "$image" 2>&1); then
+                      echo "::error::Docker image ${image} already exists; refusing to publish this version."
+                      exit 1
+                  elif printf '%s' "$output" | grep -Eqi 'manifest unknown|no such manifest|: not found$'; then
+                      echo "Docker image ${image} does not exist."
+                  else
+                      echo "::error::Could not check Docker image ${image}."
+                      printf '%s\n' "$output"
+                      exit 1
+                  fi
+
+    approval:
+        needs: [prepare, check]
         if: inputs.create_tag || inputs.create_release || inputs.publish_docker
         runs-on: ubuntu-latest
         environment: Jappan-Env
@@ -94,7 +171,7 @@ jobs:
               run: echo "Publish preview approved."
 
     github-publish:
-        needs: [prepare, approval]
+        needs: [prepare, check, approval]
         if: inputs.create_tag || inputs.create_release || inputs.publish_docker
         runs-on: ubuntu-latest
         steps:

@@ -1,0 +1,185 @@
+name: Unpublish
+
+on:
+    workflow_dispatch:
+        inputs:
+            delete_tag:
+                description: Delete the version Git tag
+                type: boolean
+                default: false
+            delete_release:
+                description: Delete the GitHub release
+                type: boolean
+                default: false
+            delete_docker:
+                description: Delete the Docker image version
+                type: boolean
+                default: false
+
+permissions:
+    contents: write
+    packages: write
+
+jobs:
+    prepare:
+        runs-on: ubuntu-latest
+        outputs:
+            version: ${{ steps.version.outputs.value }}
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Read version and prepare unpublish preview
+              id: version
+              env:
+                  DELETE_TAG: ${{ inputs.delete_tag }}
+                  DELETE_RELEASE: ${{ inputs.delete_release }}
+                  DELETE_DOCKER: ${{ inputs.delete_docker }}
+              run: |
+                  version=$(node -p "require('./package.json').version")
+                  echo "value=${version}" >> "$GITHUB_OUTPUT"
+                  {
+                      echo "## Unpublish preview"
+                      echo
+                      echo "Version: \`v${version}\`"
+                      echo
+                      echo "- Delete Git tag: ${DELETE_TAG}"
+                      echo "- Delete GitHub release: ${DELETE_RELEASE}"
+                      echo "- Delete Docker image version: ${DELETE_DOCKER}"
+                  } >> "$GITHUB_STEP_SUMMARY"
+
+    check:
+        needs: prepare
+        runs-on: ubuntu-latest
+        outputs:
+            docker_version_id: ${{ steps.docker-version.outputs.version_id }}
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Check Git tag exists
+              if: inputs.delete_tag
+              env:
+                  VERSION: ${{ needs.prepare.outputs.version }}
+              run: |
+                  tag="v${VERSION}"
+                  if ! existing_tag=$(git ls-remote --tags origin "refs/tags/${tag}"); then
+                      echo "::error::Could not check whether Git tag ${tag} exists."
+                      exit 1
+                  fi
+                  if [ -z "$existing_tag" ]; then
+                      echo "::error::Git tag ${tag} does not exist; nothing to delete."
+                      exit 1
+                  fi
+                  echo "Git tag ${tag} exists and can be deleted."
+
+            - name: Check GitHub release exists
+              if: inputs.delete_release
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  VERSION: ${{ needs.prepare.outputs.version }}
+              run: |
+                  tag="v${VERSION}"
+                  status=$(curl --silent --show-error \
+                      --output "$RUNNER_TEMP/release.json" \
+                      --write-out '%{http_code}' \
+                      --header "Authorization: Bearer ${GH_TOKEN}" \
+                      --header "Accept: application/vnd.github+json" \
+                      "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/releases/tags/${tag}")
+
+                  if [ "$status" = "404" ]; then
+                      echo "::error::GitHub release ${tag} does not exist; nothing to delete."
+                      exit 1
+                  elif [ "$status" != "200" ]; then
+                      echo "::error::Could not check GitHub release ${tag} (HTTP ${status})."
+                      cat "$RUNNER_TEMP/release.json"
+                      exit 1
+                  fi
+                  echo "GitHub release ${tag} exists and can be deleted."
+
+            - name: Check Docker image version exists
+              id: docker-version
+              if: inputs.delete_docker
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  VERSION: ${{ needs.prepare.outputs.version }}
+              run: |
+                  package_name="${GITHUB_REPOSITORY#*/}"
+                  package_name="${package_name,,}"
+                  matches=$(gh api --paginate \
+                      --jq '.[] | select(.metadata.container.tags | index(env.VERSION)) | [.id, (.metadata.container.tags | join(","))] | @tsv' \
+                      "/users/${GITHUB_REPOSITORY_OWNER}/packages/container/${package_name}/versions?per_page=100")
+
+                  if [ -z "$matches" ]; then
+                      echo "::error::Docker image version ${VERSION} does not exist; nothing to delete."
+                      exit 1
+                  fi
+
+                  mapfile -t versions <<< "$matches"
+                  if [ "${#versions[@]}" -ne 1 ]; then
+                      echo "::error::Found multiple Docker image versions tagged ${VERSION}; refusing ambiguous deletion."
+                      exit 1
+                  fi
+
+                  IFS=$'\t' read -r version_id tags <<< "${versions[0]}"
+                  if [[ ! "$version_id" =~ ^[0-9]+$ ]]; then
+                      echo "::error::GitHub returned an invalid Docker package version ID."
+                      exit 1
+                  fi
+
+                  echo "version_id=${version_id}" >> "$GITHUB_OUTPUT"
+                  {
+                      echo
+                      echo "Docker package version ID: \`${version_id}\`"
+                      echo "Docker tags on that version: \`${tags}\`"
+                  } >> "$GITHUB_STEP_SUMMARY"
+
+    approval:
+        needs: [prepare, check]
+        if: inputs.delete_tag || inputs.delete_release || inputs.delete_docker
+        runs-on: ubuntu-latest
+        environment: Jappan-Env
+        steps:
+            - name: Approve unpublish preview
+              run: echo "Unpublish preview approved."
+
+    github-unpublish:
+        needs: [prepare, check, approval]
+        if: inputs.delete_tag || inputs.delete_release
+        runs-on: ubuntu-latest
+        steps:
+            - name: Delete GitHub release
+              if: inputs.delete_release
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  VERSION: ${{ needs.prepare.outputs.version }}
+              run: gh release delete "v${VERSION}" --yes
+
+            - name: Delete Git tag
+              if: inputs.delete_tag
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  VERSION: ${{ needs.prepare.outputs.version }}
+              run: gh api --method DELETE "/repos/${GITHUB_REPOSITORY}/git/refs/tags/v${VERSION}"
+
+    docker-unpublish:
+        needs: [prepare, check, approval, github-unpublish]
+        if: >-
+            always() &&
+            inputs.delete_docker &&
+            needs.prepare.result == 'success' &&
+            needs.check.result == 'success' &&
+            needs.approval.result == 'success' &&
+            (needs.github-unpublish.result == 'success' || needs.github-unpublish.result == 'skipped')
+        runs-on: ubuntu-latest
+        steps:
+            - name: Delete Docker image version
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  VERSION_ID: ${{ needs.check.outputs.docker_version_id }}
+              run: |
+                  package_name="${GITHUB_REPOSITORY#*/}"
+                  package_name="${package_name,,}"
+                  gh api --method DELETE \
+                      "/users/${GITHUB_REPOSITORY_OWNER}/packages/container/${package_name}/versions/${VERSION_ID}"
+                  echo "Deleted Docker package version ${VERSION_ID}."
