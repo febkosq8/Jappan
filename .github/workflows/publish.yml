@@ -124,7 +124,7 @@ jobs:
                         process.env.GITHUB_OUTPUT,
                         `release_notes<<${delimiter}\n${notes}\n${delimiter}\n`,
                       );
-                      summary += `\n### Release notes\n\n${notes}\n`;
+                      summary += `\n---\n\n### Release notes\n\n${notes}\n`;
                     }
 
                     appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${summary}\n`);
