@@ -54,12 +54,11 @@ jobs:
             - name: Print published image and tags
               if: success()
               env:
-                  IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
                   TAGS: ${{ steps.meta.outputs.tags }}
               run: |
                   number=1
                   printf '%s\n' "$TAGS" | while IFS= read -r tag; do
                       [ -n "$tag" ] || continue
-                      printf '%d. %s/%s\n' "$number" "$IMAGE" "${tag##*:}"
+                      printf '%d. %s\n' "$number" "$tag"
                       number=$((number + 1))
                   done
