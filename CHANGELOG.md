@@ -31,6 +31,10 @@ This release delivers the TypeScript rewrite of the Jappan Discord bot, with sta
 - Added music playback with track and playlist search, queue controls, Discord Player lifecycle management, and extractor loading.
 - Added persistent user playlists with add, remove, check, shuffle, and loop settings.
 - Added the six legacy soundboard clips through `/soundboard`.
+- Added an Express HTTP server, configurable through `PORT`, with security headers, request logging, request timeouts, and structured 404 and malformed-request responses.
+- Added public health endpoints under `/public/health` for the database, Discord connection, music player, and overall service status.
+- Added OpenAPI documentation at `/openapi.json` and interactive Swagger UI at `/swagger`.
+- Added graceful HTTP server shutdown alongside the bot.
 - Added online bot presence with periodic guild and user count updates.
 
 ### Changed

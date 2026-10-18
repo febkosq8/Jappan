@@ -281,6 +281,8 @@ jobs:
             - name: Extract metadata
               id: meta
               uses: docker/metadata-action@v5
+              env:
+                  DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest,index
               with:
                   images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
                   labels: |
@@ -299,6 +301,7 @@ jobs:
                   push: true
                   tags: ${{ steps.meta.outputs.tags }}
                   labels: ${{ steps.meta.outputs.labels }}
+                  annotations: ${{ steps.meta.outputs.annotations }}
                   cache-from: type=gha
                   cache-to: type=gha,mode=max
 
