@@ -50,3 +50,13 @@ jobs:
                   labels: ${{ steps.meta.outputs.labels }}
                   cache-from: type=gha
                   cache-to: type=gha,mode=max
+
+            - name: Print published image and tags
+              if: success()
+              env:
+                  IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+                  TAGS: ${{ steps.meta.outputs.tags }}
+              run: |
+                  echo "Docker image: $IMAGE"
+                  echo "Tags:"
+                  echo "$TAGS"
