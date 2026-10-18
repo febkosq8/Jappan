@@ -1,7 +1,22 @@
+import { getOpenApiDocument } from "../docs/openapi.js";
 import { defineRouter } from "../helpers/route.js";
 import { getConfig } from "../services/config.js";
+import { routers } from "./index.js";
 
 export default defineRouter("/", [
+	{
+		method: "get",
+		path: "/openapi.json",
+		tags: ["Base"],
+		hidden: true,
+		summary: "OpenAPI specification",
+		errorMessage: "Something went wrong while returning the OpenAPI specification",
+		responses: { 200: { description: "OpenAPI specification document" } },
+		// routers is read lazily because routes/index.ts imports this file
+		handler: (_request, response) => {
+			return response.status(200).json(getOpenApiDocument(routers));
+		},
+	},
 	{
 		method: "get",
 		path: "/",

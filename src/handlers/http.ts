@@ -5,7 +5,7 @@ import swagger, { DOCS_ROUTE } from "../routes/swagger.js";
 import { logger } from "../services/logger.js";
 
 const REQUEST_TIMEOUT_MS = 5 * 60 * 1000;
-const QUIET_ROUTES = ["/health"];
+const QUIET_ROUTES = ["/public/health"];
 const QUIET_METHODS = ["OPTIONS"];
 const CSP_BASE =
 	"object-src 'none'; frame-src 'none'; form-action 'self'; base-uri 'self'; frame-ancestors 'none'; upgrade-insecure-requests;";

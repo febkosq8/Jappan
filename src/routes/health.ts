@@ -15,7 +15,9 @@ export default defineRouter("/public/health", [
 		summary: "Database health",
 		errorMessage: "Something went wrong while returning database health check",
 		responses: { 200: { description: "Database health status", schema: serviceHealthSchema } },
-		handler: (_request, response) => response.status(200).json({ healthy: isDatabaseConnected() }),
+		handler: (_request, response) => {
+			return response.status(200).json({ healthy: isDatabaseConnected() });
+		},
 	},
 	{
 		method: "get",
@@ -24,7 +26,9 @@ export default defineRouter("/public/health", [
 		summary: "Discord health",
 		errorMessage: "Something went wrong while returning discord health check",
 		responses: { 200: { description: "Discord health status", schema: serviceHealthSchema } },
-		handler: (_request, response) => response.status(200).json({ healthy: isBotConnected() }),
+		handler: (_request, response) => {
+			return response.status(200).json({ healthy: isBotConnected() });
+		},
 	},
 	{
 		method: "get",
@@ -33,7 +37,9 @@ export default defineRouter("/public/health", [
 		summary: "Player health",
 		errorMessage: "Something went wrong while returning player health check",
 		responses: { 200: { description: "Player health status", schema: serviceHealthSchema } },
-		handler: (_request, response) => response.status(200).json({ healthy: isPlayerAvailable() }),
+		handler: (_request, response) => {
+			return response.status(200).json({ healthy: isPlayerAvailable() });
+		},
 	},
 	{
 		method: "get",
@@ -43,7 +49,7 @@ export default defineRouter("/public/health", [
 		errorMessage: "Something went wrong while returning health check",
 		responses: {
 			200: {
-				description: "Overall health status",
+				description: "Overall health status with individual service statuses",
 				schema: z.object({
 					healthy: z.boolean(),
 					services: z.object({ db: z.boolean(), discord: z.boolean(), player: z.boolean() }),
