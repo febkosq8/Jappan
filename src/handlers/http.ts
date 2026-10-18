@@ -1,5 +1,8 @@
 import type { ErrorRequestHandler, Express, NextFunction, Request, Response } from "express";
 
+import swaggerUi from "swagger-ui-express";
+
+import { getOpenApiDocument } from "../docs/openapi.js";
 import base from "../routes/base.js";
 import health from "../routes/health.js";
 import { logger } from "../services/logger.js";
@@ -7,6 +10,12 @@ import { logger } from "../services/logger.js";
 const REQUEST_TIMEOUT_MS = 5 * 60 * 1000;
 const QUIET_ROUTES = ["/health"];
 const QUIET_METHODS = ["OPTIONS"];
+const DOCS_ROUTE = "/swagger";
+const CSP_BASE =
+	"object-src 'none'; frame-src 'none'; form-action 'self'; base-uri 'self'; frame-ancestors 'none'; upgrade-insecure-requests;";
+const DEFAULT_CSP = `default-src 'none'; script-src 'none'; style-src 'none'; ${CSP_BASE}`;
+// Swagger UI loads its scripts from the same origin but ships inline <style> blocks and data: images
+const DOCS_CSP = `default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; ${CSP_BASE}`;
 
 const securityHeaders: Record<string, string> = {
 	"X-Frame-Options": "DENY",
@@ -14,14 +23,13 @@ const securityHeaders: Record<string, string> = {
 	"Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
 	"Referrer-Policy": "no-referrer",
 	"Cache-Control": "no-cache, no-store, must-revalidate",
-	"Content-Security-Policy":
-		"default-src 'none'; script-src 'none'; style-src 'none'; object-src 'none'; frame-src 'none'; form-action 'self'; base-uri 'self'; frame-ancestors 'none'; upgrade-insecure-requests;",
 };
 
 function processRequest(request: Request, response: Response, next: NextFunction): void {
 	for (const [name, value] of Object.entries(securityHeaders)) {
 		response.setHeader(name, value);
 	}
+	response.setHeader("Content-Security-Policy", request.path.startsWith(DOCS_ROUTE) ? DOCS_CSP : DEFAULT_CSP);
 	response.setTimeout(REQUEST_TIMEOUT_MS, () => {
 		logger.warn("HTTP", "HTTP request timed out", { method: request.method, url: request.originalUrl });
 		if (!response.headersSent) {
@@ -33,7 +41,7 @@ function processRequest(request: Request, response: Response, next: NextFunction
 			});
 		}
 	});
-	if (!QUIET_ROUTES.includes(request.path) && !QUIET_METHODS.includes(request.method)) {
+	if (!QUIET_ROUTES.some((route) => request.path.startsWith(route)) && !QUIET_METHODS.includes(request.method)) {
 		logger.info("HTTP", "HTTP request received", {
 			method: request.method,
 			url: request.originalUrl,
@@ -66,6 +74,12 @@ function handleNotFound(request: Request, response: Response): void {
 
 export function registerHttpHandlers(app: Express): void {
 	app.use(processRequest);
+	app.use(DOCS_ROUTE, swaggerUi.serve, (request: Request, response: Response, next: NextFunction) =>
+		swaggerUi.setup(getOpenApiDocument(), { customSiteTitle: "API Docs" })(request, response, next),
+	);
+	app.get("/openapi.json", (_request, response) => {
+		response.status(200).json(getOpenApiDocument());
+	});
 	app.use("/health", health);
 	app.use("/", base);
 	app.use(handleNotFound);

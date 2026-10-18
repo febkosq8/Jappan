@@ -1,6 +1,7 @@
 minimumReleaseAge: 1440 # min 1 day
 minimumReleaseAgeStrict: true # block releases that are too new
 allowBuilds:
+    "@scarf/scarf": false
     bufferutil: true
     esbuild: true
     ffmpeg-static: false

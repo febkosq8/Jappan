@@ -12,13 +12,13 @@ app.disable("x-powered-by");
 app.disable("etag");
 app.use(express.json({ limit: "25mb" }));
 app.use(express.urlencoded({ limit: "25mb", extended: false }));
-registerHttpHandlers(app);
 
 export function startApp(): Promise<void> {
 	if (server) {
 		return Promise.resolve();
 	}
 
+	registerHttpHandlers(app);
 	const port = getConfig("PORT");
 	return new Promise((resolve, reject) => {
 		const httpServer = app.listen(port, () => {
