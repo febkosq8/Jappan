@@ -233,11 +233,26 @@ jobs:
                   username: ${{ github.actor }}
                   password: ${{ secrets.GITHUB_TOKEN }}
 
+            - name: Read description from README
+              id: readme
+              run: |
+                  description=$(awk 'NR > 1 && NF { print; exit }' README.md)
+                  if [ -z "$description" ]; then
+                      echo "::error::Could not read a description from README.md."
+                      exit 1
+                  fi
+                  echo "description=${description}" >> "$GITHUB_OUTPUT"
+
             - name: Extract metadata
               id: meta
               uses: docker/metadata-action@v5
               with:
                   images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+                  labels: |
+                      org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+                      org.opencontainers.image.description=${{ steps.readme.outputs.description }}
+                      org.opencontainers.image.licenses=ISC
+                      org.opencontainers.image.version=${{ needs.prepare.outputs.version }}
                   tags: |
                       type=raw,value=${{ needs.prepare.outputs.version }}
                       type=raw,value=latest
