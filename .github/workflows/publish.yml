@@ -147,8 +147,10 @@ jobs:
                   existing_tag=$(git ls-remote --tags origin "refs/tags/${tag}")
                   if [ -n "$existing_tag" ]; then
                       echo "::error::Git tag ${tag} already exists; refusing to publish this version."
+                      printf '\n> [!WARNING]\n> Git tag `%s` already exists; refusing to publish this version.\n' "$tag" >> "$GITHUB_STEP_SUMMARY"
                       exit 1
                   fi
+                  printf '\n> [!NOTE]\n> Git tag `%s` does not exist yet.\n' "$tag" >> "$GITHUB_STEP_SUMMARY"
 
             - name: Ensure GitHub release does not exist
               if: inputs.create_release
@@ -166,12 +168,15 @@ jobs:
 
                   if [ "$status" = "200" ]; then
                       echo "::error::GitHub release ${tag} already exists; refusing to publish this version."
+                      printf '\n> [!WARNING]\n> GitHub release `%s` already exists; refusing to publish this version.\n' "$tag" >> "$GITHUB_STEP_SUMMARY"
                       exit 1
                   elif [ "$status" != "404" ]; then
                       echo "::error::Could not check GitHub release ${tag} (HTTP ${status})."
                       cat "$RUNNER_TEMP/release.json"
+                      printf '\n> [!WARNING]\n> Could not check GitHub release `%s` (HTTP %s).\n' "$tag" "$status" >> "$GITHUB_STEP_SUMMARY"
                       exit 1
                   fi
+                  printf '\n> [!NOTE]\n> GitHub release `%s` does not exist yet.\n' "$tag" >> "$GITHUB_STEP_SUMMARY"
 
             - name: Set up Docker Buildx for image check
               if: inputs.publish_docker
@@ -194,12 +199,15 @@ jobs:
                   image="${REGISTRY}/${IMAGE_NAME,,}:${VERSION}"
                   if output=$(docker buildx imagetools inspect "$image" 2>&1); then
                       echo "::error::Docker image ${image} already exists; refusing to publish this version."
+                      printf '\n> [!WARNING]\n> Docker image `%s` already exists; refusing to publish this version.\n' "$image" >> "$GITHUB_STEP_SUMMARY"
                       exit 1
                   elif printf '%s' "$output" | grep -Eqi 'manifest unknown|no such manifest|: not found$'; then
                       echo "Docker image ${image} does not exist."
+                      printf '\n> [!NOTE]\n> Docker image `%s` does not exist yet.\n' "$image" >> "$GITHUB_STEP_SUMMARY"
                   else
                       echo "::error::Could not check Docker image ${image}."
                       printf '%s\n' "$output"
+                      printf '\n> [!WARNING]\n> Could not check Docker image `%s`.\n' "$image" >> "$GITHUB_STEP_SUMMARY"
                       exit 1
                   fi
 

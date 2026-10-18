@@ -77,13 +77,16 @@ jobs:
                   tag="v${VERSION}"
                   if ! existing_tag=$(git ls-remote --tags origin "refs/tags/${tag}"); then
                       echo "::error::Could not check whether Git tag ${tag} exists."
+                      printf '\n> [!WARNING]\n> Could not check whether Git tag `%s` exists.\n' "$tag" >> "$GITHUB_STEP_SUMMARY"
                       exit 1
                   fi
                   if [ -z "$existing_tag" ]; then
                       echo "::error::Git tag ${tag} does not exist; nothing to delete."
+                      printf '\n> [!WARNING]\n> Git tag `%s` does not exist; nothing to delete.\n' "$tag" >> "$GITHUB_STEP_SUMMARY"
                       exit 1
                   fi
                   echo "Git tag ${tag} exists and can be deleted."
+                  printf '\n> [!NOTE]\n> Git tag `%s` exists and can be deleted.\n' "$tag" >> "$GITHUB_STEP_SUMMARY"
 
             - name: Check GitHub release exists
               if: inputs.delete_release
@@ -101,13 +104,16 @@ jobs:
 
                   if [ "$status" = "404" ]; then
                       echo "::error::GitHub release ${tag} does not exist; nothing to delete."
+                      printf '\n> [!WARNING]\n> GitHub release `%s` does not exist; nothing to delete.\n' "$tag" >> "$GITHUB_STEP_SUMMARY"
                       exit 1
                   elif [ "$status" != "200" ]; then
                       echo "::error::Could not check GitHub release ${tag} (HTTP ${status})."
                       cat "$RUNNER_TEMP/release.json"
+                      printf '\n> [!WARNING]\n> Could not check GitHub release `%s` (HTTP %s).\n' "$tag" "$status" >> "$GITHUB_STEP_SUMMARY"
                       exit 1
                   fi
                   echo "GitHub release ${tag} exists and can be deleted."
+                  printf '\n> [!NOTE]\n> GitHub release `%s` exists and can be deleted.\n' "$tag" >> "$GITHUB_STEP_SUMMARY"
 
             - name: Check Docker image version exists
               id: docker-version
@@ -124,6 +130,7 @@ jobs:
 
                   if [ -z "$versions" ]; then
                       echo "::error::Docker image version ${VERSION} does not exist; nothing to delete."
+                      printf '\n> [!WARNING]\n> Docker image version `%s` does not exist; nothing to delete.\n' "$VERSION" >> "$GITHUB_STEP_SUMMARY"
                       exit 1
                   fi
 
@@ -142,17 +149,20 @@ jobs:
 
                   if [ "${#matches[@]}" -eq 0 ]; then
                       echo "::error::Docker image version ${VERSION} does not exist; nothing to delete."
+                      printf '\n> [!WARNING]\n> Docker image version `%s` does not exist; nothing to delete.\n' "$VERSION" >> "$GITHUB_STEP_SUMMARY"
                       exit 1
                   fi
 
                   if [ "${#matches[@]}" -ne 1 ]; then
                       echo "::error::Found multiple Docker image versions tagged ${VERSION}; refusing ambiguous deletion."
+                      printf '\n> [!WARNING]\n> Found multiple Docker image versions tagged `%s`; refusing ambiguous deletion.\n' "$VERSION" >> "$GITHUB_STEP_SUMMARY"
                       exit 1
                   fi
 
                   IFS=$'\t' read -r version_id tags <<< "${matches[0]}"
                   if [[ ! "$version_id" =~ ^[0-9]+$ ]]; then
                       echo "::error::GitHub returned an invalid Docker package version ID."
+                      printf '\n> [!WARNING]\n> GitHub returned an invalid Docker package version ID.\n' >> "$GITHUB_STEP_SUMMARY"
                       exit 1
                   fi
 
@@ -164,12 +174,16 @@ jobs:
                   fi
                   {
                       echo
-                      echo "Docker package version ID: \`${version_id}\`"
-                      echo "Docker tags on that version: \`${tags}\`"
                       if [ "$tagged_version_count" -eq 1 ]; then
-                          echo
-                          echo "**This is the last tagged Docker version. Unpublishing it will delete the entire container package.**"
+                          echo "> [!WARNING]"
+                          echo "> This is the last tagged Docker version. Unpublishing it will delete the entire container package."
+                      else
+                          echo "> [!NOTE]"
+                          echo "> Docker image version \`${VERSION}\` exists and can be deleted."
                       fi
+                      echo ">"
+                      echo "> - Package version ID: \`${version_id}\`"
+                      echo "> - Tags on that version: \`${tags}\`"
                   } | tee -a "$GITHUB_STEP_SUMMARY"
 
     approval:
