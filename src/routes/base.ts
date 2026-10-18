@@ -1,20 +1,20 @@
-import { Router, type Router as ExpressRouter } from "express";
-
+import { defineRouter } from "../helpers/route.js";
 import { getConfig } from "../services/config.js";
-import { logger } from "../services/logger.js";
 
-const router: ExpressRouter = Router();
-
-router.get("/", (_request, response) => {
-	try {
-		const address = getConfig("BOT_WEBSITE");
-		return response.header("Location", address).status(307).send(`Redirecting to '${address}'`);
-	} catch (error) {
-		logger.error("HTTP", "Failed to return homepage", {
-			error: error instanceof Error ? error.message : String(error),
-		});
-		return response.status(500).json({ error: "Something went wrong while returning homepage" });
-	}
-});
-
-export default router;
+export default defineRouter("/", [
+	{
+		method: "get",
+		path: "/",
+		tags: ["Base"],
+		hidden: true,
+		summary: "Redirect to the bot website",
+		errorMessage: "Something went wrong while redirecting to homepage",
+		responses: {
+			307: { description: "Redirect to the bot website", headers: { Location: "Bot website URL" } },
+		},
+		handler: (_request, response) => {
+			const address = getConfig("BOT_WEBSITE");
+			return response.header("Location", address).status(307).send(`Redirecting to '${address}'`);
+		},
+	},
+]);

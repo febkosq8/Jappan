@@ -1,16 +1,12 @@
 import type { ErrorRequestHandler, Express, NextFunction, Request, Response } from "express";
 
-import swaggerUi from "swagger-ui-express";
-
-import { getOpenApiDocument } from "../docs/openapi.js";
-import base from "../routes/base.js";
-import health from "../routes/health.js";
+import { routers } from "../routes/index.js";
+import swagger, { DOCS_ROUTE } from "../routes/swagger.js";
 import { logger } from "../services/logger.js";
 
 const REQUEST_TIMEOUT_MS = 5 * 60 * 1000;
 const QUIET_ROUTES = ["/health"];
 const QUIET_METHODS = ["OPTIONS"];
-const DOCS_ROUTE = "/swagger";
 const CSP_BASE =
 	"object-src 'none'; frame-src 'none'; form-action 'self'; base-uri 'self'; frame-ancestors 'none'; upgrade-insecure-requests;";
 const DEFAULT_CSP = `default-src 'none'; script-src 'none'; style-src 'none'; ${CSP_BASE}`;
@@ -74,14 +70,10 @@ function handleNotFound(request: Request, response: Response): void {
 
 export function registerHttpHandlers(app: Express): void {
 	app.use(processRequest);
-	app.use(DOCS_ROUTE, swaggerUi.serve, (request: Request, response: Response, next: NextFunction) =>
-		swaggerUi.setup(getOpenApiDocument(), { customSiteTitle: "API Docs" })(request, response, next),
-	);
-	app.get("/openapi.json", (_request, response) => {
-		response.status(200).json(getOpenApiDocument());
-	});
-	app.use("/health", health);
-	app.use("/", base);
+	app.use(swagger);
+	for (const { basePath, router } of routers) {
+		app.use(basePath, router);
+	}
 	app.use(handleNotFound);
 	app.use(handleError);
 }

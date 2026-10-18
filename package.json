@@ -61,6 +61,7 @@
 		"mongoose": "9.11.2",
 		"simple-ytdl-core": "1.1.1",
 		"swagger-ui-express": "5.0.1",
-		"zlib-sync": "0.1.10"
+		"zlib-sync": "0.1.10",
+		"zod": "4.6.7"
 	}
 }
