@@ -5,7 +5,7 @@
 	"type": "module",
 	"main": "dist/index.js",
 	"engines": {
-		"node": ">=24.22.0"
+		"node": ">=24.22.1"
 	},
 	"scripts": {
 		"build": "tsup src/index.ts --format esm --external @extractorpack/extractorpack",
@@ -28,7 +28,7 @@
 	],
 	"author": "Febkosq8",
 	"license": "CC-BY-NC-4.0",
-	"packageManager": "pnpm@12.9.0",
+	"packageManager": "pnpm@12.15.0",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/febkosq8/Jappan.git"
@@ -55,10 +55,10 @@
 		"discord-player": "7.2.0",
 		"discord-player-youtubei": "3.1.0",
 		"discord.js": "14.27.0",
-		"dotenv": "18.0.8",
+		"dotenv": "18.0.9",
 		"express": "5.3.0",
-		"googlevideo": "4.1.1",
-		"mongoose": "9.11.2",
+		"googlevideo": "5.0.0",
+		"mongoose": "9.11.3",
 		"simple-ytdl-core": "1.1.1",
 		"swagger-ui-express": "5.0.1",
 		"zlib-sync": "0.1.10",
