@@ -1,7 +1,7 @@
 import febProfile from "@jappan/assets/jappan/febkosq8Profile.gif";
 import inconProfile from "@jappan/assets/jappan/inconsistentProfile.jpg";
 import rinProfile from "@jappan/assets/jappan/rinzaiProfile.jpeg";
-import { Card, PillLink } from "@febkosq8/arc";
+import { Avatar, Card, PillLink } from "@febkosq8/arc";
 import { FiUsers } from "react-icons/fi";
 
 const teamMembers = [
@@ -29,11 +29,11 @@ export default function Team() {
 					{teamMembers.map((member) => (
 						<Card className="flex flex-col items-center gap-5 p-6 text-center" key={member.name}>
 							<Card.Content className="flex w-full flex-col items-center gap-5">
-								<img
-									className="size-36 rounded-full object-cover ring-4 ring-primary/10"
-									src={member.image}
-									alt={`${member.name} profile`}
-									loading="lazy"
+								<Avatar
+									name={`${member.name} profile`}
+									image={member.image}
+									size="xl"
+									className="size-36! ring-4 ring-primary/10"
 								/>
 								<div>
 									<p className="text-sm font-medium uppercase tracking-wider text-muted-foreground">{member.role}</p>
