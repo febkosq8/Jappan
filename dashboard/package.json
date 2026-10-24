@@ -4,15 +4,20 @@
 	"version": "2.0.3",
 	"description": "Jappan - Dashboard",
 	"type": "module",
-	"homepage": "jappan.febkosq8.me",
+	"author": {
+		"name": "Febkosq8",
+		"email": "contact@febkosq8.me",
+		"url": "https://febkosq8.me"
+	},
+	"license": "CC-BY-NC-4.0",
 	"engines": {
 		"node": ">=24.22.1"
 	},
+	"homepage": "https://jappan.febkosq8.me",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/febkosq8/Jappan.git"
 	},
-	"license": "CC-BY-NC-4.0",
 	"packageManager": "pnpm@12.15.0",
 	"scripts": {
 		"start": "vite",
