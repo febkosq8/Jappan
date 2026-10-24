@@ -192,7 +192,7 @@ importers:
         version: 7.2.0(@discord-player/extractor@7.2.0)(mediaplex@1.0.0)(supports-color@7.2.0)(tsx@4.23.15)(yaml@2.9.1)
       discord-player-youtubei:
         specifier: 3.1.0
-        version: 3.1.0(bgutils-js@4.0.3)(googlevideo@5.0.0)
+        version: 3.1.0(bgutils-js@4.0.3)(googlevideo@5.0.1)
       discord.js:
         specifier: 14.27.0
         version: 14.27.0(bufferutil@4.1.0)
@@ -203,11 +203,11 @@ importers:
         specifier: 5.3.0
         version: 5.3.0(supports-color@7.2.0)
       googlevideo:
-        specifier: 5.0.0
-        version: 5.0.0
+        specifier: 5.0.1
+        version: 5.0.1
       mongoose:
-        specifier: 9.11.3
-        version: 9.11.3
+        specifier: 9.11.4
+        version: 9.11.4
       simple-ytdl-core:
         specifier: 1.1.1
         version: 1.1.1
@@ -1607,8 +1607,8 @@ packages:
     resolution: {integrity: sha512-AOIgSQCepiJYwP3ARnGx+5VnTu2HBYdzbGP45eLw1vr3zB3vZLeyed1sC9hnbcOc9/SrMyM5RPQrkGz4aS9Zow==}
     engines: {node: '>= 6'}
 
-  googlevideo@5.0.0:
-    resolution: {integrity: sha512-gWiWaUinPIgGSmqJi+78P1eiYSkOolYs1818VC9KSv7PX61RxbHAhDcMmLcsv7s1pw9FM5j7aKv4d5ZAeYWdaQ==}
+  googlevideo@5.0.1:
+    resolution: {integrity: sha512-jbQtretPuwNXUJzjUUaIap6z8cFGMu1tnUi02bhCgcENPoAUQvi4KRRVKFvseZSiDVJ0ocU7gCY2cAfWrwDS9g==}
 
   gopd@1.2.0:
     resolution: {integrity: sha512-ZUKRh6/kUFoAiTAtTYPZJ3hw9wNxx+BIBOijnlG9PnrJsCcSjs1wyyD6vJpaYtgnzDrKYRSqf3OO6Rfa93xsRg==}
@@ -1936,16 +1936,16 @@ packages:
       socks:
         optional: true
 
-  mongoose@9.11.3:
-    resolution: {integrity: sha512-U6HaDL0A738IHlYiWf5mE4V5G6DPRmcSPh+YDSma8AKCHS+HbugwN4b6EcDSnooSHnrd27K35bKd639j3d079A==}
+  mongoose@9.11.4:
+    resolution: {integrity: sha512-+xME0fduXl1sWF+NZpJHZaNcwQSt+X2vbJ/h7GRSZ/ltLycAkGZSEABhzic0+q3IMF66KqF0viEE5+frchKCAQ==}
     engines: {node: '>=20.19.0'}
 
   mpath@0.9.0:
     resolution: {integrity: sha512-ikJRQTk8hw5DEoFVxHG1Gn9T/xcjtdnOKIU1JTmGjZZlg9LST2mBLmcX3/ICIbgJydT2GOc15RnNy5mHmzfSew==}
     engines: {node: '>=4.0.0'}
 
-  mquery@6.0.0:
-    resolution: {integrity: sha512-b2KQNsmgtkscfeDgkYMcWGn9vZI9YoXh802VDEwE6qc50zxBFQ0Oo8ROkawbPAsXCY1/Z1yp0MagqsZStPWJjw==}
+  mquery@6.0.1:
+    resolution: {integrity: sha512-/Nijmq3JcpHwDM+5CwBp5yEl6fUa6jLsIhPsoQywlGXU/ZrKIvSpBzfaGnW9BLqcne/CoUwd1ch7MRqptDgFTA==}
     engines: {node: '>=20.19.0'}
 
   ms@2.1.3:
@@ -2470,8 +2470,8 @@ packages:
     engines: {node: '>= 14.6'}
     hasBin: true
 
-  youtubei.js@18.2.0:
-    resolution: {integrity: sha512-4xvEEOk7ezu/MrYcQUABzWGKn4I2hRgjtrS8EYJmZsNXTirpF02y856tp4ART4F1tvb9XCitAYPnCFQSlz0XYA==}
+  youtubei.js@18.3.0:
+    resolution: {integrity: sha512-6Cwn/U8a+OjpZp5XgqOjwy7Lk0RrGavm3I5zO7qZWO+fes20vhWMZnlUs0h/97SwjS0AsxAZrZ5bJ85XBJVWTw==}
 
   zlib-sync@0.1.10:
     resolution: {integrity: sha512-t7/pYg5tLBznL1RuhmbAt8rNp5tbhr+TSrJFnMkRtrGIaPJZ6Dc0uR4u3OoQI2d6cGlVI62E3Gy6gwkxyIqr/w==}
@@ -3361,11 +3361,11 @@ snapshots:
 
   discord-api-types@0.38.57: {}
 
-  discord-player-youtubei@3.1.0(bgutils-js@4.0.3)(googlevideo@5.0.0):
+  discord-player-youtubei@3.1.0(bgutils-js@4.0.3)(googlevideo@5.0.1):
     dependencies:
       bgutils-js: 4.0.3
-      googlevideo: 5.0.0
-      youtubei.js: 18.2.0
+      googlevideo: 5.0.1
+      youtubei.js: 18.3.0
 
   discord-player@7.2.0(@discord-player/extractor@7.2.0)(mediaplex@1.0.0)(supports-color@7.2.0)(tsx@4.23.15)(yaml@2.9.1):
     dependencies:
@@ -3650,7 +3650,7 @@ snapshots:
     dependencies:
       is-glob: 4.0.3
 
-  googlevideo@5.0.0:
+  googlevideo@5.0.1:
     dependencies:
       '@bufbuild/protobuf': 2.16.0
 
@@ -3900,13 +3900,13 @@ snapshots:
       bson: 7.3.3
       mongodb-connection-string-url: 7.0.2
 
-  mongoose@9.11.3:
+  mongoose@9.11.4:
     dependencies:
       '@standard-schema/spec': 1.1.0
       kareem: 3.4.1
       mongodb: 7.7.0
       mpath: 0.9.0
-      mquery: 6.0.0
+      mquery: 6.0.1
       ms: 2.1.3
       sift: 17.1.3
     transitivePeerDependencies:
@@ -3920,7 +3920,7 @@ snapshots:
 
   mpath@0.9.0: {}
 
-  mquery@6.0.0: {}
+  mquery@6.0.1: {}
 
   ms@2.1.3: {}
 
@@ -4487,7 +4487,7 @@ snapshots:
   yaml@2.9.1:
     optional: true
 
-  youtubei.js@18.2.0:
+  youtubei.js@18.3.0:
     dependencies:
       '@bufbuild/protobuf': 2.16.0
       fflate: 0.8.3

@@ -1,6 +1,6 @@
 {
 	"name": "jappan",
-	"version": "2.0.2",
+	"version": "2.0.3",
 	"description": "Jappan - Discord Bot",
 	"type": "module",
 	"main": "dist/index.js",
@@ -57,8 +57,8 @@
 		"discord.js": "14.27.0",
 		"dotenv": "18.0.9",
 		"express": "5.3.0",
-		"googlevideo": "5.0.0",
-		"mongoose": "9.11.3",
+		"googlevideo": "5.0.1",
+		"mongoose": "9.11.4",
 		"simple-ytdl-core": "1.1.1",
 		"swagger-ui-express": "5.0.1",
 		"zlib-sync": "0.1.10",
