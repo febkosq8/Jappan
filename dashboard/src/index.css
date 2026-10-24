@@ -1,0 +1,12 @@
+@import "@febkosq8/arc/styles.css";
+
+@layer base {
+	html {
+		scroll-behavior: smooth;
+		scroll-padding-top: 5rem;
+	}
+
+	body {
+		@apply min-h-screen bg-background font-sans text-foreground antialiased;
+	}
+}

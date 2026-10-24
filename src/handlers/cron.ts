@@ -11,6 +11,7 @@ export function registerCronHandlers(client: Client): void {
 		cronTime: "0 0 */12 * * *",
 		humanCronTime: "Every 12 hours",
 		task: runPlayerHealthCheck,
+		runOnStart: true,
 	});
 	registerCronJob({
 		name: "discord-presence-update",
@@ -18,5 +19,6 @@ export function registerCronHandlers(client: Client): void {
 		cronTime: "0 0 */6 * * *",
 		humanCronTime: "Every 6 hours",
 		task: () => updatePresence(client),
+		runOnStart: true,
 	});
 }

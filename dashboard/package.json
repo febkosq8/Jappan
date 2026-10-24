@@ -1,0 +1,50 @@
+{
+	"name": "jappan-dashboard",
+	"private": false,
+	"version": "2.0.3",
+	"description": "Jappan - Dashboard",
+	"type": "module",
+	"author": {
+		"name": "Febkosq8",
+		"email": "contact@febkosq8.me",
+		"url": "https://febkosq8.me"
+	},
+	"license": "CC-BY-NC-4.0",
+	"engines": {
+		"node": ">=24.22.1"
+	},
+	"homepage": "https://jappan.febkosq8.me",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/febkosq8/Jappan.git"
+	},
+	"packageManager": "pnpm@12.15.0",
+	"scripts": {
+		"start": "vite",
+		"build": "vite build"
+	},
+	"dependencies": {
+		"@febkosq8/arc": "0.8.3",
+		"@tanstack/react-query": "5.104.5",
+		"axios": "1.20.0",
+		"react": "19.3.1",
+		"react-dom": "19.3.1",
+		"react-icons": "5.7.0",
+		"react-router-dom": "7.18.4"
+	},
+	"devDependencies": {
+		"@tailwindcss/vite": "4.3.3",
+		"@types/node": "26.6.5",
+		"@types/react": "19.3.0",
+		"@types/react-dom": "19.3.0",
+		"@typescript-eslint/eslint-plugin": "8.72.0",
+		"@typescript-eslint/parser": "8.72.0",
+		"@vitejs/plugin-react": "6.1.2",
+		"eslint": "10.13.0",
+		"eslint-plugin-react-hooks": "7.1.1",
+		"eslint-plugin-react-refresh": "0.5.7",
+		"tailwindcss": "4.3.3",
+		"typescript": "7.0.2",
+		"vite": "8.3.5"
+	}
+}

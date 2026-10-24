@@ -9,15 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added a React/Vite landing page with About, Features, and Team sections, a live service-health panel, and dashboard assets.
+- Added an `ALLOWED_ORIGINS` allowlist so the dashboard can make cross-origin requests to the HTTP API.
 - Added setup, environment, development, and migration documentation.
 - Added a separate `HOST_PORT` setting for Docker Compose.
 
 ### Changed
 
-- Refactored configuration and clarified environment variable names and defaults, including the default HTTP port.
+- Refactored bot startup and cron registration; player health checks and presence updates now run on startup and continue on schedule.
+- Refactored configuration and clarified environment variable names and defaults, including the default HTTP port and player health-check timeout units.
+- Separated Docker's host port (`HOST_PORT`) from the application's listen port (`PORT`).
+- Added dashboard build configuration with Tailwind's Vite plugin, refreshed dashboard assets and profile links, and removed unused dependencies.
 - Updated Node.js, pnpm, and project dependencies.
 - Updated the project license to CC-BY-NC-4.0.
+- Clarified package metadata, including the author and license fields.
 - Improved GitHub release and Docker publishing workflows.
+
+### Fixed
+
+- Fixed help-category button responses by deferring and editing the ephemeral reply.
+- Fixed level-up reward notifications that could be skipped based on the previous points value.
+- Corrected dashboard asset paths and profile links.
 
 ## [2.0.2] - 2026-10-18
 
@@ -179,7 +191,8 @@ This release delivers the TypeScript rewrite of the Jappan Discord bot, with sta
 
 - Added the `/warn` command and documentation.
 
-[2.0.2]: https://github.com/febkosq8/Jappan/compare/v2.0.0...HEAD
+[2.0.3]: https://github.com/febkosq8/Jappan/compare/v2.0.2...HEAD
+[2.0.2]: https://github.com/febkosq8/Jappan/compare/v2.0.1...v2.0.2
 [2.0.0]: https://github.com/febkosq8/Jappan/releases/tag/v2.0.0
 [1.4.5]: https://github.com/febkosq8/Jappan/releases/tag/v1.4.5
 [1.4.4]: https://github.com/febkosq8/Jappan/releases/tag/v1.4.4
