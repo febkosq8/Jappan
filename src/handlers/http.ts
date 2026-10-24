@@ -1,7 +1,9 @@
 import type { ErrorRequestHandler, Express, NextFunction, Request, Response } from "express";
+import cors from "cors";
 
 import { routers } from "../routes/index.js";
 import swagger, { DOCS_ROUTE } from "../routes/swagger.js";
+import { getConfig } from "../services/config.js";
 import { logger } from "../services/logger.js";
 
 const REQUEST_TIMEOUT_MS = 5 * 60 * 1000;
@@ -70,6 +72,14 @@ function handleNotFound(request: Request, response: Response): void {
 
 export function registerHttpHandlers(app: Express): void {
 	app.use(processRequest);
+	app.use(
+		cors({
+			origin: [...getConfig("ALLOWED_ORIGINS")],
+			methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+			allowedHeaders: ["Content-Type", "Authorization"],
+			maxAge: 86400,
+		}),
+	);
 	app.use(swagger);
 	for (const { basePath, router } of routers) {
 		app.use(basePath, router);
