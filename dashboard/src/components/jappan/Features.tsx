@@ -48,7 +48,7 @@ const featureItems = [
 
 export default function Features() {
 	return (
-		<section id="features" className="scroll-mt-20 border-y border-border bg-muted/30 px-4 py-20 sm:px-6 lg:py-24">
+		<section id="features" className="scroll-mt-20 border-y border-border px-4 py-20 sm:px-6 lg:py-24">
 			<div className="mx-auto max-w-6xl">
 				<div className="mb-10 max-w-2xl">
 					<p className="mb-3 text-sm font-semibold uppercase tracking-wider text-primary">Everything in one bot</p>
