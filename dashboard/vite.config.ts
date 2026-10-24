@@ -1,16 +1,20 @@
 import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite";
 
 export default defineConfig({
-	build: {
-		outDir: "dist",
-	},
 	publicDir: "public",
-	resolve: {
-		tsconfigPaths: true,
-	},
 	server: {
 		port: 3000,
 	},
-	plugins: [react()],
+	build: {
+		outDir: "build",
+	},
+	resolve: {
+		dedupe: ["react", "react-dom"],
+		alias: {
+			"@jappan": "/src",
+		},
+	},
+	plugins: [react(), tailwindcss()],
 });
