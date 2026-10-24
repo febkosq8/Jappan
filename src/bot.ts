@@ -1,14 +1,12 @@
 import { Client, GatewayIntentBits, Partials } from "discord.js";
 
-import { wait } from "./helpers/utils.js";
 import { registerCronHandlers } from "./handlers/cron.js";
 import { registerDiscordHandlers, registerExtendedDiscordHandlers } from "./handlers/discord.js";
 import { loadButtons } from "./services/buttonLoader.js";
 import { loadCommands } from "./services/commandLoader.js";
 import { getConfig } from "./services/config.js";
-import { startCronJobs } from "./services/cron.js";
 import { logger } from "./services/logger.js";
-import { initializePlayer, runPlayerHealthCheck } from "./services/player.js";
+import { initializePlayer } from "./services/player.js";
 
 let discordClient: Client | undefined;
 
@@ -43,9 +41,6 @@ export async function startBot(): Promise<void> {
 
 	logger.info("DISCORD", "Connecting to Discord");
 	await client.login(getConfig("DISCORD_TOKEN"));
-	await wait(5000);
-	await runPlayerHealthCheck();
-	startCronJobs();
 }
 
 export function getClient(): Client {

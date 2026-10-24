@@ -39,6 +39,7 @@ import { handleVoiceRegionState } from "../services/voiceRegion.js";
 import { handleAutocompleteInteraction } from "./autocomplete.js";
 import { handleButtonInteraction } from "./button.js";
 import { handleSlashCommandInteraction } from "./slashCommand.js";
+import { startCronJobs } from "../services/cron.js";
 
 export function updatePresence(client: Client): void {
 	if (!client.isReady()) {
@@ -54,6 +55,10 @@ export function updatePresence(client: Client): void {
 			},
 		],
 		status: PresenceUpdateStatus.Online,
+	});
+	logger.info("DISCORD", "Bot presence updated", {
+		guilds: client.guilds.cache.size,
+		users: client.users.cache.size,
 	});
 }
 
@@ -72,6 +77,7 @@ export function registerDiscordHandlers(): void {
 			commands: commands.size,
 			users: readyClient.users.cache.size,
 		});
+		startCronJobs();
 	});
 
 	client.once(Events.ClientReady, async (readyClient) => {
