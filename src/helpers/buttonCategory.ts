@@ -15,6 +15,8 @@ export async function handleHelpCategory({
 	config: Config;
 	category: CommandCategory;
 }): Promise<void> {
+	await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
 	const commands = getCommands().filter((command) => command.commandData.category === category);
 	const fields = [...commands.values()].flatMap((command, commandIndex) => {
 		const commandId = getCommandId(command.commandData.name);
@@ -48,5 +50,5 @@ export async function handleHelpCategory({
 				: [{ name: "No commands available", value: "There are no commands in this category yet." }],
 		)
 		.setTimestamp();
-	await interaction.reply({ flags: MessageFlags.Ephemeral, embeds: [embed] });
+	await interaction.editReply({ embeds: [embed] });
 }
