@@ -5,6 +5,20 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.3] - 2026-10-24
+
+### Added
+
+- Added setup, environment, development, and migration documentation.
+- Added a separate `HOST_PORT` setting for Docker Compose.
+
+### Changed
+
+- Refactored configuration and clarified environment variable names and defaults, including the default HTTP port.
+- Updated Node.js, pnpm, and project dependencies.
+- Updated the project license to CC-BY-NC-4.0.
+- Improved GitHub release and Docker publishing workflows.
+
 ## [2.0.2] - 2026-10-18
 
 ### Fixed
