@@ -1,13 +1,24 @@
 import { Avatar, Button, Card, DateHandler, PillLink, Tag, TypingAnimation } from "@febkosq8/arc";
 import { useQuery } from "@tanstack/react-query";
-import { FiCpu, FiGithub, FiLayers, FiLifeBuoy, FiRadio, FiRefreshCw } from "react-icons/fi";
+import {
+	FiAlertTriangle,
+	FiCheckCircle,
+	FiCpu,
+	FiGithub,
+	FiLayers,
+	FiLifeBuoy,
+	FiLoader,
+	FiRadio,
+	FiRefreshCw,
+	FiXCircle,
+} from "react-icons/fi";
 import { SiDiscord } from "react-icons/si";
 import APIHandler from "@jappan/handlers/APIHandler";
 
 const serviceNames = [
+	{ key: "db", label: "Database" },
 	{ key: "discord", label: "Discord bot" },
 	{ key: "player", label: "Music player" },
-	{ key: "db", label: "Database" },
 ] as const;
 
 const commandCategories = ["General", "Music", "Leveling", "Fun", "Moderation"] as const;
@@ -58,13 +69,13 @@ export default function About() {
 						<SiDiscord className="size-4 shrink-0" aria-hidden="true" />
 						Invite Jappan
 					</PillLink>
-					<PillLink href="#features" variant="outline" size="md" className="gap-2.5">
+					<PillLink href="#features" variant="outline-secondary" size="md" className="gap-2.5">
 						<FiLayers className="size-4 shrink-0" aria-hidden="true" />
 						Explore features
 					</PillLink>
 					<PillLink
 						href="https://github.com/febkosq8/Jappan"
-						variant="outline"
+						variant="outline-primary"
 						size="md"
 						className="gap-2.5"
 						target="_blank"
@@ -124,7 +135,28 @@ export default function About() {
 											? "warning"
 											: "secondary"
 								}
+								size="sm"
 							>
+								{healthQuery.data ? (
+									healthQuery.data.healthy ? (
+										<FiCheckCircle
+											className="mr-1 inline size-4 text-success-foreground"
+											aria-hidden="true"
+										/>
+									) : (
+										<FiXCircle
+											className="mr-1 inline size-4 text-destructive-foreground"
+											aria-hidden="true"
+										/>
+									)
+								) : healthQuery.isError ? (
+									<FiAlertTriangle
+										className="mr-1 inline size-4 text-warning-foreground"
+										aria-hidden="true"
+									/>
+								) : (
+									<FiLoader className="mr-1 inline size-4 animate-spin" aria-hidden="true" />
+								)}
 								{healthQuery.data
 									? healthQuery.data.healthy
 										? "All systems operational"
@@ -138,6 +170,15 @@ export default function About() {
 							{serviceNames.map(({ key, label }) => {
 								const healthy = healthQuery.data?.services[key];
 								const unavailable = healthQuery.isError && !healthQuery.data;
+								const statusIcon =
+									healthy === undefined
+										? unavailable
+											? FiAlertTriangle
+											: FiLoader
+										: healthy
+											? FiCheckCircle
+											: FiXCircle;
+								const StatusIcon = statusIcon;
 								return (
 									<li
 										key={key}
@@ -154,7 +195,20 @@ export default function About() {
 														? "success"
 														: "destructive"
 											}
+											size="sm"
 										>
+											<StatusIcon
+												className={`mr-1 inline size-4 ${
+													healthy === undefined
+														? unavailable
+															? "text-warning-foreground"
+															: "animate-spin"
+														: healthy
+															? "text-success-foreground"
+															: "text-destructive-foreground"
+												}`}
+												aria-hidden="true"
+											/>
 											{healthy === undefined
 												? unavailable
 													? "Unavailable"
@@ -209,8 +263,10 @@ export default function About() {
 				<Card.Content className="flex flex-col items-center gap-6 p-8! text-center sm:p-10!">
 					<Avatar
 						name="Jappan logo"
-						image="/profile.png"
-						className="size-56 bg-transparent! ring-0! sm:size-64"
+						image="/transparentProfile.png"
+						variant="ring"
+						ringColor="accent"
+						size="8xl"
 					/>
 					<div>
 						<p className="text-2xl font-bold text-card-foreground">Meet Jappan</p>
@@ -218,7 +274,7 @@ export default function About() {
 					</div>
 					<div className="flex flex-wrap justify-center gap-2">
 						{commandCategories.map((category) => (
-							<Tag key={category} variant="primary">
+							<Tag key={category} variant="primary" size="sm">
 								{category}
 							</Tag>
 						))}

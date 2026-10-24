@@ -1,12 +1,12 @@
-import febProfile from "@jappan/assets/jappan/febkosq8Profile.gif";
-import inconProfile from "@jappan/assets/jappan/inconsistentProfile.jpg";
-import rinProfile from "@jappan/assets/jappan/rinzaiProfile.jpeg";
+import febProfile from "@jappan/assets/jappan/febkosq8.gif";
+import inconProfile from "@jappan/assets/jappan/inconsistent.jpg";
+import rinProfile from "@jappan/assets/jappan/rinzai.png";
 import { Avatar, Card, PillLink } from "@febkosq8/arc";
 import { FiUsers } from "react-icons/fi";
 
 const teamMembers = [
-	{ role: "Lead Developer", name: "febkosq8", image: febProfile, href: "https://www.febkosq8.me" },
-	{ role: "Senior Developer", name: "rinzai", image: rinProfile, href: "https://www.rinzai.dev" },
+	{ role: "Lead Developer", name: "febkosq8", image: febProfile, href: "https://febkosq8.me" },
+	{ role: "Senior Developer", name: "rinzai", image: rinProfile, href: "https://rinzai.dev" },
 	{
 		role: "QA Tester",
 		name: "akhilpv2334768",
@@ -20,7 +20,9 @@ export default function Team() {
 		<section id="team" className="scroll-mt-20 px-4 py-20 sm:px-6 lg:py-24">
 			<div className="mx-auto max-w-6xl">
 				<div className="mb-10">
-					<p className="mb-3 text-sm font-semibold uppercase tracking-wider text-primary">The people behind the bot</p>
+					<p className="mb-3 text-sm font-semibold uppercase tracking-wider text-primary">
+						The people behind the bot
+					</p>
 					<h2 className="typography-heading-2 flex items-center gap-3 text-4xl">
 						Team <FiUsers className="size-8 text-primary" aria-hidden="true" />
 					</h2>
@@ -32,22 +34,24 @@ export default function Team() {
 								<Avatar
 									name={`${member.name} profile`}
 									image={member.image}
-									size="xl"
-									className="size-36! ring-4 ring-primary/10"
+									size="8xl"
+									variant={"ring"}
+									ringColor={"accent"}
 								/>
 								<div>
-									<p className="text-sm font-medium uppercase tracking-wider text-muted-foreground">{member.role}</p>
-									<p className="mt-1 text-xl font-semibold text-card-foreground">{member.name}</p>
+									<p className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
+										{member.role}
+									</p>
+									<PillLink
+										className="w-full"
+										variant="outline"
+										href={member.href}
+										target="_blank"
+										rel="noreferrer"
+									>
+										{member.name}
+									</PillLink>
 								</div>
-								<PillLink
-									className="w-full"
-									variant="outline"
-									href={member.href}
-									target="_blank"
-									rel="noreferrer"
-								>
-									View profile
-								</PillLink>
 							</Card.Content>
 						</Card>
 					))}

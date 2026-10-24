@@ -12,8 +12,8 @@ importers:
         specifier: 11.13.5
         version: 11.13.5
       '@febkosq8/arc':
-        specifier: 0.8.2
-        version: 0.8.2(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        specifier: 0.8.3
+        version: 0.8.3(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@headlessui-float/react':
         specifier: 0.15.1
         version: 0.15.1(@headlessui/react@2.2.10(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -279,8 +279,8 @@ packages:
     resolution: {integrity: sha512-IkO+/KEUvwbVpiURZg+P7zF74z5Jxe0UgJxVni+RtoHQ6IZieXaO02kmadomap/q+l6bc/jdPGGqTjhuZnuz1Q==}
     engines: {node: ^20.19.0 || ^22.13.0 || >=24}
 
-  '@febkosq8/arc@0.8.2':
-    resolution: {integrity: sha512-RbKVtxktM4o06pnmAsOWP6p0P9w3cqfL8W2cQR/CZdlzrmhjyEWOMdkhXW9jYqXBNKrifHgLQDyP3zsSojE5qQ==}
+  '@febkosq8/arc@0.8.3':
+    resolution: {integrity: sha512-E3wK3YRZVprC8qkoKbiLydWj/RuoUIOliCkBGMBeWN8mjFhTO6l+nuig/TluudiW5hBlh4Nrc27LRGnnWnr3eA==}
     peerDependencies:
       react: 19.3.1
       react-dom: 19.3.1
@@ -2313,7 +2313,7 @@ snapshots:
       '@eslint/core': 1.2.1
       levn: 0.4.1
 
-  '@febkosq8/arc@0.8.2(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
+  '@febkosq8/arc@0.8.3(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
     dependencies:
       '@base-ui/react': 1.9.0(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@rinzai/zen': 0.14.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
