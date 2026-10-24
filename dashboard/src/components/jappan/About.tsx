@@ -10,6 +10,8 @@ const serviceNames = [
 	{ key: "db", label: "Database" },
 ] as const;
 
+const commandCategories = ["General", "Music", "Leveling", "Fun", "Moderation"] as const;
+
 export default function About() {
 	const healthQuery = useQuery({
 		queryKey: ["health"],
@@ -49,7 +51,6 @@ export default function About() {
 					<PillLink
 						size="md"
 						variant="primary"
-						className="gap-2.5"
 						href="https://discord.com/api/oauth2/authorize?client_id=732230135671029831&permissions=8&scope=applications.commands%20bot"
 						target="_blank"
 						rel="noreferrer"
@@ -189,12 +190,15 @@ export default function About() {
 							<Button
 								variant="outline-secondary"
 								size="md"
-								className="w-28 gap-2 text-base"
+								className="group/refetch gap-1"
 								onClick={() => void healthQuery.refetch()}
 								disabled={healthQuery.isFetching}
 								aria-label="Refetch bot status"
 							>
-								<FiRefreshCw className="size-4 shrink-0" aria-hidden="true" />
+								<FiRefreshCw
+									className="size-4 shrink-0 group-hover/refetch:animate-spin"
+									aria-hidden="true"
+								/>
 								Refetch
 							</Button>
 						</div>
@@ -205,7 +209,7 @@ export default function About() {
 				<Card.Content className="flex flex-col items-center gap-6 p-8! text-center sm:p-10!">
 					<Avatar
 						name="Jappan logo"
-						image="/Jappan.png"
+						image="/profile.png"
 						className="size-56 bg-transparent! ring-0! sm:size-64"
 					/>
 					<div>
@@ -213,13 +217,9 @@ export default function About() {
 						<p className="mt-2 text-muted-foreground">A little bit of everything your community needs.</p>
 					</div>
 					<div className="flex flex-wrap justify-center gap-2">
-						{["Music", "Community", "Moderation"].map((feature) => (
-							<Tag
-								key={feature}
-								variant="outline"
-								className="px-3 py-1.5 text-sm font-medium text-muted-foreground"
-							>
-								{feature}
+						{commandCategories.map((category) => (
+							<Tag key={category} variant="primary">
+								{category}
 							</Tag>
 						))}
 					</div>
