@@ -15,6 +15,8 @@ const DEFAULT_CSP = `default-src 'none'; script-src 'none'; style-src 'none'; ${
 // Swagger UI loads its scripts from the same origin but ships inline <style> blocks and data: images
 const DOCS_CSP = `default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; ${CSP_BASE}`;
 
+class CorsOriginError extends Error {}
+
 const securityHeaders: Record<string, string> = {
 	"X-Frame-Options": "DENY",
 	"X-Content-Type-Options": "nosniff",
@@ -53,13 +55,19 @@ const handleError: ErrorRequestHandler = (error: Error, request, response, next)
 		next(error);
 		return;
 	}
-	logger.warn("HTTP", "Malformed HTTP request blocked", {
-		method: request.method,
-		url: request.originalUrl,
-		error: error?.message ?? String(error),
-	});
-	response.status(400).json({
-		error: "This request is malformed!",
+	const isCorsOriginError = error instanceof CorsOriginError;
+	const status = isCorsOriginError ? 403 : 400;
+	logger.warn(
+		"HTTP",
+		isCorsOriginError ? "HTTP request blocked: origin not allowed" : "Malformed HTTP request blocked",
+		{
+			method: request.method,
+			url: request.originalUrl,
+			error: error?.message ?? String(error),
+		},
+	);
+	response.status(status).json({
+		error: isCorsOriginError ? "Origin is not allowed" : "This request is malformed!",
 		method: request.method,
 		route: request.originalUrl,
 		timestamp: Date.now(),
@@ -72,9 +80,16 @@ function handleNotFound(request: Request, response: Response): void {
 
 export function registerHttpHandlers(app: Express): void {
 	app.use(processRequest);
+	const allowedOrigins = getConfig("ALLOWED_ORIGINS");
 	app.use(
 		cors({
-			origin: [...getConfig("ALLOWED_ORIGINS")],
+			origin: (origin, callback) => {
+				if (origin === undefined || allowedOrigins.includes(origin)) {
+					callback(null, true);
+					return;
+				}
+				callback(new CorsOriginError("Origin is not allowed by CORS"));
+			},
 			methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
 			allowedHeaders: ["Content-Type", "Authorization"],
 			maxAge: 86400,
