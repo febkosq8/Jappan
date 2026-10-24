@@ -14,8 +14,8 @@ export interface Config {
 	readonly PLAYER_HEALTH_DEBUG: boolean;
 	readonly PLAYER_HEALTH_CHECK_QUERY: string;
 	readonly PLAYER_HEALTH_CHECK_MAX_ATTEMPTS: number;
-	readonly PLAYER_HEALTH_CHECK_PLAYBACK_TIMEOUT: number;
-	readonly PLAYER_HEALTH_CHECK_PLAYBACK_STABILITY_TIMEOUT: number;
+	readonly PLAYER_HEALTH_CHECK_PLAYBACK_MS_TIMEOUT: number;
+	readonly PLAYER_HEALTH_CHECK_PLAYBACK_STABILITY_MS_TIMEOUT: number;
 	readonly PLAYER_HEALTH_CHECK_GUILD_ID: string | undefined;
 	readonly PLAYER_HEALTH_CHECK_CHANNEL_ID: string | undefined;
 	readonly ENABLE_EVENTS_DEBUG: readonly string[];
@@ -25,7 +25,7 @@ export interface Config {
 let loadedConfig: Config | undefined;
 
 const configTemplate: Partial<Record<keyof Config, string>> = {
-	PORT: "3030",
+	PORT: "8875",
 	BOT_NAME: "Jappan",
 	BOT_PFP: "https://jappan.febkosq8.me/assets/Profile-FDHZtz5Q.png",
 	BOT_WEBSITE: "https://jappan.febkosq8.me",
@@ -36,8 +36,8 @@ const configTemplate: Partial<Record<keyof Config, string>> = {
 	PLAYER_HEALTH_DEBUG: "false",
 	PLAYER_HEALTH_CHECK_QUERY: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
 	PLAYER_HEALTH_CHECK_MAX_ATTEMPTS: "3",
-	PLAYER_HEALTH_CHECK_PLAYBACK_TIMEOUT: "10000",
-	PLAYER_HEALTH_CHECK_PLAYBACK_STABILITY_TIMEOUT: "5000",
+	PLAYER_HEALTH_CHECK_PLAYBACK_MS_TIMEOUT: "10000",
+	PLAYER_HEALTH_CHECK_PLAYBACK_STABILITY_MS_TIMEOUT: "5000",
 	ENABLE_EVENTS_DEBUG: "false",
 	SHUTDOWN_THREASHOLD: "3",
 };
@@ -46,8 +46,9 @@ function normalizeConfigValue(value: string): string {
 	return value.trim().replace(/^("|')(.*)\1$/, "$2");
 }
 
-function readConfigValue(name: keyof Config, required = false): string {
-	const value = process.env[name] === undefined ? undefined : normalizeConfigValue(process.env[name]);
+function readConfigValue(name: keyof Config, required = false, legacyName?: string): string {
+	const rawValue = process.env[name] ?? (legacyName ? process.env[legacyName] : undefined);
+	const value = rawValue === undefined ? undefined : normalizeConfigValue(rawValue);
 	if (value) {
 		return value;
 	}
@@ -89,24 +90,28 @@ export function loadConfig(): Config {
 	}
 	const PLAYER_HEALTH_CHECK_MAX_ATTEMPTS = playerHealthCheckMaxAttemptsValue;
 	const playerHealthCheckPlaybackTimeoutValue = Number.parseInt(
-		readConfigValue("PLAYER_HEALTH_CHECK_PLAYBACK_TIMEOUT"),
+		readConfigValue("PLAYER_HEALTH_CHECK_PLAYBACK_MS_TIMEOUT", false, "PLAYER_HEALTH_CHECK_PLAYBACK_TIMEOUT"),
 		10,
 	);
 	if (!Number.isInteger(playerHealthCheckPlaybackTimeoutValue) || playerHealthCheckPlaybackTimeoutValue < 1000) {
-		throw new Error("PLAYER_HEALTH_CHECK_PLAYBACK_TIMEOUT must be at least 1000 milliseconds");
+		throw new Error("PLAYER_HEALTH_CHECK_PLAYBACK_MS_TIMEOUT must be at least 1000 milliseconds");
 	}
-	const PLAYER_HEALTH_CHECK_PLAYBACK_TIMEOUT = playerHealthCheckPlaybackTimeoutValue;
+	const PLAYER_HEALTH_CHECK_PLAYBACK_MS_TIMEOUT = playerHealthCheckPlaybackTimeoutValue;
 	const playerHealthCheckPlaybackStabilityTimeoutValue = Number.parseInt(
-		readConfigValue("PLAYER_HEALTH_CHECK_PLAYBACK_STABILITY_TIMEOUT"),
+		readConfigValue(
+			"PLAYER_HEALTH_CHECK_PLAYBACK_STABILITY_MS_TIMEOUT",
+			false,
+			"PLAYER_HEALTH_CHECK_PLAYBACK_STABILITY_TIMEOUT",
+		),
 		10,
 	);
 	if (
 		!Number.isInteger(playerHealthCheckPlaybackStabilityTimeoutValue) ||
 		playerHealthCheckPlaybackStabilityTimeoutValue < 1000
 	) {
-		throw new Error("PLAYER_HEALTH_CHECK_PLAYBACK_STABILITY_TIMEOUT must be at least 1000 milliseconds");
+		throw new Error("PLAYER_HEALTH_CHECK_PLAYBACK_STABILITY_MS_TIMEOUT must be at least 1000 milliseconds");
 	}
-	const PLAYER_HEALTH_CHECK_PLAYBACK_STABILITY_TIMEOUT = playerHealthCheckPlaybackStabilityTimeoutValue;
+	const PLAYER_HEALTH_CHECK_PLAYBACK_STABILITY_MS_TIMEOUT = playerHealthCheckPlaybackStabilityTimeoutValue;
 	const PLAYER_HEALTH_CHECK_GUILD_ID = process.env.PLAYER_HEALTH_CHECK_GUILD_ID
 		? normalizeConfigValue(process.env.PLAYER_HEALTH_CHECK_GUILD_ID) || undefined
 		: undefined;
@@ -140,8 +145,8 @@ export function loadConfig(): Config {
 		PLAYER_HEALTH_DEBUG,
 		PLAYER_HEALTH_CHECK_QUERY,
 		PLAYER_HEALTH_CHECK_MAX_ATTEMPTS,
-		PLAYER_HEALTH_CHECK_PLAYBACK_TIMEOUT,
-		PLAYER_HEALTH_CHECK_PLAYBACK_STABILITY_TIMEOUT,
+		PLAYER_HEALTH_CHECK_PLAYBACK_MS_TIMEOUT,
+		PLAYER_HEALTH_CHECK_PLAYBACK_STABILITY_MS_TIMEOUT,
 		PLAYER_HEALTH_CHECK_GUILD_ID,
 		PLAYER_HEALTH_CHECK_CHANNEL_ID,
 		ENABLE_EVENTS_DEBUG,

@@ -480,8 +480,8 @@ export async function checkPlayerHealth(initializedPlayer: Player): Promise<Play
 
 	const healthCheckGuildId = getConfig("PLAYER_HEALTH_CHECK_GUILD_ID");
 	const healthCheckChannelId = getConfig("PLAYER_HEALTH_CHECK_CHANNEL_ID");
-	const healthCheckPlaybackTimeout = getConfig("PLAYER_HEALTH_CHECK_PLAYBACK_TIMEOUT");
-	const healthCheckPlaybackStabilityTimeout = getConfig("PLAYER_HEALTH_CHECK_PLAYBACK_STABILITY_TIMEOUT");
+	const healthCheckPlaybackMsTimeout = getConfig("PLAYER_HEALTH_CHECK_PLAYBACK_MS_TIMEOUT");
+	const healthCheckPlaybackStabilityMsTimeout = getConfig("PLAYER_HEALTH_CHECK_PLAYBACK_STABILITY_MS_TIMEOUT");
 	if (healthCheckGuildId && healthCheckChannelId && healthCheckTracks > 0) {
 		const guild = initializedPlayer.client.guilds.cache.get(healthCheckGuildId);
 		const channel = guild?.channels.cache.get(healthCheckChannelId);
@@ -518,10 +518,10 @@ export async function checkPlayerHealth(initializedPlayer: Player): Promise<Play
 		try {
 			if (healthCheckDebug) {
 				logger.debug("PLAYER", "Waiting for player health-check playback to start", {
-					playbackTimeout: healthCheckPlaybackTimeout,
+					playbackTimeout: healthCheckPlaybackMsTimeout,
 				});
 			}
-			const playbackDeadline = Date.now() + healthCheckPlaybackTimeout;
+			const playbackDeadline = Date.now() + healthCheckPlaybackMsTimeout;
 			while (!queue.node.isPlaying()) {
 				if (Date.now() >= playbackDeadline) {
 					throw new Error("Player health-check track did not start playing");
@@ -534,10 +534,10 @@ export async function checkPlayerHealth(initializedPlayer: Player): Promise<Play
 
 			if (healthCheckDebug) {
 				logger.debug("PLAYER", "Verifying player health-check playback stability", {
-					stabilityTimeout: healthCheckPlaybackStabilityTimeout,
+					stabilityTimeout: healthCheckPlaybackStabilityMsTimeout,
 				});
 			}
-			const playbackStabilityDeadline = Date.now() + healthCheckPlaybackStabilityTimeout;
+			const playbackStabilityDeadline = Date.now() + healthCheckPlaybackStabilityMsTimeout;
 			while (Date.now() < playbackStabilityDeadline) {
 				await wait(250);
 				if (!queue.node.isPlaying()) {
@@ -547,7 +547,7 @@ export async function checkPlayerHealth(initializedPlayer: Player): Promise<Play
 			playbackChecked = true;
 			if (healthCheckDebug) {
 				logger.debug("PLAYER", "Player health-check playback stability passed", {
-					stabilityTimeout: healthCheckPlaybackStabilityTimeout,
+					stabilityTimeout: healthCheckPlaybackStabilityMsTimeout,
 				});
 			}
 		} finally {

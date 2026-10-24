@@ -9,4 +9,4 @@ services:
             - ./logs:/app/logs
         command: ["bash", "-c", "exec node dist/index.js > >(tee -a /app/logs/docker.log) 2>&1"]
         ports:
-            - "${PORT:-3030}:${PORT:-3030}"
+            - "${HOST_PORT:-8875}:${PORT:-8875}"
