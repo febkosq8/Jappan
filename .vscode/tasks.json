@@ -5,7 +5,7 @@
 			"id": "version",
 			"type": "promptString",
 			"description": "Docker image version",
-			"default": "2.0.0"
+			"default": "2.0.4"
 		}
 	],
 	"tasks": [
