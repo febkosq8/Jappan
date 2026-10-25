@@ -62,7 +62,7 @@ export default function About() {
 					<PillLink
 						size="md"
 						variant="primary"
-						href="https://discord.com/api/oauth2/authorize?client_id=732230135671029831&permissions=8&scope=applications.commands%20bot"
+						href="https://discord.com/oauth2/authorize?client_id=732230135671029831"
 						target="_blank"
 						rel="noreferrer"
 					>

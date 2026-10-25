@@ -5,7 +5,7 @@ Jappan is a Discord bot made to make life easier through music playback, fun com
 ## Links
 
 - [Try Jappan in REKT Gaming](https://discord.gg/3mRbVCjvmz)
-- [Invite Jappan to your server](https://discord.com/api/oauth2/authorize?client_id=732230135671029831&permissions=808545425&scope=applications.commands%20bot)
+- [Invite Jappan to your server](https://discord.com/oauth2/authorize?client_id=732230135671029831)
 - [Guild installation permissions](./docs/GUILD_INSTALL.md)
 - [Jappan website](https://jappan.febkosq8.me/)
 - [Report a bug or suggest an improvement](https://github.com/febkosq8/Jappan/issues)
