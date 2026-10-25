@@ -32,7 +32,15 @@ export interface RouterDefinition {
 
 export const errorResponseSchema = z.object({ error: z.string() });
 
-export function defineRouter(basePath: string, routes: readonly RouteDefinition[]): RouterDefinition {
+function joinRoutePaths(parentPath: string, childPath: string): string {
+	return `${parentPath}/${childPath}`.replace(/\/+/g, "/").replace(/(.)\/$/, "$1");
+}
+
+export function defineRouter(
+	basePath: string,
+	routes: readonly RouteDefinition[],
+	children: readonly RouterDefinition[] = [],
+): RouterDefinition {
 	const router: ExpressRouter = Router();
 	for (const route of routes) {
 		router[route.method](route.path, async (request, response) => {
@@ -50,5 +58,11 @@ export function defineRouter(basePath: string, routes: readonly RouteDefinition[
 			}
 		});
 	}
-	return { basePath, router, routes };
+	for (const child of children) {
+		router.use(child.basePath, child.router);
+	}
+	const childRoutes = children.flatMap((child) =>
+		child.routes.map((route) => ({ ...route, path: joinRoutePaths(child.basePath, route.path) })),
+	);
+	return { basePath, router, routes: [...routes, ...childRoutes] };
 }

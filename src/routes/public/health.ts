@@ -1,13 +1,13 @@
 import { z } from "zod";
 
-import { isBotConnected } from "../bot.js";
-import { defineRouter } from "../helpers/route.js";
-import { isDatabaseConnected } from "../services/database.js";
-import { isPlayerAvailable } from "../services/player.js";
+import { isBotConnected } from "../../bot.js";
+import { defineRouter, type RouteDefinition } from "../../helpers/route.js";
+import { isDatabaseConnected } from "../../services/database.js";
+import { isPlayerAvailable } from "../../services/player.js";
 
 const serviceHealthSchema = z.object({ healthy: z.boolean() });
 
-export default defineRouter("/public/health", [
+const healthRoutes: RouteDefinition[] = [
 	{
 		method: "get",
 		path: "/db",
@@ -66,4 +66,6 @@ export default defineRouter("/public/health", [
 			return response.status(200).json({ healthy, services });
 		},
 	},
-]);
+];
+
+export default defineRouter("/health", healthRoutes);

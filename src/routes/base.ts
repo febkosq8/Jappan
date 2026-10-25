@@ -12,7 +12,6 @@ export default defineRouter("/", [
 		summary: "OpenAPI specification",
 		errorMessage: "Something went wrong while returning the OpenAPI specification",
 		responses: { 200: { description: "OpenAPI specification document" } },
-		// routers is read lazily because routes/index.ts imports this file
 		handler: (_request, response) => {
 			return response.status(200).json(getOpenApiDocument(routers));
 		},
