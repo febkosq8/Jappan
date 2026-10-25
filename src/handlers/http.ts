@@ -57,13 +57,16 @@ const handleError: ErrorRequestHandler = (error: Error, request, response, next)
 	}
 	const isCorsOriginError = error instanceof CorsOriginError;
 	const status = isCorsOriginError ? 403 : 400;
+	const origin = request.get("origin");
+	const loggedOrigin = origin === undefined || origin === "" || origin === "null" ? "<null>" : origin;
 	logger.warn(
 		"HTTP",
 		isCorsOriginError ? "HTTP request blocked: origin not allowed" : "Malformed HTTP request blocked",
 		{
 			method: request.method,
 			url: request.originalUrl,
-			error: error?.message ?? String(error),
+			...(isCorsOriginError ? { origin: loggedOrigin } : {}),
+			error: isCorsOriginError ? `Origin is not allowed by CORS` : (error?.message ?? String(error)),
 		},
 	);
 	response.status(status).json({
@@ -88,7 +91,7 @@ export function registerHttpHandlers(app: Express): void {
 					callback(null, true);
 					return;
 				}
-				callback(new CorsOriginError("Origin is not allowed by CORS"));
+				callback(new CorsOriginError(`Origin is not allowed by CORS`));
 			},
 			methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
 			allowedHeaders: ["Content-Type", "Authorization"],
