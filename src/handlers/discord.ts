@@ -5,6 +5,7 @@ import type { Client } from "discord.js";
 import { getClient } from "../bot.js";
 import { formatInteractionLogDetails, formatUser } from "../helpers/discord.js";
 import { getPrefixCommand, handlePrefixMessage } from "../services/adminDeployment.js";
+import { validateAdminUsers } from "../services/adminGuild.js";
 import {
 	handleAuditChannelCreate,
 	handleAuditChannelDelete,
@@ -34,6 +35,7 @@ import { getConfig } from "../services/config.js";
 import { initializeGuild } from "../services/guild.js";
 import { handleLevelingInteraction, handleLevelingMessage, handleLevelingVoiceState } from "../services/leveling.js";
 import { logger } from "../services/logger.js";
+import { handleShutdown } from "../services/shutdown.js";
 import { handleMemberJoinAnnouncement, handleMemberLeaveAnnouncement } from "../services/memberAnnouncement.js";
 import { handleVoiceRegionState } from "../services/voiceRegion.js";
 import { handleAutocompleteInteraction } from "./autocomplete.js";
@@ -67,8 +69,7 @@ export function registerDiscordHandlers(): void {
 	const commands = getCommands();
 	const config = getConfig();
 
-	client.once(Events.ClientReady, (readyClient) => {
-		const config = getConfig();
+	client.once(Events.ClientReady, async (readyClient) => {
 		config.BOT_NAME = readyClient.user.username;
 		config.BOT_PFP = readyClient.user.displayAvatarURL({ size: 256 });
 		logger.success("DISCORD", "Client ready", {
@@ -77,10 +78,17 @@ export function registerDiscordHandlers(): void {
 			commands: commands.size,
 			users: readyClient.users.cache.size,
 		});
-		startCronJobs();
-	});
 
-	client.once(Events.ClientReady, async (readyClient) => {
+		try {
+			await validateAdminUsers(readyClient, config);
+		} catch (error: unknown) {
+			logger.error("ADMIN", "Admin user validation failed; shutting down", { error });
+			await handleShutdown("ADMIN_USER_VALIDATION_FAILURE", 1);
+			return;
+		}
+
+		startCronJobs();
+
 		try {
 			const globalCommands = getGlobalCommands();
 			logger.info("BOT", `Starting to update #${globalCommands.size} global Application (/) commands`);

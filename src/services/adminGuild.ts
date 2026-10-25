@@ -1,11 +1,12 @@
 import type { Client, Guild, GuildBasedChannel, Invite } from "discord.js";
-import { EmbedBuilder, PermissionFlagsBits, blockQuote, userMention } from "discord.js";
+import { DiscordAPIError, EmbedBuilder, PermissionFlagsBits, blockQuote, userMention } from "discord.js";
 
 import {
 	formatChannel,
 	formatChannelMention,
 	formatGuild,
 	formatGuildMention,
+	formatUser,
 	formatUserMention,
 } from "../helpers/discord.js";
 import type { SentGuildMessage } from "../helpers/guildHelper.js";
@@ -25,6 +26,52 @@ export interface KickGuildResult {
 
 export function isAdminUser(userId: string, config: Config): boolean {
 	return config.ADMIN_USER_IDS.includes(userId);
+}
+
+export async function validateAdminUsers(client: Client, config: Config): Promise<void> {
+	if (config.ADMIN_USER_IDS.length === 0) {
+		return;
+	}
+
+	let validCount = 0;
+	let invalidCount = 0;
+	let unverifiedCount = 0;
+
+	for (const userId of config.ADMIN_USER_IDS) {
+		if (!/^\d{17,20}$/u.test(userId)) {
+			invalidCount += 1;
+			logger.warn("ADMIN", "Configured admin user ID has an invalid format", { userId });
+			continue;
+		}
+
+		try {
+			const user = await client.users.fetch(userId, { force: true });
+			validCount += 1;
+			logger.success("ADMIN", "Configured admin user verified", { user: formatUser(user) });
+		} catch (error: unknown) {
+			if (error instanceof DiscordAPIError && error.code === 10013) {
+				invalidCount += 1;
+				logger.warn("ADMIN", "Configured admin user does not exist", { userId });
+				continue;
+			}
+
+			unverifiedCount += 1;
+			logger.error("ADMIN", "Could not verify configured admin user with Discord", { userId, error });
+		}
+	}
+
+	logger.info("ADMIN", "Admin user validation completed", {
+		total: config.ADMIN_USER_IDS.length,
+		valid: validCount,
+		invalid: invalidCount,
+		unverified: unverifiedCount,
+	});
+
+	if (invalidCount > 0 || unverifiedCount > 0) {
+		throw new Error(
+			`Admin user validation failed: ${invalidCount} invalid and ${unverifiedCount} could not be verified`,
+		);
+	}
 }
 
 export async function getGuildList(client: Client, config: Config): Promise<EmbedBuilder[]> {
