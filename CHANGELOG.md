@@ -5,6 +5,25 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.6] - 2026-10-25
+
+### Added
+
+- Added startup validation for configured administrators.
+- Added public health-check routing and guild installation documentation.
+
+### Changed
+
+- Added the bot version to HTTP responses and standardized its header as `X-Version`.
+- Updated the bot invite link and requested permissions.
+- Improved dashboard metadata and audit-log event handling.
+
+### Fixed
+
+- Trimmed embed titles to stay within Discord's character limit.
+- Improved CORS error logs to include the request origin.
+- Corrected dashboard profile image naming.
+
 ## [2.0.5] - 2026-10-25
 
 ### Fixed
