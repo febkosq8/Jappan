@@ -5,6 +5,7 @@ import { routers } from "../routes/index.js";
 import swagger, { DOCS_ROUTE } from "../routes/swagger.js";
 import { getConfig } from "../services/config.js";
 import { logger } from "../services/logger.js";
+import { getBotVersion } from "../helpers/utils.js";
 
 const REQUEST_TIMEOUT_MS = 5 * 60 * 1000;
 const QUIET_ROUTES = ["/public/health"];
@@ -29,6 +30,8 @@ function processRequest(request: Request, response: Response, next: NextFunction
 	for (const [name, value] of Object.entries(securityHeaders)) {
 		response.setHeader(name, value);
 	}
+	response.setHeader("X-Request-Timeout-Ms", REQUEST_TIMEOUT_MS.toString());
+	response.setHeader("X-Jappan-Version", `v${getBotVersion()}`);
 	response.setHeader("Content-Security-Policy", request.path.startsWith(DOCS_ROUTE) ? DOCS_CSP : DEFAULT_CSP);
 	response.setTimeout(REQUEST_TIMEOUT_MS, () => {
 		logger.warn("HTTP", "HTTP request timed out", { method: request.method, url: request.originalUrl });
