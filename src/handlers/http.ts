@@ -31,7 +31,7 @@ function processRequest(request: Request, response: Response, next: NextFunction
 		response.setHeader(name, value);
 	}
 	response.setHeader("X-Request-Timeout-Ms", REQUEST_TIMEOUT_MS.toString());
-	response.setHeader("X-Jappan-Version", `v${getBotVersion()}`);
+	response.setHeader("X-Version", `v${getBotVersion()}`);
 	response.setHeader("Content-Security-Policy", request.path.startsWith(DOCS_ROUTE) ? DOCS_CSP : DEFAULT_CSP);
 	response.setTimeout(REQUEST_TIMEOUT_MS, () => {
 		logger.warn("HTTP", "HTTP request timed out", { method: request.method, url: request.originalUrl });
