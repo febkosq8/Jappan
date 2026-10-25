@@ -5,7 +5,9 @@ import type {
 	GuildChannel,
 	GuildMember,
 	JSONEncodable,
+	Message,
 	PartialGuildMember,
+	PartialMessage,
 	PartialUser,
 	Role,
 	ThreadChannel,
@@ -25,7 +27,7 @@ import {
 import { randomUUID } from "node:crypto";
 
 import { formatChannelMention, formatRoleMention, formatUserMention } from "./discord.js";
-import { splitString } from "./string.js";
+import { splitString, trimString } from "./string.js";
 
 export const MAX_EMBEDS_PER_MESSAGE = 10;
 export const MAX_EMBED_CHARACTERS_PER_MESSAGE = 6000;
@@ -212,6 +214,33 @@ export function getComparableEmbed(embed: APIEmbed | JSONEncodable<APIEmbed>): A
 
 export function createAuditEventId(): string {
 	return randomUUID();
+}
+
+export function addAuditEventIdFooter(embed: EmbedBuilder, auditEventId: string): EmbedBuilder {
+	const existingFooter = embed.data.footer?.text;
+	const auditEventFooter = `Audit Event ID: ${auditEventId}`;
+	const separator = existingFooter ? " | " : "";
+	const existingFooterLength = 2048 - auditEventFooter.length - separator.length;
+	const preservedFooter = existingFooter ? `${trimString(existingFooter, existingFooterLength)}${separator}` : "";
+	return embed.setFooter({ text: `${preservedFooter}${auditEventFooter}` });
+}
+
+/**
+ * Identifies generated audit output so another bot instance does not audit it again.
+ *
+ * Scenarios:
+ * - Standard audit embeds: the `Audit Event ID: ` footer identifies the message.
+ * - Forwarded embed pages: their footer is given the current audit event ID, so
+ *   those pages are identified even when the original embed had no footer.
+ * - Human-authored messages: marker checks apply only when `author.bot` is true,
+ *   so human messages with similar text remain auditable.
+ * - Marker removed by an edit: the caller checks both old and new message versions.
+ */
+export function isGeneratedAuditLogMessage(message: Message | PartialMessage): boolean {
+	return (
+		message.author?.bot === true &&
+		message.embeds.some((embed) => embed.footer?.text.startsWith("Audit Event ID: "))
+	);
 }
 
 export function createContentFollowUps({

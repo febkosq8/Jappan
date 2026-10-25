@@ -30,6 +30,7 @@ import {
 
 import {
 	addAuditEntryDetails,
+	addAuditEventIdFooter,
 	addAvatarChange,
 	createAuditEventId,
 	createContentFollowUps,
@@ -39,6 +40,7 @@ import {
 	getAuditEntryTargetLabel,
 	getChannelTypeLabel,
 	getComparableEmbed,
+	isGeneratedAuditLogMessage,
 	getRecentAuditEntryByTargetId,
 	getPermissionOverwriteChangeDetails,
 	getProfileChangeResponse,
@@ -814,7 +816,13 @@ export async function handleAuditMessageUpdate(
 ): Promise<void> {
 	const guild = newMessage.guild ?? oldMessage.guild;
 	const author = newMessage.author ?? oldMessage.author;
-	if (!guild || !author || isOwnBot(guild, author.id)) {
+	if (
+		!guild ||
+		!author ||
+		isOwnBot(guild, author.id) ||
+		isGeneratedAuditLogMessage(oldMessage) ||
+		isGeneratedAuditLogMessage(newMessage)
+	) {
 		return;
 	}
 	if (!(await isAuditLogEnabled(guild))) {
@@ -885,29 +893,35 @@ export async function handleAuditMessageUpdate(
 	};
 	const previousEmbedFollowUps = hasPreviousEmbedFollowUp
 		? oldMessage.embeds.map((originalEmbed, pageIndex) =>
-				EmbedBuilder.from(originalEmbed.toJSON()).setTitle(
-					createEmbedPageTitle({
-						title: originalEmbed.data.title ?? "Previous Embed",
-						messageId: newMessage.id,
-						pageNumber: contentFollowUpPageCount + pageIndex + 2,
-						totalPages: totalPageCount,
-					}),
+				addAuditEventIdFooter(
+					EmbedBuilder.from(originalEmbed.toJSON()).setTitle(
+						createEmbedPageTitle({
+							title: originalEmbed.data.title ?? "Previous Embed",
+							messageId: newMessage.id,
+							pageNumber: contentFollowUpPageCount + pageIndex + 2,
+							totalPages: totalPageCount,
+						}),
+					),
+					auditEventId,
 				),
 			)
 		: [];
 	const updatedEmbedFollowUps = hasUpdatedEmbedFollowUp
 		? updatedEmbeds.map((originalEmbed, pageIndex) =>
-				EmbedBuilder.from(originalEmbed).setTitle(
-					createEmbedPageTitle({
-						title: originalEmbed.title ?? "Updated Embed",
-						messageId: newMessage.id,
-						pageNumber:
-							contentFollowUpPageCount +
-							(hasPreviousEmbedFollowUp ? oldMessage.embeds.length : 0) +
-							pageIndex +
-							2,
-						totalPages: totalPageCount,
-					}),
+				addAuditEventIdFooter(
+					EmbedBuilder.from(originalEmbed).setTitle(
+						createEmbedPageTitle({
+							title: originalEmbed.title ?? "Updated Embed",
+							messageId: newMessage.id,
+							pageNumber:
+								contentFollowUpPageCount +
+								(hasPreviousEmbedFollowUp ? oldMessage.embeds.length : 0) +
+								pageIndex +
+								2,
+							totalPages: totalPageCount,
+						}),
+					),
+					auditEventId,
 				),
 			)
 		: [];
