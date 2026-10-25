@@ -868,17 +868,46 @@ export async function handleAuditMessageUpdate(
 				})
 			: []),
 	];
+	const createEmbedPageTitle = ({
+		title,
+		messageId,
+		pageNumber,
+		totalPages,
+	}: {
+		title: string | null | undefined;
+		messageId: string;
+		pageNumber: number;
+		totalPages: number;
+	}): string => {
+		const pageDetails = `(MID: ${messageId}) (Page ${pageNumber}/${totalPages})`;
+		const titleLength = 256 - pageDetails.length - 1;
+		return `${trimString(title || "Embed", titleLength)} ${pageDetails}`;
+	};
 	const previousEmbedFollowUps = hasPreviousEmbedFollowUp
 		? oldMessage.embeds.map((originalEmbed, pageIndex) =>
 				EmbedBuilder.from(originalEmbed.toJSON()).setTitle(
-					`${originalEmbed.data.title ?? "Previous Embed"} (MID: ${newMessage.id}) (Page ${contentFollowUpPageCount + pageIndex + 2}/${totalPageCount})`,
+					createEmbedPageTitle({
+						title: originalEmbed.data.title ?? "Previous Embed",
+						messageId: newMessage.id,
+						pageNumber: contentFollowUpPageCount + pageIndex + 2,
+						totalPages: totalPageCount,
+					}),
 				),
 			)
 		: [];
 	const updatedEmbedFollowUps = hasUpdatedEmbedFollowUp
 		? updatedEmbeds.map((originalEmbed, pageIndex) =>
 				EmbedBuilder.from(originalEmbed).setTitle(
-					`${originalEmbed.title ?? "Updated Embed"} (MID: ${newMessage.id}) (Page ${contentFollowUpPageCount + (hasPreviousEmbedFollowUp ? oldMessage.embeds.length : 0) + pageIndex + 2}/${totalPageCount})`,
+					createEmbedPageTitle({
+						title: originalEmbed.title ?? "Updated Embed",
+						messageId: newMessage.id,
+						pageNumber:
+							contentFollowUpPageCount +
+							(hasPreviousEmbedFollowUp ? oldMessage.embeds.length : 0) +
+							pageIndex +
+							2,
+						totalPages: totalPageCount,
+					}),
 				),
 			)
 		: [];

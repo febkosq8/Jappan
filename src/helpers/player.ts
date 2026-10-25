@@ -17,6 +17,7 @@ import {
 import { getConfig } from "../services/config.js";
 import { logger } from "../services/logger.js";
 import { formatChannel, formatGuild, formatUser } from "./discord.js";
+import { trimString } from "./string.js";
 import { wait } from "./utils.js";
 
 export interface PlayerHealthCheckResult {
@@ -183,7 +184,7 @@ export function createPlayerEmbed({
 	const embed = new EmbedBuilder()
 		.setColor(color)
 		.setAuthor({ name: `${config.BOT_NAME} : Player`, iconURL: config.BOT_PFP })
-		.setTitle(title)
+		.setTitle(trimString(title, 256))
 		.setDescription(
 			source && /playing/i.test(description)
 				? description.replace(/playing/i, (status) => `${status} via ${getPlayerSourceLabel(source)}`)
