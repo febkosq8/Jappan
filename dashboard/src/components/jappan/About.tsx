@@ -263,7 +263,7 @@ export default function About() {
 				<Card.Content className="flex flex-col items-center gap-6 p-8! text-center sm:p-10!">
 					<Avatar
 						name="Jappan logo"
-						image="/transparentProfile.png"
+						image="/logo/transparent.png"
 						variant="ring"
 						ringColor="accent"
 						size="8xl"
