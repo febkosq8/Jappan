@@ -37,11 +37,11 @@
 		"type": "git",
 		"url": "https://github.com/febkosq8/Jappan.git"
 	},
-	"packageManager": "pnpm@12.15.0",
+	"packageManager": "pnpm@12.16.1",
 	"devDependencies": {
 		"@types/cors": "2.8.19",
 		"@types/express": "5.0.6",
-		"@types/node": "26.6.5",
+		"@types/node": "26.6.6",
 		"@types/swagger-ui-express": "4.1.8",
 		"husky": "9.1.7",
 		"lint-staged": "17.6.0",
@@ -61,12 +61,12 @@
 		"cron": "4.4.0",
 		"discord-player": "7.2.0",
 		"discord-player-youtubei": "3.1.0",
-		"discord.js": "14.27.0",
+		"discord.js": "14.28.0",
 		"dotenv": "18.0.9",
 		"express": "5.3.0",
 		"googlevideo": "5.0.1",
 		"mongoose": "9.11.4",
-		"simple-ytdl-core": "1.1.1",
+		"simple-ytdl-core": "1.2.2",
 		"swagger-ui-express": "5.0.1",
 		"zlib-sync": "0.1.10",
 		"zod": "4.6.7"

@@ -159,14 +159,6 @@ export function loadConfig(): Config {
 		ENABLE_EVENTS_DEBUG,
 		SHUTDOWN_THREASHOLD,
 	};
-	if (ADMIN_USER_IDS.length > 0) {
-		writeLog({
-			level: "info",
-			category: "BOT",
-			message: "Admin users are now loaded",
-			details: { count: ADMIN_USER_IDS.length },
-		});
-	}
 	return loadedConfig;
 }
 
