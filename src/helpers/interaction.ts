@@ -1,0 +1,1 @@
+export const DISCORD_INTERACTION_TIME_LIMIT_MS = 13 * 60 * 1000;

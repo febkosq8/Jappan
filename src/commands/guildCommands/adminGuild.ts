@@ -14,6 +14,7 @@ import {
 import type { BotCommand, BotCommandData } from "../../helpers/command.js";
 import { sendResponse } from "../../helpers/response.js";
 import { formatChannelMention, formatGuild, formatGuildMention, formatUserMention } from "../../helpers/discord.js";
+import { DISCORD_INTERACTION_TIME_LIMIT_MS } from "../../helpers/interaction.js";
 import {
 	getGuildChannel,
 	getGuildInvite,
@@ -184,6 +185,7 @@ const command: BotCommand = {
 		.setContexts([InteractionContextType.Guild]),
 	execute: async ({ interaction, config }) => {
 		await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+		const deadlineAt = Date.now() + DISCORD_INTERACTION_TIME_LIMIT_MS;
 		const invoker = { userName: interaction.user.tag, userId: interaction.user.id };
 		if (!isAdminUser(interaction.user.id, config)) {
 			logger.warn("ADMIN", "Unauthorized admin command attempt", {
@@ -197,14 +199,25 @@ const command: BotCommand = {
 
 		const subcommand = interaction.options.getSubcommand();
 		if (subcommand === "list") {
-			const pages = await getGuildList(interaction.client, config);
-			if (pages.length === 0) {
+			const { embeds, timeLimitReached } = await getGuildList({
+				client: interaction.client,
+				config,
+				deadlineAt,
+			});
+			if (timeLimitReached) {
+				embeds[0]?.addFields({
+					name: "Status",
+					value: "Maximum run time reached before all guilds were processed. Run this command again to continue.",
+				});
+				embeds.forEach((embed, index) => embed.setFooter({ text: `Page ${index + 1} / ${embeds.length}` }));
+			}
+			if (embeds.length === 0) {
 				await interaction.editReply("No guilds found.");
 				return;
 			}
 			await sendResponse({
 				destination: interaction,
-				content: { embeds: pages, flags: MessageFlags.Ephemeral },
+				content: { embeds, flags: MessageFlags.Ephemeral },
 			});
 			return;
 		}
@@ -283,12 +296,17 @@ const command: BotCommand = {
 			await interaction.editReply(`Found ${guilds.length} guilds. Starting kicks now...`);
 			const additionalMessage = interaction.options.getString("message");
 			let leftGuilds = 0;
+			let timeLimitReached = false;
 			const successfulKicks: {
 				guild: Guild;
 				owner: User | null;
 				kickResult: Awaited<ReturnType<typeof kickGuild>>;
 			}[] = [];
 			for (const [guildIndex, guild] of guilds.entries()) {
+				if (Date.now() >= deadlineAt) {
+					timeLimitReached = true;
+					break;
+				}
 				try {
 					const result = await kickGuild({
 						guild,
@@ -311,9 +329,12 @@ const command: BotCommand = {
 						error,
 					});
 				}
+				if (Date.now() >= deadlineAt && guildIndex + 1 < guilds.length) {
+					timeLimitReached = true;
+				}
 				await interaction
 					.editReply(
-						`Processed ${guildIndex + 1} of ${guilds.length} guilds. Successfully left ${leftGuilds}.`,
+						`Processed ${guildIndex + 1} of ${guilds.length} guilds. Successfully left ${leftGuilds}.${timeLimitReached ? " Maximum run time reached; run this command again to continue." : ""}`,
 					)
 					.catch(() => undefined);
 			}
@@ -329,12 +350,26 @@ const command: BotCommand = {
 								url: config.BOT_WEBSITE,
 							})
 							.setTitle("Self-kick completed")
-							.setDescription(`Left ${leftGuilds} of ${guilds.length} guilds.`)
+							.setDescription(
+								[
+									`Left ${leftGuilds} of ${guilds.length} guilds.`,
+									timeLimitReached
+										? "Maximum run time reached before all guilds were processed. Run this command again to continue."
+										: undefined,
+								]
+									.filter(Boolean)
+									.join("\n"),
+							)
 							.setFooter({ text: "Page 1 / 1" })
 							.setTimestamp(),
 					],
 				});
 				return;
+			}
+			if (timeLimitReached) {
+				await interaction.editReply(
+					`Maximum run time reached. Left ${leftGuilds} of ${guilds.length} guilds. Run this command again to continue.`,
+				);
 			}
 			const selfKickEmbeds = successfulKicks.map(({ guild, owner, kickResult }, index) =>
 				createGuildLeftEmbed({ guild, config, owner, kickResult, pageNumber: index + 1, totalPages }),

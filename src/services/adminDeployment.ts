@@ -11,15 +11,27 @@ import { handlePrefixPing } from "./prefixPing.js";
 type PrefixCommand = "ping" | "deployguild" | "undeployguild";
 type DeploymentCommand = Exclude<PrefixCommand, "ping">;
 
-export async function undeployGuildCommandsGlobally(client: Client): Promise<{
+export async function undeployGuildCommandsGlobally({
+	client,
+	deadlineAt,
+}: {
+	client: Client;
+	deadlineAt: number;
+}): Promise<{
 	undeployedGuilds: Guild[];
 	failedGuilds: Guild[];
+	timeLimitReached: boolean;
 }> {
 	const guilds = [...client.guilds.cache.values()];
 	const undeployedGuilds: Guild[] = [];
 	const failedGuilds: Guild[] = [];
+	let timeLimitReached = false;
 
 	for (const guild of guilds) {
+		if (Date.now() >= deadlineAt) {
+			timeLimitReached = true;
+			break;
+		}
 		try {
 			const existingCommands = await guild.commands.fetch();
 			if (existingCommands.size === 0) {
@@ -54,6 +66,7 @@ export async function undeployGuildCommandsGlobally(client: Client): Promise<{
 	return {
 		undeployedGuilds,
 		failedGuilds,
+		timeLimitReached,
 	};
 }
 

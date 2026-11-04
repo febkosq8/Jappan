@@ -84,15 +84,22 @@ export async function handleSlashCommandInteraction({
 			error,
 		});
 
-		if (interaction.replied || interaction.deferred) {
-			await interaction.followUp({
-				content: "⛔ There was an error while running this Application (/) command.",
-				flags: MessageFlags.Ephemeral,
-			});
-		} else {
-			await interaction.reply({
-				content: "⛔ There was an error while running this Application (/) command.",
-				flags: MessageFlags.Ephemeral,
+		try {
+			if (interaction.replied || interaction.deferred) {
+				await interaction.followUp({
+					content: "⛔ There was an error while running this Application (/) command.",
+					flags: MessageFlags.Ephemeral,
+				});
+			} else {
+				await interaction.reply({
+					content: "⛔ There was an error while running this Application (/) command.",
+					flags: MessageFlags.Ephemeral,
+				});
+			}
+		} catch (responseError: unknown) {
+			logger.warn("SLASH_COMMANDS", "Failed to send Application (/) command error response", {
+				...getExecutionLogDetails(),
+				error: responseError,
 			});
 		}
 	}

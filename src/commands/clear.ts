@@ -9,9 +9,12 @@ import {
 } from "discord.js";
 
 import { formatChannelMention, formatUserMention } from "../helpers/discord.js";
+import { DISCORD_INTERACTION_TIME_LIMIT_MS } from "../helpers/interaction.js";
 import { sendResponse } from "../helpers/response.js";
 import type { BotCommand, BotCommandData } from "../services/commandLoader.js";
 import { logger } from "../services/logger.js";
+
+const timeLimitMessage = "Stopped: maximum run time reached. Run a new instance of this command to continue.";
 
 const commandData = {
 	name: "clear",
@@ -33,32 +36,44 @@ const deleteMessages = async ({
 	channel,
 	messages,
 	channelName,
+	deadlineAt,
 }: {
 	channel: object;
 	messages: Message[];
 	channelName: string;
+	deadlineAt: number;
 }) => {
 	let deleted = 0;
 	let failed = 0;
+	let timeLimitReached = false;
 	const bulkDeletableBefore = Date.now() - 1209600000;
 	const bulkMessages = messages.filter((message) => message.createdTimestamp >= bulkDeletableBefore);
 	const individualMessages = messages.filter((message) => message.createdTimestamp < bulkDeletableBefore);
 
 	if (bulkMessages.length > 0 && "bulkDelete" in channel && typeof channel.bulkDelete === "function") {
-		try {
-			deleted += (await channel.bulkDelete(bulkMessages, true)).size;
-		} catch (error: unknown) {
-			failed += bulkMessages.length;
-			logger.warn("SLASH_COMMANDS", "Failed to bulk delete messages", {
-				channel: channelName,
-				message: error instanceof Error ? error.message : String(error),
-			});
+		if (Date.now() >= deadlineAt) {
+			timeLimitReached = true;
+		} else {
+			try {
+				deleted += (await channel.bulkDelete(bulkMessages, true)).size;
+			} catch (error: unknown) {
+				failed += bulkMessages.length;
+				logger.warn("SLASH_COMMANDS", "Failed to bulk delete messages", {
+					channel: channelName,
+					message: error instanceof Error ? error.message : String(error),
+				});
+			}
+			timeLimitReached = Date.now() >= deadlineAt;
 		}
 	} else {
 		individualMessages.push(...bulkMessages);
 	}
 
 	for (const message of individualMessages) {
+		if (Date.now() >= deadlineAt) {
+			timeLimitReached = true;
+			break;
+		}
 		try {
 			await message.delete();
 			deleted += 1;
@@ -72,7 +87,7 @@ const deleteMessages = async ({
 		}
 	}
 
-	return { deleted, failed };
+	return { deleted, failed, timeLimitReached: timeLimitReached || Date.now() >= deadlineAt };
 };
 
 const command: BotCommand = {
@@ -106,6 +121,7 @@ const command: BotCommand = {
 		.setContexts([InteractionContextType.Guild]),
 	execute: async ({ interaction, config }) => {
 		await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+		const deadlineAt = Date.now() + DISCORD_INTERACTION_TIME_LIMIT_MS;
 		if (!interaction.guild) {
 			await interaction.editReply("⛔ This command can only be used in a guild.");
 			return;
@@ -121,6 +137,7 @@ const command: BotCommand = {
 		}
 		let progressInterval: ReturnType<typeof setInterval> | undefined;
 		let progressUpdate: Promise<void> | undefined;
+		let timeLimitReached = false;
 		try {
 			const selectedGuildChannel = selectedChannel
 				? await interaction.guild.channels.fetch(selectedChannel.id)
@@ -268,7 +285,7 @@ const command: BotCommand = {
 				embeds: createProgressEmbeds("Preparing channel scan...", "Starting"),
 			});
 			progressInterval = setInterval(() => {
-				if (!progressState.summaryMessage) return;
+				if (!progressState.summaryMessage || Date.now() >= deadlineAt) return;
 				progressUpdate = interaction.webhook
 					.editMessage(progressState.summaryMessage.id, {
 						embeds: createProgressEmbeds("Still scanning messages...", progressState.currentChannelMention),
@@ -278,6 +295,10 @@ const command: BotCommand = {
 			}, 2500);
 
 			for (const channel of channels.values()) {
+				if (Date.now() >= deadlineAt) {
+					timeLimitReached = true;
+					break;
+				}
 				if (progressState.deletedMessages >= count) break;
 				progressState.processedChannels += 1;
 				progressState.currentChannel = channel.name;
@@ -288,6 +309,10 @@ const command: BotCommand = {
 				await interaction.editReply({
 					embeds: createProgressEmbeds("Scanning messages...", progressState.currentChannelMention),
 				});
+				if (Date.now() >= deadlineAt) {
+					timeLimitReached = true;
+					break;
+				}
 				const channelName = progressState.currentChannel;
 				const channelMention = progressState.currentChannelMention;
 				if (!channel?.isTextBased() || !("messages" in channel) || !("permissionsFor" in channel)) {
@@ -322,6 +347,17 @@ const command: BotCommand = {
 				const messages = await channel.messages.fetch({ limit: 100 });
 				progressState.scannedMessages += messages.size;
 				progressState.currentChannelScanned = messages.size;
+				if (Date.now() >= deadlineAt) {
+					timeLimitReached = true;
+					setChannelStat({
+						channelMention,
+						status: timeLimitMessage,
+						scanned: messages.size,
+						deleted: 0,
+						failed: 0,
+					});
+					break;
+				}
 				setChannelStat({
 					channelMention,
 					status: "Scanning messages...",
@@ -347,28 +383,39 @@ const command: BotCommand = {
 					.sort(
 						(firstMessage, secondMessage) => secondMessage.createdTimestamp - firstMessage.createdTimestamp,
 					);
-				const deletionResult = await deleteMessages({ channel, messages: messagesToDelete, channelName });
+				const deletionResult = await deleteMessages({
+					channel,
+					messages: messagesToDelete,
+					channelName,
+					deadlineAt,
+				});
 				progressState.deletedMessages += deletionResult.deleted;
 				progressState.currentChannelDeleted += deletionResult.deleted;
 				progressState.failedMessages += deletionResult.failed;
 				progressState.currentChannelFailed += deletionResult.failed;
+				timeLimitReached = deletionResult.timeLimitReached;
 				setChannelStat({
 					channelMention,
-					status: `Complete in ${formatElapsedTime()}`,
+					status: timeLimitReached ? timeLimitMessage : `Complete in ${formatElapsedTime()}`,
 					scanned: progressState.currentChannelScanned,
 					deleted: progressState.currentChannelDeleted,
 					failed: progressState.currentChannelFailed,
 				});
+				if (timeLimitReached) break;
 				await interaction.editReply({
 					embeds: createProgressEmbeds("Channel scan complete", progressState.currentChannelMention),
 				});
 			}
 			clearInterval(progressInterval);
 			if (progressUpdate) await progressUpdate;
+			timeLimitReached ||= Date.now() >= deadlineAt;
 			await interaction.webhook.editMessage(progressState.summaryMessage.id, {
-				embeds: createProgressEmbeds("Complete", "All channels scanned"),
+				embeds: createProgressEmbeds(
+					timeLimitReached ? timeLimitMessage : "Complete",
+					timeLimitReached ? progressState.currentChannelMention : "All channels scanned",
+				),
 			});
-			await sendOverflowChannelStats(true);
+			await sendOverflowChannelStats(!timeLimitReached);
 			return;
 		} catch (error: unknown) {
 			if (progressInterval) clearInterval(progressInterval);

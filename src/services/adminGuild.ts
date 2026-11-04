@@ -74,7 +74,15 @@ export async function validateAdminUsers(client: Client, config: Config): Promis
 	}
 }
 
-export async function getGuildList(client: Client, config: Config): Promise<EmbedBuilder[]> {
+export async function getGuildList({
+	client,
+	config,
+	deadlineAt,
+}: {
+	client: Client;
+	config: Config;
+	deadlineAt: number;
+}): Promise<{ embeds: EmbedBuilder[]; timeLimitReached: boolean }> {
 	const guilds = [...client.guilds.cache.values()].sort(
 		(first, second) => first.joinedTimestamp - second.joinedTimestamp,
 	);
@@ -96,8 +104,13 @@ export async function getGuildList(client: Client, config: Config): Promise<Embe
 			.setFooter(createFooter(0))
 			.setTimestamp(),
 	];
+	let timeLimitReached = false;
 
 	for (const [guildIndex, guild] of guilds.entries()) {
+		if (Date.now() >= deadlineAt) {
+			timeLimitReached = true;
+			break;
+		}
 		const botMember = guild.members.me ?? (await guild.members.fetchMe().catch(() => null));
 		const owner = await client.users.fetch(guild.ownerId).catch(() => null);
 		const permissions = botMember?.permissions.toArray() ?? [];
@@ -130,7 +143,7 @@ export async function getGuildList(client: Client, config: Config): Promise<Embe
 		);
 	}
 
-	return embeds;
+	return { embeds, timeLimitReached };
 }
 
 export async function getGuildChannel({
