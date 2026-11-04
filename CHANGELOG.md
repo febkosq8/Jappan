@@ -5,6 +5,17 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.7] - 2026-11-04
+
+### Changed
+
+- Updated the minimum Node.js version to 26.13.0 and refreshed project and dashboard dependencies.
+- Reorganized dashboard public assets and updated the logo, favicon, and social preview paths.
+
+### Fixed
+
+- Added the dashboard stylesheet link so the page loads its styles correctly.
+
 ## [2.0.6] - 2026-10-25
 
 ### Added
