@@ -6,7 +6,8 @@ RUN apt-get update \
 	&& apt-get install --no-install-recommends --yes python3 make g++ \
 	&& rm -rf /var/lib/apt/lists/*
 
-RUN corepack enable
+RUN npm install --global corepack \
+	&& corepack enable
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json extractorpack.config.mjs ./
 COPY src ./src

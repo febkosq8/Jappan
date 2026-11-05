@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Installed Corepack explicitly in the Docker build, since Node.js 26 no longer includes it.
 - Added the dashboard stylesheet link so the page loads its styles correctly.
 - Added a 13-minute run limit to `/clear`, `/admin-guild list`, `/admin-guild selfkick`, and `/admin-deploy undeploy-guilds` so they stop before Discord's 15-minute interaction token expires. Stopped runs report partial results and ask the user to run the command again.
 - Logged a warning instead of raising an unhandled rejection when the slash command error reply fails because the interaction token has expired.
