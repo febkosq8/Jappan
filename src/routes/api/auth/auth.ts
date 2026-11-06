@@ -2,8 +2,8 @@ import { toNodeHandler } from "better-auth/node";
 import { Router } from "express";
 import { z } from "zod";
 
-import { defineExternalRouter } from "../helpers/route.js";
-import { getAuth } from "../services/auth.js";
+import { defineExternalRouter } from "../../../helpers/route.js";
+import { getAuth } from "../../../services/auth.js";
 
 const router = Router();
 

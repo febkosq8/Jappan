@@ -3,7 +3,7 @@ import express from "express";
 import cors from "cors";
 
 import { routers } from "../routes/index.js";
-import authRouter from "../routes/auth.js";
+import authRouter from "../routes/api/auth/auth.js";
 import swagger, { DOCS_ROUTE } from "../routes/swagger.js";
 import { getConfig } from "../services/config.js";
 import { logger } from "../services/logger.js";

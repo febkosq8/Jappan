@@ -1,9 +1,12 @@
 import type { RouterDefinition } from "../helpers/route.js";
 import type { OpenApiOptions } from "../docs/openapi.js";
+import authRouter from "./api/auth/auth.js";
 import base from "./base.js";
 import publicRoutes from "./public/index.js";
 
 export const routers: RouterDefinition[] = [publicRoutes, base];
+// Auth is mounted separately (before body parsing) but must still be documented
+export const documentedRouters: RouterDefinition[] = [authRouter, ...routers];
 export const openApiOptions: OpenApiOptions = {
 	securitySchemes: {
 		sessionCookie: {

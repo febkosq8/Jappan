@@ -69,7 +69,7 @@ class DatabaseManager {
 					entries,
 				});
 			} catch (error: unknown) {
-				logger.error("DATABASE", "MongoDB index synchronization failed", {
+				logger.error("DATABASE", "MongoDB model initialization failed", {
 					model: modelName,
 					error,
 				});
