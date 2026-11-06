@@ -19,7 +19,7 @@ export interface HealthResponse {
 
 class APIHandler {
 	static async getHealth(): Promise<HealthResponse> {
-		const { data } = await apiClient.get<HealthResponse>("/public/health/");
+		const { data } = await apiClient.get<HealthResponse>("/api/v1/public/health/");
 		return data;
 	}
 }

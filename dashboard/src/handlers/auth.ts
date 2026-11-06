@@ -4,7 +4,7 @@ import { inferAdditionalFields } from "better-auth/client/plugins";
 import { apiBaseURL } from "./APIHandler";
 
 export const authClient = createAuthClient({
-	baseURL: apiBaseURL,
+	baseURL: `${apiBaseURL}/api/v1/auth`,
 	fetchOptions: { credentials: "include" },
 	plugins: [
 		inferAdditionalFields({

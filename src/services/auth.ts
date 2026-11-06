@@ -16,7 +16,7 @@ function createAuth() {
 	return betterAuth({
 		appName: "Jappan",
 		baseURL: config.AUTH_BASE_URL,
-		basePath: "/api/auth",
+		basePath: "/api/v1/auth",
 		secret: config.AUTH_SECRET,
 		trustedOrigins: [...config.ALLOWED_ORIGINS],
 		database: mongodbAdapter(DatabaseManager.getDatabaseInstance()),

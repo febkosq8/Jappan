@@ -7,7 +7,7 @@ import { getAuth } from "../../../services/auth.js";
 
 const router = Router();
 
-router.all("/api/auth/*splat", (request, response, next) => {
+router.all("/auth/*splat", (request, response, next) => {
 	const auth = getAuth();
 	if (!auth) {
 		response.status(503).json({ error: "Authentication is unavailable" });
@@ -18,10 +18,10 @@ router.all("/api/auth/*splat", (request, response, next) => {
 
 const dateTime = z.iso.datetime();
 
-export default defineExternalRouter("/", router, [
+export default defineExternalRouter("/api/v1", router, [
 	{
 		method: "get",
-		path: "/api/auth/get-session",
+		path: "/auth/get-session",
 		tags: ["Authentication"],
 		summary: "Get the current session",
 		errorMessage: "Failed to get session",

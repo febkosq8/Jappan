@@ -1,6 +1,6 @@
 # HTTP routes and OpenAPI
 
-Jappan registers Express routers from `src/routes/index.ts` and serves the generated OpenAPI 3.0 document at `/openapi.json` and Swagger UI at `/swagger`. Route definitions live in `src/helpers/route.ts`; the definition supplies documentation and a normal Express handler. OpenAPI metadata does not validate requests or enforce authorization.
+Jappan registers Express routers from `src/routes/index.ts` and serves the generated OpenAPI 3.0 document at `/openapi.json` and Swagger UI at `/swagger`. Route definitions live in `src/helpers/route.ts`; the definition supplies documentation and a normal Express handler. Public routes and Better Auth are mounted under the `/api/v1` prefix (for example `/api/v1/public/health` and `/api/v1/auth/get-session`); `/openapi.json` and `/swagger` are unversioned. OpenAPI metadata does not validate requests or enforce authorization.
 
 ## Route definitions
 
@@ -44,7 +44,7 @@ By default, exceptions from route middleware or the handler are logged and recei
 
 Register OpenAPI security schemes in `openApiOptions` in `src/routes/index.ts` and refer to them by name using a route's `security` array. Multiple array elements are alternatives; multiple scheme names in one element are required together. An empty array indicates no requirement. These are documentation only: install authentication and authorization middleware or check permissions in the handler separately.
 
-Better Auth handles `/api/auth/*`. `GET /api/auth/get-session` returns the
+Better Auth handles `/api/v1/auth/*`. `GET /api/v1/auth/get-session` returns the
 current session and user, or `null` when signed out, and returns 503 when auth
 or the database is unavailable. It is included in OpenAPI and Swagger; the
 other Better Auth endpoints are not. Swagger's browser requests use the session

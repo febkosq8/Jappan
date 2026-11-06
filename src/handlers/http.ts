@@ -10,8 +10,9 @@ import { logger } from "../services/logger.js";
 import { getBotVersion } from "../helpers/utils.js";
 
 const REQUEST_TIMEOUT_MS = 5 * 60 * 1000;
-const QUIET_ROUTES = ["/public/health"];
+const QUIET_ROUTES = ["/api/v1/public/health"];
 const QUIET_METHODS = ["OPTIONS"];
+const AUTH_ROUTE_PREFIX = "/api/v1/auth/";
 const CSP_BASE =
 	"object-src 'none'; frame-src 'none'; form-action 'self'; base-uri 'self'; frame-ancestors 'none'; upgrade-insecure-requests;";
 const DEFAULT_CSP = `default-src 'none'; script-src 'none'; style-src 'none'; ${CSP_BASE}`;
@@ -29,7 +30,7 @@ const securityHeaders: Record<string, string> = {
 };
 
 function processRequest(request: Request, response: Response, next: NextFunction): void {
-	const requestUrl = request.path.startsWith("/api/auth/") ? request.path : request.originalUrl;
+	const requestUrl = request.path.startsWith(AUTH_ROUTE_PREFIX) ? request.path : request.originalUrl;
 	for (const [name, value] of Object.entries(securityHeaders)) {
 		response.setHeader(name, value);
 	}
@@ -79,7 +80,7 @@ const handleError: ErrorRequestHandler = (error: Error, request, response, next)
 			: "Unhandled HTTP error";
 	const details = {
 		method: request.method,
-		url: request.path.startsWith("/api/auth/") ? request.path : request.originalUrl,
+		url: request.path.startsWith(AUTH_ROUTE_PREFIX) ? request.path : request.originalUrl,
 		...(isCorsOriginError ? { origin: loggedOrigin } : {}),
 		error: isCorsOriginError ? "Origin is not allowed by CORS" : (error?.message ?? String(error)),
 	};
@@ -95,7 +96,7 @@ const handleError: ErrorRequestHandler = (error: Error, request, response, next)
 				? "This request is malformed!"
 				: "Internal server error",
 		method: request.method,
-		route: request.path.startsWith("/api/auth/") ? request.path : request.originalUrl,
+		route: request.path.startsWith(AUTH_ROUTE_PREFIX) ? request.path : request.originalUrl,
 		timestamp: Date.now(),
 	});
 };

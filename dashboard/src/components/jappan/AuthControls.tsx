@@ -80,11 +80,10 @@ export default function AuthControls() {
 					}
 				>
 					<div className="min-w-0 px-3 py-2">
-						<p className="text-sm text-muted-foreground">Hello</p>
 						<p className="max-w-56 truncate font-semibold" title={session.user.name}>
-							{session.user.name}
+							👋 {session.user.name}
 						</p>
-						<p className="text-xs font-medium uppercase text-muted-foreground">
+						<p className="text-xs font-medium capitalize text-muted-foreground italic">
 							{session.user.role ?? "user"}
 						</p>
 					</div>
