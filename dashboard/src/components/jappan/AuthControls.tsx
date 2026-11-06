@@ -1,10 +1,17 @@
-import { Avatar, Button, Menu } from "@febkosq8/arc";
+import { Avatar, Button, Menu, type AvatarProps } from "@febkosq8/arc";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
-import { authClient } from "@jappan/handlers/auth";
+import { authClient, fetchSession, sessionQueryKey } from "@jappan/handlers/auth";
 
 export default function AuthControls() {
-	const { data: session, isPending, error: sessionError, refetch } = authClient.useSession();
+	const queryClient = useQueryClient();
+	const {
+		data: session,
+		isPending,
+		error: sessionError,
+		refetch,
+	} = useQuery({ queryKey: sessionQueryKey, queryFn: fetchSession });
 	const [error, setError] = useState("");
 	const [busy, setBusy] = useState(false);
 
@@ -49,6 +56,8 @@ export default function AuthControls() {
 			const result = await authClient.signOut();
 			if (result.error) {
 				setError("Could not sign out. Please try again.");
+			} else {
+				queryClient.setQueryData(sessionQueryKey, null);
 			}
 		} catch {
 			setError("Could not sign out. Please try again.");
@@ -56,6 +65,14 @@ export default function AuthControls() {
 			setBusy(false);
 		}
 	}
+
+	const avatarProps: AvatarProps = {
+		name: session?.user.name,
+		image: session?.user.image,
+		"aria-hidden": true,
+		variant: "ring",
+		ringColor: session?.user.role === "admin" ? "primary" : "muted",
+	};
 
 	return (
 		<div className="flex flex-wrap items-center justify-end gap-2 text-sm">
@@ -71,7 +88,7 @@ export default function AuthControls() {
 					contentClassName="min-w-52"
 					buttonText={
 						<>
-							<Avatar name={session.user.name} image={session.user.image} size="md" aria-hidden="true" />
+							<Avatar {...avatarProps} size="md" />
 							<span className="ml-2 max-w-28 truncate sm:max-w-40">
 								{session.user.username ?? session.user.name}
 							</span>
@@ -79,13 +96,21 @@ export default function AuthControls() {
 						</>
 					}
 				>
-					<div className="min-w-0 px-3 py-2">
-						<p className="max-w-56 truncate font-semibold" title={session.user.name}>
-							👋 {session.user.name}
-						</p>
-						<p className="text-xs font-medium capitalize text-muted-foreground italic">
-							{session.user.role ?? "user"}
-						</p>
+					<div className="flex min-w-0 items-center gap-3 px-3 py-2">
+						<Avatar {...avatarProps} variant="default" size="lg" />
+						<div className="min-w-0">
+							<p className="max-w-48 truncate font-semibold" title={session.user.name}>
+								{session.user.name}
+							</p>
+							{session.user.username && (
+								<p className="max-w-48 truncate text-sm text-muted-foreground">
+									@{session.user.username}
+								</p>
+							)}
+							<p className="text-xs font-medium capitalize text-muted-foreground italic">
+								{session.user.role ?? "user"}
+							</p>
+						</div>
 					</div>
 					<Menu.Item disabled={busy} onClick={() => void signOut()}>
 						{busy ? "Signing out..." : "Sign out"}

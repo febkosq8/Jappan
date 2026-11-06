@@ -16,3 +16,13 @@ export const authClient = createAuthClient({
 		}),
 	],
 });
+
+export const sessionQueryKey = ["session"] as const;
+
+export async function fetchSession() {
+	const { data, error } = await authClient.getSession();
+	if (error) {
+		throw new Error(error.message ?? "Session unavailable");
+	}
+	return data;
+}
