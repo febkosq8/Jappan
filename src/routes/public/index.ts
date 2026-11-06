@@ -32,4 +32,4 @@ const publicRoutes: RouteDefinition[] = [
 	},
 ];
 
-export default defineRouter("/public", publicRoutes, [healthRouter]);
+export default defineRouter("/public", [...publicRoutes, healthRouter]);

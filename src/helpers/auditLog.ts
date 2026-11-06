@@ -340,8 +340,14 @@ export function getAuditEntryTargetLabel(auditEntry: GuildAuditLogsEntry): strin
 	if ("permissions" in target && "name" in target) {
 		return formatRoleMention(target as Role);
 	}
-	if ("isThread" in target && "name" in target) {
-		return formatChannelMention(target as GuildChannel | ThreadChannel);
+	if (
+		"isThread" in target &&
+		"name" in target &&
+		typeof target.name === "string" &&
+		"id" in target &&
+		typeof target.id === "string"
+	) {
+		return formatChannelMention({ id: target.id, name: target.name });
 	}
 	if ("id" in target) {
 		return formatAuditValue(target.id);

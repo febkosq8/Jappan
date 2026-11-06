@@ -59,21 +59,38 @@ const handleError: ErrorRequestHandler = (error: Error, request, response, next)
 		return;
 	}
 	const isCorsOriginError = error instanceof CorsOriginError;
-	const status = isCorsOriginError ? 403 : 400;
+	const isClientError =
+		typeof error === "object" &&
+		error !== null &&
+		"status" in error &&
+		typeof error.status === "number" &&
+		error.status >= 400 &&
+		error.status < 500;
+	const status = isCorsOriginError ? 403 : isClientError ? 400 : 500;
 	const origin = request.get("origin");
 	const loggedOrigin = origin === undefined || origin === "" || origin === "null" ? "<null>" : origin;
-	logger.warn(
-		"HTTP",
-		isCorsOriginError ? "HTTP request blocked: origin not allowed" : "Malformed HTTP request blocked",
-		{
-			method: request.method,
-			url: request.originalUrl,
-			...(isCorsOriginError ? { origin: loggedOrigin } : {}),
-			error: isCorsOriginError ? `Origin is not allowed by CORS` : (error?.message ?? String(error)),
-		},
-	);
+	const message = isCorsOriginError
+		? "HTTP request blocked: origin not allowed"
+		: isClientError
+			? "Malformed HTTP request blocked"
+			: "Unhandled HTTP error";
+	const details = {
+		method: request.method,
+		url: request.originalUrl,
+		...(isCorsOriginError ? { origin: loggedOrigin } : {}),
+		error: isCorsOriginError ? "Origin is not allowed by CORS" : (error?.message ?? String(error)),
+	};
+	if (status === 500) {
+		logger.error("HTTP", message, details);
+	} else {
+		logger.warn("HTTP", message, details);
+	}
 	response.status(status).json({
-		error: isCorsOriginError ? "Origin is not allowed" : "This request is malformed!",
+		error: isCorsOriginError
+			? "Origin is not allowed"
+			: isClientError
+				? "This request is malformed!"
+				: "Internal server error",
 		method: request.method,
 		route: request.originalUrl,
 		timestamp: Date.now(),

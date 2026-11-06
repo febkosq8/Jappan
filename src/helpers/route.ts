@@ -1,33 +1,72 @@
-import { Router, type Request, type Response, type Router as ExpressRouter } from "express";
+import {
+	Router,
+	type ErrorRequestHandler,
+	type NextFunction,
+	type Request,
+	type RequestHandler,
+	type Response,
+	type Router as ExpressRouter,
+} from "express";
 import { z } from "zod";
 
 import { logger } from "../services/logger.js";
 
-export type HttpMethod = "get" | "post" | "put" | "patch" | "delete";
+export type HttpMethod = "get" | "post" | "put" | "patch" | "delete" | "head" | "options" | "trace" | "all";
+
+export interface RouteParameter {
+	name: string;
+	in: "path" | "query" | "header" | "cookie";
+	description?: string;
+	required?: boolean;
+	schema: z.ZodType;
+}
+
+export interface RouteMediaType {
+	schema: z.ZodType;
+}
+
+export interface RouteHeader {
+	description?: string;
+	required?: boolean;
+	schema: z.ZodType;
+}
 
 export interface RouteResponse {
 	description: string;
 	schema?: z.ZodType;
-	headers?: Record<string, string>;
+	content?: Record<string, RouteMediaType>;
+	headers?: Record<string, string | RouteHeader>;
 }
 
 export interface RouteDefinition {
 	method: HttpMethod;
 	path: string;
 	tags: string[];
-	// Excluded from the OpenAPI spec, e.g. redirects that Swagger UI cannot execute
-	hidden?: boolean;
+	excludeFromOpenApi?: boolean;
 	summary: string;
-	// Message sent in the shared 500 response when the handler throws
 	errorMessage: string;
 	responses: Record<number, RouteResponse>;
-	handler: (request: Request, response: Response) => unknown | Promise<unknown>;
+	parameters?: readonly RouteParameter[];
+	requestBody?: {
+		description?: string;
+		required?: boolean;
+		content: Record<string, RouteMediaType>;
+	};
+	security?: readonly Record<string, readonly string[]>[];
+	middleware?: readonly RequestHandler[];
+	errorHandler?: ErrorRequestHandler;
+	handler: (request: Request, response: Response, next: NextFunction) => unknown | Promise<unknown>;
 }
 
 export interface RouterDefinition {
 	basePath: string;
 	router: ExpressRouter;
 	routes: readonly RouteDefinition[];
+}
+
+export interface RouterOptions {
+	middleware?: readonly RequestHandler[];
+	children?: readonly RouterDefinition[];
 }
 
 export const errorResponseSchema = z.object({ error: z.string() });
@@ -38,31 +77,50 @@ function joinRoutePaths(parentPath: string, childPath: string): string {
 
 export function defineRouter(
 	basePath: string,
-	routes: readonly RouteDefinition[],
-	children: readonly RouterDefinition[] = [],
+	entries: readonly (RouteDefinition | RouterDefinition)[],
+	options: RouterOptions = {},
 ): RouterDefinition {
 	const router: ExpressRouter = Router();
-	for (const route of routes) {
-		router[route.method](route.path, async (request, response) => {
-			try {
-				await route.handler(request, response);
-			} catch (error) {
-				logger.error("HTTP", route.errorMessage, {
-					method: request.method,
-					url: request.originalUrl,
-					error: error instanceof Error ? error.message : String(error),
-				});
-				if (!response.headersSent) {
-					response.status(500).json({ error: route.errorMessage });
-				}
+	const routes: RouteDefinition[] = [];
+	if (options.middleware?.length) {
+		router.use(...options.middleware);
+	}
+	for (const entry of [...entries, ...(options.children ?? [])]) {
+		if ("router" in entry) {
+			router.use(entry.basePath, entry.router);
+			routes.push(
+				...entry.routes.map((route) => ({ ...route, path: joinRoutePaths(entry.basePath, route.path) })),
+			);
+			continue;
+		}
+		const route = entry;
+		routes.push(route);
+		const handleRouteError: ErrorRequestHandler = async (error, request, response, next) => {
+			logger.error("HTTP", route.errorMessage, {
+				method: request.method,
+				url: request.originalUrl,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			if (response.headersSent) {
+				next(error);
+			} else if (route.errorHandler) {
+				await route.errorHandler(error, request, response, next);
+			} else {
+				response.status(500).json({ error: route.errorMessage });
 			}
-		});
+		};
+		router[route.method](
+			route.path,
+			...(route.middleware ?? []),
+			async (request: Request, response: Response, next: NextFunction) => {
+				await route.handler(request, response, next);
+			},
+			handleRouteError,
+		);
 	}
-	for (const child of children) {
-		router.use(child.basePath, child.router);
-	}
-	const childRoutes = children.flatMap((child) =>
-		child.routes.map((route) => ({ ...route, path: joinRoutePaths(child.basePath, route.path) })),
-	);
-	return { basePath, router, routes: [...routes, ...childRoutes] };
+	return { basePath, router, routes };
+}
+
+export function defineExternalRouter(basePath: string, router: ExpressRouter): RouterDefinition {
+	return { basePath, router, routes: [] };
 }

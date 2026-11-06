@@ -5,6 +5,16 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.8] - Unreleased
+
+### Added
+
+- Expanded API documentation to support request details, response formats, and authentication requirements.
+
+### Fixed
+
+- Corrected the response to unhandled HTTP errors.
+
 ## [2.0.7] - 2026-11-04
 
 ### Changed

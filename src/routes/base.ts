@@ -1,26 +1,26 @@
 import { getOpenApiDocument } from "../docs/openapi.js";
 import { defineRouter } from "../helpers/route.js";
 import { getConfig } from "../services/config.js";
-import { routers } from "./index.js";
+import { openApiOptions, routers } from "./index.js";
 
 export default defineRouter("/", [
 	{
 		method: "get",
 		path: "/openapi.json",
 		tags: ["Base"],
-		hidden: true,
+		excludeFromOpenApi: true,
 		summary: "OpenAPI specification",
 		errorMessage: "Something went wrong while returning the OpenAPI specification",
 		responses: { 200: { description: "OpenAPI specification document" } },
 		handler: (_request, response) => {
-			return response.status(200).json(getOpenApiDocument(routers));
+			return response.status(200).json(getOpenApiDocument(routers, openApiOptions));
 		},
 	},
 	{
 		method: "get",
 		path: "/",
 		tags: ["Base"],
-		hidden: true,
+		excludeFromOpenApi: true,
 		summary: "Redirect to the bot website",
 		errorMessage: "Something went wrong while redirecting to homepage",
 		responses: {

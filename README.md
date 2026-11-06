@@ -35,6 +35,7 @@ Jappan is a Discord bot made to make life easier through music playback, fun com
 - [Setup and configuration](./docs/SETUP.md)
 - [Environment variables](./docs/ENVIRONMENT.md)
 - [Development](./docs/DEVELOPMENT.md)
+- [HTTP routes and OpenAPI](./docs/HTTP_ROUTES.md)
 - [Migration](./docs/MIGRATION.md)
 - [discord.js documentation](https://discord.js.org/docs/packages/discord.js/main)
 - [Discord.js guide](https://discordjs.guide/)

@@ -12,3 +12,5 @@ pnpm run format:check  # Check TypeScript formatting
 ```
 
 There is no automated test script yet. Validate changes with `pnpm run typecheck`, `pnpm run build`, and focused manual checks.
+
+See [HTTP routes and OpenAPI](./HTTP_ROUTES.md) for route registration, Swagger documentation, and compatibility notes.
