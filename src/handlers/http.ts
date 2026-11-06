@@ -1,7 +1,9 @@
 import type { ErrorRequestHandler, Express, NextFunction, Request, Response } from "express";
+import express from "express";
 import cors from "cors";
 
 import { routers } from "../routes/index.js";
+import authRouter from "../routes/auth.js";
 import swagger, { DOCS_ROUTE } from "../routes/swagger.js";
 import { getConfig } from "../services/config.js";
 import { logger } from "../services/logger.js";
@@ -27,6 +29,7 @@ const securityHeaders: Record<string, string> = {
 };
 
 function processRequest(request: Request, response: Response, next: NextFunction): void {
+	const requestUrl = request.path.startsWith("/api/auth/") ? request.path : request.originalUrl;
 	for (const [name, value] of Object.entries(securityHeaders)) {
 		response.setHeader(name, value);
 	}
@@ -34,12 +37,12 @@ function processRequest(request: Request, response: Response, next: NextFunction
 	response.setHeader("X-Version", `v${getBotVersion()}`);
 	response.setHeader("Content-Security-Policy", request.path.startsWith(DOCS_ROUTE) ? DOCS_CSP : DEFAULT_CSP);
 	response.setTimeout(REQUEST_TIMEOUT_MS, () => {
-		logger.warn("HTTP", "HTTP request timed out", { method: request.method, url: request.originalUrl });
+		logger.warn("HTTP", "HTTP request timed out", { method: request.method, url: requestUrl });
 		if (!response.headersSent) {
 			response.status(408).json({
 				error: "Request timed out",
 				method: request.method,
-				route: request.originalUrl,
+				route: requestUrl,
 				timestamp: Date.now(),
 			});
 		}
@@ -47,7 +50,7 @@ function processRequest(request: Request, response: Response, next: NextFunction
 	if (!QUIET_ROUTES.some((route) => request.path.startsWith(route)) && !QUIET_METHODS.includes(request.method)) {
 		logger.info("HTTP", "HTTP request received", {
 			method: request.method,
-			url: request.originalUrl,
+			url: requestUrl,
 		});
 	}
 	next();
@@ -76,7 +79,7 @@ const handleError: ErrorRequestHandler = (error: Error, request, response, next)
 			: "Unhandled HTTP error";
 	const details = {
 		method: request.method,
-		url: request.originalUrl,
+		url: request.path.startsWith("/api/auth/") ? request.path : request.originalUrl,
 		...(isCorsOriginError ? { origin: loggedOrigin } : {}),
 		error: isCorsOriginError ? "Origin is not allowed by CORS" : (error?.message ?? String(error)),
 	};
@@ -92,7 +95,7 @@ const handleError: ErrorRequestHandler = (error: Error, request, response, next)
 				? "This request is malformed!"
 				: "Internal server error",
 		method: request.method,
-		route: request.originalUrl,
+		route: request.path.startsWith("/api/auth/") ? request.path : request.originalUrl,
 		timestamp: Date.now(),
 	});
 };
@@ -115,9 +118,13 @@ export function registerHttpHandlers(app: Express): void {
 			},
 			methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
 			allowedHeaders: ["Content-Type", "Authorization"],
+			credentials: true,
 			maxAge: 86400,
 		}),
 	);
+	app.use(authRouter.basePath, authRouter.router);
+	app.use(express.json({ limit: "25mb" }));
+	app.use(express.urlencoded({ limit: "25mb", extended: false }));
 	app.use(swagger);
 	for (const { basePath, router } of routers) {
 		app.use(basePath, router);

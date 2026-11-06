@@ -1,7 +1,10 @@
 import axios from "axios";
 
+export const apiBaseURL =
+	import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "https://api-jappan.febkosq8.me" : "http://localhost:8875");
+
 const apiClient = axios.create({
-	baseURL: import.meta.env.PROD ? "https://api-jappan.febkosq8.me" : "http://localhost:8875",
+	baseURL: apiBaseURL,
 	timeout: 10000,
 });
 

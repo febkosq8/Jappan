@@ -36,13 +36,48 @@ export default defineRouter("/items", [
 
 Use `excludeFromOpenApi: true` to omit a route from both the OpenAPI document and Swagger UI. This does **not** disable or secure the endpoint. The homepage redirect and the spec endpoint use this option. Documented routes must use simple literal paths and `:name` path parameters. OpenAPI cannot represent Express `all` or wildcard routes directly: exclude them or mount an external router, and document supported operations separately if needed.
 
-`defineExternalRouter(basePath, router)` mounts an existing Express router without adding its routes to OpenAPI. This is intended for integrations that manage their own routes, such as Better Auth. For an external `RequestHandler`, add it to an Express `Router` before mounting. Set application-level middleware in the HTTP setup, not in the OpenAPI document. Route and router middleware must call `next()` to continue or send a response.
+`defineExternalRouter(basePath, router, routes)` mounts an existing Express router. Its optional `routes` argument documents externally handled operations without registering handlers. Include the external router in the OpenAPI document separately when it must be mounted outside the regular router list, as with Better Auth. Keep this metadata aligned with the external handler. For an external `RequestHandler`, add it to an Express `Router` before mounting. Set application-level middleware in the HTTP setup, not in the OpenAPI document. Route and router middleware must call `next()` to continue or send a response.
 
 By default, exceptions from route middleware or the handler are logged and receive a JSON 500 response. An explicitly declared 500 response is retained in the specification, so it must match what the handler actually returns. An optional Express `errorHandler` can replace the default before headers are sent; its route must declare a 500 response. Errors after headers are sent are forwarded to Express instead. Exceptions from router-wide middleware go to the application's error handler.
 
 ## Security
 
 Register OpenAPI security schemes in `openApiOptions` in `src/routes/index.ts` and refer to them by name using a route's `security` array. Multiple array elements are alternatives; multiple scheme names in one element are required together. An empty array indicates no requirement. These are documentation only: install authentication and authorization middleware or check permissions in the handler separately.
+
+Better Auth handles `/api/auth/*`. `GET /api/auth/get-session` returns the
+current session and user, or `null` when signed out, and returns 503 when auth
+or the database is unavailable. It is included in OpenAPI and Swagger; the
+other Better Auth endpoints are not. Swagger's browser requests use the session
+cookie for the API origin, so sign in on that origin to try an authenticated
+request. The response includes a session token and should be treated as sensitive.
+Better Auth is mounted before body parsing. Existing public routes remain public.
+The reusable `requireSession` middleware only authenticates: future guild-specific
+endpoints must additionally enforce their own authorization checks.
+
+Better Auth uses its MongoDB adapter; the corresponding Mongoose models in
+`src/models/` allow internal services to query the same collections. Account
+credentials, session tokens and verification values are excluded from normal
+Mongoose query results; aggregation and direct MongoDB queries bypass those
+projections. APIs must explicitly protect any sensitive fields they access and
+must not expose them in responses. Auth indexes are created at startup without
+dropping additional existing indexes.
+
+Discord sign-in stores the provider username on both the auth user and Discord
+account. The user `name` remains the Discord display name (falling back to the
+username when Discord has no display name). Existing accounts receive a
+username the next time they sign in; until then the field can be absent.
+
+Auth users have an `active` or `blocked` status. New users default to `active`;
+existing users without a status are treated as active. Blocked users cannot
+create new sessions or sign in. Blocking a user does not revoke existing sessions.
+The status cannot be set through Better Auth's user update endpoint.
+
+Auth users have a `user` or `admin` role. A linked Discord account whose ID
+appears in `ADMIN_USER_IDS` receives `admin`; other users receive `user`.
+Roles are synchronized at startup and on sign-in, so removing an ID revokes the
+role after restart. All instances sharing a database must use the same
+`ADMIN_USER_IDS`. Users cannot change their own role through Better Auth.
+Authorization checks for future APIs must enforce the role server-side.
 
 ```ts
 // openApiOptions

@@ -1,6 +1,6 @@
 # Environment variables
 
-Copy [`.env.example`](../.env.example) to `.env`. Only `DISCORD_TOKEN` and `DB_URL` are required by the application; the remaining settings have defaults or are used only for optional features. Port settings default to `8875`.
+Copy [`.env.example`](../.env.example) to `.env`. `DISCORD_TOKEN`, `DB_URL`, `AUTH_SECRET`, `AUTH_DISCORD_CLIENT_ID`, and `AUTH_DISCORD_CLIENT_SECRET` are required. The remaining settings have defaults or are used only for optional features. Port settings default to `8875`.
 
 | Variable                                            | Description                                                                                                        | Required? | Possible values                                     | Default                                                  |
 | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | --------- | --------------------------------------------------- | -------------------------------------------------------- |
@@ -13,6 +13,10 @@ Copy [`.env.example`](../.env.example) to `.env`. Only `DISCORD_TOKEN` and `DB_U
 | `BOT_WEBSITE`                                       | Website URL shown in bot links and embeds.                                                                         | No        | URL                                                 | `https://jappan.febkosq8.me`                             |
 | `BACKEND_URL`                                       | Backend API base URL. Trailing slashes are removed.                                                                | No        | URL                                                 | `https://api-jappan.febkosq8.me`                         |
 | `ALLOWED_ORIGINS`                                   | Origins allowed to make cross-origin API requests. Separate multiple origins with semicolons.                      | No        | Semicolon-separated origin URLs                     | http://localhost:3000;https://jappan.febkosq8.me         |
+| `AUTH_SECRET`                                       | Secret used to secure sessions and OAuth data. Generate a unique random value of at least 32 characters.           | Yes       | Secret string                                       | None; must be set                                        |
+| `AUTH_DISCORD_CLIENT_ID`                            | Discord OAuth application client ID.                                                                               | Yes       | Client ID                                           | None; must be set                                        |
+| `AUTH_DISCORD_CLIENT_SECRET`                        | Discord OAuth application client secret.                                                                           | Yes       | Client secret                                       | None; must be set                                        |
+| `AUTH_BASE_URL`                                     | Public origin of the API, without a path. HTTPS is required except on localhost or 127.0.0.1.                      | No        | HTTP(S) origin                                      | `BACKEND_URL`                                            |
 | `ADMIN_USER_IDS`                                    | IDs to treat as administrator accounts. Leave empty for no configured IDs.                                         | No        | Semicolon-separated Discord user IDs                | Empty                                                    |
 | `LOG_TIMESTAMP`                                     | Adds timestamps to log output only when set to `true`.                                                             | No        | Exact string `true` or `false`                      | `false`                                                  |
 | `PLAYER_DEBUG`                                      | Enables Discord Player debug logging only when set to `true`.                                                      | No        | Exact string `true` or `false`                      | `false`                                                  |
@@ -27,6 +31,10 @@ Copy [`.env.example`](../.env.example) to `.env`. Only `DISCORD_TOKEN` and `DB_U
 | `SHUTDOWN_THREASHOLD`                               | Number of uncaught exceptions or unhandled promise rejections before the process shuts down.                       | No        | Positive integer                                    | `3`                                                      |
 
 Boolean settings are enabled only by the exact value `true`; other values are treated as disabled.
+
+The dashboard uses `VITE_API_URL` at build time when set; otherwise it uses
+`http://localhost:8875` in development and `https://api-jappan.febkosq8.me` in production.
+Never put auth secrets or Discord client secrets in dashboard variables.
 
 The previous playback timeout variable names without `MS` remain accepted for compatibility. Use the new names in `.env` files.
 

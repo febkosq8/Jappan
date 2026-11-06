@@ -2,6 +2,7 @@ import { getOpenApiDocument } from "../docs/openapi.js";
 import { defineRouter } from "../helpers/route.js";
 import { getConfig } from "../services/config.js";
 import { openApiOptions, routers } from "./index.js";
+import authRouter from "./auth.js";
 
 export default defineRouter("/", [
 	{
@@ -13,7 +14,7 @@ export default defineRouter("/", [
 		errorMessage: "Something went wrong while returning the OpenAPI specification",
 		responses: { 200: { description: "OpenAPI specification document" } },
 		handler: (_request, response) => {
-			return response.status(200).json(getOpenApiDocument(routers, openApiOptions));
+			return response.status(200).json(getOpenApiDocument([authRouter, ...routers], openApiOptions));
 		},
 	},
 	{

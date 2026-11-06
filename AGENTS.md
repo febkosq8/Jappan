@@ -40,7 +40,7 @@ Discord.js references:
 - Guide: https://discordjs.guide/
 - Discord Player documentation: https://discord-player.js.org/
 
-Required environment values are `DISCORD_TOKEN` and `DB_URL`. All other values, defaults, validation, and optional player health-check settings are defined in `.env.example` and `src/services/config.ts`; update both when adding an environment-backed setting. Boolean values are enabled only when their environment value is exactly `"true"`.
+Required environment values are `DISCORD_TOKEN`, `DB_URL`, `AUTH_SECRET`, `AUTH_DISCORD_CLIENT_ID`, and `AUTH_DISCORD_CLIENT_SECRET`. All other values, defaults, validation, and optional player health-check settings are defined in `.env.example` and `src/services/config.ts`; update both when adding an environment-backed setting. Boolean values are enabled only when their environment value is exactly `"true"`.
 
 ## System Design
 

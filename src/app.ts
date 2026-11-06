@@ -10,9 +10,6 @@ let server: Server | undefined;
 
 app.disable("x-powered-by");
 app.disable("etag");
-app.use(express.json({ limit: "25mb" }));
-app.use(express.urlencoded({ limit: "25mb", extended: false }));
-
 export function startApp(): Promise<void> {
 	if (server) {
 		return Promise.resolve();

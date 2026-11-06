@@ -2,7 +2,26 @@
 
 ## Configuration
 
-Copy [`.env.example`](../.env.example) to `.env`. Set `DISCORD_TOKEN` to your Discord bot token and `DB_URL` to your MongoDB connection string. See [Environment variables](./ENVIRONMENT.md) for the complete variable reference, including defaults, accepted values, and event-debug options.
+Copy [`.env.example`](../.env.example) to `.env`. Set `DISCORD_TOKEN` to your Discord bot token, `DB_URL` to your MongoDB connection string, and the required authentication values below. See [Environment variables](./ENVIRONMENT.md) for the complete variable reference, including defaults, accepted values, and event-debug options.
+
+### Dashboard authentication
+
+1. In the Discord Developer Portal, configure an OAuth application and add
+   `https://YOUR_API_ORIGIN/api/auth/callback/discord` as a redirect URI. For local
+   development, add `http://localhost:8875/api/auth/callback/discord` instead.
+2. Set a unique random `AUTH_SECRET` of at least 32 characters,
+   `AUTH_DISCORD_CLIENT_ID`, and `AUTH_DISCORD_CLIENT_SECRET`. Set `AUTH_BASE_URL`
+   to the API's public origin, or leave it unset to use `BACKEND_URL`.
+3. Add each dashboard origin to `ALLOWED_ORIGINS`. The dashboard and API must be
+   served over HTTPS and be same-site in production (for example, sibling
+   subdomains); local development can use localhost HTTP for both.
+   If deploying the dashboard against a different API origin, set `VITE_API_URL`
+   when building it.
+
+Jappan maintains its own accounts and sessions in MongoDB; it does not share
+FebGoServe accounts. Sign-in requires a Discord account that supplies an email
+address. Keep the auth secret stable across restarts and instances. Changing it
+invalidates existing sessions and can make stored OAuth tokens unreadable.
 
 ## Log files
 

@@ -96,7 +96,8 @@ export function getOpenApiDocument(routers: readonly RouterDefinition[], options
 			if (route.method === "all") {
 				throw new Error(`OpenAPI cannot document all methods for ${basePath}${route.path}; exclude the route`);
 			}
-			if (route.errorHandler && !route.responses[500]) {
+			const hasCustomErrorHandler = "errorHandler" in route && Boolean(route.errorHandler);
+			if (hasCustomErrorHandler && !route.responses[500]) {
 				throw new Error(
 					`A custom error handler requires an explicit 500 response for ${basePath}${route.path}`,
 				);
@@ -127,7 +128,7 @@ export function getOpenApiDocument(routers: readonly RouterDefinition[], options
 					...(response.content && { content: toContent(response.content, "output") }),
 				};
 			}
-			if (!responses["500"] && !route.errorHandler) {
+			if (!responses["500"] && !hasCustomErrorHandler) {
 				responses["500"] = {
 					description: route.errorMessage,
 					content: { "application/json": { schema: toJsonSchema(errorResponseSchema) } },

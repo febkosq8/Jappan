@@ -58,10 +58,12 @@ export interface RouteDefinition {
 	handler: (request: Request, response: Response, next: NextFunction) => unknown | Promise<unknown>;
 }
 
+export type ExternalRouteDefinition = Omit<RouteDefinition, "handler" | "middleware" | "errorHandler">;
+
 export interface RouterDefinition {
 	basePath: string;
 	router: ExpressRouter;
-	routes: readonly RouteDefinition[];
+	routes: readonly (RouteDefinition | ExternalRouteDefinition)[];
 }
 
 export interface RouterOptions {
@@ -81,7 +83,7 @@ export function defineRouter(
 	options: RouterOptions = {},
 ): RouterDefinition {
 	const router: ExpressRouter = Router();
-	const routes: RouteDefinition[] = [];
+	const routes: (RouteDefinition | ExternalRouteDefinition)[] = [];
 	if (options.middleware?.length) {
 		router.use(...options.middleware);
 	}
@@ -121,6 +123,10 @@ export function defineRouter(
 	return { basePath, router, routes };
 }
 
-export function defineExternalRouter(basePath: string, router: ExpressRouter): RouterDefinition {
-	return { basePath, router, routes: [] };
+export function defineExternalRouter(
+	basePath: string,
+	router: ExpressRouter,
+	routes: readonly ExternalRouteDefinition[] = [],
+): RouterDefinition {
+	return { basePath, router, routes };
 }
