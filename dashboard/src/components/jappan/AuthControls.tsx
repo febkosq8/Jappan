@@ -84,8 +84,9 @@ export default function AuthControls() {
 						<p className="max-w-56 truncate font-semibold" title={session.user.name}>
 							{session.user.name}
 						</p>
-						<p className="text-sm text-muted-foreground">Status: {session.user.status ?? "active"}</p>
-						<p className="text-sm text-muted-foreground">Role: {session.user.role ?? "user"}</p>
+						<p className="text-xs font-medium uppercase text-muted-foreground">
+							{session.user.role ?? "user"}
+						</p>
 					</div>
 					<Menu.Item disabled={busy} onClick={() => void signOut()}>
 						{busy ? "Signing out..." : "Sign out"}
