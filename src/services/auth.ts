@@ -15,7 +15,7 @@ function createAuth() {
 	const config = getConfig();
 	return betterAuth({
 		appName: "Jappan",
-		baseURL: config.AUTH_BASE_URL,
+		baseURL: config.BACKEND_URL,
 		basePath: "/api/v1/auth",
 		secret: config.AUTH_SECRET,
 		trustedOrigins: [...config.ALLOWED_ORIGINS],
@@ -86,9 +86,6 @@ function createAuth() {
 								code: "USER_BLOCKED",
 								message: "This account is blocked",
 							});
-						}
-						if (user.status !== "active" && user.status !== undefined) {
-							throw new Error("User has an invalid authentication status");
 						}
 						if (context?.path !== "/callback/:id") return;
 						if (!user?.username || !user.discordAccountId) {

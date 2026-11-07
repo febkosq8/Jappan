@@ -12,7 +12,6 @@ export interface Config {
 	readonly AUTH_SECRET: string;
 	readonly AUTH_DISCORD_CLIENT_ID: string;
 	readonly AUTH_DISCORD_CLIENT_SECRET: string;
-	readonly AUTH_BASE_URL: string;
 	readonly ADMIN_USER_IDS: readonly string[];
 	readonly LOG_TIMESTAMP: boolean;
 	readonly PLAYER_DEBUG: boolean;
@@ -36,7 +35,6 @@ const configTemplate: Partial<Record<keyof Config, string>> = {
 	BOT_WEBSITE: "https://jappan.febkosq8.me",
 	BACKEND_URL: "https://api-jappan.febkosq8.me",
 	ALLOWED_ORIGINS: "http://localhost:3000;https://jappan.febkosq8.me",
-	AUTH_BASE_URL: "",
 	ADMIN_USER_IDS: "",
 	LOG_TIMESTAMP: "false",
 	PLAYER_DEBUG: "false",
@@ -89,21 +87,24 @@ export function loadConfig(): Config {
 	const AUTH_SECRET = readConfigValue("AUTH_SECRET", true);
 	const AUTH_DISCORD_CLIENT_ID = readConfigValue("AUTH_DISCORD_CLIENT_ID", true);
 	const AUTH_DISCORD_CLIENT_SECRET = readConfigValue("AUTH_DISCORD_CLIENT_SECRET", true);
-	const AUTH_BASE_URL = (readConfigValue("AUTH_BASE_URL") || BACKEND_URL).replace(/\/+$/, "");
 	if (AUTH_SECRET.length < 32) {
 		throw new Error("AUTH_SECRET must contain at least 32 characters");
 	}
-	let authUrl: URL;
+	let backendUrl: URL;
 	try {
-		authUrl = new URL(AUTH_BASE_URL);
+		backendUrl = new URL(BACKEND_URL);
 	} catch {
-		throw new Error("AUTH_BASE_URL must be a valid HTTP or HTTPS origin");
+		throw new Error("BACKEND_URL must be a valid HTTP or HTTPS origin");
 	}
-	if (!["http:", "https:"].includes(authUrl.protocol) || authUrl.origin !== AUTH_BASE_URL) {
-		throw new Error("AUTH_BASE_URL must be a valid HTTP or HTTPS origin without a path");
+	if (!["http:", "https:"].includes(backendUrl.protocol) || backendUrl.origin !== BACKEND_URL) {
+		throw new Error("BACKEND_URL must be a valid HTTP or HTTPS origin without a path");
 	}
-	if (authUrl.protocol !== "https:" && authUrl.hostname !== "localhost" && authUrl.hostname !== "127.0.0.1") {
-		throw new Error("AUTH_BASE_URL must use HTTPS except on localhost");
+	if (
+		backendUrl.protocol !== "https:" &&
+		backendUrl.hostname !== "localhost" &&
+		backendUrl.hostname !== "127.0.0.1"
+	) {
+		throw new Error("BACKEND_URL must use HTTPS except on localhost");
 	}
 	const adminUserIdsValue = readConfigValue("ADMIN_USER_IDS");
 	const ADMIN_USER_IDS = adminUserIdsValue
@@ -173,7 +174,6 @@ export function loadConfig(): Config {
 		AUTH_SECRET,
 		AUTH_DISCORD_CLIENT_ID,
 		AUTH_DISCORD_CLIENT_SECRET,
-		AUTH_BASE_URL,
 		ADMIN_USER_IDS,
 		LOG_TIMESTAMP,
 		PLAYER_DEBUG,
