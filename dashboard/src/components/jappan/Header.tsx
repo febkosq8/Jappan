@@ -1,8 +1,15 @@
-import { Avatar, PillLink, ThemeSwitcher } from "@febkosq8/arc";
+import { Avatar, Menu, PillLink, ThemeSwitcher } from "@febkosq8/arc";
+import { useLocation, useNavigate } from "react-router-dom";
 
+import { isAdminSession, useSessionQuery } from "@jappan/handlers/auth";
 import AuthControls from "./AuthControls";
 
 export default function Header({ activeSectionId }: { activeSectionId: string }) {
+	const { data: session, isError } = useSessionQuery();
+	const location = useLocation();
+	const navigate = useNavigate();
+	const sectionHref = (section: string) => `${location.pathname === "/" ? "" : "/"}#${section}`;
+
 	return (
 		<header className="sticky top-0 z-50 w-full border-b border-border bg-background/90 backdrop-blur">
 			<div className="mx-auto flex min-h-16 max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-2 sm:gap-4 sm:px-6">
@@ -11,20 +18,25 @@ export default function Header({ activeSectionId }: { activeSectionId: string })
 					Jappan
 				</a>
 				<nav aria-label="Main navigation" className="flex flex-wrap items-center gap-1 sm:gap-2">
-					<PillLink size="sm" active={activeSectionId === "about"} href="#about">
+					<PillLink size="sm" active={activeSectionId === "about"} href={sectionHref("about")}>
 						About
 					</PillLink>
-					<PillLink size="sm" active={activeSectionId === "features"} href="#features">
+					<PillLink size="sm" active={activeSectionId === "features"} href={sectionHref("features")}>
 						Features
 					</PillLink>
 					<PillLink
 						size="sm"
 						active={activeSectionId === "team"}
-						href="#team"
+						href={sectionHref("team")}
 						className="hidden sm:inline-flex"
 					>
 						Team
 					</PillLink>
+					{!isError && isAdminSession(session) && (
+						<Menu buttonText="Admin" active={location.pathname.startsWith("/admin")}>
+							<Menu.Item onClick={() => navigate("/admin/guilds")}>List Guilds</Menu.Item>
+						</Menu>
+					)}
 					<AuthControls />
 					<ThemeSwitcher variant="toggle" />
 				</nav>

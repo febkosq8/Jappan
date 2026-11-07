@@ -15,9 +15,9 @@ const QUIET_METHODS = ["OPTIONS"];
 const AUTH_ROUTE_PREFIX = "/api/v1/auth/";
 const CSP_BASE =
 	"object-src 'none'; frame-src 'none'; form-action 'self'; base-uri 'self'; frame-ancestors 'none'; upgrade-insecure-requests;";
-const DEFAULT_CSP = `default-src 'none'; script-src 'none'; style-src 'none'; ${CSP_BASE}`;
+const DEFAULT_CSP = `default-src 'none'; script-src 'none'; style-src 'none'; img-src 'self' https://cdn.discordapp.com; ${CSP_BASE}`;
 // Swagger UI loads its scripts from the same origin but ships inline <style> blocks and data: images
-const DOCS_CSP = `default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; ${CSP_BASE}`;
+const DOCS_CSP = `default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; ${CSP_BASE}`;
 
 class CorsOriginError extends Error {}
 

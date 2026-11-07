@@ -1,2 +1,4 @@
 minimumReleaseAgeExclude:
     - "@febkosq8/arc"
+overrides:
+    "@febkosq8/arc": "link:../../arc"

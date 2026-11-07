@@ -1,5 +1,5 @@
 import type { Client, Guild, GuildBasedChannel, Invite } from "discord.js";
-import { DiscordAPIError, EmbedBuilder, PermissionFlagsBits, blockQuote, userMention } from "discord.js";
+import { DiscordAPIError, EmbedBuilder, PermissionFlagsBits, blockQuote } from "discord.js";
 
 import {
 	formatChannel,
@@ -11,6 +11,8 @@ import {
 } from "../helpers/discord.js";
 import type { SentGuildMessage } from "../helpers/guildHelper.js";
 import { sendGuildMessage } from "../helpers/guildHelper.js";
+import GuildModel from "../models/guild.js";
+import { getRequiredGlobalBotPermissions } from "./commandLoader.js";
 import type { Config } from "./config.js";
 import { logger } from "./logger.js";
 
@@ -74,18 +76,62 @@ export async function validateAdminUsers(client: Client, config: Config): Promis
 	}
 }
 
-export async function getGuildList({
-	client,
-	config,
-	deadlineAt,
-}: {
-	client: Client;
-	config: Config;
-	deadlineAt: number;
-}): Promise<{ embeds: EmbedBuilder[]; timeLimitReached: boolean }> {
-	const guilds = [...client.guilds.cache.values()].sort(
-		(first, second) => first.joinedTimestamp - second.joinedTimestamp,
+async function fetchGuildDetails(
+	guild: Guild,
+	requiredPermissions: ReturnType<typeof getRequiredGlobalBotPermissions>,
+) {
+	const owner = await guild.client.users.fetch(guild.ownerId);
+	const botMember = guild.members.me ?? (await guild.members.fetchMe());
+
+	return {
+		id: guild.id,
+		name: guild.name,
+		isActiveMember: true,
+		icon: guild.iconURL(),
+		memberCount: guild.memberCount,
+		joinedTimestamp: guild.joinedTimestamp,
+		systemChannel: guild.systemChannel ? { id: guild.systemChannel.id, name: guild.systemChannel.name } : null,
+		permissions: botMember.permissions.toArray(),
+		hasRequiredPermissions: botMember.permissions.has(requiredPermissions),
+		owner: { userId: owner.id, avatarUrl: owner.displayAvatarURL(), username: owner.username },
+	};
+}
+
+type GuildDetails = Awaited<ReturnType<typeof fetchGuildDetails>>;
+
+export async function listAllGuilds(client: Client) {
+	const requiredPermissions = getRequiredGlobalBotPermissions();
+	const storedGuilds = await GuildModel.find()
+		.select({ _id: 0, guildId: 1, guildName: 1 })
+		.sort({ guildName: 1, guildId: 1 })
+		.lean();
+
+	const guilds = await Promise.all(
+		storedGuilds.map(async ({ guildId, guildName }) => {
+			const guild = client.guilds.cache.get(guildId);
+			if (!guild?.available) {
+				return { id: guildId, name: guildName, isActiveMember: guild !== undefined };
+			}
+
+			return fetchGuildDetails(guild, requiredPermissions);
+		}),
 	);
+	return guilds.sort(
+		(first, second) =>
+			Number(second.isActiveMember) - Number(first.isActiveMember) || first.name.localeCompare(second.name),
+	);
+}
+
+export function buildGuildListEmbeds({
+	list,
+	config,
+}: {
+	list: Awaited<ReturnType<typeof listAllGuilds>>;
+	config: Config;
+}): EmbedBuilder[] {
+	const guilds = list
+		.filter((guild): guild is GuildDetails => "joinedTimestamp" in guild)
+		.sort((first, second) => first.joinedTimestamp - second.joinedTimestamp);
 	const totalMembers = guilds.reduce((total, guild) => total + guild.memberCount, 0);
 	const totalEmbeds = guilds.length + 1;
 	const createFooter = (embedIndex: number) => ({
@@ -104,37 +150,28 @@ export async function getGuildList({
 			.setFooter(createFooter(0))
 			.setTimestamp(),
 	];
-	let timeLimitReached = false;
-
-	for (const [guildIndex, guild] of guilds.entries()) {
-		if (Date.now() >= deadlineAt) {
-			timeLimitReached = true;
-			break;
-		}
-		const botMember = guild.members.me ?? (await guild.members.fetchMe().catch(() => null));
-		const owner = await client.users.fetch(guild.ownerId).catch(() => null);
-		const permissions = botMember?.permissions.toArray() ?? [];
+	for (const [guildIndex, details] of guilds.entries()) {
 		embeds.push(
 			new EmbedBuilder()
 				.setColor("Orange")
 				.setAuthor({ name: `${config.BOT_NAME} Admin`, iconURL: config.BOT_PFP, url: config.BOT_WEBSITE })
 				.setTitle(`Guild #${guildIndex + 1}`)
 				.addFields(
-					{ name: "Guild", value: formatGuildMention(guild) },
-					{ name: "Members", value: String(guild.memberCount), inline: true },
-					{ name: "Joined", value: `<t:${Math.floor(guild.joinedTimestamp / 1000)}:R>`, inline: true },
+					{ name: "Guild", value: formatGuildMention(details) },
+					{ name: "Members", value: String(details.memberCount), inline: true },
+					{ name: "Joined", value: `<t:${Math.floor(details.joinedTimestamp / 1000)}:R>`, inline: true },
 					{
 						name: "System channel",
-						value: guild.systemChannel ? formatChannelMention(guild.systemChannel) : "None",
+						value: details.systemChannel ? formatChannelMention(details.systemChannel) : "None",
 						inline: true,
 					},
-					{ name: "Owner", value: owner ? formatUserMention(owner) : userMention(guild.ownerId) },
 					{
-						name: "Permissions",
-						value:
-							permissions.length > 0
-								? permissions.map((permission) => `\`${permission}\``).join(", ")
-								: "None",
+						name: "Owner",
+						value: formatUserMention({ id: details.owner.userId, username: details.owner.username }),
+					},
+					{
+						name: "Has all required permissions",
+						value: details.hasRequiredPermissions ? "Yes" : "No",
 					},
 				)
 
@@ -143,7 +180,7 @@ export async function getGuildList({
 		);
 	}
 
-	return { embeds, timeLimitReached };
+	return embeds;
 }
 
 export async function getGuildChannel({

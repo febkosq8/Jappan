@@ -1,5 +1,6 @@
 import Header from "@jappan/components/jappan/Header";
 import Jappan from "@jappan/pages/Jappan";
+import AdminGuilds from "@jappan/pages/admin/AdminGuilds";
 import WrongPage from "@jappan/pages/WrongPage";
 import { updateHashOnScroll } from "@febkosq8/arc";
 import { useEffect, useRef, useState } from "react";
@@ -31,6 +32,7 @@ function App() {
 			<Header activeSectionId={activeSectionId} />
 			<Routes>
 				<Route path="/" element={<Jappan />} />
+				<Route path="/admin/guilds" element={<AdminGuilds />} />
 				<Route path="*" element={<WrongPage />} />
 			</Routes>
 		</div>

@@ -1,7 +1,7 @@
 import { fromNodeHeaders } from "better-auth/node";
 import type { RequestHandler } from "express";
 
-import { getAuth } from "../services/auth.js";
+import { getAuth, type AuthSession } from "../services/auth.js";
 import { logger } from "../services/logger.js";
 
 export const requireSession: RequestHandler = async (request, response, next) => {
@@ -32,4 +32,17 @@ export const requireSession: RequestHandler = async (request, response, next) =>
 		});
 		response.status(500).json({ error: "Session validation failed" });
 	}
+};
+
+export const requireAdmin: RequestHandler = (_request, response, next) => {
+	const session: AuthSession | undefined = response.locals.authSession;
+	if (!session) {
+		response.status(401).json({ error: "Authentication required" });
+		return;
+	}
+	if (session.user.role !== "admin" || (session.user.status !== "active" && session.user.status !== undefined)) {
+		response.status(403).json({ error: "Admin access required" });
+		return;
+	}
+	next();
 };

@@ -1,17 +1,12 @@
-import { Avatar, Button, Menu, type AvatarProps } from "@febkosq8/arc";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Avatar, Button, GridLoader, Menu, type AvatarProps } from "@febkosq8/arc";
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
-import { authClient, fetchSession, sessionQueryKey } from "@jappan/handlers/auth";
+import { authClient, sessionQueryKey, useSessionQuery } from "@jappan/handlers/auth";
 
 export default function AuthControls() {
 	const queryClient = useQueryClient();
-	const {
-		data: session,
-		isPending,
-		error: sessionError,
-		refetch,
-	} = useQuery({ queryKey: sessionQueryKey, queryFn: fetchSession });
+	const { data: session, isPending, error: sessionError, refetch } = useSessionQuery();
 	const [error, setError] = useState("");
 	const [busy, setBusy] = useState(false);
 
@@ -57,6 +52,7 @@ export default function AuthControls() {
 			if (result.error) {
 				setError("Could not sign out. Please try again.");
 			} else {
+				queryClient.removeQueries({ queryKey: ["admin"] });
 				queryClient.setQueryData(sessionQueryKey, null);
 			}
 		} catch {
@@ -77,7 +73,7 @@ export default function AuthControls() {
 	return (
 		<div className="flex flex-wrap items-center justify-end gap-2 text-sm">
 			{isPending ? (
-				<span>Checking session...</span>
+				<GridLoader label="Checking session" size={24} />
 			) : sessionError ? (
 				<button type="button" className="underline" onClick={() => void refetch()}>
 					Session unavailable. Retry

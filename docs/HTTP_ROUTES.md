@@ -54,6 +54,29 @@ Better Auth is mounted before body parsing. Existing public routes remain public
 The reusable `requireSession` middleware only authenticates: future guild-specific
 endpoints must additionally enforce their own authorization checks.
 
+Routes can opt into `requireDatabase` and `requireDiscord` from
+`src/handlers/availability.ts` to return 503 when those dependencies are
+unavailable. These checks run only on routes that declare them; they do not
+replace authorization or guarantee a dependency stays connected during a request.
+
+`GET /api/v1/admin/guilds` requires an active admin session and returns all stored
+guilds, including those the bot has left. Each entry contains `id`, `name`, and
+`isActiveMember` (whether the bot is still in the guild, including temporarily
+unavailable guilds). Active memberships appear first, with each group sorted by
+name. When Discord guild data is available, the entry also includes `icon`
+(`null` if the guild has no icon), `memberCount`, `joinedTimestamp` (Unix
+milliseconds), `systemChannel` (an object with `id` and `name`, or `null`),
+the bot's `permissions`, `hasRequiredPermissions`, and `owner` with `userId`,
+`avatarUrl`, and `username`. `hasRequiredPermissions` checks guild-level
+permissions against all permissions declared by public commands and
+subcommands; it does not account for channel-specific permission overrides.
+Otherwise those fields are omitted and the stored name is used. The endpoint
+returns 503 when Discord is disconnected rather than reporting unreliable
+membership. If the owner or bot member cannot be fetched, the request fails
+instead of returning incomplete details.
+The Discord admin guild list uses the same stored-guild data and displays entries
+with currently available Discord details. It requires the database to be connected.
+
 Better Auth uses its MongoDB adapter; the corresponding Mongoose models in
 `src/models/` allow internal services to query the same collections. Account
 credentials, session tokens and verification values are excluded from normal

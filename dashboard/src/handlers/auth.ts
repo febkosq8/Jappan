@@ -1,5 +1,6 @@
 import { createAuthClient } from "better-auth/react";
 import { inferAdditionalFields } from "better-auth/client/plugins";
+import { useQuery } from "@tanstack/react-query";
 
 import { apiBaseURL } from "./APIHandler";
 
@@ -25,4 +26,12 @@ export async function fetchSession() {
 		throw new Error(error.message ?? "Session unavailable");
 	}
 	return data;
+}
+
+export function useSessionQuery() {
+	return useQuery({ queryKey: sessionQueryKey, queryFn: fetchSession });
+}
+
+export function isAdminSession(session: Awaited<ReturnType<typeof fetchSession>> | undefined): boolean {
+	return session?.user.role === "admin" && (session.user.status === "active" || session.user.status === undefined);
 }

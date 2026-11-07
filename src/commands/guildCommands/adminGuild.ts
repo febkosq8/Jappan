@@ -13,17 +13,25 @@ import {
 
 import type { BotCommand, BotCommandData } from "../../helpers/command.js";
 import { sendResponse } from "../../helpers/response.js";
-import { formatChannelMention, formatGuild, formatGuildMention, formatUserMention } from "../../helpers/discord.js";
+import {
+	formatChannelMention,
+	formatGuild,
+	formatGuildMention,
+	formatUser,
+	formatUserMention,
+} from "../../helpers/discord.js";
 import { DISCORD_INTERACTION_TIME_LIMIT_MS } from "../../helpers/interaction.js";
 import {
+	buildGuildListEmbeds,
 	getGuildChannel,
 	getGuildInvite,
-	getGuildList,
 	isAdminUser,
 	kickGuild,
+	listAllGuilds,
 	sendGuildAdminMessage,
 } from "../../services/adminGuild.js";
 import type { Config } from "../../services/config.js";
+import { isDatabaseConnected } from "../../services/database.js";
 import { logger } from "../../services/logger.js";
 
 const commandData = {
@@ -199,18 +207,18 @@ const command: BotCommand = {
 
 		const subcommand = interaction.options.getSubcommand();
 		if (subcommand === "list") {
-			const { embeds, timeLimitReached } = await getGuildList({
-				client: interaction.client,
-				config,
-				deadlineAt,
-			});
-			if (timeLimitReached) {
-				embeds[0]?.addFields({
-					name: "Status",
-					value: "Maximum run time reached before all guilds were processed. Run this command again to continue.",
+			if (!isDatabaseConnected()) {
+				logger.warn("ADMIN", "Guild list rejected because database is unavailable", {
+					user: formatUser(interaction.user),
 				});
-				embeds.forEach((embed, index) => embed.setFooter({ text: `Page ${index + 1} / ${embeds.length}` }));
+				await interaction.editReply("⛔ The bot is temporarily unavailable. Please try again later.");
+				return;
 			}
+			const list = await listAllGuilds(interaction.client);
+			const embeds = buildGuildListEmbeds({
+				list,
+				config,
+			});
 			if (embeds.length === 0) {
 				await interaction.editReply("No guilds found.");
 				return;

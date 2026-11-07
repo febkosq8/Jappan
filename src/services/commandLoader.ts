@@ -1,7 +1,7 @@
 import type { ApplicationCommand } from "discord.js";
-import { Collection } from "discord.js";
+import { Collection, PermissionsBitField } from "discord.js";
 
-import type { BotCommand } from "../helpers/command.js";
+import type { BotCommand, BotCommandData } from "../helpers/command.js";
 import { isBotCommand } from "../helpers/command.js";
 import about from "../commands/about.js";
 import auditlog from "../commands/auditlog.js";
@@ -88,6 +88,20 @@ export function getGlobalCommands(): Collection<string, BotCommand> {
 	}
 
 	return loadedGlobalCommands;
+}
+
+export function getRequiredGlobalBotPermissions(): PermissionsBitField {
+	const permissions = new PermissionsBitField();
+	const addCommandPermissions = (command: BotCommandData): void => {
+		permissions.add(...(command.requiredBotPermissions ?? []));
+		for (const subcommand of command.subCommands ?? []) {
+			addCommandPermissions(subcommand);
+		}
+	};
+	for (const command of getGlobalCommands().values()) {
+		addCommandPermissions(command.commandData);
+	}
+	return permissions;
 }
 
 export function getGuildCommands(): Collection<string, BotCommand> {
