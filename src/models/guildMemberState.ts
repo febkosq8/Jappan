@@ -37,7 +37,7 @@ const guildMemberStateSchema = new Schema(
 		voiceRegionLock: { type: voiceRegionLockSchema, default: null },
 	},
 	{
-		collection: "guild_member_states",
+		collection: "guildMemberStates",
 		timestamps: true,
 		strict: "throw",
 	},
