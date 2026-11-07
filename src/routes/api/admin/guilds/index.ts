@@ -26,6 +26,9 @@ const preferenceEntitySchema = z.object({ id: z.string(), name: z.string().nulla
 
 const guildDetailsSchema = guildSchema.extend({
 	discoveredAt: z.number().int().nullable(),
+	guildCommandDeployment: z
+		.object({ deployed: z.number().int().nonnegative(), total: z.number().int().nonnegative() })
+		.nullable(),
 	preferences: z.object({
 		auditLog: z.object({
 			enabled: z.boolean(),

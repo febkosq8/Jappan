@@ -1,11 +1,18 @@
 import type { Client, Guild, Invite } from "discord.js";
-import { ChannelType, DiscordAPIError, EmbedBuilder, PermissionFlagsBits, blockQuote } from "discord.js";
+import {
+	ApplicationCommandType,
+	ChannelType,
+	DiscordAPIError,
+	EmbedBuilder,
+	PermissionFlagsBits,
+	blockQuote,
+} from "discord.js";
 
 import { formatChannel, formatGuild, formatUser } from "../helpers/discord.js";
 import type { SentGuildMessage } from "../helpers/guildHelper.js";
 import { sendGuildMessage } from "../helpers/guildHelper.js";
 import GuildModel from "../models/guild.js";
-import { getRequiredGlobalBotPermissions } from "./commandLoader.js";
+import { getGuildCommands, getRequiredGlobalBotPermissions } from "./commandLoader.js";
 import type { Config } from "./config.js";
 import { logger } from "./logger.js";
 
@@ -164,6 +171,19 @@ export async function getAdminGuild(client: Client, guildId: string) {
 		requiredPermissions: getRequiredGlobalBotPermissions(),
 	});
 	const guild = client.guilds.cache.get(guildId);
+	const expectedCommands = getGuildCommands();
+	let guildCommandDeployment: { deployed: number; total: number } | null = null;
+	if (guild?.available) {
+		const registeredCommands = await guild.commands.fetch();
+		guildCommandDeployment = {
+			deployed: [...expectedCommands.keys()].filter((name) =>
+				registeredCommands.some(
+					(command) => command.name === name && command.type === ApplicationCommandType.ChatInput,
+				),
+			).length,
+			total: expectedCommands.size,
+		};
+	}
 	const channelIds = [
 		storedGuild.auditLog.channelId,
 		storedGuild.memberAnnouncements.joinChannelId,
@@ -186,6 +206,7 @@ export async function getAdminGuild(client: Client, guildId: string) {
 	return {
 		...details,
 		discoveredAt: storedGuild.createdAt?.getTime() ?? null,
+		guildCommandDeployment,
 		preferences: {
 			auditLog: {
 				enabled: storedGuild.auditLog.enabled,

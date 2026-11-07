@@ -540,6 +540,25 @@ function GuildDetails({
 				</div>
 				<dl className="mt-5 grid gap-3 sm:grid-cols-2">
 					<Detail label="Bot membership">{guild.isActiveMember ? "Active" : "Inactive"}</Detail>
+					<Detail label="Guild commands">
+						{guild.guildCommandDeployment === null ? (
+							"Unavailable"
+						) : guild.guildCommandDeployment.total === 0 ? (
+							"No guild commands configured"
+						) : (
+							<>
+								{guild.guildCommandDeployment.deployed === 0
+									? "Not deployed"
+									: guild.guildCommandDeployment.deployed === guild.guildCommandDeployment.total
+										? "Deployed"
+										: "Partially deployed"}
+								<span className="block text-sm text-muted-foreground">
+									{guild.guildCommandDeployment.deployed} of {guild.guildCommandDeployment.total}{" "}
+									registered
+								</span>
+							</>
+						)}
+					</Detail>
 					<Detail label="Members">
 						{guild.memberCount === undefined ? "Unavailable" : guild.memberCount.toLocaleString()}
 					</Detail>

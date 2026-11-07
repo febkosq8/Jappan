@@ -118,7 +118,7 @@ instead of returning incomplete details.
 `GET /api/v1/admin/guilds/{guildId}` requires the same access and dependencies and
 returns the same fields for one stored guild plus `discoveredAt` (the database
 record's creation time in Unix milliseconds, or `null` if unavailable) and
-`preferences`: `auditLog`
+`guildCommandDeployment` (`deployed` and `total` counts), plus `preferences`: `auditLog`
 (`enabled`, `channel`, `fullVerbosity`), `leveling` (`enabled`, `threshold`,
 `role`), `memberAnnouncements` (`joinEnabled`, `leaveEnabled`,
 `joinChannel`, `leaveChannel`), and `warnings` (`timeoutThreshold`,
@@ -126,7 +126,12 @@ record's creation time in Unix milliseconds, or `null` if unavailable) and
 the leveling role are objects containing `id` and `name`; the name is `null`
 when the channel or role cannot be resolved. Unconfigured channels, roles, and thresholds are `null`;
 settings are returned even when Discord guild details are unavailable. The
-dashboard displays these saved settings read-only. Guild detail sections support
+dashboard displays these saved settings read-only. For an available guild, command
+deployment counts compare the configured guild command names with the bot's
+currently registered guild-scoped chat-input commands fetched from Discord;
+they do not check command definitions or deployment freshness. The deployment
+field is `null` if the guild is unavailable or the bot is no longer a member;
+an unexpected Discord lookup failure fails the request. Guild detail sections support
 shareable URL hashes that update as the page is scrolled. It returns
 400 for an invalid Discord guild ID and 404 when the guild is not stored.
 

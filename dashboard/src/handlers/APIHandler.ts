@@ -55,6 +55,7 @@ export interface AdminGuildChannel {
 
 export interface AdminGuildDetails extends AdminGuild {
 	discoveredAt: number | null;
+	guildCommandDeployment: { deployed: number; total: number } | null;
 	preferences: {
 		auditLog: { enabled: boolean; channel: PreferenceEntity | null; fullVerbosity: boolean };
 		leveling: { enabled: boolean; threshold: number | null; role: PreferenceEntity | null };
