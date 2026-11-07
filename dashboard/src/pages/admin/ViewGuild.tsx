@@ -8,7 +8,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
 import APIHandler, { type AdminGuild } from "@jappan/handlers/APIHandler";
-import { isAdminSession, useSessionQuery } from "@jappan/handlers/auth";
+import { AccessRedirect, accessErrorStatus } from "@jappan/components/jappan/AdminRoute";
 import LoadingIndicator from "@jappan/components/jappan/LoadingIndicator";
 
 const guildIdPattern = /^\d{17,20}$/u;
@@ -258,28 +258,29 @@ export default function ViewGuild() {
 	document.title = "Admin - View Guild";
 	const { guildId = "" } = useParams();
 	const navigate = useNavigate();
-	const sessionQuery = useSessionQuery();
-	const isAdmin = !sessionQuery.isError && isAdminSession(sessionQuery.data);
 	const validGuildId = guildIdPattern.test(guildId);
 	const guildQuery = useQuery({
 		queryKey: ["admin", "guild", guildId],
 		queryFn: () => APIHandler.getAdminGuild(guildId),
-		enabled: isAdmin && validGuildId,
+		enabled: validGuildId,
 	});
 
 	const guildNotFound =
 		guildQuery.isError && axios.isAxiosError(guildQuery.error) && guildQuery.error.response?.status === 404;
 
 	useEffect(() => {
-		if (!isAdmin || !validGuildId || guildQuery.isFetching || !guildNotFound) return;
+		if (!validGuildId || guildQuery.isFetching || !guildNotFound) return;
 		toast.warning(`Guild ${guildId} not found.`, { id: "guild-not-found" });
 		navigate("/admin/guild", { replace: true });
-	}, [guildId, guildNotFound, guildQuery.isFetching, isAdmin, navigate, validGuildId]);
+	}, [guildId, guildNotFound, guildQuery.isFetching, navigate, validGuildId]);
 
 	async function refreshGuild() {
 		const result = await guildQuery.refetch();
 		if (result.isError) {
-			if (!axios.isAxiosError(result.error) || result.error.response?.status !== 404) {
+			if (
+				!accessErrorStatus(result.error) &&
+				(!axios.isAxiosError(result.error) || result.error.response?.status !== 404)
+			) {
 				toast.error("Could not refresh guild details. Please try again.");
 			}
 		} else {
@@ -287,21 +288,11 @@ export default function ViewGuild() {
 		}
 	}
 
+	const accessStatus = accessErrorStatus(guildQuery.error);
+	if (accessStatus) return <AccessRedirect status={accessStatus} />;
+
 	let content: ReactNode;
-	if (sessionQuery.isPending) {
-		content = <LoadingIndicator label="Checking session" />;
-	} else if (sessionQuery.isError) {
-		content = (
-			<div role="alert">
-				<p>Session unavailable.</p>
-				<Button size="sm" variant="outline-primary" onClick={() => void sessionQuery.refetch()}>
-					Retry
-				</Button>
-			</div>
-		);
-	} else if (!isAdmin) {
-		content = <p>Sign in with an admin account to view this page.</p>;
-	} else if (!guildId) {
+	if (!guildId) {
 		content = <p className="text-muted-foreground">Enter a guild ID to view its details.</p>;
 	} else if (!validGuildId) {
 		content = <p role="alert">Invalid guild ID.</p>;
@@ -327,7 +318,7 @@ export default function ViewGuild() {
 				All guilds
 			</PillLink>
 			<h1 className="mb-5 typography-heading-2 text-3xl font-bold tracking-tight">Guild details</h1>
-			{isAdmin && validGuildId && guildQuery.isSuccess ? (
+			{validGuildId && guildQuery.isSuccess ? (
 				<Button
 					type="button"
 					size="sm"
@@ -337,7 +328,7 @@ export default function ViewGuild() {
 				>
 					Reset
 				</Button>
-			) : isAdmin ? (
+			) : (
 				<GuildLookup
 					key={guildId}
 					guildId={guildId}
@@ -349,7 +340,7 @@ export default function ViewGuild() {
 						}
 					}}
 				/>
-			) : null}
+			)}
 			{content}
 		</main>
 	);

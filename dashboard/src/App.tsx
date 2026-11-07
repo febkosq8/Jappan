@@ -1,4 +1,5 @@
 import Header from "@jappan/components/jappan/Header";
+import AdminRoute from "@jappan/components/jappan/AdminRoute";
 import Home from "@jappan/pages/Home";
 import Commands from "@jappan/pages/Commands";
 import AuthError from "@jappan/pages/auth/AuthError";
@@ -35,8 +36,10 @@ function App() {
 				<Route path="/" element={<Home />} />
 				<Route path="/commands" element={<Commands />} />
 				<Route path="/auth/error" element={<AuthError />} />
-				<Route path="/admin/guilds" element={<ListGuilds />} />
-				<Route path="/admin/guild/:guildId?" element={<ViewGuild />} />
+				<Route element={<AdminRoute />}>
+					<Route path="/admin/guilds" element={<ListGuilds />} />
+					<Route path="/admin/guild/:guildId?" element={<ViewGuild />} />
+				</Route>
 				<Route path="*" element={<WrongPage />} />
 			</Routes>
 			<Toaster className="jappan-toaster" position="bottom-right" richColors closeButton />

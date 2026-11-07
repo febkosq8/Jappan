@@ -85,6 +85,12 @@ The dashboard's `/commands` page displays this public listing. The optional
 `category` query parameter filters it by category; omitting it shows all
 categories. The bot's help command and help button link to this page.
 
+Dashboard admin pages redirect signed-out visitors to
+`/auth/error?error=UNAUTHENTICATED` and accounts without active admin access to
+`/auth/error?error=FORBIDDEN`. The same redirects apply when an admin API request
+returns 401 or 403. Session lookup failures remain retryable rather than being
+treated as an authorization failure.
+
 `GET /api/v1/admin/guilds` requires an active admin session and returns all stored
 guilds, including those the bot has left. Each entry contains `id`, `name`, and
 `isActiveMember` (whether the bot is still in the guild, including temporarily

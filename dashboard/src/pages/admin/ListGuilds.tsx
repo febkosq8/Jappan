@@ -2,7 +2,7 @@ import { Avatar, Button, DateHandler, Table, TextLink, type TableColumnDef } fro
 import { useQuery } from "@tanstack/react-query";
 
 import APIHandler, { type AdminGuild } from "@jappan/handlers/APIHandler";
-import { isAdminSession, useSessionQuery } from "@jappan/handlers/auth";
+import { AccessRedirect, accessErrorStatus } from "@jappan/components/jappan/AdminRoute";
 import LoadingIndicator from "@jappan/components/jappan/LoadingIndicator";
 
 function Unavailable() {
@@ -123,29 +123,16 @@ const columns: TableColumnDef<AdminGuild>[] = [
 
 export default function AdminGuilds() {
 	document.title = "Admin - List Guilds";
-	const sessionQuery = useSessionQuery();
-	const isAdmin = !sessionQuery.isError && isAdminSession(sessionQuery.data);
 	const guildsQuery = useQuery({
 		queryKey: ["admin", "list-guilds"],
 		queryFn: APIHandler.getAdminGuilds,
-		enabled: isAdmin,
 	});
 
+	const accessStatus = accessErrorStatus(guildsQuery.error);
+	if (accessStatus) return <AccessRedirect status={accessStatus} />;
+
 	let content;
-	if (sessionQuery.isPending) {
-		content = <LoadingIndicator label="Checking session" />;
-	} else if (sessionQuery.isError) {
-		content = (
-			<div role="alert">
-				<p>Session unavailable.</p>
-				<Button size="sm" variant="outline-primary" onClick={() => void sessionQuery.refetch()}>
-					Retry
-				</Button>
-			</div>
-		);
-	} else if (!isAdmin) {
-		content = <p>Sign in with an admin account to view this page.</p>;
-	} else if (guildsQuery.isPending) {
+	if (guildsQuery.isPending) {
 		content = <LoadingIndicator label="Loading guilds" />;
 	} else if (guildsQuery.isError) {
 		content = (

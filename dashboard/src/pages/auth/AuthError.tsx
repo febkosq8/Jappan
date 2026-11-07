@@ -4,7 +4,7 @@ import LoadingIndicator from "@jappan/components/jappan/LoadingIndicator";
 import { useState } from "react";
 import { FiAlertTriangle, FiArrowLeft } from "react-icons/fi";
 import { SiDiscord } from "react-icons/si";
-import { useSearchParams } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 
 const authErrorMessages: Record<string, string> = {
@@ -24,18 +24,36 @@ const authErrorMessages: Record<string, string> = {
 };
 
 export default function AuthError() {
+	const location = useLocation();
 	const [searchParams] = useSearchParams();
 	const [busy, setBusy] = useState(false);
 	const errorCode = searchParams.get("error") ?? "unknown";
-	const errorMessage =
-		authErrorMessages[errorCode] ?? "Discord sign-in couldn't be completed. Please try again later.";
+	const unauthenticated = errorCode === "UNAUTHENTICATED";
+	const forbidden = errorCode === "FORBIDDEN";
+	const errorMessage = unauthenticated
+		? "Sign in to access this page."
+		: forbidden
+			? "Your account does not have permission to access this page."
+			: (authErrorMessages[errorCode] ?? "Discord sign-in couldn't be completed. Please try again later.");
+	const title = unauthenticated ? "Sign in required" : forbidden ? "Access forbidden" : "We couldn't sign you in";
+	document.title = unauthenticated
+		? "Sign in required - Jappan"
+		: forbidden
+			? "Access forbidden - Jappan"
+			: "Sign-in error - Jappan";
 
 	async function retrySignIn() {
+		const state: unknown = location.state;
+		const returnTo = typeof state === "object" && state !== null && "returnTo" in state ? state.returnTo : null;
+		const path =
+			unauthenticated && typeof returnTo === "string" && returnTo.startsWith("/") && !returnTo.startsWith("//")
+				? returnTo
+				: "/";
 		setBusy(true);
 		try {
 			const result = await authClient.signIn.social({
 				provider: "discord",
-				callbackURL: `${window.location.origin}/`,
+				callbackURL: `${window.location.origin}${path}`,
 				errorCallbackURL: `${window.location.origin}/auth/error`,
 			});
 			if (result.error) {
@@ -58,28 +76,38 @@ export default function AuthError() {
 					>
 						<FiAlertTriangle className="size-7" />
 					</span>
-					<p className="text-sm font-semibold uppercase tracking-wide text-destructive">Sign-in error</p>
+					<p className="text-sm font-semibold uppercase tracking-wide text-destructive">
+						{unauthenticated ? "401" : forbidden ? "403" : "Sign-in error"}
+					</p>
 					<h1 id="auth-error-title" className="mt-2 text-2xl font-bold tracking-tight">
-						We couldn't sign you in
+						{title}
 					</h1>
 					<p className="mt-3 text-muted-foreground">{errorMessage}</p>
-					<div className="mt-5 w-full rounded-md border border-border bg-muted px-3 py-2 text-left">
-						<p className="text-xs text-muted-foreground">Error code</p>
-						<p className="mt-1 break-all font-mono text-sm">{errorCode}</p>
-					</div>
+					{!unauthenticated && !forbidden && (
+						<div className="mt-5 w-full rounded-md border border-border bg-muted px-3 py-2 text-left">
+							<p className="text-xs text-muted-foreground">Error code</p>
+							<p className="mt-1 break-all font-mono text-sm">{errorCode}</p>
+						</div>
+					)}
 					<div className="mt-6 flex w-full flex-col-reverse gap-3 sm:flex-row">
 						<PillLink href="/" variant="outline-secondary" className="flex-1 gap-2">
 							<FiArrowLeft aria-hidden="true" />
 							Back home
 						</PillLink>
-						<Button className="flex-1 gap-2" disabled={busy} onClick={() => void retrySignIn()}>
-							{busy ? (
-								<LoadingIndicator label="Connecting" inline decorative size={16} />
-							) : (
-								<SiDiscord aria-hidden="true" />
-							)}
-							{busy ? "Connecting..." : "Try Discord again"}
-						</Button>
+						{!forbidden && (
+							<Button className="flex-1 gap-2" disabled={busy} onClick={() => void retrySignIn()}>
+								{busy ? (
+									<LoadingIndicator label="Connecting" inline decorative size={16} />
+								) : (
+									<SiDiscord aria-hidden="true" />
+								)}
+								{busy
+									? "Connecting..."
+									: unauthenticated
+										? "Sign in with Discord"
+										: "Try Discord again"}
+							</Button>
+						)}
 					</div>
 				</Card.Content>
 			</Card>

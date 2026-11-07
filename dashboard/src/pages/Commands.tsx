@@ -76,16 +76,14 @@ function CommandDetails({ command }: { command: GlobalCommand }) {
 						/>
 					</dd>
 				</div>
-				<div>
-					<dt className="text-muted-foreground">Required bot permissions</dt>
-					<dd className="mt-1 wrap-break-word font-medium">
-						{command.requiredBotPermissions.length > 0 ? (
+				{command.requiredBotPermissions.length > 0 && (
+					<div>
+						<dt className="text-muted-foreground">Required bot permissions</dt>
+						<dd className="mt-1 wrap-break-word font-medium">
 							<ValueTags values={command.requiredBotPermissions} />
-						) : (
-							"None declared"
-						)}
-					</dd>
-				</div>
+						</dd>
+					</div>
+				)}
 			</dl>
 		</>
 	);
