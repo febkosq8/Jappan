@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { DiscordAPIError } from "discord.js";
+import type { Request, Response } from "express";
 
 import { getClient } from "../../../../bot.js";
 import { requireAdmin, requireSession } from "../../../../handlers/auth.js";
@@ -13,9 +14,35 @@ import {
 	listAllGuilds,
 	sendGuildAdminMessage,
 } from "../../../../services/adminGuild.js";
+import { setGuildCommands } from "../../../../services/adminDeployment.js";
 import type { AuthSession } from "../../../../services/auth.js";
 import { getConfig } from "../../../../services/config.js";
 import { guildSchema } from "../../guild/schemas.js";
+
+const adminGuildCommandsResultSchema = z.object({
+	action: z.enum(["deploy", "undeploy"]),
+	commandCount: z.number().int().nonnegative(),
+});
+
+async function updateGuildCommands(request: Request, response: Response, action: "deploy" | "undeploy") {
+	const guildId = request.params.guildId;
+	if (typeof guildId !== "string" || !/^\d{17,20}$/u.test(guildId)) {
+		return response.status(400).json({ error: "Invalid guild ID" });
+	}
+
+	const adminGuild = await getAdminGuildForAction(getClient(), guildId);
+	switch (adminGuild.status) {
+		case "not_found":
+			return response.status(404).json({ error: "Guild not found" });
+		case "not_member":
+			return response.status(409).json({ error: "Bot is not a guild member" });
+		case "unavailable":
+			return response.status(503).json({ error: "Guild is unavailable" });
+	}
+
+	const commandCount = await setGuildCommands(adminGuild.guild, action === "deploy");
+	return response.status(200).json({ action, commandCount });
+}
 
 const adminGuildMessageSchema = z.object({
 	channelId: z.string().regex(/^\d{17,20}$/u, "Invalid channel ID"),
@@ -52,7 +79,61 @@ const adminGuildInviteSchema = z.object({
 
 export default defineRouter("/guilds", [
 	{
-		method: "post",
+		method: "put",
+		path: "/:guildId/commands",
+		tags: ["Admin Guilds"],
+		summary: "Deploy commands in a registered guild",
+		errorMessage: "Failed to deploy guild commands",
+		security: [{ sessionCookie: [] }],
+		parameters: [
+			{
+				name: "guildId",
+				in: "path",
+				required: true,
+				description: "Discord guild ID",
+				schema: z.string().regex(/^\d{17,20}$/u),
+			},
+		],
+		responses: {
+			200: { description: "Guild commands deployed", schema: adminGuildCommandsResultSchema },
+			400: { description: "Invalid guild ID", schema: errorResponseSchema },
+			404: { description: "Guild not found", schema: errorResponseSchema },
+			409: { description: "Bot is not a guild member", schema: errorResponseSchema },
+			503: { description: "Guild or service unavailable", schema: errorResponseSchema },
+			500: { description: "Failed to deploy guild commands", schema: errorResponseSchema },
+		},
+		middleware: [requireDatabase, requireDiscord, requireSession, requireAdmin],
+		handler: async (request, response) => updateGuildCommands(request, response, "deploy"),
+	},
+	{
+		method: "delete",
+		path: "/:guildId/commands",
+		tags: ["Admin Guilds"],
+		summary: "Undeploy commands from a registered guild",
+		errorMessage: "Failed to undeploy guild commands",
+		security: [{ sessionCookie: [] }],
+		parameters: [
+			{
+				name: "guildId",
+				in: "path",
+				required: true,
+				description: "Discord guild ID",
+				schema: z.string().regex(/^\d{17,20}$/u),
+			},
+		],
+		responses: {
+			200: { description: "Guild commands undeployed", schema: adminGuildCommandsResultSchema },
+			400: { description: "Invalid guild ID", schema: errorResponseSchema },
+			404: { description: "Guild not found", schema: errorResponseSchema },
+			409: { description: "Bot is not a guild member", schema: errorResponseSchema },
+			503: { description: "Guild or service unavailable", schema: errorResponseSchema },
+			500: { description: "Failed to undeploy guild commands", schema: errorResponseSchema },
+		},
+		middleware: [requireDatabase, requireDiscord, requireSession, requireAdmin],
+		handler: async (request, response) => updateGuildCommands(request, response, "undeploy"),
+	},
+	{
+		method: "delete",
 		path: "/:guildId/kick",
 		tags: ["Admin Guilds"],
 		summary: "Remove the bot from a registered guild",
@@ -159,7 +240,7 @@ export default defineRouter("/guilds", [
 		},
 	},
 	{
-		method: "post",
+		method: "put",
 		path: "/:guildId/messages",
 		tags: ["Admin Guilds"],
 		summary: "Send an admin message to a registered guild",

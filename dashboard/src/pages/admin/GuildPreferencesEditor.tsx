@@ -1,7 +1,7 @@
 import { Button, Card, Input, LabelField, Select, Switch } from "@febkosq8/arc";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useState, type ReactNode, type SubmitEvent } from "react";
 import { toast } from "sonner";
 
 import APIHandler, {
@@ -145,7 +145,7 @@ function PreferenceForm({
 	onSubmit: () => void;
 	children: ReactNode;
 }) {
-	function submit(event: FormEvent<HTMLFormElement>) {
+	function submit(event: SubmitEvent<HTMLFormElement>) {
 		event.preventDefault();
 		onSubmit();
 	}
@@ -179,21 +179,28 @@ interface SectionProps {
 	guild: AdminGuildDetails;
 	channels: AdminGuildChannel[] | undefined;
 	roles: GuildRole[] | undefined;
+	readOnly: boolean;
 	onSaved: () => Promise<void>;
 }
 
 function useSave<Input>(save: (input: Input) => Promise<void>, label: string, onSaved: SectionProps["onSaved"]) {
 	return useMutation<void, Error, Input>({
-		mutationFn: save,
-		onSuccess: async () => {
-			await onSaved();
-			toast.success(`${label} preferences saved.`);
+		mutationFn: (input) => {
+			const promise = (async () => {
+				await save(input);
+				await onSaved();
+			})();
+			toast.promise(promise, {
+				loading: `Saving ${label.toLowerCase()} preferences...`,
+				success: `${label} preferences saved.`,
+				error: (error) => getErrorMessage(error),
+			});
+			return promise;
 		},
-		onError: (error) => toast.error(getErrorMessage(error)),
 	});
 }
 
-function AuditLogSection({ guild, channels, onSaved }: SectionProps) {
+function AuditLogSection({ guild, channels, readOnly, onSaved }: SectionProps) {
 	const { auditLog } = guild.preferences;
 	const [enabled, setEnabled] = useState(auditLog.enabled);
 	const [channelId, setChannelId] = useState(auditLog.channel?.id ?? "");
@@ -204,14 +211,14 @@ function AuditLogSection({ guild, channels, onSaved }: SectionProps) {
 		"Audit log",
 		onSaved,
 	);
-	const disabled = mutation.isPending;
+	const disabled = readOnly || mutation.isPending;
 	return (
 		<PreferenceForm
 			id="audit-preferences"
 			title="Audit log"
 			description="Post moderation and server events to a channel."
 			pending={mutation.isPending}
-			disabled={enabled && !channelId}
+			disabled={readOnly || (enabled && !channelId)}
 			onSubmit={() =>
 				mutation.mutate({ enabled, channelId: channelId || null, fullVerbosity: enabled && fullVerbosity })
 			}
@@ -235,7 +242,7 @@ function AuditLogSection({ guild, channels, onSaved }: SectionProps) {
 	);
 }
 
-function LevelingSection({ guild, roles, onSaved }: SectionProps) {
+function LevelingSection({ guild, roles, readOnly, onSaved }: SectionProps) {
 	const { leveling } = guild.preferences;
 	const [enabled, setEnabled] = useState(leveling.enabled);
 	const [threshold, setThreshold] = useState(leveling.threshold?.toString() ?? "");
@@ -246,14 +253,14 @@ function LevelingSection({ guild, roles, onSaved }: SectionProps) {
 		"Leveling",
 		onSaved,
 	);
-	const disabled = mutation.isPending;
+	const disabled = readOnly || mutation.isPending;
 	return (
 		<PreferenceForm
 			id="leveling-preferences"
 			title="Leveling"
 			description="Reward members with a role once they reach a level."
 			pending={mutation.isPending}
-			disabled={enabled && (threshold.trim() === "") !== (roleId === "")}
+			disabled={readOnly || (enabled && (threshold.trim() === "") !== (roleId === ""))}
 			onSubmit={() => mutation.mutate({ enabled, threshold: toNumberOrNull(threshold), roleId: roleId || null })}
 		>
 			<ToggleField label="Enabled" checked={enabled} onChange={setEnabled} disabled={disabled} />
@@ -278,7 +285,7 @@ function LevelingSection({ guild, roles, onSaved }: SectionProps) {
 	);
 }
 
-function MemberAnnouncementsSection({ guild, channels, onSaved }: SectionProps) {
+function MemberAnnouncementsSection({ guild, channels, readOnly, onSaved }: SectionProps) {
 	const { memberAnnouncements } = guild.preferences;
 	const [joinEnabled, setJoinEnabled] = useState(memberAnnouncements.joinEnabled);
 	const [joinChannelId, setJoinChannelId] = useState(memberAnnouncements.joinChannel?.id ?? "");
@@ -294,14 +301,14 @@ function MemberAnnouncementsSection({ guild, channels, onSaved }: SectionProps) 
 		"Member announcement",
 		onSaved,
 	);
-	const disabled = mutation.isPending;
+	const disabled = readOnly || mutation.isPending;
 	return (
 		<PreferenceForm
 			id="announcement-preferences"
 			title="Member announcements"
 			description="Announce members joining and leaving."
 			pending={mutation.isPending}
-			disabled={(joinEnabled && !joinChannelId) || (leaveEnabled && !leaveChannelId)}
+			disabled={readOnly || (joinEnabled && !joinChannelId) || (leaveEnabled && !leaveChannelId)}
 			onSubmit={() =>
 				mutation.mutate({
 					joinEnabled,
@@ -343,7 +350,7 @@ function MemberAnnouncementsSection({ guild, channels, onSaved }: SectionProps) 
 	);
 }
 
-function WarningsSection({ guild, channels, onSaved }: SectionProps) {
+function WarningsSection({ guild, channels, readOnly, onSaved }: SectionProps) {
 	const { warnings } = guild.preferences;
 	const [timeoutThreshold, setTimeoutThreshold] = useState(warnings.timeoutThreshold?.toString() ?? "");
 	const [timeoutDuration, setTimeoutDuration] = useState(warnings.timeoutDurationHours?.toString() ?? "");
@@ -359,7 +366,7 @@ function WarningsSection({ guild, channels, onSaved }: SectionProps) {
 		"Warning",
 		onSaved,
 	);
-	const disabled = mutation.isPending;
+	const disabled = readOnly || mutation.isPending;
 	const hasTimeout = timeoutThreshold.trim() !== "";
 	return (
 		<PreferenceForm
@@ -367,7 +374,7 @@ function WarningsSection({ guild, channels, onSaved }: SectionProps) {
 			title="Warnings"
 			description="Escalate repeated warnings to a timeout or ban. Leave a threshold empty to turn it off."
 			pending={mutation.isPending}
-			disabled={hasTimeout && timeoutDuration.trim() === ""}
+			disabled={readOnly || (hasTimeout && timeoutDuration.trim() === "")}
 			onSubmit={() =>
 				mutation.mutate({
 					timeoutThreshold: toNumberOrNull(timeoutThreshold),
@@ -438,6 +445,7 @@ export default function GuildPreferencesEditor({ guild }: { guild: AdminGuildDet
 		guild,
 		channels: channelsQuery.data,
 		roles: rolesQuery.data,
+		readOnly: !guild.isActiveMember,
 		onSaved,
 	};
 
@@ -448,8 +456,8 @@ export default function GuildPreferencesEditor({ guild }: { guild: AdminGuildDet
 				Choose how the bot behaves in this server. Changes apply as soon as they are saved.
 			</p>
 			{!guild.isActiveMember && (
-				<p className="mt-3 text-muted-foreground">
-					The bot is not a member of this guild, so preferences cannot be changed.
+				<p className="mt-3 text-sm text-destructive animate-pulse">
+					The bot is not a member of this guild. Current preferences are shown as read-only.
 				</p>
 			)}
 			{guild.isActiveMember && (channelsQuery.isError || rolesQuery.isError) && (
@@ -457,20 +465,18 @@ export default function GuildPreferencesEditor({ guild }: { guild: AdminGuildDet
 					Could not load channels or roles. Current selections are still shown.
 				</p>
 			)}
-			{guild.isActiveMember && (
-				<fieldset
-					disabled={channelsQuery.isPending || rolesQuery.isPending}
-					className="mt-4 grid min-w-0 gap-4 sm:grid-cols-2"
-				>
-					<AuditLogSection key={JSON.stringify(guild.preferences.auditLog)} {...sectionProps} />
-					<LevelingSection key={JSON.stringify(guild.preferences.leveling)} {...sectionProps} />
-					<MemberAnnouncementsSection
-						key={JSON.stringify(guild.preferences.memberAnnouncements)}
-						{...sectionProps}
-					/>
-					<WarningsSection key={JSON.stringify(guild.preferences.warnings)} {...sectionProps} />
-				</fieldset>
-			)}
+			<fieldset
+				disabled={!guild.isActiveMember || channelsQuery.isPending || rolesQuery.isPending}
+				className="mt-4 grid min-w-0 gap-4 sm:grid-cols-2"
+			>
+				<AuditLogSection key={JSON.stringify(guild.preferences.auditLog)} {...sectionProps} />
+				<LevelingSection key={JSON.stringify(guild.preferences.leveling)} {...sectionProps} />
+				<MemberAnnouncementsSection
+					key={JSON.stringify(guild.preferences.memberAnnouncements)}
+					{...sectionProps}
+				/>
+				<WarningsSection key={JSON.stringify(guild.preferences.warnings)} {...sectionProps} />
+			</fieldset>
 		</Card>
 	);
 }

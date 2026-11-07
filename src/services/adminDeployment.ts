@@ -83,7 +83,7 @@ export function getPrefixCommand(content: string): PrefixCommand | undefined {
 	return undefined;
 }
 
-async function setGuildCommands(guild: Guild, shouldDeploy: boolean): Promise<number> {
+export async function setGuildCommands(guild: Guild, shouldDeploy: boolean): Promise<number> {
 	const guildCommands = shouldDeploy ? getGuildCommands().map((command) => command.data.toJSON()) : [];
 	const registeredCommands = await guild.commands.set(guildCommands);
 	return registeredCommands.size;

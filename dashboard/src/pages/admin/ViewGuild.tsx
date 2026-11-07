@@ -16,7 +16,7 @@ import {
 import { useForm } from "@tanstack/react-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode, type SubmitEvent } from "react";
 import { FiArrowLeft, FiCopy, FiExternalLink, FiLink } from "react-icons/fi";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -24,6 +24,7 @@ import { toast } from "sonner";
 import APIHandler, {
 	type AdminGuildInvite,
 	type AdminGuildChannel,
+	type AdminGuildCommandDeploymentResult,
 	type AdminGuildDetails,
 	type AdminGuildMessageResult,
 } from "@jappan/handlers/APIHandler";
@@ -385,40 +386,65 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 		retry: false,
 	});
 	const sendMessageMutation = useMutation<AdminGuildMessageResult, Error, { channelId: string; message: string }>({
-		mutationFn: ({ channelId: selectedChannelId, message: content }) =>
-			APIHandler.sendAdminGuildMessage(guild.id, content, selectedChannelId),
-		onSuccess: () => toast.success("Admin message sent."),
-		onError: (error) => {
-			if (isBotChannelPermissionError(error) || !accessErrorStatus(error)) {
-				toast.error(getActionErrorMessage(error, "Could not send the admin message."));
-			}
+		mutationFn: ({ channelId: selectedChannelId, message: content }) => {
+			const promise = APIHandler.sendAdminGuildMessage(guild.id, content, selectedChannelId);
+			toast.promise(promise, {
+				loading: "Sending admin message...",
+				success: "Admin message sent.",
+				error: (error) => getActionErrorMessage(error, "Could not send the admin message."),
+			});
+			return promise;
 		},
 	});
 	const inviteMutation = useMutation<AdminGuildInvite, Error>({
-		mutationFn: () => APIHandler.createAdminGuildInvite(guild.id),
-		onSuccess: () => toast.success("Guild invite ready."),
+		mutationFn: () => {
+			const promise = APIHandler.createAdminGuildInvite(guild.id);
+			toast.promise(promise, {
+				loading: "Getting guild invite...",
+				success: "Guild invite ready.",
+				error: (error) => getActionErrorMessage(error, "Could not get a guild invite."),
+			});
+			return promise;
+		},
 	});
-	const kickMutation = useMutation({
-		mutationFn: (selectedChannel: string | null) =>
-			APIHandler.kickAdminGuild(guild.id, kickMessage, selectedChannel),
-		onSuccess: (result) => {
-			if (result.departureMessage) {
-				toast.success("The bot left the guild and sent a departure message.");
-			} else {
-				toast.warning("The bot left the guild without sending a departure message.");
-			}
-			queryClient.removeQueries({ queryKey: ["admin", "guild", guild.id, "channels"] });
+	const commandDeploymentMutation = useMutation<AdminGuildCommandDeploymentResult, Error, "deploy" | "undeploy">({
+		mutationFn: (action) => {
+			const promise = APIHandler.updateAdminGuildCommands(guild.id, action);
+			toast.promise(promise, {
+				loading: action === "deploy" ? "Deploying guild commands..." : "Removing guild commands...",
+				success: ({ action, commandCount }) =>
+					action === "deploy"
+						? `Deployed ${commandCount} guild command${commandCount === 1 ? "" : "s"}.`
+						: "Removed all guild commands.",
+				error: (error) => getActionErrorMessage(error, "Could not update guild commands."),
+			});
+			return promise;
+		},
+		onSuccess: () => {
 			void queryClient.invalidateQueries({ queryKey: ["admin", "guild", guild.id] });
 			void queryClient.invalidateQueries({ queryKey: ["admin", "list-guilds"] });
 		},
-		onError: (error) => {
-			if (!accessErrorStatus(error)) {
-				toast.error(
+	});
+	const kickMutation = useMutation({
+		mutationFn: (selectedChannel: string | null) => {
+			const promise = APIHandler.kickAdminGuild(guild.id, kickMessage, selectedChannel);
+			toast.promise(promise, {
+				loading: "Removing bot from guild...",
+				success: (result) =>
+					result.departureMessage
+						? "The bot left the guild and sent a departure message."
+						: "The bot left the guild without sending a departure message.",
+				error: (error) =>
 					axios.isAxiosError(error) && !error.response
 						? "Could not confirm whether the bot left. Refresh guild details before retrying."
 						: getActionErrorMessage(error, "Could not remove the bot from the guild."),
-				);
-			}
+			});
+			return promise;
+		},
+		onSuccess: () => {
+			queryClient.removeQueries({ queryKey: ["admin", "guild", guild.id, "channels"] });
+			void queryClient.invalidateQueries({ queryKey: ["admin", "guild", guild.id] });
+			void queryClient.invalidateQueries({ queryKey: ["admin", "list-guilds"] });
 		},
 	});
 	useEffect(() => {
@@ -442,6 +468,7 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 			? undefined
 			: accessErrorStatus(sendMessageMutation.error)) ??
 		accessErrorStatus(inviteMutation.error) ??
+		accessErrorStatus(commandDeploymentMutation.error) ??
 		accessErrorStatus(kickMutation.error);
 	if (accessStatus) return <AccessRedirect status={accessStatus} />;
 
@@ -458,7 +485,7 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 		? getActionErrorMessage(channelsQuery.error, "Could not load channels. Please try again.")
 		: null;
 
-	function submitMessage(event: FormEvent<HTMLFormElement>) {
+	function submitMessage(event: SubmitEvent<HTMLFormElement>) {
 		event.preventDefault();
 		if (!selectedChannelId) {
 			toast.error("Select an available channel before sending.");
@@ -482,15 +509,63 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 				Admin actions <SectionLink id="admin-actions" label="admin actions" />
 			</h2>
 			<p className="mt-1 text-sm text-muted-foreground">
-				Send an admin message, get an invite, or remove the bot from this guild.
+				Manage guild commands, send an admin message, get an invite, or remove the bot from this guild.
 			</p>
 			{!guild.isActiveMember ? (
 				<p className="mt-4 text-muted-foreground">The bot is not a member of this guild.</p>
 			) : (
 				<div className="mt-4 grid gap-4 lg:grid-cols-2">
 					<section
-						aria-labelledby="admin-message-title"
+						aria-labelledby="guild-commands-title"
 						className="min-w-0 rounded-md border border-border p-4"
+					>
+						<h3 id="guild-commands-title" className="font-semibold">
+							Guild commands
+						</h3>
+						<p className="mt-1 text-sm text-muted-foreground">
+							Deploy the bot’s current guild commands or remove all commands from this guild.
+						</p>
+						<div className="mt-3 flex flex-wrap gap-2">
+							<Button
+								type="button"
+								size="sm"
+								variant="outline-primary"
+								disabled={commandDeploymentMutation.isPending}
+								onClick={() => commandDeploymentMutation.mutate("deploy")}
+							>
+								{commandDeploymentMutation.isPending && commandDeploymentMutation.variables === "deploy"
+									? "Deploying…"
+									: "Deploy commands"}
+							</Button>
+							<Button
+								type="button"
+								size="sm"
+								variant="outline-destructive"
+								disabled={
+									commandDeploymentMutation.isPending ||
+									!guild.guildCommandDeployment ||
+									guild.guildCommandDeployment.deployed === 0
+								}
+								onClick={() => commandDeploymentMutation.mutate("undeploy")}
+							>
+								{commandDeploymentMutation.isPending &&
+								commandDeploymentMutation.variables === "undeploy"
+									? "Removing…"
+									: "Undeploy commands"}
+							</Button>
+						</div>
+						{commandDeploymentMutation.isError && !accessErrorStatus(commandDeploymentMutation.error) && (
+							<p role="alert" className="mt-3 text-sm text-destructive">
+								{getActionErrorMessage(
+									commandDeploymentMutation.error,
+									"Could not update guild commands.",
+								)}
+							</p>
+						)}
+					</section>
+					<section
+						aria-labelledby="admin-message-title"
+						className="min-w-0 rounded-md border border-border p-4 lg:order-3"
 					>
 						<h3 id="admin-message-title" className="font-semibold">
 							Send admin message
@@ -581,7 +656,7 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 					</section>
 					<section
 						aria-labelledby="guild-invite-title"
-						className="min-w-0 rounded-md border border-border p-4"
+						className="min-w-0 rounded-md border border-border p-4 lg:order-2"
 					>
 						<h3 id="guild-invite-title" className="font-semibold">
 							Guild invite
@@ -676,7 +751,10 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 							</div>
 						)}
 					</section>
-					<section aria-labelledby="guild-kick-title" className="min-w-0 rounded-md border border-border p-4">
+					<section
+						aria-labelledby="guild-kick-title"
+						className="min-w-0 rounded-md border border-border p-4 lg:order-4"
+					>
 						<h3 id="guild-kick-title" className="font-semibold">
 							Remove bot from guild
 						</h3>

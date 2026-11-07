@@ -73,6 +73,11 @@ export interface AdminGuildKickResult {
 	} | null;
 }
 
+export interface AdminGuildCommandDeploymentResult {
+	action: "deploy" | "undeploy";
+	commandCount: number;
+}
+
 export interface AdminGuildInvite {
 	url: string;
 	channel: { id: string; name: string | null } | null;
@@ -217,7 +222,7 @@ class APIHandler {
 		message: string,
 		channelId: string,
 	): Promise<AdminGuildMessageResult> {
-		const { data } = await apiClient.post<AdminGuildMessageResult>(
+		const { data } = await apiClient.put<AdminGuildMessageResult>(
 			`/api/v1/admin/guilds/${encodeURIComponent(guildId)}/messages`,
 			{ message, channelId },
 			{ withCredentials: true },
@@ -239,11 +244,26 @@ class APIHandler {
 		message: string,
 		channelId: string | null,
 	): Promise<AdminGuildKickResult> {
-		const { data } = await apiClient.post<AdminGuildKickResult>(
+		const { data } = await apiClient.delete<AdminGuildKickResult>(
 			`/api/v1/admin/guilds/${encodeURIComponent(guildId)}/kick`,
-			{ confirm: true, message, channelId },
-			{ withCredentials: true, timeout: 120000 },
+			{
+				data: { confirm: true, message, channelId },
+				withCredentials: true,
+				timeout: 120000,
+			},
 		);
+		return data;
+	}
+
+	static async updateAdminGuildCommands(
+		guildId: string,
+		action: "deploy" | "undeploy",
+	): Promise<AdminGuildCommandDeploymentResult> {
+		const path = `/api/v1/admin/guilds/${encodeURIComponent(guildId)}/commands`;
+		const { data } =
+			action === "deploy"
+				? await apiClient.put<AdminGuildCommandDeploymentResult>(path, undefined, { withCredentials: true })
+				: await apiClient.delete<AdminGuildCommandDeploymentResult>(path, { withCredentials: true });
 		return data;
 	}
 }
