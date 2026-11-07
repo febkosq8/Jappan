@@ -113,8 +113,16 @@ returns 503 when Discord is disconnected rather than reporting unreliable
 membership. If the owner or bot member cannot be fetched, the request fails
 instead of returning incomplete details.
 `GET /api/v1/admin/guilds/{guildId}` requires the same access and dependencies and
-returns the same fields for one stored guild. It returns 400 for an invalid
-Discord guild ID and 404 when the guild is not stored.
+returns the same fields for one stored guild plus `preferences`: `auditLog`
+(`enabled`, `channel`, `fullVerbosity`), `leveling` (`enabled`, `threshold`,
+`role`), `memberAnnouncements` (`joinEnabled`, `leaveEnabled`,
+`joinChannel`, `leaveChannel`), and `warnings` (`timeoutThreshold`,
+`timeoutDurationHours`, `banThreshold`, `auditChannel`). Configured channels and
+the leveling role are objects containing `id` and `name`; the name is `null`
+when the channel or role cannot be resolved. Unconfigured channels, roles, and thresholds are `null`;
+settings are returned even when Discord guild details are unavailable. The
+dashboard displays these saved settings read-only. It returns
+400 for an invalid Discord guild ID and 404 when the guild is not stored.
 The Discord admin guild list uses the same stored-guild data and displays entries
 with currently available Discord details. It requires the database to be connected.
 

@@ -30,6 +30,30 @@ export interface AdminGuild {
 	owner?: { userId: string; avatarUrl: string; username: string };
 }
 
+export interface PreferenceEntity {
+	id: string;
+	name: string | null;
+}
+
+export interface AdminGuildDetails extends AdminGuild {
+	preferences: {
+		auditLog: { enabled: boolean; channel: PreferenceEntity | null; fullVerbosity: boolean };
+		leveling: { enabled: boolean; threshold: number | null; role: PreferenceEntity | null };
+		memberAnnouncements: {
+			joinEnabled: boolean;
+			leaveEnabled: boolean;
+			joinChannel: PreferenceEntity | null;
+			leaveChannel: PreferenceEntity | null;
+		};
+		warnings: {
+			timeoutThreshold: number | null;
+			timeoutDurationHours: number | null;
+			banThreshold: number | null;
+			auditChannel: PreferenceEntity | null;
+		};
+	};
+}
+
 export interface GlobalCommand {
 	id: string | null;
 	type: "command" | "sub-command";
@@ -56,8 +80,8 @@ class APIHandler {
 		return data;
 	}
 
-	static async getAdminGuild(guildId: string): Promise<AdminGuild> {
-		const { data } = await apiClient.get<AdminGuild>(`/api/v1/admin/guilds/${encodeURIComponent(guildId)}`, {
+	static async getAdminGuild(guildId: string): Promise<AdminGuildDetails> {
+		const { data } = await apiClient.get<AdminGuildDetails>(`/api/v1/admin/guilds/${encodeURIComponent(guildId)}`, {
 			withCredentials: true,
 		});
 		return data;

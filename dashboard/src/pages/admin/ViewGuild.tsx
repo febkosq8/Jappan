@@ -2,16 +2,30 @@ import { Avatar, Button, Card, DateHandler, Input, PillLink, TextLink } from "@f
 import { useForm } from "@tanstack/react-form";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
-import { useEffect, type ReactNode } from "react";
-import { FiArrowLeft } from "react-icons/fi";
+import { useEffect, type ReactNode, type RefObject } from "react";
+import { FiArrowLeft, FiLink } from "react-icons/fi";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
-import APIHandler, { type AdminGuild } from "@jappan/handlers/APIHandler";
+import APIHandler, { type AdminGuildDetails, type PreferenceEntity } from "@jappan/handlers/APIHandler";
 import { AccessRedirect, accessErrorStatus } from "@jappan/components/jappan/AdminRoute";
 import LoadingIndicator from "@jappan/components/jappan/LoadingIndicator";
 
 const guildIdPattern = /^\d{17,20}$/u;
+const guildSectionIds = ["guild-overview", "service-preferences", "bot-permissions", "command-permissions"];
+
+function SectionLink({ id, label }: { id: string; label: string }) {
+	return (
+		<a
+			href={`#${id}`}
+			aria-label={`Link to ${label}`}
+			title={`Link to ${label}`}
+			className="inline-flex shrink-0 rounded-md p-1 text-muted-foreground hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+		>
+			<FiLink className="size-4" aria-hidden="true" />
+		</a>
+	);
+}
 
 function GuildLookup({ guildId, onLookup }: { guildId: string; onLookup: (guildId: string) => void }) {
 	const form = useForm({
@@ -77,14 +91,141 @@ function GuildLookup({ guildId, onLookup }: { guildId: string; onLookup: (guildI
 
 function Detail({ label, children }: { label: string; children: ReactNode }) {
 	return (
-		<div className="min-w-0 rounded-md border border-border p-3">
+		<Card hoverable={false} className="min-w-0 rounded-md border-border p-3">
 			<dt className="text-sm text-muted-foreground">{label}</dt>
 			<dd className="mt-1 wrap-break-word font-medium">{children}</dd>
-		</div>
+		</Card>
 	);
 }
 
-function GuildDetails({ guild }: { guild: AdminGuild }) {
+function PreferenceChannelDetail({ guildId, channel }: { guildId: string; channel: PreferenceEntity | null }) {
+	return channel ? (
+		<>
+			<TextLink
+				href={`https://discord.com/channels/${encodeURIComponent(guildId)}/${encodeURIComponent(channel.id)}`}
+				text={channel.name ?? "Channel unavailable"}
+			/>
+			<span className="block break-all text-xs text-muted-foreground">{channel.id}</span>
+		</>
+	) : (
+		"Not configured"
+	);
+}
+
+function GuildPreferences({ guild }: { guild: AdminGuildDetails }) {
+	const { auditLog, leveling, memberAnnouncements, warnings } = guild.preferences;
+	return (
+		<Card id="service-preferences" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
+			<h2 className="flex items-center gap-1 text-lg font-semibold">
+				Service preferences <SectionLink id="service-preferences" label="service preferences" />
+			</h2>
+			<p className="mt-1 text-sm text-muted-foreground">
+				Saved settings; channel and role availability may change.
+			</p>
+			<div className="mt-4 grid gap-4 sm:grid-cols-2 sm:gap-y-2">
+				<Card
+					hoverable={true}
+					hoverLift={false}
+					role="region"
+					aria-labelledby="audit-preferences"
+					className="min-w-0 rounded-md border-border p-3 sm:row-span-4 sm:grid sm:grid-rows-subgrid lg:row-span-3"
+				>
+					<h3 id="audit-preferences" className="font-semibold">
+						Audit log
+					</h3>
+					<dl className="mt-2 grid gap-2 sm:row-span-3 sm:mt-0 sm:grid-rows-subgrid lg:row-span-2 lg:grid-cols-2">
+						<Detail label="Status">{auditLog.enabled ? "Enabled" : "Disabled"}</Detail>
+						<Detail label="Channel">
+							<PreferenceChannelDetail guildId={guild.id} channel={auditLog.channel} />
+						</Detail>
+						<Detail label="Full verbosity">{auditLog.fullVerbosity ? "Enabled" : "Disabled"}</Detail>
+					</dl>
+				</Card>
+				<Card
+					hoverable={true}
+					hoverLift={false}
+					role="region"
+					aria-labelledby="leveling-preferences"
+					className="min-w-0 rounded-md border-border p-3 sm:row-span-4 sm:grid sm:grid-rows-subgrid lg:row-span-3"
+				>
+					<h3 id="leveling-preferences" className="font-semibold">
+						Leveling
+					</h3>
+					<dl className="mt-2 grid gap-2 sm:row-span-3 sm:mt-0 sm:grid-rows-subgrid lg:row-span-2 lg:grid-cols-2">
+						<Detail label="Status">{leveling.enabled ? "Enabled" : "Disabled"}</Detail>
+						<Detail label="Threshold">{leveling.threshold ?? "Not configured"}</Detail>
+						<Detail label="Role">
+							{leveling.role ? (
+								<>
+									<span>{leveling.role.name ?? "Role unavailable"}</span>
+									<span className="block break-all text-xs text-muted-foreground">
+										{leveling.role.id}
+									</span>
+								</>
+							) : (
+								"Not configured"
+							)}
+						</Detail>
+					</dl>
+				</Card>
+				<Card
+					hoverable={true}
+					hoverLift={false}
+					role="region"
+					aria-labelledby="announcement-preferences"
+					className="min-w-0 rounded-md border-border p-3 sm:row-span-5 sm:mt-2 sm:grid sm:grid-rows-subgrid lg:row-span-3"
+				>
+					<h3 id="announcement-preferences" className="font-semibold">
+						Member announcements
+					</h3>
+					<dl className="mt-2 grid gap-2 sm:row-span-4 sm:mt-0 sm:grid-rows-subgrid lg:row-span-2 lg:grid-cols-2">
+						<Detail label="Join announcements">
+							{memberAnnouncements.joinEnabled ? "Enabled" : "Disabled"}
+						</Detail>
+						<Detail label="Join channel">
+							<PreferenceChannelDetail guildId={guild.id} channel={memberAnnouncements.joinChannel} />
+						</Detail>
+						<Detail label="Leave announcements">
+							{memberAnnouncements.leaveEnabled ? "Enabled" : "Disabled"}
+						</Detail>
+						<Detail label="Leave channel">
+							<PreferenceChannelDetail guildId={guild.id} channel={memberAnnouncements.leaveChannel} />
+						</Detail>
+					</dl>
+				</Card>
+				<Card
+					hoverable={true}
+					hoverLift={false}
+					role="region"
+					aria-labelledby="warning-preferences"
+					className="min-w-0 rounded-md border-border p-3 sm:row-span-5 sm:mt-2 sm:grid sm:grid-rows-subgrid lg:row-span-3"
+				>
+					<h3 id="warning-preferences" className="font-semibold">
+						Warnings
+					</h3>
+					<dl className="mt-2 grid gap-2 sm:row-span-4 sm:mt-0 sm:grid-rows-subgrid lg:row-span-2 lg:grid-cols-2">
+						<Detail label="Timeout threshold">{warnings.timeoutThreshold ?? "Not configured"}</Detail>
+						<Detail label="Timeout duration (hours)">
+							{warnings.timeoutDurationHours ?? "Not configured"}
+						</Detail>
+						<Detail label="Ban threshold">{warnings.banThreshold ?? "Not configured"}</Detail>
+						<Detail label="Audit channel">
+							<PreferenceChannelDetail guildId={guild.id} channel={warnings.auditChannel} />
+						</Detail>
+					</dl>
+				</Card>
+			</div>
+		</Card>
+	);
+}
+
+function GuildDetails({
+	guild,
+	scrollContainerRef,
+}: {
+	guild: AdminGuildDetails;
+	scrollContainerRef: RefObject<HTMLDivElement | null>;
+}) {
 	const commandsQuery = useQuery({
 		queryKey: ["public", "commands"],
 		queryFn: APIHandler.getGlobalCommands,
@@ -96,18 +237,67 @@ function GuildDetails({ guild }: { guild: AdminGuild }) {
 		(command, _index, all) => !all.some((other) => other.name.startsWith(`${command.name} `)),
 	);
 
+	useEffect(() => {
+		const container = scrollContainerRef.current;
+		if (!container) return;
+		const sections = guildSectionIds
+			.map((id) => document.getElementById(id))
+			.filter((section): section is HTMLElement => section !== null);
+		const scrollToHash = () => {
+			const section = sections.find((item) => `#${item.id}` === window.location.hash);
+			section?.scrollIntoView({ block: "center", behavior: "instant" });
+		};
+		const syncHash = () => {
+			const bounds = container.getBoundingClientRect();
+			const midpoint = bounds.top + bounds.height / 2;
+			const lastSection = sections[sections.length - 1];
+			const atBottom = container.scrollHeight - container.clientHeight - container.scrollTop <= 1;
+			const active =
+				atBottom && lastSection
+					? lastSection
+					: sections.reduce<HTMLElement | undefined>((closest, section) => {
+							const distance = (item: HTMLElement) => {
+								const rect = item.getBoundingClientRect();
+								return Math.max(rect.top - midpoint, midpoint - rect.bottom, 0);
+							};
+							return !closest || distance(section) < distance(closest) ? section : closest;
+						}, undefined);
+			if (!active || window.location.hash === `#${active.id}`) return;
+			window.history.replaceState(
+				window.history.state,
+				"",
+				`${window.location.pathname}${window.location.search}#${active.id}`,
+			);
+			window.dispatchEvent(new HashChangeEvent("hashchange"));
+		};
+		const handleHashChange = (event: HashChangeEvent) => {
+			if (event.isTrusted) scrollToHash();
+		};
+		if (guildSectionIds.includes(window.location.hash.slice(1))) scrollToHash();
+		syncHash();
+		container.addEventListener("scroll", syncHash, { passive: true });
+		window.addEventListener("hashchange", handleHashChange);
+		return () => {
+			container.removeEventListener("scroll", syncHash);
+			window.removeEventListener("hashchange", handleHashChange);
+		};
+	}, [guild.id, scrollContainerRef]);
+
 	return (
 		<div className="space-y-5">
-			<Card hoverable={false} className="p-5 sm:p-6">
-				<div className="flex items-center gap-4">
+			<Card id="guild-overview" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
+				<h2 className="flex items-center gap-1 text-lg font-semibold">
+					Guild overview <SectionLink id="guild-overview" label="guild overview" />
+				</h2>
+				<div className="mt-4 flex items-center gap-4">
 					<Avatar name={guild.name} image={guild.icon} size="lg" aria-hidden="true" />
 					<div className="min-w-0">
-						<h2 className="wrap-break-word text-xl font-bold">
+						<h3 className="wrap-break-word text-xl font-bold">
 							<TextLink
 								href={`https://discord.com/channels/${encodeURIComponent(guild.id)}`}
 								text={guild.name}
 							/>
-						</h2>
+						</h3>
 						<p className="break-all text-sm text-muted-foreground">{guild.id}</p>
 					</div>
 				</div>
@@ -177,8 +367,11 @@ function GuildDetails({ guild }: { guild: AdminGuild }) {
 					</Detail>
 				</dl>
 			</Card>
-			<Card hoverable={false} className="p-5 sm:p-6">
-				<h2 className="text-lg font-semibold">Bot permissions</h2>
+			<GuildPreferences guild={guild} />
+			<Card id="bot-permissions" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
+				<h2 className="flex items-center gap-1 text-lg font-semibold">
+					Bot permissions <SectionLink id="bot-permissions" label="bot permissions" />
+				</h2>
 				{guild.permissions === undefined ? (
 					<p className="mt-3 text-muted-foreground">Unavailable</p>
 				) : guild.permissions.length === 0 ? (
@@ -193,8 +386,10 @@ function GuildDetails({ guild }: { guild: AdminGuild }) {
 					</ul>
 				)}
 			</Card>
-			<Card hoverable={false} className="p-5 sm:p-6">
-				<h2 className="text-lg font-semibold">Command permissions</h2>
+			<Card id="command-permissions" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
+				<h2 className="flex items-center gap-1 text-lg font-semibold">
+					Command permissions <SectionLink id="command-permissions" label="command permissions" />
+				</h2>
 				<p className="mt-1 text-sm text-muted-foreground">
 					Declared bot permissions at guild level. Channel overrides and other requirements can affect whether
 					a command works.
@@ -254,9 +449,9 @@ function GuildDetails({ guild }: { guild: AdminGuild }) {
 	);
 }
 
-export default function ViewGuild() {
-	document.title = "Admin - View Guild";
+export default function ViewGuild({ scrollContainerRef }: { scrollContainerRef: RefObject<HTMLDivElement | null> }) {
 	const { guildId = "" } = useParams();
+	document.title = `Admin - View Guild (${guildId})`;
 	const navigate = useNavigate();
 	const validGuildId = guildIdPattern.test(guildId);
 	const guildQuery = useQuery({
@@ -308,7 +503,7 @@ export default function ViewGuild() {
 			</div>
 		);
 	} else {
-		content = <GuildDetails guild={guildQuery.data} />;
+		content = <GuildDetails guild={guildQuery.data} scrollContainerRef={scrollContainerRef} />;
 	}
 
 	return (

@@ -118,16 +118,95 @@ async function getStoredGuildDetails({
 	return fetchGuildDetails(guild, requiredPermissions);
 }
 
+async function getPreferenceChannel(guild: Guild | undefined, channelId: string) {
+	if (!guild?.available) return { id: channelId, name: null };
+
+	try {
+		const channel = guild.channels.cache.get(channelId) ?? (await guild.channels.fetch(channelId));
+		return { id: channelId, name: channel?.guildId === guild.id ? channel.name : null };
+	} catch (error: unknown) {
+		if (error instanceof DiscordAPIError && [10003, 50001, 50013].includes(Number(error.code))) {
+			return { id: channelId, name: null };
+		}
+		throw error;
+	}
+}
+
+async function getPreferenceRole(guild: Guild | undefined, roleId: string | null | undefined) {
+	if (!roleId) return null;
+	if (!guild?.available) return { id: roleId, name: null };
+
+	try {
+		const role = guild.roles.cache.get(roleId) ?? (await guild.roles.fetch(roleId));
+		return { id: roleId, name: role?.name ?? null };
+	} catch (error: unknown) {
+		if (error instanceof DiscordAPIError && [10011, 50001, 50013].includes(Number(error.code))) {
+			return { id: roleId, name: null };
+		}
+		throw error;
+	}
+}
+
 export async function getAdminGuild(client: Client, guildId: string) {
-	const storedGuild = await GuildModel.findOne({ guildId }).select({ _id: 0, guildId: 1, guildName: 1 }).lean();
+	const storedGuild = await GuildModel.findOne({ guildId })
+		.select({ _id: 0, guildId: 1, guildName: 1, auditLog: 1, leveling: 1, memberAnnouncements: 1, warnings: 1 })
+		.exec();
 	if (!storedGuild) {
 		return null;
 	}
-	return getStoredGuildDetails({
+	const details = await getStoredGuildDetails({
 		client,
-		...storedGuild,
+		guildId: storedGuild.guildId,
+		guildName: storedGuild.guildName,
 		requiredPermissions: getRequiredGlobalBotPermissions(),
 	});
+	const guild = client.guilds.cache.get(guildId);
+	const channelIds = [
+		storedGuild.auditLog.channelId,
+		storedGuild.memberAnnouncements.joinChannelId,
+		storedGuild.memberAnnouncements.leaveChannelId,
+		storedGuild.warnings.auditChannelId,
+	];
+	const channels = new Map(
+		await Promise.all(
+			[...new Set(channelIds.filter((id): id is string => !!id))].map(
+				async (id) => [id, await getPreferenceChannel(guild, id)] as const,
+			),
+		),
+	);
+	const channelFor = (id: string | null | undefined) => {
+		if (!id) return null;
+		const channel = channels.get(id);
+		if (!channel) throw new Error(`Failed to resolve preference channel ${id}`);
+		return channel;
+	};
+	return {
+		...details,
+		preferences: {
+			auditLog: {
+				enabled: storedGuild.auditLog.enabled,
+				channel: channelFor(storedGuild.auditLog.channelId),
+				fullVerbosity: storedGuild.auditLog.fullVerbosity,
+			},
+			leveling: {
+				enabled: storedGuild.leveling.enabled,
+				threshold: storedGuild.leveling.threshold ?? null,
+				role: await getPreferenceRole(guild, storedGuild.leveling.roleId),
+			},
+			memberAnnouncements: {
+				joinEnabled: storedGuild.memberAnnouncements.joinEnabled,
+				leaveEnabled: storedGuild.memberAnnouncements.leaveEnabled,
+				joinChannel: channelFor(storedGuild.memberAnnouncements.joinChannelId),
+				leaveChannel: channelFor(storedGuild.memberAnnouncements.leaveChannelId),
+			},
+			warnings: {
+				timeoutThreshold: storedGuild.warnings.timeoutThreshold ?? null,
+				timeoutDurationHours: storedGuild.warnings.timeoutDurationHours ?? null,
+				banThreshold: storedGuild.warnings.banThreshold ?? null,
+				auditChannel: channelFor(storedGuild.warnings.auditChannelId),
+			},
+		},
+	};
 }
 
 export async function listAllGuilds(client: Client) {

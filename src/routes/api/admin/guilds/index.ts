@@ -19,6 +19,35 @@ const guildSchema = z.object({
 	owner: z.object({ userId: z.string(), avatarUrl: z.string(), username: z.string() }).optional(),
 });
 
+const preferenceEntitySchema = z.object({ id: z.string(), name: z.string().nullable() }).nullable();
+
+const guildDetailsSchema = guildSchema.extend({
+	preferences: z.object({
+		auditLog: z.object({
+			enabled: z.boolean(),
+			channel: preferenceEntitySchema,
+			fullVerbosity: z.boolean(),
+		}),
+		leveling: z.object({
+			enabled: z.boolean(),
+			threshold: z.number().nullable(),
+			role: preferenceEntitySchema,
+		}),
+		memberAnnouncements: z.object({
+			joinEnabled: z.boolean(),
+			leaveEnabled: z.boolean(),
+			joinChannel: preferenceEntitySchema,
+			leaveChannel: preferenceEntitySchema,
+		}),
+		warnings: z.object({
+			timeoutThreshold: z.number().nullable(),
+			timeoutDurationHours: z.number().nullable(),
+			banThreshold: z.number().nullable(),
+			auditChannel: preferenceEntitySchema,
+		}),
+	}),
+});
+
 export default defineRouter("/guilds", [
 	{
 		method: "get",
@@ -59,7 +88,7 @@ export default defineRouter("/guilds", [
 		responses: {
 			200: {
 				description: "Registered guild with current Discord membership and available details",
-				schema: guildSchema,
+				schema: guildDetailsSchema,
 			},
 			400: { description: "Invalid guild ID", schema: errorResponseSchema },
 			404: { description: "Guild not found", schema: errorResponseSchema },
