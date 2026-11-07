@@ -3,7 +3,7 @@ import { useForm } from "@tanstack/react-form";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useEffect, type ReactNode, type RefObject } from "react";
-import { FiArrowLeft, FiLink } from "react-icons/fi";
+import { FiArrowLeft, FiExternalLink, FiLink } from "react-icons/fi";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -98,10 +98,19 @@ function Detail({ label, children }: { label: string; children: ReactNode }) {
 	);
 }
 
+function DiscordTextLink({ href, text }: { href: string; text: string }) {
+	return (
+		<span>
+			<TextLink href={href} text={text} aria-label={`${text} (opens in a new tab)`} />
+			<FiExternalLink className="ml-1 inline-block size-3.5 align-baseline text-primary" aria-hidden="true" />
+		</span>
+	);
+}
+
 function PreferenceChannelDetail({ guildId, channel }: { guildId: string; channel: PreferenceEntity | null }) {
 	return channel ? (
 		<>
-			<TextLink
+			<DiscordTextLink
 				href={`https://discord.com/channels/${encodeURIComponent(guildId)}/${encodeURIComponent(channel.id)}`}
 				text={channel.name ?? "Channel unavailable"}
 			/>
@@ -299,7 +308,7 @@ function GuildDetails({
 					<Avatar name={guild.name} image={guild.icon} size="lg" aria-hidden="true" />
 					<div className="min-w-0">
 						<h3 className="wrap-break-word text-xl font-bold">
-							<TextLink
+							<DiscordTextLink
 								href={`https://discord.com/channels/${encodeURIComponent(guild.id)}`}
 								text={guild.name}
 							/>
@@ -308,7 +317,7 @@ function GuildDetails({
 					</div>
 				</div>
 				<dl className="mt-5 grid gap-3 sm:grid-cols-2">
-					<Detail label="Bot membership">{guild.isActiveMember ? "Member" : "Not a member"}</Detail>
+					<Detail label="Bot membership">{guild.isActiveMember ? "Active" : "Inactive"}</Detail>
 					<Detail label="Members">
 						{guild.memberCount === undefined ? "Unavailable" : guild.memberCount.toLocaleString()}
 					</Detail>
@@ -325,7 +334,7 @@ function GuildDetails({
 									aria-hidden="true"
 								/>
 								<div className="min-w-0">
-									<TextLink
+									<DiscordTextLink
 										href={`https://discord.com/users/${encodeURIComponent(guild.owner.userId)}`}
 										text={guild.owner.username}
 									/>
@@ -379,7 +388,7 @@ function GuildDetails({
 							"None"
 						) : (
 							<>
-								<TextLink
+								<DiscordTextLink
 									href={`https://discord.com/channels/${encodeURIComponent(guild.id)}/${encodeURIComponent(guild.systemChannel.id)}`}
 									text={guild.systemChannel.name}
 								/>
