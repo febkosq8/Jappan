@@ -463,6 +463,64 @@ export async function kickGuild({
 	return { success: true, departureMessage };
 }
 
+export async function selfKickGuilds({
+	client,
+	config,
+	additionalMessage,
+	invoker,
+	deadlineAt,
+}: {
+	client: Client;
+	config: Config;
+	additionalMessage?: string;
+	invoker: AdminInvoker;
+	deadlineAt: number;
+}): Promise<{
+	protectedGuild: { id: string; name: string } | null;
+	leftGuilds: { id: string; name: string; messageSent: boolean }[];
+	failedGuilds: { id: string; name: string; messageSent: boolean }[];
+	timeLimitReached: boolean;
+}> {
+	const protectedGuild = config.PLAYER_HEALTH_CHECK_GUILD_ID
+		? client.guilds.cache.get(config.PLAYER_HEALTH_CHECK_GUILD_ID)
+		: undefined;
+	const guilds = [...client.guilds.cache.values()].filter((guild) => guild.id !== protectedGuild?.id);
+	const leftGuilds: { id: string; name: string; messageSent: boolean }[] = [];
+	const failedGuilds: { id: string; name: string; messageSent: boolean }[] = [];
+	let timeLimitReached = false;
+
+	for (const guild of guilds) {
+		if (Date.now() >= deadlineAt) {
+			timeLimitReached = true;
+			break;
+		}
+		try {
+			const result = await kickGuild({
+				guild,
+				config,
+				invoker,
+				...(additionalMessage ? { additionalMessage } : {}),
+			});
+			const entry = { id: guild.id, name: guild.name, messageSent: result.departureMessage !== null };
+			(result.success ? leftGuilds : failedGuilds).push(entry);
+		} catch (error: unknown) {
+			logger.error("ADMIN", "Failed to process guild during dashboard self-kick", {
+				user: `${invoker.userName} <${invoker.userId}>`,
+				guild: formatGuild(guild),
+				error,
+			});
+			failedGuilds.push({ id: guild.id, name: guild.name, messageSent: false });
+		}
+	}
+
+	return {
+		protectedGuild: protectedGuild ? { id: protectedGuild.id, name: protectedGuild.name } : null,
+		leftGuilds,
+		failedGuilds,
+		timeLimitReached,
+	};
+}
+
 export async function getGuildInvite(guild: Guild): Promise<Invite> {
 	const botMember = guild.members.me ?? (await guild.members.fetchMe().catch(() => null));
 	if (!botMember) {

@@ -22,7 +22,11 @@ export interface AdminBotPlayerSession {
 	channel: { id: string; name: string } | null;
 	user: { id: string; username: string; avatarUrl: string | null } | null;
 	queueSize: number;
-	nowPlaying: { name: string; url: string | null } | null;
+	nowPlaying: {
+		name: string;
+		url: string | null;
+		timestamp: { current: string; total: string | null } | null;
+	} | null;
 	playerState: "Playing" | "Paused";
 }
 
@@ -32,11 +36,26 @@ export interface AdminBotStatus {
 	botId: string | null;
 	version: string;
 	bootedAtMs: number;
+	guildCount: number;
+	memberCount: number | null;
 }
 
 export interface AdminBotShutdownResult {
 	scheduled: true;
 	delayMilliseconds: number;
+}
+
+export interface AdminBotGuildUndeploymentResult {
+	undeployedGuilds: { id: string; name: string }[];
+	failedGuilds: { id: string; name: string }[];
+	timeLimitReached: boolean;
+}
+
+export interface AdminBotSelfKickResult {
+	protectedGuild: { id: string; name: string } | null;
+	leftGuilds: { id: string; name: string; messageSent: boolean }[];
+	failedGuilds: { id: string; name: string; messageSent: boolean }[];
+	timeLimitReached: boolean;
 }
 
 interface AdminGuildBase {
@@ -218,6 +237,24 @@ class APIHandler {
 		const { data } = await apiClient.delete<AdminBotShutdownResult>("/api/v1/admin/bot/stop", {
 			data: { confirm: true },
 			withCredentials: true,
+		});
+		return data;
+	}
+
+	static async undeployAdminBotGuildCommands(): Promise<AdminBotGuildUndeploymentResult> {
+		const { data } = await apiClient.delete<AdminBotGuildUndeploymentResult>("/api/v1/admin/bot/undeploy-guilds", {
+			data: { confirm: true },
+			withCredentials: true,
+			timeout: 13 * 60 * 1000 + 10_000,
+		});
+		return data;
+	}
+
+	static async selfKickAdminBot(message: string): Promise<AdminBotSelfKickResult> {
+		const { data } = await apiClient.delete<AdminBotSelfKickResult>("/api/v1/admin/bot/self-kick", {
+			data: { confirm: true, message },
+			withCredentials: true,
+			timeout: 13 * 60 * 1000 + 10_000,
 		});
 		return data;
 	}

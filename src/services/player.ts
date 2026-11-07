@@ -35,7 +35,11 @@ export interface ActivePlayerSession {
 	readonly channel: { readonly id: string; readonly name: string } | null;
 	readonly user: { readonly id: string; readonly username: string; readonly avatarUrl: string | null } | null;
 	readonly queueSize: number;
-	readonly nowPlaying: { readonly name: string; readonly url: string | null } | null;
+	readonly nowPlaying: {
+		readonly name: string;
+		readonly url: string | null;
+		readonly timestamp: { readonly current: string; readonly total: string | null } | null;
+	} | null;
 	readonly playerState: "Playing" | "Paused";
 }
 
@@ -145,6 +149,7 @@ export function getActivePlayerSessions(): ActivePlayerSession[] {
 		const userId = queue.metadata.requestedBy ?? null;
 		const user = userId ? queue.guild.client.users.cache.get(userId) : undefined;
 		const track = queue.currentTrack;
+		const timestamp = track ? queue.node.getTimestamp(true) : null;
 		const trackUrl = track?.url;
 		const nowPlayingUrl =
 			trackUrl && URL.canParse(trackUrl) && ["http:", "https:"].includes(new URL(trackUrl).protocol)
@@ -161,7 +166,22 @@ export function getActivePlayerSessions(): ActivePlayerSession[] {
 					}
 				: null,
 			queueSize: queue.tracks.size,
-			nowPlaying: track ? { name: track.title, url: nowPlayingUrl } : null,
+			nowPlaying: track
+				? {
+						name: track.title,
+						url: nowPlayingUrl,
+						timestamp:
+							timestamp && Number.isFinite(timestamp.current.value) && timestamp.current.value >= 0
+								? {
+										current: timestamp.current.label,
+										total:
+											Number.isFinite(timestamp.total.value) && timestamp.total.value > 0
+												? timestamp.total.label
+												: null,
+									}
+								: null,
+					}
+				: null,
 			playerState: queue.node.isPaused() ? "Paused" : "Playing",
 		};
 	});

@@ -17,8 +17,6 @@ import play from "../commands/play.js";
 import playlist from "../commands/playlist.js";
 import soundboard from "../commands/soundboard.js";
 import warn from "../commands/warn.js";
-import adminBot from "../commands/guildCommands/adminBot.js";
-import adminDeploy from "../commands/guildCommands/adminDeploy.js";
 import adminGuild from "../commands/guildCommands/adminGuild.js";
 export type { BotCommand, BotCommandContext, BotCommandData, CommandCategory } from "../helpers/command.js";
 
@@ -38,7 +36,7 @@ const globalCommandModules: readonly unknown[] = [
 	soundboard,
 	warn,
 ];
-const guildCommandModules: readonly unknown[] = [adminBot, adminDeploy, adminGuild];
+const guildCommandModules: readonly unknown[] = [adminGuild];
 
 let loadedCommands: Collection<string, BotCommand> | undefined;
 let loadedGlobalCommands: Collection<string, BotCommand> | undefined;

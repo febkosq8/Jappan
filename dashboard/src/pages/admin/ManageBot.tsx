@@ -1,5 +1,6 @@
-import { Avatar, Button, Card, DateHandler, Tag, TextLink } from "@febkosq8/arc";
+import { Avatar, Button, Card, DateHandler, Input, LabelField, Tag, TextLink } from "@febkosq8/arc";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import axios from "axios";
 import { useState } from "react";
 import { FiAlertTriangle, FiCheckCircle, FiMusic, FiPower, FiRefreshCw, FiXCircle } from "react-icons/fi";
 import { toast } from "sonner";
@@ -57,7 +58,7 @@ function PlayerSession({ session }: { session: AdminBotPlayerSession }) {
 					</Tag>
 				</div>
 				<dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-					<div>
+					<Card hoverable={false} className="min-w-0 rounded-md border-border p-3">
 						<dt className="text-muted-foreground">Voice channel</dt>
 						<dd className="mt-1 wrap-break-words font-medium">
 							{session.channel ? (
@@ -74,8 +75,8 @@ function PlayerSession({ session }: { session: AdminBotPlayerSession }) {
 								"Not connected"
 							)}
 						</dd>
-					</div>
-					<div>
+					</Card>
+					<Card hoverable={false} className="min-w-0 rounded-md border-border p-3">
 						<dt className="text-muted-foreground">Requested by</dt>
 						<dd className="mt-1 wrap-break-words font-medium">
 							{session.user ? (
@@ -100,12 +101,12 @@ function PlayerSession({ session }: { session: AdminBotPlayerSession }) {
 								"Unavailable"
 							)}
 						</dd>
-					</div>
-					<div>
+					</Card>
+					<Card hoverable={false} className="min-w-0 rounded-md border-border p-3">
 						<dt className="text-muted-foreground">Queue size</dt>
 						<dd className="mt-1 font-medium">{session.queueSize}</dd>
-					</div>
-					<div className="min-w-0">
+					</Card>
+					<Card hoverable={false} className="min-w-0 rounded-md border-border p-3">
 						<dt className="text-muted-foreground">Now playing</dt>
 						<dd className="mt-1 wrap-break-word font-medium">
 							{session.nowPlaying?.url ? (
@@ -113,8 +114,14 @@ function PlayerSession({ session }: { session: AdminBotPlayerSession }) {
 							) : (
 								(session.nowPlaying?.name ?? "Nothing")
 							)}
+							{session.nowPlaying?.timestamp && (
+								<span className="block text-xs text-muted-foreground">
+									{session.nowPlaying.timestamp.current} /{" "}
+									{session.nowPlaying.timestamp.total ?? "Unknown"}
+								</span>
+							)}
 						</dd>
-					</div>
+					</Card>
 				</dl>
 			</Card.Content>
 		</Card>
@@ -125,6 +132,9 @@ export default function ManageBot() {
 	document.title = "Admin - Manage Bot";
 	const queryClient = useQueryClient();
 	const [confirmStop, setConfirmStop] = useState(false);
+	const [confirmUndeploy, setConfirmUndeploy] = useState(false);
+	const [confirmSelfKick, setConfirmSelfKick] = useState(false);
+	const [selfKickMessage, setSelfKickMessage] = useState("");
 	const [shutdownScheduled, setShutdownScheduled] = useState(false);
 	const statusQuery = useQuery({
 		queryKey: ["admin", "bot", "status"],
@@ -158,7 +168,35 @@ export default function ManageBot() {
 		},
 	});
 
-	const accessStatus = accessErrorStatus(statusQuery.error) ?? accessErrorStatus(playerStateQuery.error);
+	const undeployMutation = useMutation({
+		mutationFn: APIHandler.undeployAdminBotGuildCommands,
+		onSuccess: () => {
+			setConfirmUndeploy(false);
+		},
+		onSettled: () => {
+			void queryClient.invalidateQueries({ queryKey: ["admin", "guild"] });
+			void queryClient.invalidateQueries({ queryKey: ["admin", "list-guilds"] });
+		},
+	});
+
+	const selfKickMutation = useMutation({
+		mutationFn: APIHandler.selfKickAdminBot,
+		onSuccess: () => {
+			setConfirmSelfKick(false);
+		},
+		onSettled: () => {
+			void queryClient.invalidateQueries({ queryKey: ["admin", "guild"] });
+			void queryClient.invalidateQueries({ queryKey: ["admin", "list-guilds"] });
+			void queryClient.invalidateQueries({ queryKey: ["admin", "bot", "status"] });
+			void queryClient.invalidateQueries({ queryKey: ["admin", "bot", "player-sessions"] });
+		},
+	});
+
+	const accessStatus =
+		accessErrorStatus(statusQuery.error) ??
+		accessErrorStatus(playerStateQuery.error) ??
+		accessErrorStatus(undeployMutation.error) ??
+		accessErrorStatus(selfKickMutation.error);
 	if (accessStatus) return <AccessRedirect status={accessStatus} />;
 
 	const bot = statusQuery.data;
@@ -250,6 +288,33 @@ export default function ManageBot() {
 								)}
 							</Card.Content>
 						</Card>
+						{[
+							{ label: "Guilds", value: bot?.guildCount },
+							{ label: "Members", value: bot?.memberCount },
+						].map(({ label, value }) => (
+							<Card key={label} hoverable={false} className="rounded-md border-border">
+								<Card.Content className="flex min-h-24 flex-col items-start justify-between gap-3 p-3!">
+									<p className="text-sm font-semibold">{label}</p>
+									{bot ? (
+										<div className="self-end text-right">
+											<strong className="text-lg">
+												{value == null ? "Unavailable" : value.toLocaleString()}
+											</strong>
+										</div>
+									) : (
+										<div className="self-end">
+											<LoadingIndicator
+												rows={1}
+												columns={5}
+												size={80}
+												label={`Loading ${label.toLowerCase()} count`}
+												inline
+											/>
+										</div>
+									)}
+								</Card.Content>
+							</Card>
+						))}
 					</div>
 				)}
 				<section aria-labelledby="bot-health-heading" className="mt-4">
@@ -417,6 +482,261 @@ export default function ManageBot() {
 						<div className="border-t border-border pt-4">
 							<div className="flex flex-wrap items-center justify-between gap-3">
 								<div>
+									<h3 className="font-semibold">Undeploy guild commands</h3>
+									<p className="text-sm text-muted-foreground">
+										Remove guild commands from every installed guild.
+									</p>
+								</div>
+								{!confirmUndeploy && (
+									<Button
+										size="sm"
+										variant="outline-destructive"
+										disabled={
+											shutdownScheduled ||
+											stopBotMutation.isPending ||
+											undeployMutation.isPending ||
+											selfKickMutation.isPending
+										}
+										onClick={() => setConfirmUndeploy(true)}
+									>
+										Undeploy guild commands
+									</Button>
+								)}
+							</div>
+							{confirmUndeploy && (
+								<div role="alert" className="mt-4 rounded-md border border-warning p-3">
+									<div className="flex items-start gap-2">
+										<FiAlertTriangle
+											className="mt-0.5 size-4 shrink-0 text-warning"
+											aria-hidden="true"
+										/>
+										<p className="text-sm">
+											This removes all guild commands from every installed guild. Global commands
+											are unaffected.
+										</p>
+									</div>
+									<div className="mt-3 flex justify-end gap-2">
+										<Button
+											size="sm"
+											variant="outline-secondary"
+											disabled={undeployMutation.isPending}
+											onClick={() => setConfirmUndeploy(false)}
+										>
+											Cancel
+										</Button>
+										<Button
+											size="sm"
+											variant="destructive"
+											disabled={
+												undeployMutation.isPending ||
+												stopBotMutation.isPending ||
+												selfKickMutation.isPending ||
+												shutdownScheduled
+											}
+											onClick={() => undeployMutation.mutate()}
+										>
+											{undeployMutation.isPending ? "Undeploying..." : "Confirm undeploy"}
+										</Button>
+									</div>
+								</div>
+							)}
+							{undeployMutation.isPending && (
+								<p role="status" className="mt-3 text-sm text-muted-foreground">
+									Removing guild commands. This may take several minutes.
+								</p>
+							)}
+							{undeployMutation.isError && (
+								<p role="alert" className="mt-3 text-sm text-destructive">
+									{axios.isAxiosError(undeployMutation.error) && !undeployMutation.error.response
+										? "Could not confirm the result. The operation may still be running; check guilds before retrying."
+										: axios.isAxiosError(undeployMutation.error) &&
+											  undeployMutation.error.response?.status === 409
+											? "A guild command undeployment is already in progress."
+											: "Could not undeploy guild commands. Some guilds may have been processed; check guilds before retrying."}
+								</p>
+							)}
+							{undeployMutation.data && (
+								<div role="status" className="mt-3 space-y-2 text-sm">
+									<p>
+										Commands removed from{" "}
+										{undeployMutation.data.undeployedGuilds.length.toLocaleString()} guilds;{" "}
+										{undeployMutation.data.failedGuilds.length.toLocaleString()} failed.
+									</p>
+									{undeployMutation.data.timeLimitReached && (
+										<p className="text-warning">
+											The time limit was reached before all guilds were processed. Run again to
+											continue.
+										</p>
+									)}
+									{undeployMutation.data.failedGuilds.length > 0 && (
+										<div>
+											<p className="font-medium text-destructive">Failed guilds:</p>
+											<ul className="mt-1 list-inside list-disc">
+												{undeployMutation.data.failedGuilds.map((guild) => (
+													<li key={guild.id}>
+														<TextLink
+															href={`/admin/guild/${encodeURIComponent(guild.id)}`}
+															text={guild.name}
+															title={guild.name}
+															target="_self"
+														/>
+													</li>
+												))}
+											</ul>
+											<p className="mt-1 text-warning">Run again to retry failed guilds.</p>
+										</div>
+									)}
+								</div>
+							)}
+						</div>
+						<div className="border-t border-border pt-4">
+							<div className="flex flex-wrap items-center justify-between gap-3">
+								<div>
+									<h3 className="font-semibold">Leave guilds</h3>
+									<p className="text-sm text-muted-foreground">
+										Leave every installed guild except the configured player health-check guild, if
+										present.
+									</p>
+								</div>
+								{!confirmSelfKick && (
+									<Button
+										size="sm"
+										variant="outline-destructive"
+										disabled={
+											shutdownScheduled ||
+											stopBotMutation.isPending ||
+											undeployMutation.isPending ||
+											selfKickMutation.isPending
+										}
+										onClick={() => {
+											selfKickMutation.reset();
+											setConfirmSelfKick(true);
+										}}
+									>
+										Leave guilds
+									</Button>
+								)}
+							</div>
+							{confirmSelfKick && (
+								<div role="alert" className="mt-4 rounded-md border border-warning p-3">
+									<div className="flex items-start gap-2">
+										<FiAlertTriangle
+											className="mt-0.5 size-4 shrink-0 text-warning"
+											aria-hidden="true"
+										/>
+										<p className="text-sm">
+											The bot will leave all guilds except the configured player health-check
+											guild. If that guild is not installed or configured, it will leave every
+											guild. It will still leave if a departure message cannot be sent.
+										</p>
+									</div>
+									<div className="mt-3">
+										<LabelField
+											id="bot-self-kick-message"
+											label="Additional departure message (optional)"
+											className="mb-1"
+										/>
+										<Input
+											as="textarea"
+											id="bot-self-kick-message"
+											value={selfKickMessage}
+											onChange={(event) => setSelfKickMessage(event.target.value)}
+											maxLength={1000}
+											rows={3}
+											placeholder="Write the message to send"
+											disabled={selfKickMutation.isPending}
+											className="min-h-20 w-full"
+										/>
+									</div>
+									<div className="mt-3 flex justify-end gap-2">
+										<Button
+											size="sm"
+											variant="outline-secondary"
+											disabled={selfKickMutation.isPending}
+											onClick={() => setConfirmSelfKick(false)}
+										>
+											Cancel
+										</Button>
+										<Button
+											size="sm"
+											variant="destructive"
+											disabled={
+												selfKickMutation.isPending ||
+												undeployMutation.isPending ||
+												stopBotMutation.isPending ||
+												shutdownScheduled
+											}
+											onClick={() => selfKickMutation.mutate(selfKickMessage)}
+										>
+											{selfKickMutation.isPending ? "Leaving guilds..." : "Confirm leave guilds"}
+										</Button>
+									</div>
+								</div>
+							)}
+							{selfKickMutation.isPending && (
+								<p role="status" className="mt-3 text-sm text-muted-foreground">
+									Leaving guilds. This may take several minutes.
+								</p>
+							)}
+							{selfKickMutation.isError && (
+								<p role="alert" className="mt-3 text-sm text-destructive">
+									{axios.isAxiosError(selfKickMutation.error) &&
+									selfKickMutation.error.response?.status === 409
+										? "A self-kick is already in progress."
+										: "Could not confirm the results. The bot may have left some guilds or the operation may still be running; check guilds before retrying."}
+								</p>
+							)}
+							{selfKickMutation.data && (
+								<div role="status" className="mt-3 space-y-2 text-sm">
+									<p>
+										Left {selfKickMutation.data.leftGuilds.length.toLocaleString()} guilds;{" "}
+										{selfKickMutation.data.failedGuilds.length.toLocaleString()} failed.
+									</p>
+									<p>
+										{selfKickMutation.data.protectedGuild
+											? `Kept player health-check guild: ${selfKickMutation.data.protectedGuild.name}.`
+											: "No installed player health-check guild was protected."}
+									</p>
+									{selfKickMutation.data.timeLimitReached && (
+										<p className="text-warning">
+											The time limit was reached. Run again to continue.
+										</p>
+									)}
+									{selfKickMutation.data.leftGuilds.some((guild) => !guild.messageSent) && (
+										<div>
+											<p className="font-medium text-warning">
+												Left without sending a departure message:
+											</p>
+											<ul className="mt-1 list-inside list-disc">
+												{selfKickMutation.data.leftGuilds
+													.filter((guild) => !guild.messageSent)
+													.map((guild) => (
+														<li key={guild.id}>
+															{guild.name} ({guild.id})
+														</li>
+													))}
+											</ul>
+										</div>
+									)}
+									{selfKickMutation.data.failedGuilds.length > 0 && (
+										<div>
+											<p className="font-medium text-destructive">Failed guilds:</p>
+											<ul className="mt-1 list-inside list-disc">
+												{selfKickMutation.data.failedGuilds.map((guild) => (
+													<li key={guild.id}>
+														{guild.name} ({guild.id})
+														{guild.messageSent ? " — departure message sent" : ""}
+													</li>
+												))}
+											</ul>
+										</div>
+									)}
+								</div>
+							)}
+						</div>
+						<div className="border-t border-border pt-4">
+							<div className="flex flex-wrap items-center justify-between gap-3">
+								<div>
 									<h3 className="font-semibold">Stop bot</h3>
 									<p className="text-sm text-muted-foreground">
 										Shuts down the bot process after a 5-second delay.
@@ -426,7 +746,12 @@ export default function ManageBot() {
 									<Button
 										size="sm"
 										variant="outline-destructive"
-										disabled={isFetchingStatus || shutdownScheduled}
+										disabled={
+											isFetchingStatus ||
+											shutdownScheduled ||
+											undeployMutation.isPending ||
+											selfKickMutation.isPending
+										}
 										onClick={() => setConfirmStop(true)}
 									>
 										<FiPower className="mr-2 size-4" aria-hidden="true" />
@@ -457,7 +782,12 @@ export default function ManageBot() {
 										<Button
 											size="sm"
 											variant="destructive"
-											disabled={isFetchingStatus || stopBotMutation.isPending}
+											disabled={
+												isFetchingStatus ||
+												stopBotMutation.isPending ||
+												undeployMutation.isPending ||
+												selfKickMutation.isPending
+											}
 											onClick={() => {
 												void toast.promise(stopBotMutation.mutateAsync(), {
 													loading: "Scheduling bot shutdown...",

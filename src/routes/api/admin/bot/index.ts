@@ -4,11 +4,15 @@ import type { Response } from "express";
 import { getClient } from "../../../../bot.js";
 import { requireAdmin, requireSession } from "../../../../handlers/auth.js";
 import { requireDiscord } from "../../../../handlers/availability.js";
+import { DISCORD_INTERACTION_TIME_LIMIT_MS } from "../../../../helpers/interaction.js";
 import { defineRouter, errorResponseSchema } from "../../../../helpers/route.js";
 import { getBotVersion } from "../../../../helpers/utils.js";
+import { undeployGuildCommandsGlobally } from "../../../../services/adminDeployment.js";
+import { selfKickGuilds } from "../../../../services/adminGuild.js";
 import type { AuthSession } from "../../../../services/auth.js";
-import { getActivePlayerSessions, runPlayerHealthCheck } from "../../../../services/player.js";
+import { getConfig } from "../../../../services/config.js";
 import { logger } from "../../../../services/logger.js";
+import { getActivePlayerSessions, runPlayerHealthCheck } from "../../../../services/player.js";
 import { handleShutdown } from "../../../../services/shutdown.js";
 
 const activePlayerSessionSchema = z.object({
@@ -16,7 +20,13 @@ const activePlayerSessionSchema = z.object({
 	channel: z.object({ id: z.string(), name: z.string() }).nullable(),
 	user: z.object({ id: z.string(), username: z.string(), avatarUrl: z.string().url().nullable() }).nullable(),
 	queueSize: z.number(),
-	nowPlaying: z.object({ name: z.string(), url: z.httpUrl().nullable() }).nullable(),
+	nowPlaying: z
+		.object({
+			name: z.string(),
+			url: z.httpUrl().nullable(),
+			timestamp: z.object({ current: z.string(), total: z.string().nullable() }).nullable(),
+		})
+		.nullable(),
 	playerState: z.enum(["Playing", "Paused"]),
 });
 
@@ -26,6 +36,8 @@ const adminBotStatusSchema = z.object({
 	botId: z.string().nullable(),
 	version: z.string(),
 	bootedAtMs: z.number(),
+	guildCount: z.number().int().nonnegative(),
+	memberCount: z.number().int().nonnegative().nullable(),
 });
 
 const stopBotRequestSchema = z.object({ confirm: z.literal(true) });
@@ -33,8 +45,27 @@ const stopBotResponseSchema = z.object({
 	scheduled: z.literal(true),
 	delayMilliseconds: z.number().int().positive(),
 });
+const undeployGuildsRequestSchema = z.object({ confirm: z.literal(true) });
+const adminBotGuildUndeploymentResponseSchema = z.object({
+	undeployedGuilds: z.array(z.object({ id: z.string(), name: z.string() })),
+	failedGuilds: z.array(z.object({ id: z.string(), name: z.string() })),
+	timeLimitReached: z.boolean(),
+});
+const selfKickRequestSchema = z.object({
+	confirm: z.literal(true),
+	message: z.string().max(1000, "Message must be 1000 characters or fewer").optional(),
+});
+const selfKickGuildSchema = z.object({ id: z.string(), name: z.string(), messageSent: z.boolean() });
+const selfKickResponseSchema = z.object({
+	protectedGuild: z.object({ id: z.string(), name: z.string() }).nullable(),
+	leftGuilds: z.array(selfKickGuildSchema),
+	failedGuilds: z.array(selfKickGuildSchema),
+	timeLimitReached: z.boolean(),
+});
 const shutdownDelayMilliseconds = 5_000;
 let shutdownScheduled = false;
+let guildUndeploymentInProgress = false;
+let selfKickInProgress = false;
 
 function getAdminSession(response: Response): AuthSession | undefined {
 	const session: AuthSession | undefined = response.locals.authSession;
@@ -61,16 +92,22 @@ export default defineRouter("/bot", [
 		},
 		middleware: [requireDiscord, requireSession, requireAdmin],
 		handler: (_request, response) => {
-			const botUser = getClient().user;
+			const client = getClient();
+			const botUser = client.user;
 			if (!botUser) {
 				return response.status(503).json({ error: "Discord is unavailable" });
 			}
+			const guilds = [...client.guilds.cache.values()];
 			const returnData = {
 				botName: botUser.username,
 				botAvatarUrl: botUser.displayAvatarURL(),
 				botId: botUser.id,
 				version: getBotVersion(),
 				bootedAtMs: Date.now() - Math.floor(process.uptime() * 1000),
+				guildCount: guilds.length,
+				memberCount: guilds.every((guild) => guild.available && Number.isFinite(guild.memberCount))
+					? guilds.reduce((total, guild) => total + guild.memberCount, 0)
+					: null,
 			};
 			return response.status(200).json(returnData);
 		},
@@ -91,6 +128,130 @@ export default defineRouter("/bot", [
 		},
 		middleware: [requireDiscord, requireSession, requireAdmin],
 		handler: (_request, response) => response.status(200).json(getActivePlayerSessions()),
+	},
+	{
+		method: "delete",
+		path: "/undeploy-guilds",
+		tags: ["Admin Bot"],
+		summary: "Remove guild commands from every installed guild",
+		errorMessage: "Failed to undeploy guild commands",
+		security: [{ sessionCookie: [] }],
+		requestBody: {
+			required: true,
+			content: { "application/json": { schema: undeployGuildsRequestSchema } },
+		},
+		responses: {
+			200: {
+				description: "Guild command undeployment results",
+				schema: adminBotGuildUndeploymentResponseSchema,
+			},
+			400: { description: "Confirmation is required", schema: errorResponseSchema },
+			401: { description: "Authentication required", schema: errorResponseSchema },
+			403: { description: "Admin access required", schema: errorResponseSchema },
+			409: { description: "Guild command undeployment is already in progress", schema: errorResponseSchema },
+			503: { description: "Discord bot is unavailable", schema: errorResponseSchema },
+			500: { description: "Failed to undeploy guild commands", schema: errorResponseSchema },
+		},
+		middleware: [requireDiscord, requireSession, requireAdmin],
+		handler: async (request, response) => {
+			const session = getAdminSession(response);
+			if (!session) return response.status(401).json({ error: "Authentication required" });
+
+			const body = undeployGuildsRequestSchema.safeParse(request.body);
+			if (!body.success) {
+				return response
+					.status(400)
+					.json({ error: body.error.issues[0]?.message ?? "Confirmation is required" });
+			}
+			if (guildUndeploymentInProgress) {
+				return response.status(409).json({ error: "Guild command undeployment is already in progress" });
+			}
+
+			guildUndeploymentInProgress = true;
+			logger.info("ADMIN", "Global guild command undeployment requested via dashboard", {
+				user: `${session.user.name} <${session.user.id}>`,
+			});
+			try {
+				const result = await undeployGuildCommandsGlobally({
+					client: getClient(),
+					deadlineAt: Date.now() + DISCORD_INTERACTION_TIME_LIMIT_MS,
+				});
+				const responseData = {
+					undeployedGuilds: result.undeployedGuilds.map(({ id, name }) => ({ id, name })),
+					failedGuilds: result.failedGuilds.map(({ id, name }) => ({ id, name })),
+					timeLimitReached: result.timeLimitReached,
+				};
+				logger.info("ADMIN", "Global guild command undeployment completed via dashboard", {
+					user: `${session.user.name} <${session.user.id}>`,
+					undeployedGuildCount: responseData.undeployedGuilds.length,
+					failedGuildCount: responseData.failedGuilds.length,
+					timeLimitReached: responseData.timeLimitReached,
+				});
+				return response.status(200).json(responseData);
+			} finally {
+				guildUndeploymentInProgress = false;
+			}
+		},
+	},
+	{
+		method: "delete",
+		path: "/self-kick",
+		tags: ["Admin Bot"],
+		summary: "Leave installed guilds except the player health-check guild",
+		errorMessage: "Failed to leave guilds",
+		security: [{ sessionCookie: [] }],
+		requestBody: {
+			required: true,
+			content: { "application/json": { schema: selfKickRequestSchema } },
+		},
+		responses: {
+			200: { description: "Self-kick results", schema: selfKickResponseSchema },
+			400: { description: "Invalid confirmation or message", schema: errorResponseSchema },
+			401: { description: "Authentication required", schema: errorResponseSchema },
+			403: { description: "Admin access required", schema: errorResponseSchema },
+			409: { description: "Self-kick is already in progress", schema: errorResponseSchema },
+			503: { description: "Discord bot is unavailable", schema: errorResponseSchema },
+			500: { description: "Failed to leave guilds", schema: errorResponseSchema },
+		},
+		middleware: [requireDiscord, requireSession, requireAdmin],
+		handler: async (request, response) => {
+			const session = getAdminSession(response);
+			if (!session) return response.status(401).json({ error: "Authentication required" });
+			const body = selfKickRequestSchema.safeParse(request.body);
+			if (!body.success) {
+				return response
+					.status(400)
+					.json({ error: body.error.issues[0]?.message ?? "Invalid self-kick request" });
+			}
+			if (selfKickInProgress) {
+				return response.status(409).json({ error: "Self-kick is already in progress" });
+			}
+
+			selfKickInProgress = true;
+			try {
+				const invoker = { userName: session.user.name, userId: session.user.id };
+				const message = body.data.message?.trim();
+				logger.warn("ADMIN", "Self-kick requested via dashboard", {
+					user: `${invoker.userName} <${invoker.userId}>`,
+				});
+				const result = await selfKickGuilds({
+					client: getClient(),
+					config: getConfig(),
+					invoker,
+					deadlineAt: Date.now() + DISCORD_INTERACTION_TIME_LIMIT_MS,
+					...(message ? { additionalMessage: message } : {}),
+				});
+				logger.info("ADMIN", "Dashboard self-kick completed", {
+					user: `${invoker.userName} <${invoker.userId}>`,
+					leftGuildCount: result.leftGuilds.length,
+					failedGuildCount: result.failedGuilds.length,
+					timeLimitReached: result.timeLimitReached,
+				});
+				return response.status(200).json(result);
+			} finally {
+				selfKickInProgress = false;
+			}
+		},
 	},
 	{
 		method: "put",

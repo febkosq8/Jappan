@@ -92,13 +92,37 @@ returns 401 or 403. Session lookup failures remain retryable rather than being
 treated as an authorization failure.
 
 `GET /api/v1/admin/bot` requires an active admin session and Discord availability
-and returns the bot's identity, version, and start time.
+and returns the bot's identity, version, start time, and `guildCount` from the
+Discord guild cache. `memberCount` sums the member counts of those guilds (so
+people in multiple guilds are counted more than once); it is `null` if any guild
+is unavailable or its member count is missing.
 `GET /api/v1/admin/bot/player-sessions` has the same access requirements and returns an
 array of active player sessions, including guild (with a nullable icon URL), channel,
 requester (with a nullable avatar URL when the user is not cached), queue size,
-`nowPlaying` (an object with `name` and a nullable HTTP(S) `url`, or `null` when
-nothing is playing), and player state.
-The dashboard refreshes these independently.
+`nowPlaying` (an object with `name`, a nullable HTTP(S) `url`, and a nullable
+`timestamp` containing formatted `current` and nullable `total` playback times,
+or `null` when nothing is playing), and player state. The total is `null` when
+the duration is unknown, such as a live stream. The timestamp is a snapshot of
+the current track's position, not when the queue was created.
+The dashboard refreshes these independently every 30 seconds.
+
+`DELETE /api/v1/admin/bot/undeploy-guilds` requires an active admin session and
+Discord availability. It requires `{"confirm":true}` and removes guild commands
+from every installed guild, returning `undeployedGuilds` and `failedGuilds`
+arrays of `{id, name}` plus `timeLimitReached`. Only one global undeployment can
+run at a time; a concurrent request returns 409. The dashboard API handler uses
+the same confirmation body. The Manage Bot page offers a confirmation before
+running it and displays failed guilds and whether the time limit was reached.
+
+`DELETE /api/v1/admin/bot/self-kick` requires an active admin session, Discord
+availability, and `{"confirm":true}`. An optional `message` of up to 1000
+characters is appended to the standard departure message sent to each guild
+where possible. The bot leaves every cached guild except the configured
+`PLAYER_HEALTH_CHECK_GUILD_ID`, if it is present; otherwise it leaves all of
+them. The response includes `protectedGuild` (or `null`), `leftGuilds`,
+`failedGuilds` (each with `id`, `name`, and `messageSent`), and
+`timeLimitReached`. The bot can leave even when the message could not be sent.
+Only one dashboard self-kick can run at a time; a concurrent request returns 409. A timed-out or interrupted request may have already left some guilds.
 
 `GET /api/v1/admin/guilds` requires an active admin session and returns all stored
 guilds, including those the bot has left. Each entry contains `id`, `name`, and
