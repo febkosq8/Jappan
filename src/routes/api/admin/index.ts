@@ -38,8 +38,6 @@ export default defineRouter("/admin", [
 					}),
 				),
 			},
-			401: { description: "Authentication required", schema: errorResponseSchema },
-			403: { description: "Admin access required", schema: errorResponseSchema },
 			500: { description: "Failed to list guilds", schema: errorResponseSchema },
 		},
 		middleware: [requireDatabase, requireDiscord, requireSession, requireAdmin],

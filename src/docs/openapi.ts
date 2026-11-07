@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { getUnavailableDescription } from "../helpers/middleware.js";
+import { getMiddlewareResponses } from "../helpers/middleware.js";
 import {
 	errorResponseSchema,
 	type RouteMediaType,
@@ -106,45 +106,72 @@ export function getOpenApiDocument(routers: readonly RouterDefinition[], options
 			}
 			route.tags.forEach((tag) => tags.add(tag));
 			const responses: Record<string, unknown> = {};
-			const unavailableDescriptions = [
-				...new Set(
-					[...(route.inheritedMiddleware ?? []), ...("middleware" in route ? (route.middleware ?? []) : [])]
-						.map(getUnavailableDescription)
-						.filter((description): description is string => description !== undefined),
-				),
-			];
-			const unavailableResponse = route.responses[503];
-			const routeResponses: Record<number, RouteResponse> = {
-				...route.responses,
-				...(unavailableDescriptions.length && {
-					503: {
-						...(unavailableResponse ?? { schema: errorResponseSchema }),
-						description: [unavailableResponse?.description, ...unavailableDescriptions]
-							.filter(Boolean)
-							.join("; "),
-					},
-				}),
-			};
+			const middlewareErrors = new Map<number, Set<string>>();
+			for (const middleware of [
+				...(route.inheritedMiddleware ?? []),
+				...("middleware" in route ? (route.middleware ?? []) : []),
+			]) {
+				for (const [status, error] of Object.entries(getMiddlewareResponses(middleware))) {
+					const code = Number(status);
+					const errors = middlewareErrors.get(code) ?? new Set<string>();
+					errors.add(error);
+					middlewareErrors.set(code, errors);
+				}
+			}
+			const routeResponses: Record<number, RouteResponse> = { ...route.responses };
+			if (!routeResponses[500] && !hasCustomErrorHandler) {
+				routeResponses[500] = { description: route.errorMessage, schema: errorResponseSchema };
+			}
+			for (const [status, errors] of middlewareErrors) {
+				const existing = routeResponses[status];
+				routeResponses[status] = {
+					...(existing ?? { schema: z.object({ error: z.enum([...errors]) }) }),
+					description: [...new Set([...(existing ? [existing.description] : []), ...errors])].join("; "),
+				};
+			}
 			for (const [status, response] of Object.entries(routeResponses)) {
 				if (response.schema && response.content) {
 					throw new Error(
 						`Response ${status} for ${basePath}${route.path} cannot have both schema and content`,
 					);
 				}
-				let content = response.schema
+				let content:
+					| Record<
+							string,
+							{
+								schema: Record<string, unknown>;
+								examples?: Record<string, { summary: string; value: { error: string } }>;
+							}
+					  >
+					| undefined = response.schema
 					? { "application/json": { schema: toJsonSchema(response.schema) } }
 					: response.content
 						? toContent(response.content, "output")
 						: undefined;
-				if (status === "503" && unavailableDescriptions.length && unavailableResponse) {
+				const errors = middlewareErrors.get(Number(status));
+				if (errors && route.responses[Number(status)]) {
 					const jsonResponse = content?.["application/json"];
-					const middlewareSchema = toJsonSchema(errorResponseSchema);
+					const middlewareSchema = toJsonSchema(z.object({ error: z.enum([...errors]) }));
 					content = {
 						...content,
 						"application/json": {
 							schema: jsonResponse
 								? { anyOf: [jsonResponse.schema, middlewareSchema] }
 								: middlewareSchema,
+						},
+					};
+				}
+				if (errors && content?.["application/json"]) {
+					content = {
+						...content,
+						"application/json": {
+							...content["application/json"],
+							examples: Object.fromEntries(
+								[...errors].map((error, index) => [
+									`middlewareError${index + 1}`,
+									{ summary: error, value: { error } },
+								]),
+							),
 						},
 					};
 				}
@@ -161,12 +188,6 @@ export function getOpenApiDocument(routers: readonly RouterDefinition[], options
 						),
 					}),
 					...(content && { content }),
-				};
-			}
-			if (!responses["500"] && !hasCustomErrorHandler) {
-				responses["500"] = {
-					description: route.errorMessage,
-					content: { "application/json": { schema: toJsonSchema(errorResponseSchema) } },
 				};
 			}
 			const { path, parameters: pathParameters } = toOpenApiPath(basePath, route.path);

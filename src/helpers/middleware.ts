@@ -1,14 +1,15 @@
 import type { RequestHandler } from "express";
 
-const unavailableDescription = Symbol("unavailableDescription");
+const responseErrors = new WeakMap<RequestHandler, Readonly<Record<number, string>>>();
 
-export function documentUnavailable(handler: RequestHandler, description: string): RequestHandler {
-	return Object.assign(handler, { [unavailableDescription]: description });
+export function documentMiddlewareResponses(
+	handler: RequestHandler,
+	responses: Readonly<Record<number, string>>,
+): RequestHandler {
+	responseErrors.set(handler, responses);
+	return handler;
 }
 
-export function getUnavailableDescription(handler: RequestHandler): string | undefined {
-	if (unavailableDescription in handler && typeof handler[unavailableDescription] === "string") {
-		return handler[unavailableDescription];
-	}
-	return undefined;
+export function getMiddlewareResponses(handler: RequestHandler): Readonly<Record<number, string>> {
+	return responseErrors.get(handler) ?? {};
 }

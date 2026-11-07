@@ -1,21 +1,30 @@
 import type { RequestHandler } from "express";
 
 import { isBotConnected } from "../bot.js";
-import { documentUnavailable } from "../helpers/middleware.js";
+import { documentMiddlewareResponses } from "../helpers/middleware.js";
 import { isDatabaseConnected } from "../services/database.js";
 
-export const requireDatabase: RequestHandler = documentUnavailable((_request, response, next) => {
-	if (!isDatabaseConnected()) {
-		response.status(503).json({ error: "Database is unavailable" });
-		return;
-	}
-	next();
-}, "Database unavailable");
+const databaseUnavailable = "Database is unavailable";
+const discordUnavailable = "Discord is unavailable";
 
-export const requireDiscord: RequestHandler = documentUnavailable((_request, response, next) => {
-	if (!isBotConnected()) {
-		response.status(503).json({ error: "Discord is unavailable" });
-		return;
-	}
-	next();
-}, "Discord unavailable");
+export const requireDatabase: RequestHandler = documentMiddlewareResponses(
+	(_request, response, next) => {
+		if (!isDatabaseConnected()) {
+			response.status(503).json({ error: databaseUnavailable });
+			return;
+		}
+		next();
+	},
+	{ 503: databaseUnavailable },
+);
+
+export const requireDiscord: RequestHandler = documentMiddlewareResponses(
+	(_request, response, next) => {
+		if (!isBotConnected()) {
+			response.status(503).json({ error: discordUnavailable });
+			return;
+		}
+		next();
+	},
+	{ 503: discordUnavailable },
+);
