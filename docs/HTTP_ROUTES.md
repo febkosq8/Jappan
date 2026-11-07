@@ -96,8 +96,11 @@ guilds, including those the bot has left. Each entry contains `id`, `name`, and
 `isActiveMember` (whether the bot is still in the guild, including temporarily
 unavailable guilds). Active memberships appear first, with each group sorted by
 name. When Discord guild data is available, the entry also includes `icon`
-(`null` if the guild has no icon), `memberCount`, `joinedTimestamp` (Unix
-milliseconds), `systemChannel` (an object with `id` and `name`, or `null`),
+(`null` if the guild has no icon), `memberCount`, `channelCount` (the number of
+channels in the bot's guild channel cache, including categories and cached threads;
+it may be incomplete),
+`createdAt` (the Discord guild creation time in Unix milliseconds), `description`
+(`null` if none), `joinedTimestamp` (Unix milliseconds), `systemChannel` (an object with `id` and `name`, or `null`),
 the bot's `permissions`, `hasRequiredPermissions`, and
 `owner` with `userId`, `avatarUrl`, and `username`. `hasRequiredPermissions`
 indicates whether all permissions declared by public commands and subcommands

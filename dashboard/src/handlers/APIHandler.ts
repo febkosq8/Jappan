@@ -23,6 +23,9 @@ export interface AdminGuild {
 	isActiveMember: boolean;
 	icon?: string | null;
 	memberCount?: number;
+	channelCount?: number;
+	createdAt?: number;
+	description?: string | null;
 	joinedTimestamp?: number;
 	systemChannel?: { id: string; name: string } | null;
 	permissions?: string[];

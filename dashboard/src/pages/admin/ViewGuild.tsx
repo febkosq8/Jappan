@@ -312,6 +312,9 @@ function GuildDetails({
 					<Detail label="Members">
 						{guild.memberCount === undefined ? "Unavailable" : guild.memberCount.toLocaleString()}
 					</Detail>
+					<Detail label="Channels">
+						{guild.channelCount === undefined ? "Unavailable" : guild.channelCount.toLocaleString()}
+					</Detail>
 					<Detail label="Owner">
 						{guild.owner ? (
 							<div className="flex items-center gap-2">
@@ -331,6 +334,18 @@ function GuildDetails({
 							</div>
 						) : (
 							"Unavailable"
+						)}
+					</Detail>
+					<Detail label="Created">
+						{guild.createdAt === undefined ? (
+							"Unavailable"
+						) : (
+							<>
+								<span className="block">{DateHandler.getDateTime(guild.createdAt)}</span>
+								<span className="text-sm text-muted-foreground">
+									{DateHandler.getRelativeTime(guild.createdAt)}
+								</span>
+							</>
 						)}
 					</Detail>
 					<Detail label="Joined">
@@ -382,6 +397,9 @@ function GuildDetails({
 						) : (
 							<span className="text-destructive">Some missing</span>
 						)}
+					</Detail>
+					<Detail label="Description">
+						{guild.description === undefined ? "Unavailable" : (guild.description ?? "None")}
 					</Detail>
 				</dl>
 			</Card>
