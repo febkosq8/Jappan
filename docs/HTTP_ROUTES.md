@@ -116,8 +116,13 @@ returns 503 when Discord is disconnected rather than reporting unreliable
 membership. If the owner or bot member cannot be fetched, the request fails
 instead of returning incomplete details.
 `GET /api/v1/guild/{guildId}` requires an active session with an admin account or
-a user who has Manage Server in that guild (the bot must be in the guild to verify
-the latter), plus database availability and a connected bot. It returns the same fields for one stored guild plus `discoveredAt` (the database
+a user who is a member of that guild and has Manage Server permission there (the
+bot must be in the guild to verify the latter), plus database availability and a
+connected bot. Admin access does not require the user to be a guild member.
+Unexpected Discord membership lookup failures return 500 rather than denying
+access. Authorization checks run in the configured order; if none grants access,
+the first check's rejection message is used unless the route specifies an override.
+It returns the same fields for one stored guild plus `discoveredAt` (the database
 record's creation time in Unix milliseconds, or `null` if unavailable) and
 `guildCommandDeployment` (`deployed` and `total` counts), plus `preferences`: `auditLog`
 (`enabled`, `channel`, `fullVerbosity`), `leveling` (`enabled`, `threshold`,

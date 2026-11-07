@@ -3,7 +3,13 @@ import type { Response } from "express";
 import { z } from "zod";
 
 import { getClient } from "../../../bot.js";
-import { requireGuildManager, requireSession } from "../../../handlers/auth.js";
+import {
+	isBotAdmin,
+	isGuildManager,
+	requireAnyAuthorization,
+	requireSession,
+	requireValidGuildId,
+} from "../../../handlers/auth.js";
 import { requireDatabase, requireDiscord } from "../../../handlers/availability.js";
 import { defineRouter, errorResponseSchema } from "../../../helpers/route.js";
 import {
@@ -28,7 +34,13 @@ import {
 
 const tags = ["Guild"];
 const security = [{ sessionCookie: [] }];
-const middleware = [requireDatabase, requireDiscord, requireSession, requireGuildManager];
+const middleware = [
+	requireDatabase,
+	requireDiscord,
+	requireSession,
+	requireValidGuildId,
+	requireAnyAuthorization([isGuildManager, isBotAdmin]),
+];
 const guildIdPattern = /^\d{17,20}$/u;
 const parameters = [
 	{

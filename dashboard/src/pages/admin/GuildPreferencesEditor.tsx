@@ -152,16 +152,24 @@ function PreferenceForm({
 	return (
 		<Card hoverable={false} role="region" aria-labelledby={id} className="min-w-0 rounded-md border-border p-3">
 			<form onSubmit={submit} className="space-y-3">
-				<div>
-					<h3 id={id} className="font-semibold">
-						{title}
-					</h3>
-					<p className="text-sm text-muted-foreground">{description}</p>
+				<div className="flex items-start justify-between gap-3">
+					<div>
+						<h3 id={id} className="font-semibold">
+							{title}
+						</h3>
+						<p className="text-sm text-muted-foreground">{description}</p>
+					</div>
+					<Button
+						type="submit"
+						size="sm"
+						variant="outline-primary"
+						className="shrink-0"
+						disabled={pending || disabled}
+					>
+						{pending ? "Saving..." : "Save"}
+					</Button>
 				</div>
 				{children}
-				<Button type="submit" size="sm" variant="outline-primary" disabled={pending || disabled}>
-					{pending ? "Saving..." : "Save"}
-				</Button>
 			</form>
 		</Card>
 	);
