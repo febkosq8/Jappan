@@ -10,13 +10,7 @@ import {
 
 import type { BotCommand, BotCommandData } from "../../helpers/command.js";
 import { sendResponse } from "../../helpers/response.js";
-import {
-	formatChannelMention,
-	formatGuild,
-	formatGuildMention,
-	formatUser,
-	formatUserMention,
-} from "../../helpers/discord.js";
+import { formatChannelMention, formatGuild, formatGuildMention, formatUserMention } from "../../helpers/discord.js";
 import { DISCORD_INTERACTION_TIME_LIMIT_MS } from "../../helpers/interaction.js";
 import { isAdminUser, kickGuild } from "../../services/adminGuild.js";
 import type { Config } from "../../services/config.js";

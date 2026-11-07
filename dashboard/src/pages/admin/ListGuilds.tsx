@@ -100,6 +100,23 @@ const columns: TableColumnDef<AdminGuild>[] = [
 			row.original.hasRequiredPermissions === undefined ? <Unavailable /> : String(getValue()),
 	},
 	{
+		id: "guildCommands",
+		accessorFn: (guild) =>
+			guild.guildCommandsDeployed === null ? undefined : guild.guildCommandsDeployed ? "Yes" : "No",
+		header: "Guild commands",
+		size: 150,
+		filterSelectOptions: [
+			{ value: "Yes", label: "Yes" },
+			{ value: "No", label: "No" },
+			{ value: "Unavailable", label: "Unavailable" },
+		],
+		filterFn: (row, columnId, filterValue) => (row.getValue(columnId) ?? "Unavailable") === filterValue,
+		sortingFn: "alphanumeric",
+		sortUndefined: "last",
+		cell: ({ row, getValue }) =>
+			row.original.guildCommandsDeployed === null ? <Unavailable /> : String(getValue()),
+	},
+	{
 		id: "joined",
 		accessorFn: (guild) =>
 			guild.joinedTimestamp === undefined

@@ -28,6 +28,7 @@ import APIHandler, {
 	type AdminGuildMessageResult,
 } from "@jappan/handlers/APIHandler";
 import { AccessRedirect, accessErrorStatus } from "@jappan/components/jappan/AdminRoute";
+import GuildCommandDeployment from "@jappan/components/jappan/GuildCommandDeployment";
 import LoadingIndicator from "@jappan/components/jappan/LoadingIndicator";
 import GuildPreferencesEditor from "./GuildPreferencesEditor";
 
@@ -840,23 +841,7 @@ function GuildDetails({ guild }: { guild: AdminGuildDetails }) {
 					<dl className="mt-5 grid gap-3 sm:grid-cols-2">
 						<Detail label="Bot membership">{guild.isActiveMember ? "Active" : "Inactive"}</Detail>
 						<Detail label="Guild commands">
-							{guild.guildCommandDeployment === null ? (
-								"Unavailable"
-							) : guild.guildCommandDeployment.total === 0 ? (
-								"No guild commands configured"
-							) : (
-								<>
-									{guild.guildCommandDeployment.deployed === 0
-										? "Not deployed"
-										: guild.guildCommandDeployment.deployed === guild.guildCommandDeployment.total
-											? "Deployed"
-											: "Partially deployed"}
-									<span className="block text-sm text-muted-foreground">
-										{guild.guildCommandDeployment.deployed} of {guild.guildCommandDeployment.total}{" "}
-										registered
-									</span>
-								</>
-							)}
+							<GuildCommandDeployment deployment={guild.guildCommandDeployment} />
 						</Detail>
 						<Detail label="Members">
 							{guild.memberCount === undefined ? "Unavailable" : guild.memberCount.toLocaleString()}

@@ -17,7 +17,7 @@ export interface HealthResponse {
 	};
 }
 
-export interface AdminGuild {
+interface AdminGuildBase {
 	id: string;
 	name: string;
 	isActiveMember: boolean;
@@ -31,6 +31,10 @@ export interface AdminGuild {
 	permissions?: string[];
 	hasRequiredPermissions?: boolean;
 	owner?: { userId: string; avatarUrl: string; username: string };
+}
+
+export interface AdminGuild extends AdminGuildBase {
+	guildCommandsDeployed: boolean | null;
 }
 
 export interface PreferenceEntity {
@@ -98,7 +102,7 @@ export interface GuildPreferences {
 	};
 }
 
-export interface AdminGuildDetails extends AdminGuild {
+export interface AdminGuildDetails extends AdminGuildBase {
 	discoveredAt: number | null;
 	guildCommandDeployment: { deployed: number; total: number } | null;
 	preferences: GuildPreferences;

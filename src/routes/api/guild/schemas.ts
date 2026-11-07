@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const guildSchema = z.object({
+const guildBaseSchema = z.object({
 	id: z.string(),
 	name: z.string(),
 	isActiveMember: z.boolean(),
@@ -14,6 +14,10 @@ export const guildSchema = z.object({
 	permissions: z.array(z.string()).optional(),
 	hasRequiredPermissions: z.boolean().optional(),
 	owner: z.object({ userId: z.string(), avatarUrl: z.string(), username: z.string() }).optional(),
+});
+
+export const guildSchema = guildBaseSchema.extend({
+	guildCommandsDeployed: z.boolean().nullable(),
 });
 
 const preferenceEntitySchema = z.object({ id: z.string(), name: z.string().nullable() }).nullable();
@@ -43,7 +47,7 @@ export const guildPreferencesSchema = z.object({
 	}),
 });
 
-export const guildDetailsSchema = guildSchema.extend({
+export const guildDetailsSchema = guildBaseSchema.extend({
 	discoveredAt: z.number().int().nullable(),
 	guildCommandDeployment: z
 		.object({ deployed: z.number().int().nonnegative(), total: z.number().int().nonnegative() })

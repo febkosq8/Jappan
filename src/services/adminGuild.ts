@@ -82,6 +82,8 @@ async function fetchGuildDetails(
 ) {
 	const owner = await guild.client.users.fetch(guild.ownerId);
 	const botMember = guild.members.me ?? (await guild.members.fetchMe());
+	const expectedCommands = getGuildCommands();
+	const registeredCommands = await guild.commands.fetch();
 
 	return {
 		id: guild.id,
@@ -97,6 +99,14 @@ async function fetchGuildDetails(
 		permissions: botMember.permissions.toArray(),
 		hasRequiredPermissions: botMember.permissions.has(requiredPermissions),
 		owner: { userId: owner.id, avatarUrl: owner.displayAvatarURL(), username: owner.username },
+		guildCommandDeployment: {
+			deployed: [...expectedCommands.keys()].filter((name) =>
+				registeredCommands.some(
+					(command) => command.name === name && command.type === ApplicationCommandType.ChatInput,
+				),
+			).length,
+			total: expectedCommands.size,
+		},
 	};
 }
 
@@ -113,7 +123,7 @@ async function getStoredGuildDetails({
 }) {
 	const guild = client.guilds.cache.get(guildId);
 	if (!guild?.available) {
-		return { id: guildId, name: guildName, isActiveMember: guild !== undefined };
+		return { id: guildId, name: guildName, isActiveMember: guild !== undefined, guildCommandDeployment: null };
 	}
 
 	return fetchGuildDetails(guild, requiredPermissions);
@@ -224,23 +234,9 @@ export async function getAdminGuild(client: Client, guildId: string) {
 		requiredPermissions: getRequiredGlobalBotPermissions(),
 	});
 	const guild = client.guilds.cache.get(guildId);
-	const expectedCommands = getGuildCommands();
-	let guildCommandDeployment: { deployed: number; total: number } | null = null;
-	if (guild?.available) {
-		const registeredCommands = await guild.commands.fetch();
-		guildCommandDeployment = {
-			deployed: [...expectedCommands.keys()].filter((name) =>
-				registeredCommands.some(
-					(command) => command.name === name && command.type === ApplicationCommandType.ChatInput,
-				),
-			).length,
-			total: expectedCommands.size,
-		};
-	}
 	return {
 		...details,
 		discoveredAt: storedGuild.createdAt?.getTime() ?? null,
-		guildCommandDeployment,
 		preferences: await resolveGuildPreferences(guild, storedGuild),
 	};
 }
@@ -253,9 +249,18 @@ export async function listAllGuilds(client: Client) {
 		.lean();
 
 	const guilds = await Promise.all(
-		storedGuilds.map(({ guildId, guildName }) =>
-			getStoredGuildDetails({ client, guildId, guildName, requiredPermissions }),
-		),
+		storedGuilds.map(async ({ guildId, guildName }) => {
+			const { guildCommandDeployment, ...details } = await getStoredGuildDetails({
+				client,
+				guildId,
+				guildName,
+				requiredPermissions,
+			});
+			return {
+				...details,
+				guildCommandsDeployed: guildCommandDeployment === null ? null : guildCommandDeployment.deployed > 0,
+			};
+		}),
 	);
 	return guilds.sort(
 		(first, second) =>
