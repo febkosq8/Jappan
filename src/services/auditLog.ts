@@ -51,7 +51,7 @@ import {
 	isOwnBot,
 } from "../helpers/auditLog.js";
 import { formatChannelMention, formatRoleMention, formatUserMention } from "../helpers/discord.js";
-import { sendGuildMessage } from "../helpers/guildHelper.js";
+import { isActiveGuild, sendGuildMessage } from "../helpers/guildHelper.js";
 import { sendResponse } from "../helpers/response.js";
 import { splitString, trimString } from "../helpers/string.js";
 import type { GuildDocument } from "../models/guild.js";
@@ -100,14 +100,16 @@ export async function getAuditLogStatus(guildId: string, guildName: string): Pro
 }
 
 async function postAuditEvent(guild: Guild, content: MessageCreateOptions): Promise<Message | null> {
+	if (!isActiveGuild(guild)) return null;
 	const storedGuildData = await getGuildSettings({ guild });
-	if (!storedGuildData.auditLog.enabled || !storedGuildData.auditLog.channelId) {
+	if (!isActiveGuild(guild) || !storedGuildData.auditLog.enabled || !storedGuildData.auditLog.channelId) {
 		return null;
 	}
 
 	const channelId = storedGuildData.auditLog.channelId;
 	const channel = await guild.channels.fetch(channelId).catch(() => null);
 	const botMember = await guild.members.fetchMe().catch(() => null);
+	if (!isActiveGuild(guild)) return null;
 	if (
 		!channel?.isTextBased() ||
 		!channel.isSendable() ||
@@ -138,8 +140,9 @@ async function postAuditEvent(guild: Guild, content: MessageCreateOptions): Prom
 }
 
 async function isAuditLogEnabled(guild: Guild): Promise<boolean> {
+	if (!isActiveGuild(guild)) return false;
 	const status = await getAuditLogStatus(guild.id, guild.name);
-	return status.auditLog.enabled && Boolean(status.auditLog.channelId);
+	return isActiveGuild(guild) && status.auditLog.enabled && Boolean(status.auditLog.channelId);
 }
 
 async function handleAuditBan(ban: GuildBan, action: "Banned" | "Unbanned"): Promise<void> {
@@ -523,7 +526,9 @@ export async function handleAuditLogEntryCreate(auditEntry: GuildAuditLogsEntry,
 }
 
 async function disableAuditLog(guild: Guild, channelId: string): Promise<void> {
+	if (!isActiveGuild(guild)) return;
 	const storedGuildData = await getGuildSettings({ guild });
+	if (!isActiveGuild(guild)) return;
 	storedGuildData.auditLog.enabled = false;
 	storedGuildData.auditLog.channelId = null;
 	storedGuildData.auditLog.fullVerbosity = false;
@@ -766,7 +771,7 @@ export async function handleAuditUserUpdate(oldUser: PartialUser | User, newUser
 
 	await Promise.all(
 		newUser.client.guilds.cache.map(async (guild) => {
-			if (isOwnBot(guild, newUser.id)) {
+			if (!isActiveGuild(guild) || isOwnBot(guild, newUser.id)) {
 				return;
 			}
 			const member = await guild.members.fetch(newUser.id).catch(() => null);
@@ -982,11 +987,11 @@ export async function handleAuditMessageUpdate(
 }
 
 export async function handleAuditMessageDelete(message: Message | PartialMessage): Promise<void> {
-	if (!message.guild || isOwnBot(message.guild, message.author?.id ?? "")) {
+	if (!message.guild || !isActiveGuild(message.guild) || isOwnBot(message.guild, message.author?.id ?? "")) {
 		return;
 	}
 	const auditStatus = await getAuditLogStatus(message.guild.id, message.guild.name);
-	if (!auditStatus.auditLog.enabled || !auditStatus.auditLog.channelId) {
+	if (!isActiveGuild(message.guild) || !auditStatus.auditLog.enabled || !auditStatus.auditLog.channelId) {
 		return;
 	}
 	if (message.partial && !auditStatus.auditLog.fullVerbosity) {

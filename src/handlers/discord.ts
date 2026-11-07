@@ -4,6 +4,7 @@ import type { Client } from "discord.js";
 
 import { getClient } from "../bot.js";
 import { formatInteractionLogDetails, formatUser } from "../helpers/discord.js";
+import { isActiveGuild } from "../helpers/guildHelper.js";
 import { getPrefixCommand, handlePrefixMessage } from "../services/adminDeployment.js";
 import { validateAdminUsers } from "../services/adminGuild.js";
 import {
@@ -139,6 +140,7 @@ export function registerDiscordHandlers(): void {
 	});
 
 	client.on(Events.InteractionCreate, (interaction: Interaction) => {
+		if (interaction.guild && !isActiveGuild(interaction.guild)) return;
 		logger.info("DISCORD", "Interaction received", formatInteractionLogDetails(interaction));
 
 		if (interaction.isAutocomplete()) {

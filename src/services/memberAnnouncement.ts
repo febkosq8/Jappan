@@ -2,7 +2,7 @@ import type { Guild, GuildBasedChannel, GuildMember, PartialGuildMember } from "
 import { EmbedBuilder, channelMention, chatInputApplicationCommandMention, userMention } from "discord.js";
 
 import { formatUserMention } from "../helpers/discord.js";
-import { sendGuildMessage } from "../helpers/guildHelper.js";
+import { isActiveGuild, sendGuildMessage } from "../helpers/guildHelper.js";
 import type { GuildDocument } from "../models/guild.js";
 import { getCommandId } from "./commandLoader.js";
 import { getConfig } from "./config.js";
@@ -44,6 +44,7 @@ export async function getMemberAnnouncementStatus(guild: Guild): Promise<GuildDo
 		{ enabled: "joinEnabled", channel: "joinChannelId" },
 		{ enabled: "leaveEnabled", channel: "leaveChannelId" },
 	] as const) {
+		if (!isActiveGuild(guild)) break;
 		const channelId = storedGuildSettingsData.memberAnnouncements[announcement.channel];
 		if (!storedGuildSettingsData.memberAnnouncements[announcement.enabled] || !channelId) {
 			continue;
@@ -61,9 +62,10 @@ export async function getMemberAnnouncementStatus(guild: Guild): Promise<GuildDo
 
 		if (!channel?.isTextBased()) {
 			const event = announcement.enabled === "joinEnabled" ? "join" : "leave";
-			await disableAnnouncement({ guild, event, channelId });
-			storedGuildSettingsData.memberAnnouncements[announcement.enabled] = false;
-			storedGuildSettingsData.memberAnnouncements[announcement.channel] = null;
+			if (await disableAnnouncement({ guild, event, channelId })) {
+				storedGuildSettingsData.memberAnnouncements[announcement.enabled] = false;
+				storedGuildSettingsData.memberAnnouncements[announcement.channel] = null;
+			}
 		}
 	}
 
@@ -87,8 +89,10 @@ async function disableAnnouncement({
 	guild: Guild;
 	event: "join" | "leave";
 	channelId: string;
-}): Promise<GuildDocument["memberAnnouncements"]> {
+}): Promise<boolean> {
+	if (!isActiveGuild(guild)) return false;
 	const storedGuildSettingsData = await getGuildSettings({ guild });
+	if (!isActiveGuild(guild)) return false;
 	if (event === "join") {
 		storedGuildSettingsData.memberAnnouncements.joinEnabled = false;
 		storedGuildSettingsData.memberAnnouncements.joinChannelId = null;
@@ -114,7 +118,7 @@ async function disableAnnouncement({
 		details: { channelId, event },
 	});
 
-	return storedGuildSettingsData.memberAnnouncements;
+	return true;
 }
 
 async function postAnnouncement({
@@ -126,12 +130,13 @@ async function postAnnouncement({
 	event: "join" | "leave";
 	channelId: string | null | undefined;
 }): Promise<void> {
-	if (!channelId) {
+	if (!channelId || !isActiveGuild(member.guild)) {
 		return;
 	}
 
 	try {
 		const channel = await member.guild.channels.fetch(channelId);
+		if (!isActiveGuild(member.guild)) return;
 		if (!channel?.isTextBased()) {
 			await disableAnnouncement({ guild: member.guild, event, channelId });
 			return;
@@ -168,6 +173,7 @@ async function postAnnouncement({
 			allowedMentions: { parse: [] },
 		});
 	} catch (error: unknown) {
+		if (!isActiveGuild(member.guild)) return;
 		if (isUnavailableChannelError(error)) {
 			try {
 				await disableAnnouncement({ guild: member.guild, event, channelId });
@@ -192,9 +198,10 @@ async function postAnnouncement({
 }
 
 export async function handleMemberJoinAnnouncement(member: GuildMember | PartialGuildMember): Promise<void> {
+	if (!isActiveGuild(member.guild) || member.id === member.guild.client.user?.id) return;
 	try {
 		const memberAnnouncements = await getMemberAnnouncementStatus(member.guild);
-		if (!memberAnnouncements.joinEnabled) {
+		if (!isActiveGuild(member.guild) || !memberAnnouncements.joinEnabled) {
 			return;
 		}
 		await postAnnouncement({ member, event: "join", channelId: memberAnnouncements.joinChannelId });
@@ -208,9 +215,10 @@ export async function handleMemberJoinAnnouncement(member: GuildMember | Partial
 }
 
 export async function handleMemberLeaveAnnouncement(member: GuildMember | PartialGuildMember): Promise<void> {
+	if (!isActiveGuild(member.guild) || member.id === member.guild.client.user?.id) return;
 	try {
 		const memberAnnouncements = await getMemberAnnouncementStatus(member.guild);
-		if (!memberAnnouncements.leaveEnabled) {
+		if (!isActiveGuild(member.guild) || !memberAnnouncements.leaveEnabled) {
 			return;
 		}
 		await postAnnouncement({ member, event: "leave", channelId: memberAnnouncements.leaveChannelId });

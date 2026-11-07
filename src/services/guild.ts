@@ -1,7 +1,7 @@
 import type { Guild as DiscordGuild } from "discord.js";
 import { EmbedBuilder, chatInputApplicationCommandMention } from "discord.js";
 
-import { sendGuildMessage } from "../helpers/guildHelper.js";
+import { isActiveGuild, sendGuildMessage } from "../helpers/guildHelper.js";
 import GuildModel, { type GuildDocument } from "../models/guild.js";
 import { getCommandId } from "./commandLoader.js";
 import { getConfig } from "./config.js";
@@ -35,7 +35,9 @@ export async function getGuildSettings({ guildId, guildName, guild }: GuildSetti
 
 export async function initializeGuild(guild: DiscordGuild): Promise<void> {
 	try {
+		if (!isActiveGuild(guild)) return;
 		await getGuildSettings({ guild });
+		if (!isActiveGuild(guild)) return;
 		logger.info("DISCORD", "Guild initialized", {
 			guildId: guild.id,
 			guildName: guild.name,

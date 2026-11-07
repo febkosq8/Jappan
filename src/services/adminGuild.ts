@@ -10,7 +10,7 @@ import {
 
 import { formatChannel, formatGuild, formatUser } from "../helpers/discord.js";
 import type { SentGuildMessage } from "../helpers/guildHelper.js";
-import { sendGuildMessage } from "../helpers/guildHelper.js";
+import { beginGuildDeparture, cancelGuildDeparture, sendGuildMessage } from "../helpers/guildHelper.js";
 import GuildModel, { type Guild as StoredGuild } from "../models/guild.js";
 import { getGuildCommands, getRequiredGlobalBotPermissions } from "./commandLoader.js";
 import type { Config } from "./config.js";
@@ -421,6 +421,12 @@ export async function kickGuild({
 	channelId?: string | null;
 	invoker?: AdminInvoker;
 }): Promise<KickGuildResult> {
+	if (!beginGuildDeparture(guild)) {
+		logger.warn("ADMIN", "Skipped guild departure because the guild is unavailable or already leaving", {
+			guild: formatGuild(guild),
+		});
+		return { success: false, departureMessage: null };
+	}
 	const departureMessage =
 		channelId === null
 			? null
@@ -446,6 +452,7 @@ export async function kickGuild({
 	try {
 		await guild.leave();
 	} catch (error: unknown) {
+		cancelGuildDeparture(guild);
 		logger.error("ADMIN", "Failed to leave guild", {
 			user: invoker ? `${invoker.userName} <${invoker.userId}>` : undefined,
 			guild: formatGuild(guild),

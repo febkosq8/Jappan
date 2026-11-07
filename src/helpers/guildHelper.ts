@@ -4,6 +4,22 @@ import { PermissionFlagsBits } from "discord.js";
 import { logger } from "../services/logger.js";
 import type { LogDetails } from "./logger.js";
 
+const departingGuilds = new WeakSet<Guild>();
+
+export function isActiveGuild(guild: Guild): boolean {
+	return guild.available && guild.client.guilds.cache.get(guild.id) === guild && !departingGuilds.has(guild);
+}
+
+export function beginGuildDeparture(guild: Guild): boolean {
+	if (!isActiveGuild(guild)) return false;
+	departingGuilds.add(guild);
+	return true;
+}
+
+export function cancelGuildDeparture(guild: Guild): void {
+	departingGuilds.delete(guild);
+}
+
 export interface SendGuildMessageOptions {
 	guild: Guild;
 	content: string | MessageCreateOptions;
