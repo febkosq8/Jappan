@@ -1,13 +1,13 @@
 import { Card } from "@febkosq8/arc";
-import FunCommand1 from "@jappan/assets/jappan/FunCommand1.png";
-import FunCommand2 from "@jappan/assets/jappan/FunCommand2.png";
-import Level1 from "@jappan/assets/jappan/Level1.png";
-import Level2 from "@jappan/assets/jappan/Level2.png";
-import Mod1 from "@jappan/assets/jappan/Mod1.png";
-import Mod2 from "@jappan/assets/jappan/Mod2.png";
-import Mod3 from "@jappan/assets/jappan/Mod3.png";
-import MusicPlay1 from "@jappan/assets/jappan/MusicPlay1.png";
-import MusicPlay2 from "@jappan/assets/jappan/MusicPlay2.png";
+import FunCommand1 from "@jappan/assets/features/FunCommand1.png";
+import FunCommand2 from "@jappan/assets/features/FunCommand2.png";
+import Level1 from "@jappan/assets/features/Level1.png";
+import Level2 from "@jappan/assets/features/Level2.png";
+import Mod1 from "@jappan/assets/features/Mod1.png";
+import Mod2 from "@jappan/assets/features/Mod2.png";
+import Mod3 from "@jappan/assets/features/Mod3.png";
+import MusicPlay1 from "@jappan/assets/features/MusicPlay1.png";
+import MusicPlay2 from "@jappan/assets/features/MusicPlay2.png";
 import { FiActivity, FiLayers, FiMusic, FiShield, FiSmile } from "react-icons/fi";
 
 const featureItems = [
@@ -51,7 +51,9 @@ export default function Features() {
 		<section id="features" className="scroll-mt-20 border-y border-border px-4 py-20 sm:px-6 lg:py-24">
 			<div className="mx-auto max-w-6xl">
 				<div className="mb-10 max-w-2xl">
-					<p className="mb-3 text-sm font-semibold uppercase tracking-wider text-primary">Everything in one bot</p>
+					<p className="mb-3 text-sm font-semibold uppercase tracking-wider text-primary">
+						Everything in one bot
+					</p>
 					<h2 className="typography-heading-2 flex items-center gap-3 text-4xl">
 						Features <FiLayers className="size-8 text-primary" aria-hidden="true" />
 					</h2>
