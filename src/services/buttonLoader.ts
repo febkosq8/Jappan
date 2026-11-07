@@ -2,14 +2,9 @@ import type { ButtonInteraction } from "discord.js";
 
 import type { Config } from "./config.js";
 import deleteDoppelganger from "../buttons/deleteDoppelganger.js";
-import funHelp from "../buttons/funHelp.js";
-import generalHelp from "../buttons/generalHelp.js";
 import help from "../buttons/help.js";
 import leaderboardNext from "../buttons/leaderboardNext.js";
 import leaderboardPrev from "../buttons/leaderboardPrev.js";
-import levelHelp from "../buttons/levelHelp.js";
-import modHelp from "../buttons/modHelp.js";
-import musicHelp from "../buttons/musicHelp.js";
 import ping from "../buttons/ping.js";
 import playerControl from "../buttons/playerControl.js";
 
@@ -32,14 +27,9 @@ export interface ButtonModule {
 
 const buttonModules: readonly unknown[] = [
 	deleteDoppelganger,
-	funHelp,
-	generalHelp,
 	help,
 	leaderboardNext,
 	leaderboardPrev,
-	levelHelp,
-	modHelp,
-	musicHelp,
 	ping,
 	playerControl,
 ];
