@@ -1,5 +1,5 @@
 import Header from "@jappan/components/jappan/Header";
-import Jappan from "@jappan/pages/Jappan";
+import Home from "@jappan/pages/Home";
 import Commands from "@jappan/pages/Commands";
 import AuthError from "@jappan/pages/auth/AuthError";
 import ListGuilds from "@jappan/pages/admin/ListGuilds";
@@ -32,7 +32,7 @@ function App() {
 		<div ref={containerRef} className="h-dvh overflow-y-auto scroll-smooth bg-background text-foreground">
 			<Header />
 			<Routes>
-				<Route path="/" element={<Jappan />} />
+				<Route path="/" element={<Home />} />
 				<Route path="/commands" element={<Commands />} />
 				<Route path="/auth/error" element={<AuthError />} />
 				<Route path="/admin/guilds" element={<ListGuilds />} />
