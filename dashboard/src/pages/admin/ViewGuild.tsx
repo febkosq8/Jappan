@@ -243,11 +243,17 @@ function GuildDetails({
 		const sections = guildSectionIds
 			.map((id) => document.getElementById(id))
 			.filter((section): section is HTMLElement => section !== null);
+		let linkedScrollTop: number | undefined;
 		const scrollToHash = () => {
 			const section = sections.find((item) => `#${item.id}` === window.location.hash);
-			section?.scrollIntoView({ block: "center", behavior: "instant" });
+			if (section) {
+				section.scrollIntoView({ block: "start", behavior: "instant" });
+				linkedScrollTop = container.scrollTop;
+			}
 		};
 		const syncHash = () => {
+			if (linkedScrollTop !== undefined && Math.abs(container.scrollTop - linkedScrollTop) < 1) return;
+			linkedScrollTop = undefined;
 			const bounds = container.getBoundingClientRect();
 			const midpoint = bounds.top + bounds.height / 2;
 			const lastSection = sections[sections.length - 1];
@@ -517,7 +523,7 @@ export default function ViewGuild({ scrollContainerRef }: { scrollContainerRef: 
 				<Button
 					type="button"
 					size="sm"
-					variant="outline-primary"
+					variant="outline-destructive"
 					className="mb-6"
 					onClick={() => navigate("/admin/guild")}
 				>

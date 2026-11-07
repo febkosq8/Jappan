@@ -121,7 +121,8 @@ returns the same fields for one stored guild plus `preferences`: `auditLog`
 the leveling role are objects containing `id` and `name`; the name is `null`
 when the channel or role cannot be resolved. Unconfigured channels, roles, and thresholds are `null`;
 settings are returned even when Discord guild details are unavailable. The
-dashboard displays these saved settings read-only. It returns
+dashboard displays these saved settings read-only. Guild detail sections support
+shareable URL hashes that update as the page is scrolled. It returns
 400 for an invalid Discord guild ID and 404 when the guild is not stored.
 The Discord admin guild list uses the same stored-guild data and displays entries
 with currently available Discord details. It requires the database to be connected.
