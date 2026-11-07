@@ -26,10 +26,6 @@ export interface KickGuildResult {
 	departureMessage: SentGuildMessage | null;
 }
 
-export function isAdminUser(userId: string, config: Config): boolean {
-	return config.ADMIN_USER_IDS.includes(userId);
-}
-
 export async function validateAdminUsers(client: Client, config: Config): Promise<void> {
 	if (config.ADMIN_USER_IDS.length === 0) {
 		return;
@@ -206,12 +202,6 @@ async function resolveGuildPreferences(guild: Guild | undefined, storedGuild: St
 			auditChannel: channelFor(storedGuild.warnings.auditChannelId),
 		},
 	};
-}
-
-export async function getAdminGuildPreferences(guild: Guild) {
-	const storedGuild = await GuildModel.findOne({ guildId: guild.id }).select(storedPreferencesProjection).exec();
-	if (!storedGuild) throw new Error(`Stored guild ${guild.id} was not found while reading preferences`);
-	return resolveGuildPreferences(guild, storedGuild);
 }
 
 export async function getAdminGuild(client: Client, guildId: string) {
