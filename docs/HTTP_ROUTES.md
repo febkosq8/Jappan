@@ -91,6 +91,15 @@ Dashboard admin pages redirect signed-out visitors to
 returns 401 or 403. Session lookup failures remain retryable rather than being
 treated as an authorization failure.
 
+`GET /api/v1/admin/bot` requires an active admin session and Discord availability
+and returns the bot's identity, version, and start time.
+`GET /api/v1/admin/bot/player-sessions` has the same access requirements and returns an
+array of active player sessions, including guild (with a nullable icon URL), channel,
+requester (with a nullable avatar URL when the user is not cached), queue size,
+`nowPlaying` (an object with `name` and a nullable HTTP(S) `url`, or `null` when
+nothing is playing), and player state.
+The dashboard refreshes these independently.
+
 `GET /api/v1/admin/guilds` requires an active admin session and returns all stored
 guilds, including those the bot has left. Each entry contains `id`, `name`, and
 `isActiveMember` (whether the bot is still in the guild, including temporarily

@@ -11,13 +11,12 @@ import {
 	TabsList,
 	TabsPanel,
 	TabsTab,
-	TextLink,
 } from "@febkosq8/arc";
 import { useForm } from "@tanstack/react-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { useEffect, useState, type ReactNode, type SubmitEvent } from "react";
-import { FiArrowLeft, FiCopy, FiExternalLink, FiLink } from "react-icons/fi";
+import { FiArrowLeft, FiCopy, FiLink } from "react-icons/fi";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -29,6 +28,7 @@ import APIHandler, {
 	type AdminGuildMessageResult,
 } from "@jappan/handlers/APIHandler";
 import { AccessRedirect, accessErrorStatus } from "@jappan/components/jappan/AdminRoute";
+import ExternalTextLink from "@jappan/components/jappan/ExternalTextLink";
 import GuildCommandDeployment from "@jappan/components/jappan/GuildCommandDeployment";
 import LoadingIndicator from "@jappan/components/jappan/LoadingIndicator";
 import GuildPreferencesEditor from "./GuildPreferencesEditor";
@@ -130,15 +130,6 @@ function Detail({ label, children }: { label: string; children: ReactNode }) {
 	);
 }
 
-function DiscordTextLink({ href, text }: { href: string; text: string }) {
-	return (
-		<span>
-			<TextLink href={href} text={text} aria-label={`${text} (opens in a new tab)`} />
-			<FiExternalLink className="ml-1 inline-block size-3.5 align-baseline text-primary" aria-hidden="true" />
-		</span>
-	);
-}
-
 function ChannelGroupList({ guildId, channels }: { guildId: string; channels: AdminGuildChannel[] }) {
 	const categoryType = 4;
 	const categories = channels.filter((channel) => channel.type === categoryType);
@@ -219,7 +210,7 @@ function ChannelGroupList({ guildId, channels }: { guildId: string; channels: Ad
 									<Card hoverable={false} className="h-full min-w-0 rounded-md border-border p-3">
 										<div className="flex flex-wrap items-start justify-between gap-2">
 											<div className="min-w-0 wrap-break-word">
-												<DiscordTextLink
+												<ExternalTextLink
 													href={`https://discord.com/channels/${encodeURIComponent(guildId)}/${encodeURIComponent(channel.id)}`}
 													text={channel.name}
 												/>
@@ -640,7 +631,7 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 								{sendMessageMutation.data && (
 									<p className="text-sm text-success">
 										Message sent to {sendMessageMutation.data.channelName}.{" "}
-										<DiscordTextLink
+										<ExternalTextLink
 											href={sendMessageMutation.data.messageUrl}
 											text="View message"
 										/>
@@ -908,7 +899,7 @@ function GuildDetails({ guild }: { guild: AdminGuildDetails }) {
 						<Avatar name={guild.name} image={guild.icon} size="lg" aria-hidden="true" />
 						<div className="min-w-0">
 							<h3 className="wrap-break-word text-xl font-bold">
-								<DiscordTextLink
+								<ExternalTextLink
 									href={`https://discord.com/channels/${encodeURIComponent(guild.id)}`}
 									text={guild.name}
 								/>
@@ -937,7 +928,7 @@ function GuildDetails({ guild }: { guild: AdminGuildDetails }) {
 										aria-hidden="true"
 									/>
 									<div className="min-w-0">
-										<DiscordTextLink
+										<ExternalTextLink
 											href={`https://discord.com/users/${encodeURIComponent(guild.owner.userId)}`}
 											text={guild.owner.username}
 										/>
@@ -991,7 +982,7 @@ function GuildDetails({ guild }: { guild: AdminGuildDetails }) {
 								"None"
 							) : (
 								<>
-									<DiscordTextLink
+									<ExternalTextLink
 										href={`https://discord.com/channels/${encodeURIComponent(guild.id)}/${encodeURIComponent(guild.systemChannel.id)}`}
 										text={guild.systemChannel.name}
 									/>

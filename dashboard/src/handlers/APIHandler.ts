@@ -18,11 +18,11 @@ export interface HealthResponse {
 }
 
 export interface AdminBotPlayerSession {
-	guild: { id: string; name: string };
+	guild: { id: string; name: string; icon: string | null };
 	channel: { id: string; name: string } | null;
-	user: { id: string; username: string } | null;
+	user: { id: string; username: string; avatarUrl: string | null } | null;
 	queueSize: number;
-	nowPlaying: string | null;
+	nowPlaying: { name: string; url: string | null } | null;
 	playerState: "Playing" | "Paused";
 }
 
@@ -32,7 +32,6 @@ export interface AdminBotStatus {
 	botId: string | null;
 	version: string;
 	bootedAtMs: number;
-	activePlayerSessions: AdminBotPlayerSession[];
 }
 
 export interface AdminBotShutdownResult {
@@ -198,6 +197,13 @@ class APIHandler {
 
 	static async getAdminBotStatus(): Promise<AdminBotStatus> {
 		const { data } = await apiClient.get<AdminBotStatus>("/api/v1/admin/bot", { withCredentials: true });
+		return data;
+	}
+
+	static async getAdminBotPlayerState(): Promise<AdminBotPlayerSession[]> {
+		const { data } = await apiClient.get<AdminBotPlayerSession[]>("/api/v1/admin/bot/player-sessions", {
+			withCredentials: true,
+		});
 		return data;
 	}
 

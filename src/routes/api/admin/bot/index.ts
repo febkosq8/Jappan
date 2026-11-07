@@ -10,14 +10,13 @@ import type { AuthSession } from "../../../../services/auth.js";
 import { getActivePlayerSessions, runPlayerHealthCheck } from "../../../../services/player.js";
 import { logger } from "../../../../services/logger.js";
 import { handleShutdown } from "../../../../services/shutdown.js";
-import { getConfig } from "../../../../services/config.js";
 
 const activePlayerSessionSchema = z.object({
-	guild: z.object({ id: z.string(), name: z.string() }),
+	guild: z.object({ id: z.string(), name: z.string(), icon: z.string().url().nullable() }),
 	channel: z.object({ id: z.string(), name: z.string() }).nullable(),
-	user: z.object({ id: z.string(), username: z.string() }).nullable(),
+	user: z.object({ id: z.string(), username: z.string(), avatarUrl: z.string().url().nullable() }).nullable(),
 	queueSize: z.number(),
-	nowPlaying: z.string().nullable(),
+	nowPlaying: z.object({ name: z.string(), url: z.httpUrl().nullable() }).nullable(),
 	playerState: z.enum(["Playing", "Paused"]),
 });
 
@@ -27,7 +26,6 @@ const adminBotStatusSchema = z.object({
 	botId: z.string().nullable(),
 	version: z.string(),
 	bootedAtMs: z.number(),
-	activePlayerSessions: z.array(activePlayerSessionSchema),
 });
 
 const stopBotRequestSchema = z.object({ confirm: z.literal(true) });
@@ -48,12 +46,12 @@ export default defineRouter("/bot", [
 		method: "get",
 		path: "/",
 		tags: ["Admin Bot"],
-		summary: "View bot details and active player sessions",
+		summary: "View bot details",
 		errorMessage: "Failed to get admin bot status",
 		security: [{ sessionCookie: [] }],
 		responses: {
 			200: {
-				description: "Bot details and active player sessions",
+				description: "Bot details",
 				schema: adminBotStatusSchema,
 			},
 			401: { description: "Authentication required", schema: errorResponseSchema },
@@ -73,10 +71,26 @@ export default defineRouter("/bot", [
 				botId: botUser.id,
 				version: getBotVersion(),
 				bootedAtMs: Date.now() - Math.floor(process.uptime() * 1000),
-				activePlayerSessions: getActivePlayerSessions(),
 			};
 			return response.status(200).json(returnData);
 		},
+	},
+	{
+		method: "get",
+		path: "/player-sessions",
+		tags: ["Admin Bot"],
+		summary: "View active player sessions",
+		errorMessage: "Failed to get active player sessions",
+		security: [{ sessionCookie: [] }],
+		responses: {
+			200: { description: "Active player sessions", schema: z.array(activePlayerSessionSchema) },
+			401: { description: "Authentication required", schema: errorResponseSchema },
+			403: { description: "Admin access required", schema: errorResponseSchema },
+			503: { description: "Discord bot is unavailable", schema: errorResponseSchema },
+			500: { description: "Failed to get active player sessions", schema: errorResponseSchema },
+		},
+		middleware: [requireDiscord, requireSession, requireAdmin],
+		handler: (_request, response) => response.status(200).json(getActivePlayerSessions()),
 	},
 	{
 		method: "put",

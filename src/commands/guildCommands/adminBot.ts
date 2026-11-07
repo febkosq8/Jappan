@@ -89,7 +89,7 @@ const command: BotCommand = {
 							value: session.user ? formatUserMention(session.user) : "Unknown user",
 						},
 						{ name: "📚 Queue size", value: String(session.queueSize), inline: true },
-						{ name: "🎵 Now playing", value: session.nowPlaying ?? "Nothing", inline: true },
+						{ name: "🎵 Now playing", value: session.nowPlaying?.name ?? "Nothing", inline: true },
 						{
 							name: "Player state",
 							value: session.playerState === "Paused" ? "⏸️ Paused" : "▶️ Playing",

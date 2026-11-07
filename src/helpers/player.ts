@@ -449,6 +449,10 @@ function isRateLimitError(error: unknown): boolean {
 }
 
 export async function checkPlayerHealth(initializedPlayer: Player): Promise<PlayerHealthCheckResult> {
+	const botUser = initializedPlayer.client.user;
+	if (!botUser) {
+		throw new Error("Cannot check player health without a Discord bot user");
+	}
 	const healthCheckDebug = getConfig("PLAYER_HEALTH_DEBUG");
 	const healthCheckQuery = getConfig("PLAYER_HEALTH_CHECK_QUERY");
 	const healthCheckMaxAttempts = getConfig("PLAYER_HEALTH_CHECK_MAX_ATTEMPTS");
@@ -464,6 +468,7 @@ export async function checkPlayerHealth(initializedPlayer: Player): Promise<Play
 		}
 		healthCheckSearchResult = await initializedPlayer.search(healthCheckQuery, {
 			fallbackSearchEngine: "youtubeSearch",
+			requestedBy: botUser.id,
 		});
 		healthCheckTracks =
 			healthCheckSearchResult.tracks.length + (healthCheckSearchResult.playlist?.tracks.length ?? 0);
@@ -511,7 +516,7 @@ export async function checkPlayerHealth(initializedPlayer: Player): Promise<Play
 
 		const { queue } = await initializedPlayer.play(channel.id, healthCheckTrack, {
 			nodeOptions: {
-				metadata: { healthCheck: true },
+				metadata: { healthCheck: true, requestedBy: botUser.id, requestedByDisplay: formatUser(botUser) },
 				leaveOnEnd: true,
 				leaveOnEmpty: true,
 			},

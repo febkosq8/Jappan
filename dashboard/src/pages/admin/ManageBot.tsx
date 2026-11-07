@@ -5,6 +5,7 @@ import { FiAlertTriangle, FiCheckCircle, FiMusic, FiPower, FiRefreshCw, FiXCircl
 import { toast } from "sonner";
 
 import { AccessRedirect, accessErrorStatus } from "@jappan/components/jappan/AdminRoute";
+import ExternalTextLink from "@jappan/components/jappan/ExternalTextLink";
 import LoadingIndicator from "@jappan/components/jappan/LoadingIndicator";
 import APIHandler, { type AdminBotPlayerSession } from "@jappan/handlers/APIHandler";
 
@@ -37,16 +38,19 @@ function PlayerSession({ session }: { session: AdminBotPlayerSession }) {
 		<Card hoverable={false} className="rounded-md border-border">
 			<Card.Content className="p-4!">
 				<div className="flex flex-wrap items-start justify-between gap-3">
-					<div className="min-w-0">
-						<h3 className="font-semibold">
-							<TextLink
-								href={`/admin/guild/${encodeURIComponent(session.guild.id)}`}
-								text={session.guild.name}
-								title={session.guild.name}
-								target="_self"
-							/>
-						</h3>
-						<p className="text-xs text-muted-foreground">{session.guild.id}</p>
+					<div className="flex min-w-0 items-center gap-2">
+						<Avatar name={session.guild.name} image={session.guild.icon} size="sm" aria-hidden="true" />
+						<div className="min-w-0">
+							<h3 className="font-semibold">
+								<TextLink
+									href={`/admin/guild/${encodeURIComponent(session.guild.id)}`}
+									text={session.guild.name}
+									title={session.guild.name}
+									target="_self"
+								/>
+							</h3>
+							<p className="text-xs text-muted-foreground">{session.guild.id}</p>
+						</div>
 					</div>
 					<Tag variant="secondary" size="sm">
 						{session.playerState}
@@ -56,13 +60,43 @@ function PlayerSession({ session }: { session: AdminBotPlayerSession }) {
 					<div>
 						<dt className="text-muted-foreground">Voice channel</dt>
 						<dd className="mt-1 wrap-break-words font-medium">
-							{session.channel ? `${session.channel.name} (${session.channel.id})` : "Not connected"}
+							{session.channel ? (
+								<>
+									<ExternalTextLink
+										href={`https://discord.com/channels/${encodeURIComponent(session.guild.id)}/${encodeURIComponent(session.channel.id)}`}
+										text={session.channel.name}
+									/>{" "}
+									({session.channel.id})
+								</>
+							) : (
+								"Not connected"
+							)}
 						</dd>
 					</div>
 					<div>
 						<dt className="text-muted-foreground">Requested by</dt>
 						<dd className="mt-1 wrap-break-words font-medium">
-							{session.user ? `${session.user.username} (${session.user.id})` : "Unavailable"}
+							{session.user ? (
+								<span className="flex min-w-0 items-center gap-2">
+									<Avatar
+										name={session.user.username}
+										image={session.user.avatarUrl}
+										size="sm"
+										aria-hidden="true"
+									/>
+									<span className="min-w-0">
+										<ExternalTextLink
+											href={`https://discord.com/users/${encodeURIComponent(session.user.id)}`}
+											text={session.user.username}
+										/>
+										<span className="block break-all text-xs text-muted-foreground">
+											{session.user.id}
+										</span>
+									</span>
+								</span>
+							) : (
+								"Unavailable"
+							)}
 						</dd>
 					</div>
 					<div>
@@ -71,7 +105,13 @@ function PlayerSession({ session }: { session: AdminBotPlayerSession }) {
 					</div>
 					<div className="min-w-0">
 						<dt className="text-muted-foreground">Now playing</dt>
-						<dd className="mt-1 wrap-break-word font-medium">{session.nowPlaying ?? "Nothing"}</dd>
+						<dd className="mt-1 wrap-break-word font-medium">
+							{session.nowPlaying?.url ? (
+								<ExternalTextLink href={session.nowPlaying.url} text={session.nowPlaying.name} />
+							) : (
+								(session.nowPlaying?.name ?? "Nothing")
+							)}
+						</dd>
 					</div>
 				</dl>
 			</Card.Content>
@@ -94,7 +134,12 @@ export default function ManageBot() {
 		queryFn: APIHandler.getHealth,
 		refetchInterval: shutdownScheduled ? false : 30_000,
 	});
-	const isFetchingStatus = statusQuery.isFetching || healthQuery.isFetching;
+	const playerStateQuery = useQuery({
+		queryKey: ["admin", "bot", "player-sessions"],
+		queryFn: APIHandler.getAdminBotPlayerState,
+		refetchInterval: shutdownScheduled ? false : 30_000,
+	});
+	const isFetchingStatus = statusQuery.isFetching || healthQuery.isFetching || playerStateQuery.isFetching;
 
 	const healthCheckMutation = useMutation({
 		mutationFn: APIHandler.refreshAdminBotPlayerHealth,
@@ -111,7 +156,7 @@ export default function ManageBot() {
 		},
 	});
 
-	const accessStatus = accessErrorStatus(statusQuery.error);
+	const accessStatus = accessErrorStatus(statusQuery.error) ?? accessErrorStatus(playerStateQuery.error);
 	if (accessStatus) return <AccessRedirect status={accessStatus} />;
 
 	const bot = statusQuery.data;
@@ -215,17 +260,14 @@ export default function ManageBot() {
 								size="sm"
 								variant="outline-secondary"
 								className="group/refetch"
-								disabled={isFetchingStatus || shutdownScheduled}
-								onClick={() => {
-									void statusQuery.refetch();
-									void healthQuery.refetch();
-								}}
+								disabled={healthQuery.isFetching || shutdownScheduled}
+								onClick={() => void healthQuery.refetch()}
 							>
 								<FiRefreshCw
 									className="mr-2 size-4 shrink-0 group-hover/refetch:animate-spin"
 									aria-hidden="true"
 								/>
-								Refresh status
+								Refresh
 							</Button>
 						</div>
 						<Tag
@@ -280,31 +322,61 @@ export default function ManageBot() {
 			</section>
 
 			<section aria-labelledby="player-sessions-heading">
-				<div className="mb-3 flex items-center gap-2">
-					<FiMusic className="size-5 text-muted-foreground" aria-hidden="true" />
-					<h2 id="player-sessions-heading" className="text-xl font-semibold">
-						Active player sessions
-					</h2>
-					{bot && (
-						<Tag variant="secondary" size="sm">
-							{bot.activePlayerSessions.length}
-						</Tag>
-					)}
+				<div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+					<div className="flex flex-wrap items-center gap-2">
+						<FiMusic className="size-5 text-muted-foreground" aria-hidden="true" />
+						<h2 id="player-sessions-heading" className="text-xl font-semibold">
+							Active player sessions
+						</h2>
+						{playerStateQuery.data && (
+							<Tag variant="secondary" size="sm">
+								{playerStateQuery.data.length}
+							</Tag>
+						)}
+					</div>
+					<Button
+						size="sm"
+						variant="outline-secondary"
+						className="group/refetch"
+						disabled={playerStateQuery.isFetching || shutdownScheduled}
+						onClick={() => void playerStateQuery.refetch()}
+					>
+						<FiRefreshCw
+							className="mr-2 size-4 shrink-0 group-hover/refetch:animate-spin"
+							aria-hidden="true"
+						/>
+						Refresh
+					</Button>
 				</div>
-				{!bot && statusQuery.isPending ? (
+				{!playerStateQuery.data && playerStateQuery.isPending ? (
 					<LoadingIndicator rows={1} columns={5} size={80} label="Loading player sessions" inline />
-				) : !bot ? (
-					<p className="text-sm text-muted-foreground">Player sessions are unavailable.</p>
-				) : bot.activePlayerSessions.length === 0 ? (
+				) : !playerStateQuery.data ? (
+					<div role="alert" className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+						<span>Could not load player sessions.</span>
+						<Button
+							size="sm"
+							variant="outline-primary"
+							disabled={playerStateQuery.isFetching}
+							onClick={() => void playerStateQuery.refetch()}
+						>
+							Retry
+						</Button>
+					</div>
+				) : playerStateQuery.data.length === 0 ? (
 					<p className="text-sm text-muted-foreground">No active player sessions.</p>
 				) : (
 					<ul className="space-y-3">
-						{bot.activePlayerSessions.map((session) => (
+						{playerStateQuery.data.map((session) => (
 							<li key={session.guild.id}>
 								<PlayerSession session={session} />
 							</li>
 						))}
 					</ul>
+				)}
+				{playerStateQuery.isError && playerStateQuery.data && (
+					<p role="status" className="mt-2 text-sm text-warning">
+						Could not refresh player sessions. Showing the last loaded data.
+					</p>
 				)}
 			</section>
 

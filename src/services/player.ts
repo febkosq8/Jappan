@@ -31,11 +31,11 @@ export type PlayerResult<Result> =
 	| { readonly success: false; readonly error_code: PlayerErrorCode };
 
 export interface ActivePlayerSession {
-	readonly guild: { readonly id: string; readonly name: string };
+	readonly guild: { readonly id: string; readonly name: string; readonly icon: string | null };
 	readonly channel: { readonly id: string; readonly name: string } | null;
-	readonly user: { readonly id: string; readonly username: string } | null;
+	readonly user: { readonly id: string; readonly username: string; readonly avatarUrl: string | null } | null;
 	readonly queueSize: number;
-	readonly nowPlaying: string | null;
+	readonly nowPlaying: { readonly name: string; readonly url: string | null } | null;
 	readonly playerState: "Playing" | "Paused";
 }
 
@@ -144,14 +144,24 @@ export function getActivePlayerSessions(): ActivePlayerSession[] {
 	return [...player.nodes.cache.values()].map((queue) => {
 		const userId = queue.metadata.requestedBy ?? null;
 		const user = userId ? queue.guild.client.users.cache.get(userId) : undefined;
+		const track = queue.currentTrack;
+		const trackUrl = track?.url;
+		const nowPlayingUrl =
+			trackUrl && URL.canParse(trackUrl) && ["http:", "https:"].includes(new URL(trackUrl).protocol)
+				? trackUrl
+				: null;
 		return {
-			guild: { id: queue.guild.id, name: queue.guild.name },
+			guild: { id: queue.guild.id, name: queue.guild.name, icon: queue.guild.iconURL() },
 			channel: queue.channel ? { id: queue.channel.id, name: queue.channel.name } : null,
 			user: userId
-				? { id: userId, username: user?.username ?? queue.metadata.requestedByDisplay ?? userId }
+				? {
+						id: userId,
+						username: user?.username ?? queue.metadata.requestedByDisplay ?? userId,
+						avatarUrl: user?.displayAvatarURL() ?? null,
+					}
 				: null,
 			queueSize: queue.tracks.size,
-			nowPlaying: queue.currentTrack?.title ?? null,
+			nowPlaying: track ? { name: track.title, url: nowPlayingUrl } : null,
 			playerState: queue.node.isPaused() ? "Paused" : "Playing",
 		};
 	});
