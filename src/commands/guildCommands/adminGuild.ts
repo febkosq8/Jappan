@@ -1,13 +1,10 @@
 import type { Guild, User } from "discord.js";
 import {
-	ChannelType,
 	EmbedBuilder,
 	InteractionContextType,
 	MessageFlags,
 	PermissionFlagsBits,
 	SlashCommandBuilder,
-	blockQuote,
-	channelMention,
 	userMention,
 } from "discord.js";
 
@@ -21,7 +18,7 @@ import {
 	formatUserMention,
 } from "../../helpers/discord.js";
 import { DISCORD_INTERACTION_TIME_LIMIT_MS } from "../../helpers/interaction.js";
-import { getGuildInvite, isAdminUser, kickGuild, sendGuildAdminMessage } from "../../services/adminGuild.js";
+import { isAdminUser, kickGuild } from "../../services/adminGuild.js";
 import type { Config } from "../../services/config.js";
 import { logger } from "../../services/logger.js";
 
@@ -38,8 +35,6 @@ const commandData = {
 			category: "admin",
 		},
 		{ name: "kick", description: "Leave a guild", category: "admin" },
-		{ name: "message", description: "Send an admin message to a guild", category: "admin" },
-		{ name: "invite", description: "Get or create an invite for a guild", category: "admin" },
 	],
 	isDBDependant: false,
 	requiredBotPermissions: [
@@ -140,28 +135,6 @@ const command: BotCommand = {
 						.setName("message")
 						.setDescription("Additional message to send before leaving")
 						.setRequired(false),
-				),
-		)
-		.addSubcommand((subcommand) =>
-			subcommand
-				.setName("message")
-				.setDescription("Send an admin message to a guild")
-				.addStringOption((option) =>
-					option.setName("guild-id").setDescription("Guild ID").setAutocomplete(true).setRequired(true),
-				)
-				.addStringOption((option) =>
-					option.setName("channel-id").setDescription("Channel ID").setAutocomplete(true).setRequired(true),
-				)
-				.addStringOption((option) =>
-					option.setName("message").setDescription("Message to send").setRequired(true),
-				),
-		)
-		.addSubcommand((subcommand) =>
-			subcommand
-				.setName("invite")
-				.setDescription("Get or create an invite for a guild")
-				.addStringOption((option) =>
-					option.setName("guild-id").setDescription("Guild ID").setAutocomplete(true).setRequired(true),
 				),
 		)
 		.setDefaultMemberPermissions(commandData.defaultMemberPermissions)
@@ -317,90 +290,6 @@ const command: BotCommand = {
 			return;
 		}
 
-		if (subcommand === "message") {
-			try {
-				const message = interaction.options.getString("message", true);
-				const channelId = interaction.options.getString("channel-id", true);
-				const channel = await guild.channels.fetch(channelId);
-				if (!channel) {
-					await interaction.editReply("⛔ Channel not found.");
-					return;
-				}
-				const sentMessage = await sendGuildAdminMessage({ guild, message, config, channelId, invoker });
-				const messageEmbed = new EmbedBuilder()
-					.setColor("Orange")
-					.setAuthor({ name: `${config.BOT_NAME} Admin`, iconURL: config.BOT_PFP, url: config.BOT_WEBSITE })
-					.setTitle("Admin message sent")
-					.addFields(
-						{ name: "Content", value: blockQuote(message) },
-						{ name: "Guild", value: formatGuildMention(guild) },
-						{ name: "Channel", value: formatChannelMention(channel), inline: true },
-						{
-							name: "Channel type",
-							value: ChannelType[channel.type] ?? String(channel.type),
-							inline: true,
-						},
-						{ name: "Message", value: sentMessage.messageUrl },
-					)
-					.setTimestamp();
-				await interaction.editReply({ embeds: [messageEmbed] });
-			} catch (error: unknown) {
-				const message = error instanceof Error ? error.message : "Could not send the admin message.";
-				await interaction.editReply(`⛔ ${message}`);
-			}
-			return;
-		}
-
-		if (subcommand === "invite") {
-			try {
-				const invite = await getGuildInvite(guild);
-				const age = invite.maxAge === 0 ? "Never" : `${Math.floor((invite.maxAge ?? 0) / 3600)} hours`;
-				const inviteEmbed = new EmbedBuilder()
-					.setColor("Orange")
-					.setAuthor({ name: `${config.BOT_NAME} Admin`, iconURL: config.BOT_PFP, url: config.BOT_WEBSITE })
-					.setTitle("Guild invite")
-					.addFields(
-						{ name: "Invite", value: invite.url },
-						{ name: "Guild", value: formatGuildMention(guild) },
-						{
-							name: "Channel",
-							value: invite.channel
-								? `${channelMention(invite.channel.id)} (${invite.channel.name ?? "unnamed"}/${invite.channel.id})`
-								: "Unknown",
-							inline: true,
-						},
-						{ name: "Age", value: age, inline: true },
-						{
-							name: "Created at",
-							value: invite.createdTimestamp
-								? `<t:${Math.floor(invite.createdTimestamp / 1000)}:F>`
-								: "Unknown",
-							inline: true,
-						},
-						{
-							name: "Expires at",
-							value: invite.expiresTimestamp
-								? `<t:${Math.floor(invite.expiresTimestamp / 1000)}:F>`
-								: "Never",
-							inline: true,
-						},
-						{
-							name: "Uses",
-							value: `${invite.uses ?? 0} / ${invite.maxUses === 0 ? "Unlimited" : (invite.maxUses ?? "Unknown")}`,
-							inline: true,
-						},
-						{ name: "Temporary", value: invite.temporary ? "Yes" : "No", inline: true },
-						{ name: "Inviter", value: invite.inviter ? formatUserMention(invite.inviter) : "Unknown" },
-					)
-					.setTimestamp();
-				await interaction.editReply({ embeds: [inviteEmbed] });
-			} catch (error: unknown) {
-				const message = error instanceof Error ? error.message : "Could not get an invite for that guild.";
-				await interaction.editReply(`⛔ ${message}`);
-			}
-			return;
-		}
-
 		await interaction.editReply({
 			embeds: [
 				new EmbedBuilder()
@@ -422,28 +311,6 @@ const command: BotCommand = {
 					.map((guild) => ({ name: `${guild.name} (${guild.id})`, value: guild.id })),
 			);
 			return;
-		}
-
-		if (focused.name === "channel-id") {
-			const guildId = interaction.options.getString("guild-id");
-			const guild = guildId ? await interaction.client.guilds.fetch(guildId).catch(() => null) : null;
-			const channels = guild ? await guild.channels.fetch().catch(() => null) : null;
-			await interaction.respond(
-				channels
-					? [...channels.values()]
-							.flatMap((channel) =>
-								channel && `${channel.name ?? ""} ${channel.id}`.toLowerCase().includes(query)
-									? [
-											{
-												name: `Name: ${channel.name ?? "unnamed"} | Type: ${ChannelType[channel.type] ?? channel.type} | ID: ${channel.id}`,
-												value: channel.id,
-											},
-										]
-									: [],
-							)
-							.slice(0, 25)
-					: [],
-			);
 		}
 	},
 };

@@ -28,8 +28,8 @@ export async function fetchSession() {
 	return data;
 }
 
-export function useSessionQuery() {
-	return useQuery({ queryKey: sessionQueryKey, queryFn: fetchSession });
+export function useSessionQuery(refetchOnWindowFocus = false) {
+	return useQuery({ queryKey: sessionQueryKey, queryFn: fetchSession, refetchOnWindowFocus });
 }
 
 export function isAdminSession(session: Awaited<ReturnType<typeof fetchSession>> | undefined): boolean {

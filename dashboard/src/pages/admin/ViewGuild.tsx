@@ -1,15 +1,17 @@
 import { Avatar, Button, Card, DateHandler, Input, PillLink, TextLink } from "@febkosq8/arc";
 import { useForm } from "@tanstack/react-form";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import axios from "axios";
-import { useEffect, type ReactNode, type RefObject } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode, type RefObject } from "react";
 import { FiArrowLeft, FiExternalLink, FiLink } from "react-icons/fi";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
 import APIHandler, {
+	type AdminGuildInvite,
 	type AdminGuildChannel,
 	type AdminGuildDetails,
+	type AdminGuildMessageResult,
 	type PreferenceEntity,
 } from "@jappan/handlers/APIHandler";
 import { AccessRedirect, accessErrorStatus } from "@jappan/components/jappan/AdminRoute";
@@ -18,6 +20,7 @@ import LoadingIndicator from "@jappan/components/jappan/LoadingIndicator";
 const guildIdPattern = /^\d{17,20}$/u;
 const guildSectionIds = [
 	"guild-overview",
+	"guild-actions",
 	"guild-channels",
 	"service-preferences",
 	"bot-permissions",
@@ -450,6 +453,281 @@ function GuildChannels({ guild }: { guild: AdminGuildDetails }) {
 	);
 }
 
+function getActionErrorMessage(error: unknown, fallback: string): string {
+	if (axios.isAxiosError<{ error?: string }>(error) && typeof error.response?.data?.error === "string") {
+		return error.response.data.error;
+	}
+	return fallback;
+}
+
+function GuildActions({ guild }: { guild: AdminGuildDetails }) {
+	const [channelId, setChannelId] = useState("");
+	const [message, setMessage] = useState("");
+	const channelsQuery = useQuery({
+		queryKey: ["admin", "guild", guild.id, "channels"],
+		queryFn: () => APIHandler.getAdminGuildChannels(guild.id),
+		enabled: false,
+		retry: false,
+	});
+	const sendMessageMutation = useMutation<AdminGuildMessageResult, Error, { channelId: string; message: string }>({
+		mutationFn: ({ channelId: selectedChannelId, message: content }) =>
+			APIHandler.sendAdminGuildMessage(guild.id, content, selectedChannelId),
+		onSuccess: () => toast.success("Admin message sent."),
+	});
+	const inviteMutation = useMutation<AdminGuildInvite, Error>({
+		mutationFn: () => APIHandler.createAdminGuildInvite(guild.id),
+		onSuccess: () => toast.success("Guild invite ready."),
+	});
+	const accessStatus =
+		accessErrorStatus(channelsQuery.error) ??
+		accessErrorStatus(sendMessageMutation.error) ??
+		accessErrorStatus(inviteMutation.error);
+	if (accessStatus) return <AccessRedirect status={accessStatus} />;
+
+	const textChannels =
+		channelsQuery.data?.filter((channel) => ["GuildText", "GuildAnnouncement"].includes(channel.typeName)) ?? [];
+	const sendMessageError = sendMessageMutation.isError
+		? getActionErrorMessage(sendMessageMutation.error, "Could not send the admin message.")
+		: null;
+	const inviteError = inviteMutation.isError
+		? getActionErrorMessage(inviteMutation.error, "Could not get a guild invite.")
+		: null;
+	const channelsError = channelsQuery.isError
+		? getActionErrorMessage(channelsQuery.error, "Could not load channels. Please try again.")
+		: null;
+
+	function submitMessage(event: FormEvent<HTMLFormElement>) {
+		event.preventDefault();
+		sendMessageMutation.mutate({ channelId, message });
+	}
+
+	async function copyInvite(inviteUrl: string) {
+		try {
+			await navigator.clipboard.writeText(inviteUrl);
+			toast.success("Invite copied.");
+		} catch {
+			toast.error("Could not copy the invite.");
+		}
+	}
+
+	return (
+		<Card id="guild-actions" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
+			<h2 className="flex items-center gap-1 text-lg font-semibold">
+				Admin actions <SectionLink id="guild-actions" label="admin actions" />
+			</h2>
+			<p className="mt-1 text-sm text-muted-foreground">Send an admin message or get an invite for this guild.</p>
+			{!guild.isActiveMember ? (
+				<p className="mt-4 text-muted-foreground">The bot is not a member of this guild.</p>
+			) : (
+				<div className="mt-4 grid gap-4 lg:grid-cols-2">
+					<section
+						aria-labelledby="admin-message-title"
+						className="min-w-0 rounded-md border border-border p-4"
+					>
+						<h3 id="admin-message-title" className="font-semibold">
+							Send admin message
+						</h3>
+						<p className="mt-1 text-sm text-muted-foreground">
+							The message is sent as an embed to one text channel.
+						</p>
+						<Button
+							type="button"
+							size="sm"
+							variant="outline-primary"
+							className="mt-3"
+							disabled={channelsQuery.isFetching}
+							onClick={() => void channelsQuery.refetch()}
+						>
+							{channelsQuery.data ? "Refresh channels" : "Load channels"}
+						</Button>
+						{channelsError && (
+							<p role="alert" className="mt-3 text-sm text-destructive">
+								{channelsError}
+							</p>
+						)}
+						{channelsQuery.data && (
+							<form onSubmit={submitMessage} className="mt-4 space-y-3">
+								<div>
+									<label htmlFor="admin-message-channel" className="mb-1 block text-sm font-medium">
+										Channel
+									</label>
+									<select
+										id="admin-message-channel"
+										value={channelId}
+										onChange={(event) => setChannelId(event.target.value)}
+										required
+										disabled={textChannels.length === 0 || sendMessageMutation.isPending}
+										className="h-10 w-full rounded-md border border-input bg-background px-3 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-opacity-75"
+									>
+										<option value="">Select a channel</option>
+										{textChannels.map((channel) => (
+											<option key={channel.id} value={channel.id}>
+												#{channel.name} ({channel.id})
+											</option>
+										))}
+									</select>
+								</div>
+								<div>
+									<label htmlFor="admin-message-content" className="mb-1 block text-sm font-medium">
+										Message
+									</label>
+									<textarea
+										id="admin-message-content"
+										value={message}
+										onChange={(event) => setMessage(event.target.value)}
+										required
+										maxLength={4096}
+										rows={5}
+										disabled={sendMessageMutation.isPending}
+										placeholder="Write the message to send"
+										className="w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-opacity-75"
+									/>
+									<p className="mt-1 text-right text-xs text-muted-foreground">
+										{message.length}/4096
+									</p>
+								</div>
+								<Button
+									type="submit"
+									size="sm"
+									disabled={
+										!channelId ||
+										message.trim().length === 0 ||
+										textChannels.length === 0 ||
+										sendMessageMutation.isPending
+									}
+								>
+									{sendMessageMutation.isPending ? "Sending…" : "Send message"}
+								</Button>
+								{sendMessageError && (
+									<p role="alert" className="text-sm text-destructive">
+										{sendMessageError}
+									</p>
+								)}
+								{sendMessageMutation.data && (
+									<p className="text-sm text-success">
+										Message sent to {sendMessageMutation.data.channelName}.{" "}
+										<DiscordTextLink
+											href={sendMessageMutation.data.messageUrl}
+											text="View message"
+										/>
+									</p>
+								)}
+								{channelsQuery.data && textChannels.length === 0 && (
+									<p className="text-sm text-muted-foreground">No text channels are available.</p>
+								)}
+							</form>
+						)}
+					</section>
+					<section
+						aria-labelledby="guild-invite-title"
+						className="min-w-0 rounded-md border border-border p-4"
+					>
+						<h3 id="guild-invite-title" className="font-semibold">
+							Guild invite
+						</h3>
+						<p className="mt-1 text-sm text-muted-foreground">
+							Use an existing invite when available, or create one for this guild.
+						</p>
+						<Button
+							type="button"
+							size="sm"
+							variant="outline-primary"
+							className="mt-3"
+							disabled={inviteMutation.isPending}
+							onClick={() => inviteMutation.mutate()}
+						>
+							{inviteMutation.isPending ? "Getting invite…" : "Get invite"}
+						</Button>
+						{inviteError && (
+							<p role="alert" className="mt-3 text-sm text-destructive">
+								{inviteError}
+							</p>
+						)}
+						{inviteMutation.data && (
+							<div className="mt-4 space-y-2 break-words text-sm">
+								<p>
+									<a
+										href={inviteMutation.data.url}
+										target="_blank"
+										rel="noreferrer"
+										className="text-primary underline underline-offset-2"
+									>
+										{inviteMutation.data.url}
+									</a>
+								</p>
+								<dl className="grid gap-x-3 gap-y-1 sm:grid-cols-2">
+									<div>
+										<dt className="text-muted-foreground">Channel</dt>
+										<dd>
+											{inviteMutation.data.channel?.name ?? "Unknown"}
+											{inviteMutation.data.channel && (
+												<span className="ml-1 break-all text-xs text-muted-foreground">
+													({inviteMutation.data.channel.id})
+												</span>
+											)}
+										</dd>
+									</div>
+									<div>
+										<dt className="text-muted-foreground">Age</dt>
+										<dd>
+											{inviteMutation.data.maxAge === 0
+												? "Never"
+												: inviteMutation.data.maxAge === null
+													? "Unknown"
+													: `${Math.floor(inviteMutation.data.maxAge / 3600)} hours`}
+										</dd>
+									</div>
+									<div>
+										<dt className="text-muted-foreground">Created at</dt>
+										<dd>
+											{inviteMutation.data.createdTimestamp === null
+												? "Unknown"
+												: DateHandler.getDateTime(inviteMutation.data.createdTimestamp)}
+										</dd>
+									</div>
+									<div>
+										<dt className="text-muted-foreground">Expires at</dt>
+										<dd>
+											{inviteMutation.data.expiresTimestamp === null
+												? "Never"
+												: DateHandler.getDateTime(inviteMutation.data.expiresTimestamp)}
+										</dd>
+									</div>
+									<div>
+										<dt className="text-muted-foreground">Uses</dt>
+										<dd>
+											{inviteMutation.data.uses ?? 0} /{" "}
+											{inviteMutation.data.maxUses === 0
+												? "Unlimited"
+												: (inviteMutation.data.maxUses ?? "Unknown")}
+										</dd>
+									</div>
+									<div>
+										<dt className="text-muted-foreground">Temporary</dt>
+										<dd>{inviteMutation.data.temporary ? "Yes" : "No"}</dd>
+									</div>
+									<div>
+										<dt className="text-muted-foreground">Inviter</dt>
+										<dd>{inviteMutation.data.inviter?.username ?? "Unknown"}</dd>
+									</div>
+								</dl>
+								<Button
+									type="button"
+									size="sm"
+									variant="outline-secondary"
+									onClick={() => void copyInvite(inviteMutation.data.url)}
+								>
+									Copy invite
+								</Button>
+							</div>
+						)}
+					</section>
+				</div>
+			)}
+		</Card>
+	);
+}
+
 function GuildDetails({
 	guild,
 	scrollContainerRef,
@@ -653,7 +931,8 @@ function GuildDetails({
 					</Detail>
 				</dl>
 			</Card>
-			<GuildChannels key={guild.id} guild={guild} />
+			<GuildActions key={guild.id} guild={guild} />
+			<GuildChannels guild={guild} />
 			<GuildPreferences guild={guild} />
 			<Card id="bot-permissions" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
 				<h2 className="flex items-center gap-1 text-lg font-semibold">

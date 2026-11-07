@@ -53,6 +53,24 @@ export interface AdminGuildChannel {
 	userLimit?: number;
 }
 
+export interface AdminGuildMessageResult {
+	channelId: string;
+	channelName: string;
+	messageUrl: string;
+}
+
+export interface AdminGuildInvite {
+	url: string;
+	channel: { id: string; name: string | null } | null;
+	maxAge: number | null;
+	createdTimestamp: number | null;
+	expiresTimestamp: number | null;
+	uses: number | null;
+	maxUses: number | null;
+	temporary: boolean;
+	inviter: { id: string; username: string } | null;
+}
+
 export interface AdminGuildDetails extends AdminGuild {
 	discoveredAt: number | null;
 	guildCommandDeployment: { deployed: number; total: number } | null;
@@ -110,6 +128,28 @@ class APIHandler {
 	static async getAdminGuildChannels(guildId: string): Promise<AdminGuildChannel[]> {
 		const { data } = await apiClient.get<AdminGuildChannel[]>(
 			`/api/v1/admin/guilds/${encodeURIComponent(guildId)}/channels`,
+			{ withCredentials: true },
+		);
+		return data;
+	}
+
+	static async sendAdminGuildMessage(
+		guildId: string,
+		message: string,
+		channelId: string,
+	): Promise<AdminGuildMessageResult> {
+		const { data } = await apiClient.post<AdminGuildMessageResult>(
+			`/api/v1/admin/guilds/${encodeURIComponent(guildId)}/messages`,
+			{ message, channelId },
+			{ withCredentials: true },
+		);
+		return data;
+	}
+
+	static async createAdminGuildInvite(guildId: string): Promise<AdminGuildInvite> {
+		const { data } = await apiClient.post<AdminGuildInvite>(
+			`/api/v1/admin/guilds/${encodeURIComponent(guildId)}/invite`,
+			undefined,
 			{ withCredentials: true },
 		);
 		return data;

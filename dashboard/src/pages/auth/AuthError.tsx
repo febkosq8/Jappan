@@ -1,11 +1,8 @@
-import { Button, Card, PillLink } from "@febkosq8/arc";
-import { authClient } from "@jappan/handlers/auth";
-import LoadingIndicator from "@jappan/components/jappan/LoadingIndicator";
-import { useState } from "react";
+import { Card, PillLink } from "@febkosq8/arc";
+import { useSessionQuery } from "@jappan/handlers/auth";
+import { safeCallbackPath } from "@jappan/handlers/authRedirect";
 import { FiAlertTriangle, FiArrowLeft } from "react-icons/fi";
-import { SiDiscord } from "react-icons/si";
-import { useLocation, useSearchParams } from "react-router-dom";
-import { toast } from "sonner";
+import { Navigate, useLocation, useSearchParams } from "react-router-dom";
 
 const authErrorMessages: Record<string, string> = {
 	USER_BLOCKED: "This account is blocked from signing in.\nContact support if you believe this is a mistake.",
@@ -26,10 +23,14 @@ const authErrorMessages: Record<string, string> = {
 export default function AuthError() {
 	const location = useLocation();
 	const [searchParams] = useSearchParams();
-	const [busy, setBusy] = useState(false);
+	const sessionQuery = useSessionQuery(true);
 	const errorCode = searchParams.get("error") ?? "unknown";
 	const unauthenticated = errorCode === "UNAUTHENTICATED";
 	const forbidden = errorCode === "FORBIDDEN";
+	const callbackPath = safeCallbackPath(searchParams.get("callbackURL"), window.location.origin);
+	const state: unknown = location.state;
+	const rejectedSessionId =
+		typeof state === "object" && state !== null && "rejectedSessionId" in state ? state.rejectedSessionId : null;
 	const errorMessage = unauthenticated
 		? "Sign in to access this page."
 		: forbidden
@@ -42,28 +43,8 @@ export default function AuthError() {
 			? "Access forbidden - Jappan"
 			: "Sign-in error - Jappan";
 
-	async function retrySignIn() {
-		const state: unknown = location.state;
-		const returnTo = typeof state === "object" && state !== null && "returnTo" in state ? state.returnTo : null;
-		const path =
-			unauthenticated && typeof returnTo === "string" && returnTo.startsWith("/") && !returnTo.startsWith("//")
-				? returnTo
-				: "/";
-		setBusy(true);
-		try {
-			const result = await authClient.signIn.social({
-				provider: "discord",
-				callbackURL: `${window.location.origin}${path}`,
-				errorCallbackURL: `${window.location.origin}/auth/error`,
-			});
-			if (result.error) {
-				toast.error("Could not start Discord sign-in. Please try again.");
-			}
-		} catch {
-			toast.error("Could not start Discord sign-in. Please try again.");
-		} finally {
-			setBusy(false);
-		}
+	if (callbackPath && sessionQuery.data && sessionQuery.data.session.id !== rejectedSessionId) {
+		return <Navigate to={callbackPath} replace />;
 	}
 
 	return (
@@ -89,26 +70,10 @@ export default function AuthError() {
 							<p className="mt-1 break-all font-mono text-sm">{errorCode}</p>
 						</div>
 					)}
-					<div className="mt-6 flex w-full flex-col-reverse gap-3 sm:flex-row">
-						<PillLink href="/" variant="outline-secondary" className="flex-1 gap-2">
-							<FiArrowLeft aria-hidden="true" />
-							Back home
-						</PillLink>
-						{!forbidden && (
-							<Button className="flex-1 gap-2" disabled={busy} onClick={() => void retrySignIn()}>
-								{busy ? (
-									<LoadingIndicator label="Connecting" inline decorative size={16} />
-								) : (
-									<SiDiscord aria-hidden="true" />
-								)}
-								{busy
-									? "Connecting..."
-									: unauthenticated
-										? "Sign in with Discord"
-										: "Try Discord again"}
-							</Button>
-						)}
-					</div>
+					<PillLink href="/" variant="outline-secondary" className="mt-6 gap-2">
+						<FiArrowLeft aria-hidden="true" />
+						Back home
+					</PillLink>
 				</Card.Content>
 			</Card>
 		</main>

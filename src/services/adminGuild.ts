@@ -252,13 +252,20 @@ export async function listAllGuilds(client: Client) {
 	);
 }
 
-export async function listAdminGuildChannels(client: Client, guildId: string) {
+export async function getAdminGuildForAction(client: Client, guildId: string) {
 	const storedGuild = await GuildModel.exists({ guildId });
 	if (!storedGuild) return { status: "not_found" } as const;
 
 	const guild = client.guilds.cache.get(guildId);
 	if (!guild) return { status: "not_member" } as const;
 	if (!guild.available) return { status: "unavailable" } as const;
+	return { status: "ok", guild } as const;
+}
+
+export async function listAdminGuildChannels(client: Client, guildId: string) {
+	const adminGuild = await getAdminGuildForAction(client, guildId);
+	if (adminGuild.status !== "ok") return adminGuild;
+	const { guild } = adminGuild;
 
 	const fetched = await guild.channels.fetch();
 	const channels = [...fetched.values()].map((channel) => {

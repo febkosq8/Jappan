@@ -3,15 +3,21 @@ import axios from "axios";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 
 import { isAdminSession, useSessionQuery } from "@jappan/handlers/auth";
+import { authErrorURL } from "@jappan/handlers/authRedirect";
 import LoadingIndicator from "./LoadingIndicator";
 
 export function AccessRedirect({ status }: { status: 401 | 403 }) {
 	const location = useLocation();
+	const { data: session } = useSessionQuery();
+	const returnTo = `${location.pathname}${location.search}${location.hash}`;
+	const errorURL = new URL(
+		authErrorURL(window.location.origin, returnTo, status === 401 ? "UNAUTHENTICATED" : "FORBIDDEN"),
+	);
 	return (
 		<Navigate
-			to={`/auth/error?error=${status === 401 ? "UNAUTHENTICATED" : "FORBIDDEN"}`}
+			to={`${errorURL.pathname}${errorURL.search}`}
 			replace
-			state={{ returnTo: `${location.pathname}${location.search}${location.hash}` }}
+			state={{ rejectedSessionId: session?.session.id }}
 		/>
 	);
 }

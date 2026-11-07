@@ -5,6 +5,7 @@ import { FiLogIn } from "react-icons/fi";
 import { toast } from "sonner";
 
 import { authClient, sessionQueryKey, useSessionQuery } from "@jappan/handlers/auth";
+import { authErrorURL, safeCallbackPath } from "@jappan/handlers/authRedirect";
 import LoadingIndicator from "./LoadingIndicator";
 
 export default function AuthControls() {
@@ -15,10 +16,17 @@ export default function AuthControls() {
 	async function signIn() {
 		setBusy(true);
 		try {
+			const callbackPath =
+				window.location.pathname === "/auth/error"
+					? (safeCallbackPath(
+							new URLSearchParams(window.location.search).get("callbackURL"),
+							window.location.origin,
+						) ?? "/")
+					: `${window.location.pathname}${window.location.search}${window.location.hash}`;
 			const result = await authClient.signIn.social({
 				provider: "discord",
-				callbackURL: window.location.href,
-				errorCallbackURL: `${window.location.origin}/auth/error`,
+				callbackURL: `${window.location.origin}${callbackPath}`,
+				errorCallbackURL: authErrorURL(window.location.origin, callbackPath),
 			});
 			if (result.error) {
 				toast.error("Could not start Discord sign-in. Please try again.");
