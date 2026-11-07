@@ -1,44 +1,30 @@
-import { Avatar, Button, GridLoader, Menu, type AvatarProps } from "@febkosq8/arc";
+import { Avatar, Button, Menu, type AvatarProps } from "@febkosq8/arc";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { FiLogIn } from "react-icons/fi";
+import { toast } from "sonner";
 
 import { authClient, sessionQueryKey, useSessionQuery } from "@jappan/handlers/auth";
+import LoadingIndicator from "./LoadingIndicator";
 
 export default function AuthControls() {
 	const queryClient = useQueryClient();
 	const { data: session, isPending, error: sessionError, refetch } = useSessionQuery();
-	const [error, setError] = useState("");
 	const [busy, setBusy] = useState(false);
-
-	useEffect(() => {
-		const url = new URL(window.location.href);
-		if (url.searchParams.has("authError")) {
-			setError(
-				url.searchParams.get("error") === "USER_BLOCKED"
-					? "Your account is blocked."
-					: "Discord sign-in failed. Please try again.",
-			);
-			url.searchParams.delete("authError");
-			url.searchParams.delete("error");
-			url.searchParams.delete("error_description");
-			window.history.replaceState(window.history.state, "", url);
-		}
-	}, []);
 
 	async function signIn() {
 		setBusy(true);
-		setError("");
 		try {
 			const result = await authClient.signIn.social({
 				provider: "discord",
 				callbackURL: window.location.href,
-				errorCallbackURL: `${window.location.origin}/?authError=signin`,
+				errorCallbackURL: `${window.location.origin}/auth/error`,
 			});
 			if (result.error) {
-				setError("Could not start Discord sign-in. Please try again.");
+				toast.error("Could not start Discord sign-in. Please try again.");
 			}
 		} catch {
-			setError("Could not start Discord sign-in. Please try again.");
+			toast.error("Could not start Discord sign-in. Please try again.");
 		} finally {
 			setBusy(false);
 		}
@@ -46,17 +32,17 @@ export default function AuthControls() {
 
 	async function signOut() {
 		setBusy(true);
-		setError("");
 		try {
 			const result = await authClient.signOut();
 			if (result.error) {
-				setError("Could not sign out. Please try again.");
+				toast.error("Could not sign out. Please try again.");
 			} else {
 				queryClient.removeQueries({ queryKey: ["admin"] });
 				queryClient.setQueryData(sessionQueryKey, null);
+				toast.success("Signed out successfully.");
 			}
 		} catch {
-			setError("Could not sign out. Please try again.");
+			toast.error("Could not sign out. Please try again.");
 		} finally {
 			setBusy(false);
 		}
@@ -73,7 +59,7 @@ export default function AuthControls() {
 	return (
 		<div className="flex flex-wrap items-center justify-end gap-2 text-sm">
 			{isPending ? (
-				<GridLoader label="Checking session" size={24} />
+				<LoadingIndicator label="Checking session" inline />
 			) : sessionError ? (
 				<button type="button" className="underline" onClick={() => void refetch()}>
 					Session unavailable. Retry
@@ -85,7 +71,7 @@ export default function AuthControls() {
 					buttonText={
 						<>
 							<Avatar {...avatarProps} size="md" />
-							<span className="ml-2 max-w-28 truncate sm:max-w-40">
+							<span className="ml-2 hidden max-w-40 truncate md:inline">
 								{session.user.username ?? session.user.name}
 							</span>
 							<span className="sr-only"> account menu</span>
@@ -113,11 +99,17 @@ export default function AuthControls() {
 					</Menu.Item>
 				</Menu>
 			) : (
-				<Button size="sm" variant="outline-primary" disabled={busy} onClick={() => void signIn()}>
-					Sign in
+				<Button
+					size="sm"
+					variant="outline-primary"
+					aria-label="Sign in"
+					disabled={busy}
+					onClick={() => void signIn()}
+				>
+					<FiLogIn className="size-4 pr-1" aria-hidden="true" />
+					<span className="hidden md:inline">Sign in</span>
 				</Button>
 			)}
-			{error && <span role="alert">{error}</span>}
 		</div>
 	);
 }

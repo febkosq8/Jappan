@@ -9,4 +9,24 @@
 	body {
 		@apply min-h-screen bg-background font-sans text-foreground antialiased;
 	}
+
+	[data-sonner-toaster].jappan-toaster {
+		--normal-bg: var(--color-popover);
+		--normal-border: var(--color-border);
+		--normal-text: var(--color-popover-foreground);
+		--normal-bg-hover: var(--color-accent);
+		--normal-border-hover: var(--color-border);
+		--success-bg: var(--color-popover);
+		--success-border: var(--color-success);
+		--success-text: var(--color-popover-foreground);
+		--info-bg: var(--color-popover);
+		--info-border: var(--color-primary);
+		--info-text: var(--color-popover-foreground);
+		--warning-bg: var(--color-popover);
+		--warning-border: var(--color-warning);
+		--warning-text: var(--color-popover-foreground);
+		--error-bg: var(--color-popover);
+		--error-border: var(--color-destructive);
+		--error-text: var(--color-popover-foreground);
+	}
 }

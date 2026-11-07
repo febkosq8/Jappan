@@ -81,6 +81,9 @@ Otherwise those fields are omitted and the stored name is used. The endpoint
 returns 503 when Discord is disconnected rather than reporting unreliable
 membership. If the owner or bot member cannot be fetched, the request fails
 instead of returning incomplete details.
+`GET /api/v1/admin/guilds/{guildId}` requires the same access and dependencies and
+returns the same fields for one stored guild. It returns 400 for an invalid
+Discord guild ID and 404 when the guild is not stored.
 The Discord admin guild list uses the same stored-guild data and displays entries
 with currently available Discord details. It requires the database to be connected.
 

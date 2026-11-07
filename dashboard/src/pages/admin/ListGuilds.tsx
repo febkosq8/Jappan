@@ -1,8 +1,9 @@
-import { Avatar, Button, DateHandler, GridLoader, Table, TextLink, type TableColumnDef } from "@febkosq8/arc";
+import { Avatar, Button, DateHandler, Table, TextLink, type TableColumnDef } from "@febkosq8/arc";
 import { useQuery } from "@tanstack/react-query";
 
 import APIHandler, { type AdminGuild } from "@jappan/handlers/APIHandler";
 import { isAdminSession, useSessionQuery } from "@jappan/handlers/auth";
+import LoadingIndicator from "@jappan/components/jappan/LoadingIndicator";
 
 function Unavailable() {
 	return <span className="text-muted-foreground">Unavailable</span>;
@@ -22,11 +23,10 @@ const columns: TableColumnDef<AdminGuild>[] = [
 					<Avatar name={guild.name} image={guild.icon} size="sm" aria-hidden="true" />
 					<span className="min-w-0">
 						<TextLink
-							href={`https://discord.com/channels/${encodeURIComponent(guild.id)}`}
+							href={`/admin/guild/${encodeURIComponent(guild.id)}`}
 							text={guild.name}
 							title={guild.name}
-							target="_blank"
-							rel="noopener noreferrer"
+							target="_self"
 							className="block truncate font-medium"
 						/>
 						<span className="block text-xs text-muted-foreground">{guild.id}</span>
@@ -57,14 +57,9 @@ const columns: TableColumnDef<AdminGuild>[] = [
 				<div className="flex items-center gap-2">
 					<Avatar name={owner.username} image={owner.avatarUrl} size="sm" aria-hidden="true" />
 					<span className="min-w-0">
-						<TextLink
-							href={`https://discord.com/users/${encodeURIComponent(owner.userId)}`}
-							text={owner.username}
-							title={owner.username}
-							target="_blank"
-							rel="noopener noreferrer"
-							className="block truncate"
-						/>
+						<span className="block truncate" title={owner.username}>
+							{owner.username}
+						</span>
 						<span className="block text-xs text-muted-foreground">{owner.userId}</span>
 					</span>
 				</div>
@@ -134,14 +129,9 @@ const columns: TableColumnDef<AdminGuild>[] = [
 			const guild = row.original;
 			return guild.systemChannel ? (
 				<span className="min-w-0">
-					<TextLink
-						href={`https://discord.com/channels/${encodeURIComponent(guild.id)}/${encodeURIComponent(guild.systemChannel.id)}`}
-						text={guild.systemChannel.name}
-						title={guild.systemChannel.name}
-						target="_blank"
-						rel="noopener noreferrer"
-						className="block truncate"
-					/>
+					<span className="block truncate" title={guild.systemChannel.name}>
+						{guild.systemChannel.name}
+					</span>
 					<span className="block text-xs text-muted-foreground">{guild.systemChannel.id}</span>
 				</span>
 			) : guild.systemChannel === null ? (
@@ -177,6 +167,7 @@ const columns: TableColumnDef<AdminGuild>[] = [
 ];
 
 export default function AdminGuilds() {
+	document.title = "Admin - List Guilds";
 	const sessionQuery = useSessionQuery();
 	const isAdmin = !sessionQuery.isError && isAdminSession(sessionQuery.data);
 	const guildsQuery = useQuery({
@@ -187,11 +178,7 @@ export default function AdminGuilds() {
 
 	let content;
 	if (sessionQuery.isPending) {
-		content = (
-			<div className="flex justify-center py-12">
-				<GridLoader label="Checking session" size={48} />
-			</div>
-		);
+		content = <LoadingIndicator label="Checking session" />;
 	} else if (sessionQuery.isError) {
 		content = (
 			<div role="alert">
@@ -204,11 +191,7 @@ export default function AdminGuilds() {
 	} else if (!isAdmin) {
 		content = <p>Sign in with an admin account to view this page.</p>;
 	} else if (guildsQuery.isPending) {
-		content = (
-			<div className="flex justify-center py-12">
-				<GridLoader label="Loading guilds" size={48} />
-			</div>
-		);
+		content = <LoadingIndicator label="Loading guilds" />;
 	} else if (guildsQuery.isError) {
 		content = (
 			<div role="alert">
@@ -225,8 +208,8 @@ export default function AdminGuilds() {
 	}
 
 	return (
-		<main className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6">
-			<h1 className="text-3xl font-bold tracking-tight">List - Guilds</h1>
+		<main className="mx-auto w-full  px-4 py-10 sm:px-6">
+			<h1 className="text-3xl font-bold tracking-tight typography-heading-2">List Guilds</h1>
 			{content}
 		</main>
 	);

@@ -40,6 +40,13 @@ class APIHandler {
 		const { data } = await apiClient.get<AdminGuild[]>("/api/v1/admin/guilds", { withCredentials: true });
 		return data;
 	}
+
+	static async getAdminGuild(guildId: string): Promise<AdminGuild> {
+		const { data } = await apiClient.get<AdminGuild>(`/api/v1/admin/guilds/${encodeURIComponent(guildId)}`, {
+			withCredentials: true,
+		});
+		return data;
+	}
 }
 
 export default APIHandler;

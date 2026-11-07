@@ -7,13 +7,14 @@ import {
 	FiGithub,
 	FiLayers,
 	FiLifeBuoy,
-	FiLoader,
 	FiRadio,
 	FiRefreshCw,
 	FiXCircle,
 } from "react-icons/fi";
 import { SiDiscord } from "react-icons/si";
+import { toast } from "sonner";
 import APIHandler from "@jappan/handlers/APIHandler";
+import LoadingIndicator from "./LoadingIndicator";
 
 const serviceNames = [
 	{ key: "db", label: "Database" },
@@ -29,6 +30,18 @@ export default function About() {
 		queryFn: APIHandler.getHealth,
 		refetchInterval: 30_000,
 	});
+
+	async function refreshStatus() {
+		const id = toast.info("Checking bot status...");
+		const result = await healthQuery.refetch();
+		if (!result.isSuccess) {
+			toast.error("Could not refresh bot status.", { id });
+		} else if (!result.data.healthy) {
+			toast.warning("A bot service is unavailable.", { id });
+		} else {
+			toast.success("All bot services are operational.", { id });
+		}
+	}
 
 	return (
 		<section
@@ -155,7 +168,9 @@ export default function About() {
 										aria-hidden="true"
 									/>
 								) : (
-									<FiLoader className="mr-1 inline size-4 animate-spin" aria-hidden="true" />
+									<span className="mr-1 inline-flex items-center justify-center">
+										<LoadingIndicator label="Checking status" inline decorative size={16} />
+									</span>
 								)}
 								{healthQuery.data
 									? healthQuery.data.healthy
@@ -170,15 +185,8 @@ export default function About() {
 							{serviceNames.map(({ key, label }) => {
 								const healthy = healthQuery.data?.services[key];
 								const unavailable = healthQuery.isError && !healthQuery.data;
-								const statusIcon =
-									healthy === undefined
-										? unavailable
-											? FiAlertTriangle
-											: FiLoader
-										: healthy
-											? FiCheckCircle
-											: FiXCircle;
-								const StatusIcon = statusIcon;
+								const StatusIcon =
+									healthy === undefined ? FiAlertTriangle : healthy ? FiCheckCircle : FiXCircle;
 								return (
 									<li
 										key={key}
@@ -197,18 +205,27 @@ export default function About() {
 											}
 											size="sm"
 										>
-											<StatusIcon
-												className={`mr-1 inline size-4 ${
-													healthy === undefined
-														? unavailable
+											{healthy === undefined && !unavailable ? (
+												<span className="mr-1 inline-flex items-center justify-center">
+													<LoadingIndicator
+														label={`Checking ${label}`}
+														inline
+														decorative
+														size={16}
+													/>
+												</span>
+											) : (
+												<StatusIcon
+													className={`mr-1 inline size-4 ${
+														healthy === undefined
 															? "text-warning-foreground"
-															: "animate-spin"
-														: healthy
-															? "text-success-foreground"
-															: "text-destructive-foreground"
-												}`}
-												aria-hidden="true"
-											/>
+															: healthy
+																? "text-success-foreground"
+																: "text-destructive-foreground"
+													}`}
+													aria-hidden="true"
+												/>
+											)}
 											{healthy === undefined
 												? unavailable
 													? "Unavailable"
@@ -245,7 +262,7 @@ export default function About() {
 								variant="outline-secondary"
 								size="md"
 								className="group/refetch gap-1"
-								onClick={() => void healthQuery.refetch()}
+								onClick={() => void refreshStatus()}
 								disabled={healthQuery.isFetching}
 								aria-label="Refetch bot status"
 							>

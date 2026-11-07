@@ -19,6 +19,7 @@ function createAuth() {
 		basePath: "/api/v1/auth",
 		secret: config.AUTH_SECRET,
 		trustedOrigins: [...config.ALLOWED_ORIGINS],
+		onAPIError: { errorURL: new URL("/auth/error", config.BOT_WEBSITE).href },
 		database: mongodbAdapter(DatabaseManager.getDatabaseInstance()),
 		socialProviders: {
 			discord: {

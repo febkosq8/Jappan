@@ -11,7 +11,9 @@ Copy [`.env.example`](../.env.example) to `.env`. Set `DISCORD_TOKEN` to your Di
    development, add `http://localhost:8875/api/v1/auth/callback/discord` instead.
 2. Set a unique random `AUTH_SECRET` of at least 32 characters,
    `AUTH_DISCORD_CLIENT_ID`, and `AUTH_DISCORD_CLIENT_SECRET`. Set `BACKEND_URL`
-   to the API's public origin, including when developing locally.
+   to the API's public origin and `BOT_WEBSITE` to the dashboard origin,
+   including when developing locally. Authentication errors that cannot recover
+   the original sign-in redirect use `BOT_WEBSITE` as their fallback.
 3. Add each dashboard origin to `ALLOWED_ORIGINS`. The dashboard and API must be
    served over HTTPS and be same-site in production (for example, sibling
    subdomains); local development can use localhost HTTP for both.

@@ -1,4 +1,4 @@
-import { Avatar, Menu, PillLink, ThemeSwitcher } from "@febkosq8/arc";
+import { Avatar, Menu, ThemeSwitcher } from "@febkosq8/arc";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { isAdminSession, useSessionQuery } from "@jappan/handlers/auth";
@@ -9,37 +9,56 @@ export default function Header({ activeSectionId }: { activeSectionId: string })
 	const location = useLocation();
 	const navigate = useNavigate();
 	const sectionHref = (section: string) => `${location.pathname === "/" ? "" : "/"}#${section}`;
+	const isHomePage = location.pathname === "/";
+	const currentSection = activeSectionId === "features" ? "Features" : activeSectionId === "team" ? "Team" : "About";
 
 	return (
 		<header className="sticky top-0 z-50 w-full border-b border-border bg-background/90 backdrop-blur">
-			<div className="mx-auto flex min-h-16 max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-2 sm:gap-4 sm:px-6">
+			<div className="mx-auto flex min-h-16 max-w-6xl items-center justify-between gap-2 px-3 py-2 sm:px-6">
 				<a href="/" className="flex items-center gap-2 text-xl font-bold tracking-tight text-foreground">
 					<Avatar name="Jappan" image="/logo/profile.png" size="md" aria-hidden="true" />
 					Jappan
 				</a>
-				<nav aria-label="Main navigation" className="flex flex-wrap items-center gap-1 sm:gap-2">
-					<PillLink size="sm" active={activeSectionId === "about"} href={sectionHref("about")}>
-						About
-					</PillLink>
-					<PillLink size="sm" active={activeSectionId === "features"} href={sectionHref("features")}>
-						Features
-					</PillLink>
-					<PillLink
-						size="sm"
-						active={activeSectionId === "team"}
-						href={sectionHref("team")}
-						className="hidden sm:inline-flex"
-					>
-						Team
-					</PillLink>
+				<div className="flex shrink-0 items-center gap-1">
+					{isHomePage && (
+						<nav aria-label="Main navigation" className="flex items-center gap-1">
+							<Menu buttonText={currentSection}>
+								<Menu.Item asChild nativeButton={false} active={activeSectionId === "about"}>
+									<a href={sectionHref("about")}>About</a>
+								</Menu.Item>
+								<Menu.Item asChild nativeButton={false} active={activeSectionId === "features"}>
+									<a href={sectionHref("features")}>Features</a>
+								</Menu.Item>
+								<Menu.Item asChild nativeButton={false} active={activeSectionId === "team"}>
+									<a href={sectionHref("team")}>Team</a>
+								</Menu.Item>
+							</Menu>
+						</nav>
+					)}
 					{!isError && isAdminSession(session) && (
 						<Menu buttonText="Admin" active={location.pathname.startsWith("/admin")}>
-							<Menu.Item onClick={() => navigate("/admin/guilds")}>List Guilds</Menu.Item>
+							<Menu.Sub buttonText="Guild">
+								<Menu.Item
+									active={
+										location.pathname === "/admin/guild" ||
+										location.pathname.startsWith("/admin/guild/")
+									}
+									onClick={() => navigate("/admin/guild")}
+								>
+									View Guild
+								</Menu.Item>
+								<Menu.Item
+									active={location.pathname === "/admin/guilds"}
+									onClick={() => navigate("/admin/guilds")}
+								>
+									List Guilds
+								</Menu.Item>
+							</Menu.Sub>
 						</Menu>
 					)}
 					<AuthControls />
 					<ThemeSwitcher variant="toggle" />
-				</nav>
+				</div>
 			</div>
 		</header>
 	);

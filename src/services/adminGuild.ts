@@ -99,6 +99,33 @@ async function fetchGuildDetails(
 
 type GuildDetails = Awaited<ReturnType<typeof fetchGuildDetails>>;
 
+async function getStoredGuildDetails({
+	client,
+	guildId,
+	guildName,
+	requiredPermissions,
+}: {
+	client: Client;
+	guildId: string;
+	guildName: string;
+	requiredPermissions: ReturnType<typeof getRequiredGlobalBotPermissions>;
+}) {
+	const guild = client.guilds.cache.get(guildId);
+	if (!guild?.available) {
+		return { id: guildId, name: guildName, isActiveMember: guild !== undefined };
+	}
+
+	return fetchGuildDetails(guild, requiredPermissions);
+}
+
+export async function getAdminGuild(client: Client, guildId: string) {
+	const storedGuild = await GuildModel.findOne({ guildId }).select({ _id: 0, guildId: 1, guildName: 1 }).lean();
+	if (!storedGuild) {
+		return null;
+	}
+	return getStoredGuildDetails({ client, ...storedGuild, requiredPermissions: getRequiredGlobalBotPermissions() });
+}
+
 export async function listAllGuilds(client: Client) {
 	const requiredPermissions = getRequiredGlobalBotPermissions();
 	const storedGuilds = await GuildModel.find()
@@ -107,14 +134,9 @@ export async function listAllGuilds(client: Client) {
 		.lean();
 
 	const guilds = await Promise.all(
-		storedGuilds.map(async ({ guildId, guildName }) => {
-			const guild = client.guilds.cache.get(guildId);
-			if (!guild?.available) {
-				return { id: guildId, name: guildName, isActiveMember: guild !== undefined };
-			}
-
-			return fetchGuildDetails(guild, requiredPermissions);
-		}),
+		storedGuilds.map(({ guildId, guildName }) =>
+			getStoredGuildDetails({ client, guildId, guildName, requiredPermissions }),
+		),
 	);
 	return guilds.sort(
 		(first, second) =>
