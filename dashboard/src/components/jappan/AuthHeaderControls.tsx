@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { authClient, sessionQueryKey, useSessionQuery } from "@jappan/handlers/auth";
 import { authErrorURL, safeCallbackPath } from "@jappan/handlers/authRedirect";
+import LoadingIndicator from "./LoadingIndicator";
 
 export default function AuthControls() {
 	const queryClient = useQueryClient();
@@ -71,22 +72,7 @@ export default function AuthControls() {
 					children={
 						<>
 							<Avatar name={"User"} variant="default" size="lg" />
-							<GridLoader
-								label={"Loading session"}
-								colors={[
-									"var(--color-primary)",
-									"var(--color-success)",
-									"var(--color-warning)",
-									"var(--color-destructive)",
-								]}
-								columns={5}
-								rows={1}
-								shape="mixed"
-								shapes={["circle", "square", "diamond", "star", "heart", "hexagon"]}
-								size={60}
-								symbols={["*", "#", "@"]}
-								aria-hidden={true}
-							/>
+							<LoadingIndicator label={"Loading session"} columns={5} rows={1} />
 							<span className="sr-only"> account menu</span>
 						</>
 					}

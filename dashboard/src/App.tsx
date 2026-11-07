@@ -5,6 +5,7 @@ import Commands from "@jappan/pages/Commands";
 import AuthError from "@jappan/pages/auth/AuthError";
 import ListGuilds from "@jappan/pages/admin/ListGuilds";
 import ViewGuild from "@jappan/pages/admin/ViewGuild";
+import ManageBot from "@jappan/pages/admin/ManageBot";
 import WrongPage from "@jappan/pages/WrongPage";
 import { updateHashOnScroll } from "@febkosq8/arc";
 import { useEffect, useRef } from "react";
@@ -39,6 +40,7 @@ function App() {
 				<Route element={<AdminRoute />}>
 					<Route path="/admin/guilds" element={<ListGuilds />} />
 					<Route path="/admin/guild/:guildId?" element={<ViewGuild />} />
+					<Route path="/admin/bot" element={<ManageBot />} />
 				</Route>
 				<Route path="*" element={<WrongPage />} />
 			</Routes>

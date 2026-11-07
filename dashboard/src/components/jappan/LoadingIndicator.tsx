@@ -43,22 +43,26 @@ export default function LoadingIndicator({
 	inline = false,
 	decorative = false,
 	size = inline ? 24 : 100,
+	rows = 3,
+	columns = 3,
 }: {
 	label: string;
 	inline?: boolean;
 	decorative?: boolean;
 	size?: number;
+	rows?: number;
+	columns?: number;
 }) {
 	const loader = (
 		<GridLoader
 			label={label}
 			colors={colors}
-			columns={3}
-			maxSize={24}
-			rows={3}
+			columns={columns}
+			rows={rows}
 			shape="mixed"
 			shapes={shapes}
 			size={size}
+			style={{ height: size * (rows / Math.max(rows, columns)) }}
 			symbols={symbols}
 			aria-hidden={decorative || undefined}
 		/>

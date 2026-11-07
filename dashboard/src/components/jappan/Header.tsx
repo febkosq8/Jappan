@@ -12,10 +12,17 @@ export default function Header() {
 	const isCommandsPage = location.pathname === "/commands";
 	const isViewGuildPage = location.pathname === "/admin/guild" || location.pathname.startsWith("/admin/guild/");
 	const isListGuildsPage = location.pathname === "/admin/guilds";
+	const isViewBotPage = location.pathname === "/admin/bot";
 	const isAdmin = !isError && isAdminSession(session);
 	const currentPage = isHomePage ? "Home" : isCommandsPage ? "Commands" : "Pages";
 	const mobilePage =
-		isAdmin && isViewGuildPage ? "View Guild" : isAdmin && isListGuildsPage ? "List Guilds" : currentPage;
+		isAdmin && isViewBotPage
+			? "Manage Bot"
+			: isAdmin && isViewGuildPage
+				? "View Guild"
+				: isAdmin && isListGuildsPage
+					? "List Guilds"
+					: currentPage;
 	const homeItem = (
 		<Menu.Item asChild nativeButton={false} active={isHomePage}>
 			<a href="/" aria-current={isHomePage ? "page" : undefined}>
@@ -40,6 +47,13 @@ export default function Header() {
 			</Menu.Item>
 		</Menu.Sub>
 	);
+	const botMenu = (
+		<Menu.Sub buttonText="Bot">
+			<Menu.Item active={isViewBotPage} onClick={() => navigate("/admin/bot")}>
+				Manage Bot
+			</Menu.Item>
+		</Menu.Sub>
+	);
 
 	return (
 		<header className="sticky top-0 z-50 w-full border-b border-border bg-background/90 backdrop-blur">
@@ -56,6 +70,7 @@ export default function Header() {
 							{isAdmin && (
 								<Menu.Sub buttonText="Admin" active={location.pathname.startsWith("/admin")}>
 									{guildMenu}
+									{botMenu}
 								</Menu.Sub>
 							)}
 						</Menu>
@@ -68,6 +83,7 @@ export default function Header() {
 						{isAdmin && (
 							<Menu buttonText="Admin" active={location.pathname.startsWith("/admin")}>
 								{guildMenu}
+								{botMenu}
 							</Menu>
 						)}
 					</nav>

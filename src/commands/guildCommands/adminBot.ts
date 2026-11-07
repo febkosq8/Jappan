@@ -7,14 +7,7 @@ import {
 } from "discord.js";
 
 import type { BotCommand, BotCommandData } from "../../helpers/command.js";
-import {
-	formatChannel,
-	formatChannelMention,
-	formatGuild,
-	formatGuildMention,
-	formatUser,
-	formatUserMention,
-} from "../../helpers/discord.js";
+import { formatChannelMention, formatGuild, formatGuildMention, formatUserMention } from "../../helpers/discord.js";
 import { sendResponse } from "../../helpers/response.js";
 import { wait } from "../../helpers/utils.js";
 import { isAdminUser } from "../../services/adminGuild.js";

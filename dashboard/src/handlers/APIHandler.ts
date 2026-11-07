@@ -17,6 +17,29 @@ export interface HealthResponse {
 	};
 }
 
+export interface AdminBotPlayerSession {
+	guild: { id: string; name: string };
+	channel: { id: string; name: string } | null;
+	user: { id: string; username: string } | null;
+	queueSize: number;
+	nowPlaying: string | null;
+	playerState: "Playing" | "Paused";
+}
+
+export interface AdminBotStatus {
+	botName: string;
+	botAvatarUrl: string;
+	botId: string | null;
+	version: string;
+	bootedAtMs: number;
+	activePlayerSessions: AdminBotPlayerSession[];
+}
+
+export interface AdminBotShutdownResult {
+	scheduled: true;
+	delayMilliseconds: number;
+}
+
 interface AdminGuildBase {
 	id: string;
 	name: string;
@@ -170,6 +193,26 @@ class APIHandler {
 
 	static async getAdminGuilds(): Promise<AdminGuild[]> {
 		const { data } = await apiClient.get<AdminGuild[]>("/api/v1/admin/guilds", { withCredentials: true });
+		return data;
+	}
+
+	static async getAdminBotStatus(): Promise<AdminBotStatus> {
+		const { data } = await apiClient.get<AdminBotStatus>("/api/v1/admin/bot", { withCredentials: true });
+		return data;
+	}
+
+	static async refreshAdminBotPlayerHealth(): Promise<{ healthy: boolean }> {
+		const { data } = await apiClient.put<{ healthy: boolean }>("/api/v1/admin/bot/player-health-check", undefined, {
+			withCredentials: true,
+		});
+		return data;
+	}
+
+	static async stopAdminBot(): Promise<AdminBotShutdownResult> {
+		const { data } = await apiClient.delete<AdminBotShutdownResult>("/api/v1/admin/bot/stop", {
+			data: { confirm: true },
+			withCredentials: true,
+		});
 		return data;
 	}
 
