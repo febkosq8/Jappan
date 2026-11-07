@@ -7,12 +7,22 @@ import { FiArrowLeft, FiExternalLink, FiLink } from "react-icons/fi";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
-import APIHandler, { type AdminGuildDetails, type PreferenceEntity } from "@jappan/handlers/APIHandler";
+import APIHandler, {
+	type AdminGuildChannel,
+	type AdminGuildDetails,
+	type PreferenceEntity,
+} from "@jappan/handlers/APIHandler";
 import { AccessRedirect, accessErrorStatus } from "@jappan/components/jappan/AdminRoute";
 import LoadingIndicator from "@jappan/components/jappan/LoadingIndicator";
 
 const guildIdPattern = /^\d{17,20}$/u;
-const guildSectionIds = ["guild-overview", "service-preferences", "bot-permissions", "command-permissions"];
+const guildSectionIds = [
+	"guild-overview",
+	"guild-channels",
+	"service-preferences",
+	"bot-permissions",
+	"command-permissions",
+];
 
 function SectionLink({ id, label }: { id: string; label: string }) {
 	return (
@@ -228,6 +238,218 @@ function GuildPreferences({ guild }: { guild: AdminGuildDetails }) {
 	);
 }
 
+function ChannelGroupList({ guildId, channels }: { guildId: string; channels: AdminGuildChannel[] }) {
+	const categoryType = 4;
+	const categories = channels.filter((channel) => channel.type === categoryType);
+	const categoryIds = new Set(categories.map((category) => category.id));
+	const childrenByParent = new Map<string, AdminGuildChannel[]>();
+	const uncategorized: AdminGuildChannel[] = [];
+	for (const channel of channels) {
+		if (channel.type === categoryType) continue;
+		if (!channel.parent) {
+			uncategorized.push(channel);
+		} else {
+			const children = childrenByParent.get(channel.parent.id) ?? [];
+			children.push(channel);
+			childrenByParent.set(channel.parent.id, children);
+		}
+	}
+	const missingCategories = [...childrenByParent.entries()].filter(([id]) => !categoryIds.has(id));
+	const groups = [
+		...(uncategorized.length
+			? [
+					{
+						key: "uncategorized",
+						name: "No parent category",
+						categoryId: null,
+						unavailable: false,
+						createdAt: null,
+						channels: uncategorized,
+					},
+				]
+			: []),
+		...categories.map((category) => ({
+			key: category.id,
+			name: category.name,
+			categoryId: category.id,
+			unavailable: false,
+			createdAt: category.createdAt,
+			channels: childrenByParent.get(category.id) ?? [],
+		})),
+		...missingCategories.map(([id, children]) => ({
+			key: id,
+			name: children[0]?.parent?.name ?? "Unavailable category",
+			categoryId: id,
+			unavailable: true,
+			createdAt: null,
+			channels: children,
+		})),
+	];
+
+	return (
+		<div className="mt-4 space-y-4">
+			{groups.map((group) => (
+				<Card
+					key={group.key}
+					hoverable={false}
+					role="region"
+					aria-label={group.name}
+					className="min-w-0 rounded-md border-border p-3"
+				>
+					<h3 className="wrap-break-word font-semibold">{group.name}</h3>
+					{group.categoryId && (
+						<p className="break-all text-xs text-muted-foreground">
+							{group.unavailable ? "Category unavailable · " : ""}
+							{group.categoryId}
+						</p>
+					)}
+					{group.createdAt !== null && (
+						<p className="mt-1 text-sm text-muted-foreground">
+							Created: {DateHandler.getDateTime(group.createdAt)} (
+							{DateHandler.getRelativeTime(group.createdAt)})
+						</p>
+					)}
+					{group.channels.length === 0 ? (
+						<p className="mt-2 text-sm text-muted-foreground">No channels in this category.</p>
+					) : (
+						<ul className="mt-3 grid gap-3 sm:grid-cols-2">
+							{group.channels.map((channel) => (
+								<li key={channel.id}>
+									<Card hoverable={false} className="h-full min-w-0 rounded-md border-border p-3">
+										<div className="flex flex-wrap items-start justify-between gap-2">
+											<div className="min-w-0 wrap-break-word">
+												<DiscordTextLink
+													href={`https://discord.com/channels/${encodeURIComponent(guildId)}/${encodeURIComponent(channel.id)}`}
+													text={channel.name}
+												/>
+											</div>
+											{(channel.nsfw ||
+												(channel.rateLimitPerUser != null && channel.rateLimitPerUser > 0) ||
+												(channel.userLimit !== undefined && channel.userLimit > 0)) && (
+												<div className="ml-auto flex flex-wrap justify-end gap-1">
+													{channel.nsfw && (
+														<span className="rounded-md bg-warning/15 px-2 py-1 text-xs font-medium text-foreground">
+															NSFW
+														</span>
+													)}
+													{channel.rateLimitPerUser != null &&
+														channel.rateLimitPerUser > 0 && (
+															<span className="rounded-md bg-muted px-2 py-1 text-xs font-medium text-foreground">
+																Slowmode:{" "}
+																{DateHandler.formatDuration(channel.rateLimitPerUser)}
+															</span>
+														)}
+													{channel.userLimit !== undefined && channel.userLimit > 0 && (
+														<span className="rounded-md bg-muted px-2 py-1 text-xs font-medium text-foreground">
+															User limit: {channel.userLimit}
+														</span>
+													)}
+												</div>
+											)}
+										</div>
+										<p className="break-all text-xs text-muted-foreground">{channel.id}</p>
+										<dl className="mt-2 text-sm">
+											<div className="flex flex-wrap gap-x-1">
+												<dt className="text-muted-foreground">Type:</dt>
+												<dd>{channel.typeName.replace(/([a-z])([A-Z])/g, "$1 $2")}</dd>
+											</div>
+											<div className="flex flex-wrap gap-x-1">
+												<dt className="text-muted-foreground">Created:</dt>
+												<dd>
+													{DateHandler.getDateTime(channel.createdAt)}{" "}
+													<span className="text-muted-foreground">
+														({DateHandler.getRelativeTime(channel.createdAt)})
+													</span>
+												</dd>
+											</div>
+											{channel.topic && (
+												<div>
+													<dt className="text-muted-foreground">Topic:</dt>
+													<dd className="wrap-break-word whitespace-pre-wrap">
+														{channel.topic}
+													</dd>
+												</div>
+											)}
+											{channel.rateLimitPerUser === null && (
+												<div className="flex flex-wrap gap-x-1">
+													<dt className="text-muted-foreground">Slowmode:</dt>
+													<dd>Unavailable</dd>
+												</div>
+											)}
+											{channel.bitrate !== undefined && (
+												<div className="flex flex-wrap gap-x-1">
+													<dt className="text-muted-foreground">Bitrate:</dt>
+													<dd>{channel.bitrate.toLocaleString()} bps</dd>
+												</div>
+											)}
+										</dl>
+									</Card>
+								</li>
+							))}
+						</ul>
+					)}
+				</Card>
+			))}
+		</div>
+	);
+}
+
+function GuildChannels({ guild }: { guild: AdminGuildDetails }) {
+	const channelsQuery = useQuery({
+		queryKey: ["admin", "guild", guild.id, "channels"],
+		queryFn: () => APIHandler.getAdminGuildChannels(guild.id),
+		enabled: false,
+		retry: false,
+	});
+	const accessStatus = accessErrorStatus(channelsQuery.error);
+	if (accessStatus) return <AccessRedirect status={accessStatus} />;
+
+	const errorStatus = axios.isAxiosError(channelsQuery.error) ? channelsQuery.error.response?.status : undefined;
+	const errorMessage =
+		errorStatus === 409
+			? "The bot is no longer a member of this guild."
+			: errorStatus === 404
+				? "This guild is no longer registered."
+				: errorStatus === 503
+					? "The guild or a required service is unavailable. Please try again."
+					: "Could not load channels. Please try again.";
+
+	return (
+		<Card id="guild-channels" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
+			<h2 className="flex items-center gap-1 text-lg font-semibold">
+				Channels <SectionLink id="guild-channels" label="channels" />
+			</h2>
+			<p className="mt-1 text-sm text-muted-foreground">
+				Load the current channels and categories from Discord. Threads are not included.
+			</p>
+			<Button
+				type="button"
+				size="sm"
+				variant="outline-primary"
+				className="mt-3"
+				disabled={channelsQuery.isFetching || !guild.isActiveMember}
+				onClick={() => void channelsQuery.refetch()}
+			>
+				{channelsQuery.data ? "Refresh channels" : "Load channels"}
+			</Button>
+			{!guild.isActiveMember && (
+				<p className="mt-3 text-muted-foreground">The bot is not a member of this guild.</p>
+			)}
+			{channelsQuery.isFetching ? (
+				<LoadingIndicator label="Loading channels" />
+			) : channelsQuery.isError ? (
+				<p role="alert" className="mt-3 text-destructive">
+					{errorMessage}
+				</p>
+			) : channelsQuery.data?.length === 0 ? (
+				<p className="mt-3 text-muted-foreground">No channels found.</p>
+			) : channelsQuery.data ? (
+				<ChannelGroupList guildId={guild.id} channels={channelsQuery.data} />
+			) : null}
+		</Card>
+	);
+}
+
 function GuildDetails({
 	guild,
 	scrollContainerRef,
@@ -412,6 +634,7 @@ function GuildDetails({
 					</Detail>
 				</dl>
 			</Card>
+			<GuildChannels key={guild.id} guild={guild} />
 			<GuildPreferences guild={guild} />
 			<Card id="bot-permissions" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
 				<h2 className="flex items-center gap-1 text-lg font-semibold">

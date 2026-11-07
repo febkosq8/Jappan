@@ -38,6 +38,21 @@ export interface PreferenceEntity {
 	name: string | null;
 }
 
+export interface AdminGuildChannel {
+	id: string;
+	name: string;
+	type: number;
+	typeName: string;
+	createdAt: number;
+	parent: PreferenceEntity | null;
+	position: number;
+	topic?: string | null;
+	nsfw?: boolean;
+	rateLimitPerUser?: number | null;
+	bitrate?: number;
+	userLimit?: number;
+}
+
 export interface AdminGuildDetails extends AdminGuild {
 	discoveredAt: number | null;
 	preferences: {
@@ -88,6 +103,14 @@ class APIHandler {
 		const { data } = await apiClient.get<AdminGuildDetails>(`/api/v1/admin/guilds/${encodeURIComponent(guildId)}`, {
 			withCredentials: true,
 		});
+		return data;
+	}
+
+	static async getAdminGuildChannels(guildId: string): Promise<AdminGuildChannel[]> {
+		const { data } = await apiClient.get<AdminGuildChannel[]>(
+			`/api/v1/admin/guilds/${encodeURIComponent(guildId)}/channels`,
+			{ withCredentials: true },
+		);
 		return data;
 	}
 }

@@ -1,14 +1,7 @@
-import type { Client, Guild, GuildBasedChannel, Invite } from "discord.js";
-import { DiscordAPIError, EmbedBuilder, PermissionFlagsBits, blockQuote } from "discord.js";
+import type { Client, Guild, Invite } from "discord.js";
+import { ChannelType, DiscordAPIError, EmbedBuilder, PermissionFlagsBits, blockQuote } from "discord.js";
 
-import {
-	formatChannel,
-	formatChannelMention,
-	formatGuild,
-	formatGuildMention,
-	formatUser,
-	formatUserMention,
-} from "../helpers/discord.js";
+import { formatChannel, formatGuild, formatUser } from "../helpers/discord.js";
 import type { SentGuildMessage } from "../helpers/guildHelper.js";
 import { sendGuildMessage } from "../helpers/guildHelper.js";
 import GuildModel from "../models/guild.js";
@@ -99,8 +92,6 @@ async function fetchGuildDetails(
 		owner: { userId: owner.id, avatarUrl: owner.displayAvatarURL(), username: owner.username },
 	};
 }
-
-type GuildDetails = Awaited<ReturnType<typeof fetchGuildDetails>>;
 
 async function getStoredGuildDetails({
 	client,
@@ -240,87 +231,57 @@ export async function listAllGuilds(client: Client) {
 	);
 }
 
-export function buildGuildListEmbeds({
-	list,
-	config,
-}: {
-	list: Awaited<ReturnType<typeof listAllGuilds>>;
-	config: Config;
-}): EmbedBuilder[] {
-	const guilds = list
-		.filter((guild): guild is GuildDetails => "joinedTimestamp" in guild)
-		.sort((first, second) => first.joinedTimestamp - second.joinedTimestamp);
-	const totalMembers = guilds.reduce((total, guild) => total + guild.memberCount, 0);
-	const totalEmbeds = guilds.length + 1;
-	const createFooter = (embedIndex: number) => ({
-		text: `Page ${embedIndex + 1} / ${totalEmbeds}`,
+export async function listAdminGuildChannels(client: Client, guildId: string) {
+	const storedGuild = await GuildModel.exists({ guildId });
+	if (!storedGuild) return { status: "not_found" } as const;
+
+	const guild = client.guilds.cache.get(guildId);
+	if (!guild) return { status: "not_member" } as const;
+	if (!guild.available) return { status: "unavailable" } as const;
+
+	const fetched = await guild.channels.fetch();
+	const channels = [...fetched.values()].map((channel) => {
+		if (!channel) throw new Error(`Discord returned an unsupported channel type in guild ${guildId}`);
+		const parent = channel.parentId ? fetched.get(channel.parentId) : null;
+		return {
+			id: channel.id,
+			name: channel.name,
+			type: channel.type,
+			typeName: ChannelType[channel.type] ?? `Unknown (${channel.type})`,
+			createdAt: channel.createdTimestamp,
+			parent: channel.parentId ? { id: channel.parentId, name: parent?.name ?? null } : null,
+			position: channel.rawPosition,
+			...("topic" in channel ? { topic: channel.topic } : {}),
+			...("nsfw" in channel ? { nsfw: channel.nsfw } : {}),
+			...("rateLimitPerUser" in channel ? { rateLimitPerUser: channel.rateLimitPerUser } : {}),
+			...("bitrate" in channel ? { bitrate: channel.bitrate } : {}),
+			...("userLimit" in channel ? { userLimit: channel.userLimit } : {}),
+		};
 	});
-	const embeds: EmbedBuilder[] = [
-		new EmbedBuilder()
-			.setColor("Orange")
-			.setAuthor({ name: `${config.BOT_NAME} Admin`, iconURL: config.BOT_PFP, url: config.BOT_WEBSITE })
-			.setTitle("Guild summary")
-			.addFields(
-				{ name: "Total servers", value: String(guilds.length), inline: true },
-				{ name: "Total members", value: String(totalMembers), inline: true },
-			)
-
-			.setFooter(createFooter(0))
-			.setTimestamp(),
-	];
-	for (const [guildIndex, details] of guilds.entries()) {
-		embeds.push(
-			new EmbedBuilder()
-				.setColor("Orange")
-				.setAuthor({ name: `${config.BOT_NAME} Admin`, iconURL: config.BOT_PFP, url: config.BOT_WEBSITE })
-				.setTitle(`Guild #${guildIndex + 1}`)
-				.addFields(
-					{ name: "Guild", value: formatGuildMention(details) },
-					{ name: "Members", value: String(details.memberCount), inline: true },
-					{ name: "Joined", value: `<t:${Math.floor(details.joinedTimestamp / 1000)}:R>`, inline: true },
-					{
-						name: "System channel",
-						value: details.systemChannel ? formatChannelMention(details.systemChannel) : "None",
-						inline: true,
-					},
-					{
-						name: "Owner",
-						value: formatUserMention({ id: details.owner.userId, username: details.owner.username }),
-					},
-					{
-						name: "Has all required permissions",
-						value: details.hasRequiredPermissions ? "Yes" : "No",
-					},
-				)
-
-				.setFooter(createFooter(guildIndex + 1))
-				.setTimestamp(),
-		);
+	const comparePosition = (first: (typeof channels)[number], second: (typeof channels)[number]) =>
+		first.position - second.position || first.id.localeCompare(second.id);
+	const categories = channels.filter((channel) => channel.type === ChannelType.GuildCategory).sort(comparePosition);
+	const childrenByParent = new Map<string, typeof channels>();
+	const uncategorized: typeof channels = [];
+	for (const channel of channels) {
+		if (channel.type === ChannelType.GuildCategory) continue;
+		if (!channel.parent) {
+			uncategorized.push(channel);
+			continue;
+		}
+		const siblings = childrenByParent.get(channel.parent.id) ?? [];
+		siblings.push(channel);
+		childrenByParent.set(channel.parent.id, siblings);
 	}
-
-	return embeds;
-}
-
-export async function getGuildChannel({
-	client,
-	guildId,
-	channelId,
-}: {
-	client: Client;
-	guildId: string;
-	channelId: string;
-}): Promise<GuildBasedChannel> {
-	const guild = await client.guilds.fetch(guildId).catch(() => null);
-	if (!guild) {
-		throw new Error("Guild not found.");
+	const ordered = uncategorized.sort(comparePosition);
+	for (const category of categories) {
+		ordered.push(category, ...(childrenByParent.get(category.id) ?? []).sort(comparePosition));
+		childrenByParent.delete(category.id);
 	}
-
-	const channel = await guild.channels.fetch(channelId).catch(() => null);
-	if (!channel) {
-		throw new Error("Channel not found in that guild.");
+	for (const parentId of [...childrenByParent.keys()].sort()) {
+		ordered.push(...(childrenByParent.get(parentId) ?? []).sort(comparePosition));
 	}
-
-	return channel;
+	return { status: "ok", channels: ordered } as const;
 }
 
 export async function sendGuildAdminMessage({

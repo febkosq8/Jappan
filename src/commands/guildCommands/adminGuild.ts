@@ -21,17 +21,8 @@ import {
 	formatUserMention,
 } from "../../helpers/discord.js";
 import { DISCORD_INTERACTION_TIME_LIMIT_MS } from "../../helpers/interaction.js";
-import {
-	buildGuildListEmbeds,
-	getGuildChannel,
-	getGuildInvite,
-	isAdminUser,
-	kickGuild,
-	listAllGuilds,
-	sendGuildAdminMessage,
-} from "../../services/adminGuild.js";
+import { getGuildInvite, isAdminUser, kickGuild, sendGuildAdminMessage } from "../../services/adminGuild.js";
 import type { Config } from "../../services/config.js";
-import { isDatabaseConnected } from "../../services/database.js";
 import { logger } from "../../services/logger.js";
 
 const commandData = {
@@ -41,8 +32,6 @@ const commandData = {
 	defaultMemberPermissions: PermissionFlagsBits.ManageGuild,
 	hasSubCommands: true,
 	subCommands: [
-		{ name: "list", description: "List the guilds where the bot is installed", category: "admin" },
-		{ name: "channel", description: "Inspect a channel in a guild", category: "admin" },
 		{
 			name: "selfkick",
 			description: "Leave every other guild with an optional message and progress updates",
@@ -123,20 +112,6 @@ const command: BotCommand = {
 		.setName(commandData.name)
 		.setDescription(commandData.description)
 		.addSubcommand((subcommand) =>
-			subcommand.setName("list").setDescription("List the guilds where the bot is installed"),
-		)
-		.addSubcommand((subcommand) =>
-			subcommand
-				.setName("channel")
-				.setDescription("Inspect a channel in a guild")
-				.addStringOption((option) =>
-					option.setName("guild-id").setDescription("Guild ID").setAutocomplete(true).setRequired(true),
-				)
-				.addStringOption((option) =>
-					option.setName("channel-id").setDescription("Channel ID").setAutocomplete(true).setRequired(true),
-				),
-		)
-		.addSubcommand((subcommand) =>
 			subcommand
 				.setName("selfkick")
 				.setDescription("Leave every other guild with an optional message and progress updates")
@@ -206,93 +181,6 @@ const command: BotCommand = {
 		}
 
 		const subcommand = interaction.options.getSubcommand();
-		if (subcommand === "list") {
-			if (!isDatabaseConnected()) {
-				logger.warn("ADMIN", "Guild list rejected because database is unavailable", {
-					user: formatUser(interaction.user),
-				});
-				await interaction.editReply("⛔ The bot is temporarily unavailable. Please try again later.");
-				return;
-			}
-			const list = await listAllGuilds(interaction.client);
-			const embeds = buildGuildListEmbeds({
-				list,
-				config,
-			});
-			if (embeds.length === 0) {
-				await interaction.editReply("No guilds found.");
-				return;
-			}
-			await sendResponse({
-				destination: interaction,
-				content: { embeds, flags: MessageFlags.Ephemeral },
-			});
-			return;
-		}
-
-		if (subcommand === "channel") {
-			try {
-				const channel = await getGuildChannel({
-					client: interaction.client,
-					guildId: interaction.options.getString("guild-id", true),
-					channelId: interaction.options.getString("channel-id", true),
-				});
-				const channelEmbed = new EmbedBuilder()
-					.setColor("Orange")
-					.setAuthor({ name: `${config.BOT_NAME} Admin`, iconURL: config.BOT_PFP, url: config.BOT_WEBSITE })
-					.setTitle("Channel details")
-					.addFields(
-						{ name: "Channel", value: formatChannelMention(channel) },
-						{ name: "Guild", value: formatGuildMention(channel.guild) },
-						{ name: "Type", value: ChannelType[channel.type] ?? String(channel.type), inline: true },
-						{
-							name: "Created",
-							value: channel.createdTimestamp
-								? `<t:${Math.floor(channel.createdTimestamp / 1000)}:F>`
-								: "Unknown",
-							inline: true,
-						},
-						{ name: "URL", value: channel.url },
-						{
-							name: "Parent",
-							value: channel.parent ? formatChannelMention(channel.parent) : "None",
-							inline: true,
-						},
-					)
-					.setTimestamp();
-
-				if ("topic" in channel && channel.topic) {
-					channelEmbed.addFields({ name: "Topic", value: channel.topic });
-				}
-				if ("nsfw" in channel) {
-					channelEmbed.addFields({ name: "NSFW", value: channel.nsfw ? "Yes" : "No", inline: true });
-				}
-				if ("rateLimitPerUser" in channel) {
-					channelEmbed.addFields({
-						name: "Slowmode",
-						value: `${channel.rateLimitPerUser} seconds`,
-						inline: true,
-					});
-				}
-				if ("bitrate" in channel) {
-					channelEmbed.addFields({ name: "Bitrate", value: `${channel.bitrate} bps`, inline: true });
-				}
-				if ("userLimit" in channel) {
-					channelEmbed.addFields({
-						name: "User limit",
-						value: String(channel.userLimit || "Unlimited"),
-						inline: true,
-					});
-				}
-
-				await interaction.editReply({ embeds: [channelEmbed] });
-			} catch (error: unknown) {
-				const message = error instanceof Error ? error.message : "Could not inspect that channel.";
-				await interaction.editReply(`⛔ ${message}`);
-			}
-			return;
-		}
-
 		if (subcommand === "selfkick") {
 			if (!interaction.options.getBoolean("confirm", true)) {
 				await interaction.editReply("⛔ Confirmation is required for this destructive action.");

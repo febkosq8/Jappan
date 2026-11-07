@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Expanded API documentation to support request details, response formats, and authentication requirements.
+- Added an on-demand admin guild channel list endpoint and dashboard card with channel-specific details.
+
+### Removed
+
+- Removed `/admin-guild list`; administrators can use the dashboard guild list instead.
+- Removed `/admin-guild channel`; administrators can inspect channels in the dashboard guild view.
 
 ### Fixed
 

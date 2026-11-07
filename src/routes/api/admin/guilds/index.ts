@@ -4,7 +4,7 @@ import { getClient } from "../../../../bot.js";
 import { requireAdmin, requireSession } from "../../../../handlers/auth.js";
 import { requireDatabase, requireDiscord } from "../../../../handlers/availability.js";
 import { defineRouter, errorResponseSchema } from "../../../../helpers/route.js";
-import { getAdminGuild, listAllGuilds } from "../../../../services/adminGuild.js";
+import { getAdminGuild, listAdminGuildChannels, listAllGuilds } from "../../../../services/adminGuild.js";
 
 const guildSchema = z.object({
 	id: z.string(),
@@ -53,6 +53,67 @@ const guildDetailsSchema = guildSchema.extend({
 });
 
 export default defineRouter("/guilds", [
+	{
+		method: "get",
+		path: "/:guildId/channels",
+		tags: ["Admin Guilds"],
+		summary: "List channels in a registered guild",
+		errorMessage: "Failed to list guild channels",
+		security: [{ sessionCookie: [] }],
+		parameters: [
+			{
+				name: "guildId",
+				in: "path",
+				required: true,
+				description: "Discord guild ID",
+				schema: z.string().regex(/^\d{17,20}$/u),
+			},
+		],
+		responses: {
+			200: {
+				description: "Guild channels and categories, excluding threads",
+				schema: z.array(
+					z.object({
+						id: z.string(),
+						name: z.string(),
+						type: z.number().int(),
+						typeName: z.string(),
+						createdAt: z.number().int(),
+						parent: z.object({ id: z.string(), name: z.string().nullable() }).nullable(),
+						position: z.number().int(),
+						topic: z.string().nullable().optional(),
+						nsfw: z.boolean().optional(),
+						rateLimitPerUser: z.number().int().nullable().optional(),
+						bitrate: z.number().int().optional(),
+						userLimit: z.number().int().optional(),
+					}),
+				),
+			},
+			400: { description: "Invalid guild ID", schema: errorResponseSchema },
+			404: { description: "Guild not found", schema: errorResponseSchema },
+			409: { description: "Bot is not a guild member", schema: errorResponseSchema },
+			503: { description: "Guild or service unavailable", schema: errorResponseSchema },
+			500: { description: "Failed to list guild channels", schema: errorResponseSchema },
+		},
+		middleware: [requireDatabase, requireDiscord, requireSession, requireAdmin],
+		handler: async (request, response) => {
+			const guildId = request.params.guildId;
+			if (typeof guildId !== "string" || !/^\d{17,20}$/u.test(guildId)) {
+				return response.status(400).json({ error: "Invalid guild ID" });
+			}
+			const result = await listAdminGuildChannels(getClient(), guildId);
+			switch (result.status) {
+				case "not_found":
+					return response.status(404).json({ error: "Guild not found" });
+				case "not_member":
+					return response.status(409).json({ error: "Bot is not a guild member" });
+				case "unavailable":
+					return response.status(503).json({ error: "Guild is unavailable" });
+				case "ok":
+					return response.status(200).json(result.channels);
+			}
+		},
+	},
 	{
 		method: "get",
 		path: "/",

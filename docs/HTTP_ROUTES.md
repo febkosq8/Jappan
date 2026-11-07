@@ -129,9 +129,22 @@ settings are returned even when Discord guild details are unavailable. The
 dashboard displays these saved settings read-only. Guild detail sections support
 shareable URL hashes that update as the page is scrolled. It returns
 400 for an invalid Discord guild ID and 404 when the guild is not stored.
-The Discord admin guild list uses the same stored-guild data and displays entries
-with currently available Discord details. It requires the database to be connected.
 
+`GET /api/v1/admin/guilds/{guildId}/channels` requires an admin session, database
+availability, and a connected bot. It fetches the guild's current channels and
+categories from Discord (excluding threads) and returns an array with `id`,
+`name`, numeric `type`, `typeName`, `createdAt` (Discord creation time in Unix
+milliseconds), `position`, and nullable `parent` (`id` and
+nullable `name`). Where supported by the channel type, it also includes `topic`
+(nullable), `nsfw` (boolean), `rateLimitPerUser` (slowmode in seconds, nullable
+if unavailable), `bitrate` (bits per second), and `userLimit` (zero means
+unlimited). A slowmode of zero means off. It returns 400 for an invalid ID, 404 for an unregistered guild,
+409 if the bot is no longer a member, and 503 if the guild or a required service
+is unavailable. Unexpected Discord errors fail the request. The guild view loads
+this list only when requested, and its card supports the `#guild-channels` hash.
+Uncategorized channels appear first, followed by categories in position order
+with their channels immediately after each category in position order. Channels
+whose parent category is unavailable appear last, grouped by parent ID.
 Better Auth uses its MongoDB adapter; the corresponding Mongoose models in
 `src/models/` allow internal services to query the same collections. Account
 credentials, session tokens and verification values are excluded from normal
