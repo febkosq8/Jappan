@@ -7,7 +7,6 @@ import { toast } from "sonner";
 import APIHandler, {
 	type AdminGuildChannel,
 	type AdminGuildDetails,
-	type GuildPreferences,
 	type GuildRole,
 	type PreferenceEntity,
 } from "@jappan/handlers/APIHandler";
@@ -169,18 +168,18 @@ interface SectionProps {
 	guild: AdminGuildDetails;
 	channels: AdminGuildChannel[] | undefined;
 	roles: GuildRole[] | undefined;
-	onSaved: (preferences: GuildPreferences) => void;
+	onSaved: () => Promise<void>;
 }
 
 function useSave<Input>(
-	save: (input: Input) => Promise<GuildPreferences>,
+	save: (input: Input) => Promise<void>,
 	label: string,
 	onSaved: SectionProps["onSaved"],
 ) {
-	return useMutation<GuildPreferences, Error, Input>({
+	return useMutation<void, Error, Input>({
 		mutationFn: save,
-		onSuccess: (preferences) => {
-			onSaved(preferences);
+		onSuccess: async () => {
+			await onSaved();
 			toast.success(`${label} preferences saved.`);
 		},
 		onError: (error) => toast.error(getErrorMessage(error)),
@@ -424,10 +423,8 @@ export default function GuildPreferencesEditor({ guild }: { guild: AdminGuildDet
 		enabled: guild.isActiveMember,
 		retry: false,
 	});
-	function onSaved(preferences: GuildPreferences) {
-		queryClient.setQueryData<AdminGuildDetails>(["admin", "guild", guild.id], (previous) =>
-			previous ? { ...previous, preferences } : previous,
-		);
+	function onSaved() {
+		return queryClient.invalidateQueries({ queryKey: ["admin", "guild", guild.id], exact: true });
 	}
 
 	const sectionProps: SectionProps = {

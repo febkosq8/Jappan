@@ -9,7 +9,6 @@ import { defineRouter, errorResponseSchema } from "../../../helpers/route.js";
 import {
 	getAdminGuild,
 	getAdminGuildForAction,
-	getAdminGuildPreferences,
 	listAdminGuildChannels,
 	listAdminGuildRoles,
 } from "../../../services/adminGuild.js";
@@ -22,7 +21,6 @@ import {
 import {
 	auditLogPreferenceSchema,
 	guildDetailsSchema,
-	guildPreferencesSchema,
 	levelingPreferenceSchema,
 	memberAnnouncementsPreferenceSchema,
 	warningsPreferenceSchema,
@@ -182,7 +180,7 @@ export default defineRouter("/guild", [
 			content: { "application/json": { schema: auditLogPreferenceSchema } },
 		},
 		responses: {
-			200: { description: "Updated service preferences", schema: guildPreferencesSchema },
+			204: { description: "Audit log preferences updated" },
 			...accessResponses,
 			404: { description: "Guild not found", schema: errorResponseSchema },
 			409: { description: "Bot is not a guild member", schema: errorResponseSchema },
@@ -201,7 +199,7 @@ export default defineRouter("/guild", [
 			if (result.status === "invalid") {
 				return response.status(400).json({ error: result.error });
 			}
-			return response.status(200).json(await getAdminGuildPreferences(guild));
+			return response.status(204).end();
 		},
 	},
 	{
@@ -217,7 +215,7 @@ export default defineRouter("/guild", [
 			content: { "application/json": { schema: levelingPreferenceSchema } },
 		},
 		responses: {
-			200: { description: "Updated service preferences", schema: guildPreferencesSchema },
+			204: { description: "Leveling preferences updated" },
 			...accessResponses,
 			404: { description: "Guild not found", schema: errorResponseSchema },
 			409: { description: "Bot is not a guild member", schema: errorResponseSchema },
@@ -236,7 +234,7 @@ export default defineRouter("/guild", [
 			if (result.status === "invalid") {
 				return response.status(400).json({ error: result.error });
 			}
-			return response.status(200).json(await getAdminGuildPreferences(guild));
+			return response.status(204).end();
 		},
 	},
 	{
@@ -252,7 +250,7 @@ export default defineRouter("/guild", [
 			content: { "application/json": { schema: memberAnnouncementsPreferenceSchema } },
 		},
 		responses: {
-			200: { description: "Updated service preferences", schema: guildPreferencesSchema },
+			204: { description: "Member announcement preferences updated" },
 			...accessResponses,
 			404: { description: "Guild not found", schema: errorResponseSchema },
 			409: { description: "Bot is not a guild member", schema: errorResponseSchema },
@@ -271,7 +269,7 @@ export default defineRouter("/guild", [
 			if (result.status === "invalid") {
 				return response.status(400).json({ error: result.error });
 			}
-			return response.status(200).json(await getAdminGuildPreferences(guild));
+			return response.status(204).end();
 		},
 	},
 	{
@@ -287,7 +285,7 @@ export default defineRouter("/guild", [
 			content: { "application/json": { schema: warningsPreferenceSchema } },
 		},
 		responses: {
-			200: { description: "Updated service preferences", schema: guildPreferencesSchema },
+			204: { description: "Warning preferences updated" },
 			...accessResponses,
 			404: { description: "Guild not found", schema: errorResponseSchema },
 			409: { description: "Bot is not a guild member", schema: errorResponseSchema },
@@ -306,7 +304,7 @@ export default defineRouter("/guild", [
 			if (result.status === "invalid") {
 				return response.status(400).json({ error: result.error });
 			}
-			return response.status(200).json(await getAdminGuildPreferences(guild));
+			return response.status(204).end();
 		},
 	},
 	{

@@ -186,17 +186,10 @@ class APIHandler {
 		return data;
 	}
 
-	private static async updateGuildPreference<Input>(
-		guildId: string,
-		action: string,
-		input: Input,
-	): Promise<GuildPreferences> {
-		const { data } = await apiClient.put<GuildPreferences>(
-			`/api/v1/guild/${encodeURIComponent(guildId)}/${action}`,
-			input,
-			{ withCredentials: true },
-		);
-		return data;
+	private static async updateGuildPreference<Input>(guildId: string, action: string, input: Input): Promise<void> {
+		await apiClient.put<void>(`/api/v1/guild/${encodeURIComponent(guildId)}/${action}`, input, {
+			withCredentials: true,
+		});
 	}
 
 	static updateAuditLogPreference(guildId: string, input: AuditLogPreferenceInput) {
