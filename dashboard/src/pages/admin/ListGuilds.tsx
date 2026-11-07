@@ -47,10 +47,15 @@ const columns: TableColumnDef<AdminGuild>[] = [
 	},
 	{
 		id: "ownerName",
-		accessorFn: (guild) => guild.owner?.username ?? "Unavailable",
+		accessorFn: (guild) => guild.owner?.username,
 		header: "Owner",
 		size: 170,
-		filterFn: "includesString",
+		filterFn: (row, columnId, filterValue) =>
+			String(row.getValue(columnId) ?? "Unavailable")
+				.toLowerCase()
+				.includes(String(filterValue).toLowerCase()),
+		sortingFn: "alphanumeric",
+		sortUndefined: "last",
 		cell: ({ row }) => {
 			const owner = row.original.owner;
 			return owner ? (
@@ -72,13 +77,15 @@ const columns: TableColumnDef<AdminGuild>[] = [
 		accessorKey: "memberCount",
 		header: "Members",
 		filterFn: "includesString",
+		sortingFn: "basic",
+		sortUndefined: "last",
 		cell: ({ row }) =>
 			row.original.memberCount === undefined ? <Unavailable /> : row.original.memberCount.toLocaleString(),
 	},
 	{
 		id: "permissions",
 		accessorFn: (guild) =>
-			guild.hasRequiredPermissions === undefined ? "Unavailable" : guild.hasRequiredPermissions ? "All" : "Some",
+			guild.hasRequiredPermissions === undefined ? undefined : guild.hasRequiredPermissions ? "All" : "Some",
 		header: "Permission Coverage",
 		size: 185,
 		filterSelectOptions: [
@@ -86,6 +93,9 @@ const columns: TableColumnDef<AdminGuild>[] = [
 			{ value: "Some", label: "Some" },
 			{ value: "Unavailable", label: "Unavailable" },
 		],
+		filterFn: (row, columnId, filterValue) => (row.getValue(columnId) ?? "Unavailable") === filterValue,
+		sortingFn: "alphanumeric",
+		sortUndefined: "last",
 		cell: ({ row, getValue }) =>
 			row.original.hasRequiredPermissions === undefined ? <Unavailable /> : String(getValue()),
 	},
@@ -93,16 +103,21 @@ const columns: TableColumnDef<AdminGuild>[] = [
 		id: "joined",
 		accessorFn: (guild) =>
 			guild.joinedTimestamp === undefined
-				? "Unavailable"
+				? undefined
 				: DateHandler.getFormattedTime(guild.joinedTimestamp, "$ISO$\n($RELATIVE$)"),
 		header: "Joined",
 		size: 185,
-		filterFn: "includesString",
+		filterFn: (row, columnId, filterValue) =>
+			String(row.getValue(columnId) ?? "Unavailable")
+				.toLowerCase()
+				.includes(String(filterValue).toLowerCase()),
+		sortUndefined: "last",
 		sortingFn: (first, second) => {
 			const firstTimestamp = first.original.joinedTimestamp;
 			const secondTimestamp = second.original.joinedTimestamp;
-			if (firstTimestamp === undefined) return secondTimestamp === undefined ? 0 : 1;
-			if (secondTimestamp === undefined) return -1;
+			if (firstTimestamp === undefined || secondTimestamp === undefined) {
+				throw new Error("Cannot compare unavailable join timestamps");
+			}
 			return firstTimestamp - secondTimestamp;
 		},
 		cell: ({ row }) => {
