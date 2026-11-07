@@ -115,8 +115,9 @@ Otherwise those fields are omitted and the stored name is used. The endpoint
 returns 503 when Discord is disconnected rather than reporting unreliable
 membership. If the owner or bot member cannot be fetched, the request fails
 instead of returning incomplete details.
-`GET /api/v1/admin/guilds/{guildId}` requires the same access and dependencies and
-returns the same fields for one stored guild plus `discoveredAt` (the database
+`GET /api/v1/guild/{guildId}` requires an active session with an admin account or
+a user who has Manage Server in that guild (the bot must be in the guild to verify
+the latter), plus database availability and a connected bot. It returns the same fields for one stored guild plus `discoveredAt` (the database
 record's creation time in Unix milliseconds, or `null` if unavailable) and
 `guildCommandDeployment` (`deployed` and `total` counts), plus `preferences`: `auditLog`
 (`enabled`, `channel`, `fullVerbosity`), `leveling` (`enabled`, `threshold`,
@@ -126,7 +127,7 @@ record's creation time in Unix milliseconds, or `null` if unavailable) and
 the leveling role are objects containing `id` and `name`; the name is `null`
 when the channel or role cannot be resolved. Unconfigured channels, roles, and thresholds are `null`;
 settings are returned even when Discord guild details are unavailable. The
-dashboard displays these saved settings read-only. For an available guild, command
+dashboard lets users edit these settings. For an available guild, command
 deployment counts compare the configured guild command names with the bot's
 currently registered guild-scoped chat-input commands fetched from Discord;
 they do not check command definitions or deployment freshness. The deployment
@@ -135,7 +136,7 @@ an unexpected Discord lookup failure fails the request. Guild detail sections su
 shareable URL hashes that update as the page is scrolled. It returns
 400 for an invalid Discord guild ID and 404 when the guild is not stored.
 
-`GET /api/v1/admin/guilds/{guildId}/channels` requires an admin session, database
+`GET /api/v1/guild/{guildId}/channels` requires the same guild access as above, database
 availability, and a connected bot. It fetches the guild's current channels and
 categories from Discord (excluding threads) and returns an array with `id`,
 `name`, numeric `type`, `typeName`, `createdAt` (Discord creation time in Unix
@@ -150,6 +151,23 @@ this list only when requested, and its card supports the `#guild-channels` hash.
 Uncategorized channels appear first, followed by categories in position order
 with their channels immediately after each category in position order. Channels
 whose parent category is unavailable appear last, grouped by parent ID.
+
+`GET /api/v1/guild/{guildId}/roles` has the same access and returns the guild's roles,
+highest first, with `id`, `name`, `position`, `managed`, and `assignable` (whether the
+bot has Manage Roles and the role is not `@everyone`, not managed, and below the bot's
+highest role). Errors match the channel list.
+
+`PUT /api/v1/guild/{guildId}/audit-log`, `/leveling`, `/member-announcements`, and
+`/warnings` replace one preference group and return the refreshed `preferences`
+object. They share the guild access above and mirror the slash-command rules: audit
+log and announcement channels must be text channels where the bot can view and send
+(the audit log also needs View Audit Log); leveling needs `threshold` and `roleId`
+together and an assignable role; warnings need a duration (1-672 hours) when a timeout
+threshold is set, and a ban threshold above the timeout threshold. Disabled groups clear
+their channels, thresholds, and roles. Invalid input returns 400, and the 404, 409,
+and 503 responses match the channel list. Unlike the slash commands, no confirmation
+message is posted to the guild.
+
 Better Auth uses its MongoDB adapter; the corresponding Mongoose models in
 `src/models/` allow internal services to query the same collections. Account
 credentials, session tokens and verification values are excluded from normal

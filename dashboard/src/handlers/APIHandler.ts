@@ -81,25 +81,61 @@ export interface AdminGuildInvite {
 	inviter: { id: string; username: string } | null;
 }
 
+export interface GuildPreferences {
+	auditLog: { enabled: boolean; channel: PreferenceEntity | null; fullVerbosity: boolean };
+	leveling: { enabled: boolean; threshold: number | null; role: PreferenceEntity | null };
+	memberAnnouncements: {
+		joinEnabled: boolean;
+		leaveEnabled: boolean;
+		joinChannel: PreferenceEntity | null;
+		leaveChannel: PreferenceEntity | null;
+	};
+	warnings: {
+		timeoutThreshold: number | null;
+		timeoutDurationHours: number | null;
+		banThreshold: number | null;
+		auditChannel: PreferenceEntity | null;
+	};
+}
+
 export interface AdminGuildDetails extends AdminGuild {
 	discoveredAt: number | null;
 	guildCommandDeployment: { deployed: number; total: number } | null;
-	preferences: {
-		auditLog: { enabled: boolean; channel: PreferenceEntity | null; fullVerbosity: boolean };
-		leveling: { enabled: boolean; threshold: number | null; role: PreferenceEntity | null };
-		memberAnnouncements: {
-			joinEnabled: boolean;
-			leaveEnabled: boolean;
-			joinChannel: PreferenceEntity | null;
-			leaveChannel: PreferenceEntity | null;
-		};
-		warnings: {
-			timeoutThreshold: number | null;
-			timeoutDurationHours: number | null;
-			banThreshold: number | null;
-			auditChannel: PreferenceEntity | null;
-		};
-	};
+	preferences: GuildPreferences;
+}
+
+export interface GuildRole {
+	id: string;
+	name: string;
+	position: number;
+	managed: boolean;
+	assignable: boolean;
+}
+
+export interface AuditLogPreferenceInput {
+	enabled: boolean;
+	channelId: string | null;
+	fullVerbosity: boolean;
+}
+
+export interface LevelingPreferenceInput {
+	enabled: boolean;
+	threshold: number | null;
+	roleId: string | null;
+}
+
+export interface MemberAnnouncementsPreferenceInput {
+	joinEnabled: boolean;
+	joinChannelId: string | null;
+	leaveEnabled: boolean;
+	leaveChannelId: string | null;
+}
+
+export interface WarningsPreferenceInput {
+	timeoutThreshold: number | null;
+	timeoutDurationHours: number | null;
+	banThreshold: number | null;
+	auditChannelId: string | null;
 }
 
 export interface GlobalCommand {
@@ -129,7 +165,7 @@ class APIHandler {
 	}
 
 	static async getAdminGuild(guildId: string): Promise<AdminGuildDetails> {
-		const { data } = await apiClient.get<AdminGuildDetails>(`/api/v1/admin/guilds/${encodeURIComponent(guildId)}`, {
+		const { data } = await apiClient.get<AdminGuildDetails>(`/api/v1/guild/${encodeURIComponent(guildId)}`, {
 			withCredentials: true,
 		});
 		return data;
@@ -137,10 +173,46 @@ class APIHandler {
 
 	static async getAdminGuildChannels(guildId: string): Promise<AdminGuildChannel[]> {
 		const { data } = await apiClient.get<AdminGuildChannel[]>(
-			`/api/v1/admin/guilds/${encodeURIComponent(guildId)}/channels`,
+			`/api/v1/guild/${encodeURIComponent(guildId)}/channels`,
 			{ withCredentials: true },
 		);
 		return data;
+	}
+
+	static async getGuildRoles(guildId: string): Promise<GuildRole[]> {
+		const { data } = await apiClient.get<GuildRole[]>(`/api/v1/guild/${encodeURIComponent(guildId)}/roles`, {
+			withCredentials: true,
+		});
+		return data;
+	}
+
+	private static async updateGuildPreference<Input>(
+		guildId: string,
+		action: string,
+		input: Input,
+	): Promise<GuildPreferences> {
+		const { data } = await apiClient.put<GuildPreferences>(
+			`/api/v1/guild/${encodeURIComponent(guildId)}/${action}`,
+			input,
+			{ withCredentials: true },
+		);
+		return data;
+	}
+
+	static updateAuditLogPreference(guildId: string, input: AuditLogPreferenceInput) {
+		return APIHandler.updateGuildPreference(guildId, "audit-log", input);
+	}
+
+	static updateLevelingPreference(guildId: string, input: LevelingPreferenceInput) {
+		return APIHandler.updateGuildPreference(guildId, "leveling", input);
+	}
+
+	static updateMemberAnnouncementsPreference(guildId: string, input: MemberAnnouncementsPreferenceInput) {
+		return APIHandler.updateGuildPreference(guildId, "member-announcements", input);
+	}
+
+	static updateWarningsPreference(guildId: string, input: WarningsPreferenceInput) {
+		return APIHandler.updateGuildPreference(guildId, "warnings", input);
 	}
 
 	static async sendAdminGuildMessage(

@@ -1,4 +1,4 @@
-import type { Client, Guild, GuildBasedChannel, GuildMember, Invite } from "discord.js";
+import type { Client, Guild, GuildBasedChannel, GuildMember, Invite, Role } from "discord.js";
 import {
 	ApplicationCommandType,
 	ChannelType,
@@ -11,7 +11,7 @@ import {
 import { formatChannel, formatGuild, formatUser } from "../helpers/discord.js";
 import type { SentGuildMessage } from "../helpers/guildHelper.js";
 import { sendGuildMessage } from "../helpers/guildHelper.js";
-import GuildModel from "../models/guild.js";
+import GuildModel, { type Guild as StoredGuild } from "../models/guild.js";
 import { getGuildCommands, getRequiredGlobalBotPermissions } from "./commandLoader.js";
 import type { Config } from "./config.js";
 import { logger } from "./logger.js";
@@ -148,6 +148,62 @@ async function getPreferenceRole(guild: Guild | undefined, roleId: string | null
 	}
 }
 
+type StoredGuildPreferences = Pick<StoredGuild, "auditLog" | "leveling" | "memberAnnouncements" | "warnings">;
+
+const storedPreferencesProjection = { auditLog: 1, leveling: 1, memberAnnouncements: 1, warnings: 1 } as const;
+
+async function resolveGuildPreferences(guild: Guild | undefined, storedGuild: StoredGuildPreferences) {
+	const channelIds = [
+		storedGuild.auditLog.channelId,
+		storedGuild.memberAnnouncements.joinChannelId,
+		storedGuild.memberAnnouncements.leaveChannelId,
+		storedGuild.warnings.auditChannelId,
+	];
+	const channels = new Map(
+		await Promise.all(
+			[...new Set(channelIds.filter((id): id is string => !!id))].map(
+				async (id) => [id, await getPreferenceChannel(guild, id)] as const,
+			),
+		),
+	);
+	const channelFor = (id: string | null | undefined) => {
+		if (!id) return null;
+		const channel = channels.get(id);
+		if (!channel) throw new Error(`Failed to resolve preference channel ${id}`);
+		return channel;
+	};
+	return {
+		auditLog: {
+			enabled: storedGuild.auditLog.enabled,
+			channel: channelFor(storedGuild.auditLog.channelId),
+			fullVerbosity: storedGuild.auditLog.fullVerbosity,
+		},
+		leveling: {
+			enabled: storedGuild.leveling.enabled,
+			threshold: storedGuild.leveling.threshold ?? null,
+			role: await getPreferenceRole(guild, storedGuild.leveling.roleId),
+		},
+		memberAnnouncements: {
+			joinEnabled: storedGuild.memberAnnouncements.joinEnabled,
+			leaveEnabled: storedGuild.memberAnnouncements.leaveEnabled,
+			joinChannel: channelFor(storedGuild.memberAnnouncements.joinChannelId),
+			leaveChannel: channelFor(storedGuild.memberAnnouncements.leaveChannelId),
+		},
+		warnings: {
+			timeoutThreshold: storedGuild.warnings.timeoutThreshold ?? null,
+			timeoutDurationHours: storedGuild.warnings.timeoutDurationHours ?? null,
+			banThreshold: storedGuild.warnings.banThreshold ?? null,
+			auditChannel: channelFor(storedGuild.warnings.auditChannelId),
+		},
+	};
+}
+
+export async function getAdminGuildPreferences(guild: Guild) {
+	const storedGuild = await GuildModel.findOne({ guildId: guild.id }).select(storedPreferencesProjection).exec();
+	if (!storedGuild) throw new Error(`Stored guild ${guild.id} was not found while reading preferences`);
+	return resolveGuildPreferences(guild, storedGuild);
+}
+
 export async function getAdminGuild(client: Client, guildId: string) {
 	const storedGuild = await GuildModel.findOne({ guildId })
 		.select({
@@ -155,10 +211,7 @@ export async function getAdminGuild(client: Client, guildId: string) {
 			guildId: 1,
 			guildName: 1,
 			createdAt: 1,
-			auditLog: 1,
-			leveling: 1,
-			memberAnnouncements: 1,
-			warnings: 1,
+			...storedPreferencesProjection,
 		})
 		.exec();
 	if (!storedGuild) {
@@ -184,53 +237,11 @@ export async function getAdminGuild(client: Client, guildId: string) {
 			total: expectedCommands.size,
 		};
 	}
-	const channelIds = [
-		storedGuild.auditLog.channelId,
-		storedGuild.memberAnnouncements.joinChannelId,
-		storedGuild.memberAnnouncements.leaveChannelId,
-		storedGuild.warnings.auditChannelId,
-	];
-	const channels = new Map(
-		await Promise.all(
-			[...new Set(channelIds.filter((id): id is string => !!id))].map(
-				async (id) => [id, await getPreferenceChannel(guild, id)] as const,
-			),
-		),
-	);
-	const channelFor = (id: string | null | undefined) => {
-		if (!id) return null;
-		const channel = channels.get(id);
-		if (!channel) throw new Error(`Failed to resolve preference channel ${id}`);
-		return channel;
-	};
 	return {
 		...details,
 		discoveredAt: storedGuild.createdAt?.getTime() ?? null,
 		guildCommandDeployment,
-		preferences: {
-			auditLog: {
-				enabled: storedGuild.auditLog.enabled,
-				channel: channelFor(storedGuild.auditLog.channelId),
-				fullVerbosity: storedGuild.auditLog.fullVerbosity,
-			},
-			leveling: {
-				enabled: storedGuild.leveling.enabled,
-				threshold: storedGuild.leveling.threshold ?? null,
-				role: await getPreferenceRole(guild, storedGuild.leveling.roleId),
-			},
-			memberAnnouncements: {
-				joinEnabled: storedGuild.memberAnnouncements.joinEnabled,
-				leaveEnabled: storedGuild.memberAnnouncements.leaveEnabled,
-				joinChannel: channelFor(storedGuild.memberAnnouncements.joinChannelId),
-				leaveChannel: channelFor(storedGuild.memberAnnouncements.leaveChannelId),
-			},
-			warnings: {
-				timeoutThreshold: storedGuild.warnings.timeoutThreshold ?? null,
-				timeoutDurationHours: storedGuild.warnings.timeoutDurationHours ?? null,
-				banThreshold: storedGuild.warnings.banThreshold ?? null,
-				auditChannel: channelFor(storedGuild.warnings.auditChannelId),
-			},
-		},
+		preferences: await resolveGuildPreferences(guild, storedGuild),
 	};
 }
 
@@ -326,6 +337,35 @@ export async function listAdminGuildChannels(client: Client, guildId: string) {
 		ordered.push(...(childrenByParent.get(parentId) ?? []).sort(comparePosition));
 	}
 	return { status: "ok", channels: ordered } as const;
+}
+
+export async function listAdminGuildRoles(client: Client, guildId: string) {
+	const adminGuild = await getAdminGuildForAction(client, guildId);
+	if (adminGuild.status !== "ok") return adminGuild;
+	const { guild } = adminGuild;
+
+	const botMember = guild.members.me ?? (await guild.members.fetchMe());
+	const canManageRoles = botMember.permissions.has(PermissionFlagsBits.ManageRoles);
+	const fetched = await guild.roles.fetch();
+	const roles = [...fetched.values()]
+		.sort((first, second) => second.position - first.position || first.id.localeCompare(second.id))
+		.map((role) => ({
+			id: role.id,
+			name: role.name,
+			position: role.position,
+			managed: role.managed,
+			assignable: canAssignRole(role, botMember, canManageRoles),
+		}));
+	return { status: "ok", roles } as const;
+}
+
+export function canAssignRole(role: Role, botMember: GuildMember, canManageRoles: boolean): boolean {
+	return (
+		canManageRoles &&
+		role.id !== role.guild.id &&
+		!role.managed &&
+		botMember.roles.highest.comparePositionTo(role) > 0
+	);
 }
 
 export async function sendGuildAdminMessage({

@@ -38,7 +38,7 @@ function App() {
 				<Route path="/auth/error" element={<AuthError />} />
 				<Route element={<AdminRoute />}>
 					<Route path="/admin/guilds" element={<ListGuilds />} />
-					<Route path="/admin/guild/:guildId?" element={<ViewGuild scrollContainerRef={containerRef} />} />
+					<Route path="/admin/guild/:guildId?" element={<ViewGuild />} />
 				</Route>
 				<Route path="*" element={<WrongPage />} />
 			</Routes>

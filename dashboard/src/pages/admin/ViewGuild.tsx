@@ -1,8 +1,22 @@
-import { Avatar, Button, Card, DateHandler, Input, PillLink, TextLink } from "@febkosq8/arc";
+import {
+	Avatar,
+	Button,
+	Card,
+	DateHandler,
+	Input,
+	LabelField,
+	PillLink,
+	Select,
+	Tabs,
+	TabsList,
+	TabsPanel,
+	TabsTab,
+	TextLink,
+} from "@febkosq8/arc";
 import { useForm } from "@tanstack/react-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import { useEffect, useState, type FormEvent, type ReactNode, type RefObject } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { FiArrowLeft, FiCopy, FiExternalLink, FiLink } from "react-icons/fi";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -12,20 +26,25 @@ import APIHandler, {
 	type AdminGuildChannel,
 	type AdminGuildDetails,
 	type AdminGuildMessageResult,
-	type PreferenceEntity,
 } from "@jappan/handlers/APIHandler";
 import { AccessRedirect, accessErrorStatus } from "@jappan/components/jappan/AdminRoute";
 import LoadingIndicator from "@jappan/components/jappan/LoadingIndicator";
+import GuildPreferencesEditor from "./GuildPreferencesEditor";
 
 const guildIdPattern = /^\d{17,20}$/u;
-const guildSectionIds = [
-	"guild-overview",
-	"guild-actions",
-	"guild-channels",
-	"service-preferences",
-	"bot-permissions",
-	"command-permissions",
+const guildSections = [
+	{ id: "guild-overview", label: "Overview" },
+	{ id: "guild-actions", label: "Admin actions" },
+	{ id: "guild-channels", label: "Channels" },
+	{ id: "service-preferences", label: "Preferences" },
+	{ id: "bot-permissions", label: "Bot permissions" },
+	{ id: "command-permissions", label: "Command permissions" },
 ];
+
+const readSectionFromHash = () => {
+	const id = window.location.hash.slice(1);
+	return guildSections.some((section) => section.id === id) ? id : guildSections[0].id;
+};
 
 function SectionLink({ id, label }: { id: string; label: string }) {
 	return (
@@ -71,9 +90,7 @@ function GuildLookup({ guildId, onLookup }: { guildId: string; onLookup: (guildI
 					const error = field.state.meta.errors[0];
 					return (
 						<>
-							<label htmlFor="guild-id" className="mb-2 block text-sm font-medium">
-								Guild ID
-							</label>
+							<LabelField id="guild-id" label="Guild ID" className="mb-2" />
 							<div className="flex flex-col gap-2 sm:flex-row">
 								<Input
 									id="guild-id"
@@ -117,127 +134,6 @@ function DiscordTextLink({ href, text }: { href: string; text: string }) {
 			<TextLink href={href} text={text} aria-label={`${text} (opens in a new tab)`} />
 			<FiExternalLink className="ml-1 inline-block size-3.5 align-baseline text-primary" aria-hidden="true" />
 		</span>
-	);
-}
-
-function PreferenceChannelDetail({ guildId, channel }: { guildId: string; channel: PreferenceEntity | null }) {
-	return channel ? (
-		<>
-			<DiscordTextLink
-				href={`https://discord.com/channels/${encodeURIComponent(guildId)}/${encodeURIComponent(channel.id)}`}
-				text={channel.name ?? "Channel unavailable"}
-			/>
-			<span className="block break-all text-xs text-muted-foreground">{channel.id}</span>
-		</>
-	) : (
-		"Not configured"
-	);
-}
-
-function GuildPreferences({ guild }: { guild: AdminGuildDetails }) {
-	const { auditLog, leveling, memberAnnouncements, warnings } = guild.preferences;
-	return (
-		<Card id="service-preferences" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
-			<h2 className="flex items-center gap-1 text-lg font-semibold">
-				Service preferences <SectionLink id="service-preferences" label="service preferences" />
-			</h2>
-			<p className="mt-1 text-sm text-muted-foreground">
-				Saved settings; channel and role availability may change.
-			</p>
-			<div className="mt-4 grid gap-4 sm:grid-cols-2 sm:gap-y-2">
-				<Card
-					hoverable={true}
-					hoverLift={false}
-					role="region"
-					aria-labelledby="audit-preferences"
-					className="min-w-0 rounded-md border-border p-3 sm:row-span-4 sm:grid sm:grid-rows-subgrid lg:row-span-3"
-				>
-					<h3 id="audit-preferences" className="font-semibold">
-						Audit log
-					</h3>
-					<dl className="mt-2 grid gap-2 sm:row-span-3 sm:mt-0 sm:grid-rows-subgrid lg:row-span-2 lg:grid-cols-2">
-						<Detail label="Status">{auditLog.enabled ? "Enabled" : "Disabled"}</Detail>
-						<Detail label="Channel">
-							<PreferenceChannelDetail guildId={guild.id} channel={auditLog.channel} />
-						</Detail>
-						<Detail label="Full verbosity">{auditLog.fullVerbosity ? "Enabled" : "Disabled"}</Detail>
-					</dl>
-				</Card>
-				<Card
-					hoverable={true}
-					hoverLift={false}
-					role="region"
-					aria-labelledby="leveling-preferences"
-					className="min-w-0 rounded-md border-border p-3 sm:row-span-4 sm:grid sm:grid-rows-subgrid lg:row-span-3"
-				>
-					<h3 id="leveling-preferences" className="font-semibold">
-						Leveling
-					</h3>
-					<dl className="mt-2 grid gap-2 sm:row-span-3 sm:mt-0 sm:grid-rows-subgrid lg:row-span-2 lg:grid-cols-2">
-						<Detail label="Status">{leveling.enabled ? "Enabled" : "Disabled"}</Detail>
-						<Detail label="Threshold">{leveling.threshold ?? "Not configured"}</Detail>
-						<Detail label="Role">
-							{leveling.role ? (
-								<>
-									<span>{leveling.role.name ?? "Role unavailable"}</span>
-									<span className="block break-all text-xs text-muted-foreground">
-										{leveling.role.id}
-									</span>
-								</>
-							) : (
-								"Not configured"
-							)}
-						</Detail>
-					</dl>
-				</Card>
-				<Card
-					hoverable={true}
-					hoverLift={false}
-					role="region"
-					aria-labelledby="announcement-preferences"
-					className="min-w-0 rounded-md border-border p-3 sm:row-span-5 sm:mt-2 sm:grid sm:grid-rows-subgrid lg:row-span-3"
-				>
-					<h3 id="announcement-preferences" className="font-semibold">
-						Member announcements
-					</h3>
-					<dl className="mt-2 grid gap-2 sm:row-span-4 sm:mt-0 sm:grid-rows-subgrid lg:row-span-2 lg:grid-cols-2">
-						<Detail label="Join announcements">
-							{memberAnnouncements.joinEnabled ? "Enabled" : "Disabled"}
-						</Detail>
-						<Detail label="Join channel">
-							<PreferenceChannelDetail guildId={guild.id} channel={memberAnnouncements.joinChannel} />
-						</Detail>
-						<Detail label="Leave announcements">
-							{memberAnnouncements.leaveEnabled ? "Enabled" : "Disabled"}
-						</Detail>
-						<Detail label="Leave channel">
-							<PreferenceChannelDetail guildId={guild.id} channel={memberAnnouncements.leaveChannel} />
-						</Detail>
-					</dl>
-				</Card>
-				<Card
-					hoverable={true}
-					hoverLift={false}
-					role="region"
-					aria-labelledby="warning-preferences"
-					className="min-w-0 rounded-md border-border p-3 sm:row-span-5 sm:mt-2 sm:grid sm:grid-rows-subgrid lg:row-span-3"
-				>
-					<h3 id="warning-preferences" className="font-semibold">
-						Warnings
-					</h3>
-					<dl className="mt-2 grid gap-2 sm:row-span-4 sm:mt-0 sm:grid-rows-subgrid lg:row-span-2 lg:grid-cols-2">
-						<Detail label="Timeout threshold">{warnings.timeoutThreshold ?? "Not configured"}</Detail>
-						<Detail label="Timeout duration (hours)">
-							{warnings.timeoutDurationHours ?? "Not configured"}
-						</Detail>
-						<Detail label="Ban threshold">{warnings.banThreshold ?? "Not configured"}</Detail>
-						<Detail label="Audit channel">
-							<PreferenceChannelDetail guildId={guild.id} channel={warnings.auditChannel} />
-						</Detail>
-					</dl>
-				</Card>
-			</div>
-		</Card>
 	);
 }
 
@@ -554,7 +450,6 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 		) ?? [];
 	const selectedChannelId = textChannels.some((channel) => channel.id === channelId) ? channelId : "";
 	const selectedKickChannelId = textChannels.some((channel) => channel.id === kickChannelId) ? kickChannelId : "";
-	const kickChannelsReady = !!channelsQuery.data && !channelsQuery.isError && !channelsQuery.isFetching;
 	const inviteError = inviteMutation.isError
 		? getActionErrorMessage(inviteMutation.error, "Could not get a guild invite.")
 		: null;
@@ -620,30 +515,26 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 						{channelsQuery.data && (
 							<form onSubmit={submitMessage} className="mt-4 space-y-3">
 								<div>
-									<label htmlFor="admin-message-channel" className="mb-1 block text-sm font-medium">
-										Channel
-									</label>
-									<select
+									<LabelField id="admin-message-channel" label="Channel" className="mb-1" />
+									<Select
 										id="admin-message-channel"
 										value={selectedChannelId}
-										onChange={(event) => setChannelId(event.target.value)}
-										required
+										onChange={setChannelId}
 										disabled={textChannels.length === 0 || sendMessageMutation.isPending}
-										className="h-10 w-full rounded-md border border-input bg-background px-3 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-opacity-75"
-									>
-										<option value="">Select a channel</option>
-										{textChannels.map((channel) => (
-											<option key={channel.id} value={channel.id}>
-												#{channel.name} ({channel.id})
-											</option>
-										))}
-									</select>
+										className="h-10"
+										data={[
+											{ key: "", label: "Select a channel", disabled: true },
+											...textChannels.map((channel) => ({
+												key: channel.id,
+												label: `${channel.name} (${channel.id})`,
+											})),
+										]}
+									/>
 								</div>
 								<div>
-									<label htmlFor="admin-message-content" className="mb-1 block text-sm font-medium">
-										Message
-									</label>
-									<textarea
+									<LabelField id="admin-message-content" label="Message" className="mb-1" />
+									<Input
+										as="textarea"
 										id="admin-message-content"
 										value={message}
 										onChange={(event) => setMessage(event.target.value)}
@@ -652,7 +543,7 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 										rows={5}
 										disabled={sendMessageMutation.isPending}
 										placeholder="Write the message to send"
-										className="w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-opacity-75"
+										className="min-h-24 w-full"
 									/>
 									<p className="mt-1 text-right text-xs text-muted-foreground">
 										{message.length}/4096
@@ -789,7 +680,8 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 							Remove bot from guild
 						</h3>
 						<p className="mt-1 text-sm text-muted-foreground">
-							Choose a channel for the departure message. The bot will still leave if sending fails.
+							Optionally choose a channel for a departure message. The bot will still leave if sending
+							fails.
 						</p>
 						<Button
 							type="button"
@@ -814,37 +706,30 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 									toast.error("Confirm removal before continuing.");
 									return;
 								}
-								if (!kickChannelsReady || (textChannels.length > 0 && !selectedKickChannelId)) {
-									toast.error("Load channels and select an available departure channel.");
-									return;
-								}
 								kickMutation.mutate(selectedKickChannelId || null);
 							}}
 						>
 							{channelsQuery.data && !channelsQuery.isError && (
 								<div>
-									<label htmlFor="guild-kick-channel" className="mb-1 block text-sm font-medium">
-										Departure channel
-									</label>
-									<select
+									<LabelField id="guild-kick-channel" label="Departure channel" className="mb-1" />
+									<Select
 										id="guild-kick-channel"
 										value={selectedKickChannelId}
-										onChange={(event) => setKickChannelId(event.target.value)}
-										required={textChannels.length > 0}
+										onChange={setKickChannelId}
 										disabled={
 											textChannels.length === 0 ||
 											channelsQuery.isFetching ||
 											kickMutation.isPending
 										}
-										className="h-10 w-full rounded-md border border-input bg-background px-3 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-opacity-75"
-									>
-										<option value="">Select a channel</option>
-										{textChannels.map((channel) => (
-											<option key={channel.id} value={channel.id}>
-												#{channel.name} ({channel.id})
-											</option>
-										))}
-									</select>
+										className="h-10"
+										data={[
+											{ key: "", label: "No departure message" },
+											...textChannels.map((channel) => ({
+												key: channel.id,
+												label: `${channel.name} (${channel.id})`,
+											})),
+										]}
+									/>
 									{textChannels.length === 0 && (
 										<p className="mt-1 text-sm text-muted-foreground">
 											No sendable channels are available. The bot will leave without sending a
@@ -854,19 +739,21 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 								</div>
 							)}
 							<div>
-								<label htmlFor="guild-kick-message" className="mb-1 block text-sm font-medium">
-									Additional departure message (optional)
-								</label>
-								<textarea
+								<LabelField
+									id="guild-kick-message"
+									label="Additional departure message (optional)"
+									className="mb-1"
+								/>
+								<Input
+									as="textarea"
 									id="guild-kick-message"
 									value={kickMessage}
 									onChange={(event) => setKickMessage(event.target.value)}
 									maxLength={1000}
 									rows={3}
-									disabled={
-										kickMutation.isPending || (kickChannelsReady && textChannels.length === 0)
-									}
-									className="w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-opacity-75"
+									placeholder="Write the message to send"
+									disabled={kickMutation.isPending || !selectedKickChannelId}
+									className="min-h-20 w-full"
 								/>
 							</div>
 							<label className="flex items-start gap-2 text-sm">
@@ -883,12 +770,7 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 								type="submit"
 								size="sm"
 								variant="outline-destructive"
-								disabled={
-									!kickConfirmed ||
-									kickMutation.isPending ||
-									!kickChannelsReady ||
-									(textChannels.length > 0 && !selectedKickChannelId)
-								}
+								disabled={!kickConfirmed || kickMutation.isPending}
 							>
 								{kickMutation.isPending ? "Removing bot…" : "Remove bot from guild"}
 							</Button>
@@ -900,13 +782,7 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 	);
 }
 
-function GuildDetails({
-	guild,
-	scrollContainerRef,
-}: {
-	guild: AdminGuildDetails;
-	scrollContainerRef: RefObject<HTMLDivElement | null>;
-}) {
+function GuildDetails({ guild }: { guild: AdminGuildDetails }) {
 	const commandsQuery = useQuery({
 		queryKey: ["public", "commands"],
 		queryFn: APIHandler.getGlobalCommands,
@@ -918,276 +794,265 @@ function GuildDetails({
 		(command, _index, all) => !all.some((other) => other.name.startsWith(`${command.name} `)),
 	);
 
+	const [section, setSection] = useState(readSectionFromHash);
+
 	useEffect(() => {
-		const container = scrollContainerRef.current;
-		if (!container) return;
-		const sections = guildSectionIds
-			.map((id) => document.getElementById(id))
-			.filter((section): section is HTMLElement => section !== null);
-		let linkedScrollTop: number | undefined;
-		const scrollToHash = () => {
-			const section = sections.find((item) => `#${item.id}` === window.location.hash);
-			if (section) {
-				section.scrollIntoView({ block: "start", behavior: "instant" });
-				linkedScrollTop = container.scrollTop;
-			}
-		};
-		const syncHash = () => {
-			if (linkedScrollTop !== undefined && Math.abs(container.scrollTop - linkedScrollTop) < 1) return;
-			linkedScrollTop = undefined;
-			const bounds = container.getBoundingClientRect();
-			const midpoint = bounds.top + bounds.height / 2;
-			const lastSection = sections[sections.length - 1];
-			const atBottom = container.scrollHeight - container.clientHeight - container.scrollTop <= 1;
-			const active =
-				atBottom && lastSection
-					? lastSection
-					: sections.reduce<HTMLElement | undefined>((closest, section) => {
-							const distance = (item: HTMLElement) => {
-								const rect = item.getBoundingClientRect();
-								return Math.max(rect.top - midpoint, midpoint - rect.bottom, 0);
-							};
-							return !closest || distance(section) < distance(closest) ? section : closest;
-						}, undefined);
-			if (!active || window.location.hash === `#${active.id}`) return;
-			window.history.replaceState(
-				window.history.state,
-				"",
-				`${window.location.pathname}${window.location.search}#${active.id}`,
-			);
-			window.dispatchEvent(new HashChangeEvent("hashchange"));
-		};
-		const handleHashChange = (event: HashChangeEvent) => {
-			if (event.isTrusted) scrollToHash();
-		};
-		if (guildSectionIds.includes(window.location.hash.slice(1))) scrollToHash();
-		syncHash();
-		container.addEventListener("scroll", syncHash, { passive: true });
+		const handleHashChange = () => setSection(readSectionFromHash());
 		window.addEventListener("hashchange", handleHashChange);
-		return () => {
-			container.removeEventListener("scroll", syncHash);
-			window.removeEventListener("hashchange", handleHashChange);
-		};
-	}, [guild.id, scrollContainerRef]);
+		return () => window.removeEventListener("hashchange", handleHashChange);
+	}, []);
+
+	const changeSection = (value: string) => {
+		setSection(value);
+		window.history.replaceState(
+			window.history.state,
+			"",
+			`${window.location.pathname}${window.location.search}#${value}`,
+		);
+	};
 
 	return (
-		<div className="space-y-5">
-			<Card id="guild-overview" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
-				<h2 className="flex items-center gap-1 text-lg font-semibold">
-					Guild overview <SectionLink id="guild-overview" label="guild overview" />
-				</h2>
-				<div className="mt-4 flex items-center gap-4">
-					<Avatar name={guild.name} image={guild.icon} size="lg" aria-hidden="true" />
-					<div className="min-w-0">
-						<h3 className="wrap-break-word text-xl font-bold">
-							<DiscordTextLink
-								href={`https://discord.com/channels/${encodeURIComponent(guild.id)}`}
-								text={guild.name}
-							/>
-						</h3>
-						<p className="break-all text-sm text-muted-foreground">{guild.id}</p>
-					</div>
-				</div>
-				<dl className="mt-5 grid gap-3 sm:grid-cols-2">
-					<Detail label="Bot membership">{guild.isActiveMember ? "Active" : "Inactive"}</Detail>
-					<Detail label="Guild commands">
-						{guild.guildCommandDeployment === null ? (
-							"Unavailable"
-						) : guild.guildCommandDeployment.total === 0 ? (
-							"No guild commands configured"
-						) : (
-							<>
-								{guild.guildCommandDeployment.deployed === 0
-									? "Not deployed"
-									: guild.guildCommandDeployment.deployed === guild.guildCommandDeployment.total
-										? "Deployed"
-										: "Partially deployed"}
-								<span className="block text-sm text-muted-foreground">
-									{guild.guildCommandDeployment.deployed} of {guild.guildCommandDeployment.total}{" "}
-									registered
-								</span>
-							</>
-						)}
-					</Detail>
-					<Detail label="Members">
-						{guild.memberCount === undefined ? "Unavailable" : guild.memberCount.toLocaleString()}
-					</Detail>
-					<Detail label="Channels">
-						{guild.channelCount === undefined ? "Unavailable" : guild.channelCount.toLocaleString()}
-					</Detail>
-					<Detail label="Owner">
-						{guild.owner ? (
-							<div className="flex items-center gap-2">
-								<Avatar
-									name={guild.owner.username}
-									image={guild.owner.avatarUrl}
-									size="sm"
-									aria-hidden="true"
-								/>
-								<div className="min-w-0">
-									<DiscordTextLink
-										href={`https://discord.com/users/${encodeURIComponent(guild.owner.userId)}`}
-										text={guild.owner.username}
-									/>
-									<p className="break-all text-xs text-muted-foreground">{guild.owner.userId}</p>
-								</div>
-							</div>
-						) : (
-							"Unavailable"
-						)}
-					</Detail>
-					<Detail label="Created">
-						{guild.createdAt === undefined ? (
-							"Unavailable"
-						) : (
-							<>
-								<span className="block">{DateHandler.getDateTime(guild.createdAt)}</span>
-								<span className="text-sm text-muted-foreground">
-									{DateHandler.getRelativeTime(guild.createdAt)}
-								</span>
-							</>
-						)}
-					</Detail>
-					<Detail label="Joined">
-						{guild.joinedTimestamp === undefined ? (
-							"Unavailable"
-						) : (
-							<>
-								<span className="block">{DateHandler.getDateTime(guild.joinedTimestamp)}</span>
-								<span className="text-sm text-muted-foreground">
-									{DateHandler.getRelativeTime(guild.joinedTimestamp)}
-								</span>
-							</>
-						)}
-					</Detail>
-					<Detail label="Discovered">
-						{guild.discoveredAt == null ? (
-							"Unavailable"
-						) : (
-							<>
-								<span className="block">{DateHandler.getDateTime(guild.discoveredAt)}</span>
-								<span className="text-sm text-muted-foreground">
-									{DateHandler.getRelativeTime(guild.discoveredAt)}
-								</span>
-							</>
-						)}
-					</Detail>
-					<Detail label="System channel">
-						{guild.systemChannel === undefined ? (
-							"Unavailable"
-						) : guild.systemChannel === null ? (
-							"None"
-						) : (
-							<>
+		<Tabs value={section} onValueChange={changeSection} className="gap-5">
+			<TabsList aria-label="Guild sections">
+				{guildSections.map(({ id, label }) => (
+					<TabsTab key={id} value={id} size="sm">
+						{label}
+					</TabsTab>
+				))}
+			</TabsList>
+			<TabsPanel value="guild-overview" keepMounted>
+				<Card id="guild-overview" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
+					<h2 className="flex items-center gap-1 text-lg font-semibold">
+						Guild overview <SectionLink id="guild-overview" label="guild overview" />
+					</h2>
+					<div className="mt-4 flex items-center gap-4">
+						<Avatar name={guild.name} image={guild.icon} size="lg" aria-hidden="true" />
+						<div className="min-w-0">
+							<h3 className="wrap-break-word text-xl font-bold">
 								<DiscordTextLink
-									href={`https://discord.com/channels/${encodeURIComponent(guild.id)}/${encodeURIComponent(guild.systemChannel.id)}`}
-									text={guild.systemChannel.name}
+									href={`https://discord.com/channels/${encodeURIComponent(guild.id)}`}
+									text={guild.name}
 								/>
-								<span className="block break-all text-xs text-muted-foreground">
-									{guild.systemChannel.id}
-								</span>
-							</>
-						)}
-					</Detail>
-					<Detail label="Required permissions">
-						{guild.hasRequiredPermissions === undefined ? (
-							"Unavailable"
-						) : guild.hasRequiredPermissions ? (
-							<span className="text-success">All granted</span>
-						) : (
-							<span className="text-destructive">Some missing</span>
-						)}
-					</Detail>
-					<Detail label="Description">
-						{guild.description === undefined ? "Unavailable" : (guild.description ?? "None")}
-					</Detail>
-				</dl>
-			</Card>
-			<GuildActions key={guild.id} guild={guild} />
-			<GuildChannels guild={guild} />
-			<GuildPreferences guild={guild} />
-			<Card id="bot-permissions" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
-				<h2 className="flex items-center gap-1 text-lg font-semibold">
-					Bot permissions <SectionLink id="bot-permissions" label="bot permissions" />
-				</h2>
-				{guild.permissions === undefined ? (
-					<p className="mt-3 text-muted-foreground">Unavailable</p>
-				) : guild.permissions.length === 0 ? (
-					<p className="mt-3 text-muted-foreground">None</p>
-				) : (
-					<ul className="mt-3 flex flex-wrap gap-2">
-						{guild.permissions.map((permission) => (
-							<li key={permission} className="rounded-md border border-border bg-muted px-3 py-1 text-sm">
-								{permission}
-							</li>
-						))}
-					</ul>
-				)}
-			</Card>
-			<Card id="command-permissions" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
-				<h2 className="flex items-center gap-1 text-lg font-semibold">
-					Command permissions <SectionLink id="command-permissions" label="command permissions" />
-				</h2>
-				<p className="mt-1 text-sm text-muted-foreground">
-					Declared bot permissions at guild level. Channel overrides and other requirements can affect whether
-					a command works.
-				</p>
-				{guild.permissions === undefined ? (
-					<p className="mt-3 text-muted-foreground">Unavailable</p>
-				) : commandsQuery.isPending ? (
-					<LoadingIndicator label="Loading commands" />
-				) : commandsQuery.isError ? (
-					<div role="alert" className="mt-3">
-						<p>Could not load command permissions. Please try again.</p>
-						<Button size="sm" variant="outline-primary" onClick={() => void commandsQuery.refetch()}>
-							Retry
-						</Button>
+							</h3>
+							<p className="break-all text-sm text-muted-foreground">{guild.id}</p>
+						</div>
 					</div>
-				) : !commands?.length ? (
-					<p className="mt-3 text-muted-foreground">No commands available</p>
-				) : (
-					<ul className="mt-3 grid gap-3 sm:grid-cols-2">
-						{commands.map(({ name, requiredBotPermissions }) => {
-							const permissions = requiredBotPermissions.map(
-								(permission) =>
-									[permission, isAdministrator || grantedPermissions.has(permission)] as const,
-							);
-							const missing = permissions.some(([, granted]) => !granted);
-							return (
-								<li key={name} className="min-w-0 rounded-md border border-border p-3">
-									<div className="flex flex-wrap items-center justify-between gap-2">
-										<h3 className="wrap-break-word font-medium">/{name}</h3>
-										<span className={missing ? "text-destructive" : "text-success"}>
-											{missing
-												? "Some required permissions missing"
-												: "All required permissions granted"}
-										</span>
+					<dl className="mt-5 grid gap-3 sm:grid-cols-2">
+						<Detail label="Bot membership">{guild.isActiveMember ? "Active" : "Inactive"}</Detail>
+						<Detail label="Guild commands">
+							{guild.guildCommandDeployment === null ? (
+								"Unavailable"
+							) : guild.guildCommandDeployment.total === 0 ? (
+								"No guild commands configured"
+							) : (
+								<>
+									{guild.guildCommandDeployment.deployed === 0
+										? "Not deployed"
+										: guild.guildCommandDeployment.deployed === guild.guildCommandDeployment.total
+											? "Deployed"
+											: "Partially deployed"}
+									<span className="block text-sm text-muted-foreground">
+										{guild.guildCommandDeployment.deployed} of {guild.guildCommandDeployment.total}{" "}
+										registered
+									</span>
+								</>
+							)}
+						</Detail>
+						<Detail label="Members">
+							{guild.memberCount === undefined ? "Unavailable" : guild.memberCount.toLocaleString()}
+						</Detail>
+						<Detail label="Channels">
+							{guild.channelCount === undefined ? "Unavailable" : guild.channelCount.toLocaleString()}
+						</Detail>
+						<Detail label="Owner">
+							{guild.owner ? (
+								<div className="flex items-center gap-2">
+									<Avatar
+										name={guild.owner.username}
+										image={guild.owner.avatarUrl}
+										size="sm"
+										aria-hidden="true"
+									/>
+									<div className="min-w-0">
+										<DiscordTextLink
+											href={`https://discord.com/users/${encodeURIComponent(guild.owner.userId)}`}
+											text={guild.owner.username}
+										/>
+										<p className="break-all text-xs text-muted-foreground">{guild.owner.userId}</p>
 									</div>
-									{permissions.length === 0 ? (
-										<p className="mt-2 text-sm text-muted-foreground">No declared permissions</p>
-									) : (
-										<ul className="mt-2 space-y-1 text-sm">
-											{permissions.map(([permission, granted]) => (
-												<li key={permission} className="flex justify-between gap-3">
-													<span className="min-w-0 wrap-break-word">{permission}</span>
-													<span className={granted ? "text-success" : "text-destructive"}>
-														{granted ? "Granted" : "Missing"}
-													</span>
-												</li>
-											))}
-										</ul>
-									)}
+								</div>
+							) : (
+								"Unavailable"
+							)}
+						</Detail>
+						<Detail label="Created">
+							{guild.createdAt === undefined ? (
+								"Unavailable"
+							) : (
+								<>
+									<span className="block">{DateHandler.getDateTime(guild.createdAt)}</span>
+									<span className="text-sm text-muted-foreground">
+										{DateHandler.getRelativeTime(guild.createdAt)}
+									</span>
+								</>
+							)}
+						</Detail>
+						<Detail label="Joined">
+							{guild.joinedTimestamp === undefined ? (
+								"Unavailable"
+							) : (
+								<>
+									<span className="block">{DateHandler.getDateTime(guild.joinedTimestamp)}</span>
+									<span className="text-sm text-muted-foreground">
+										{DateHandler.getRelativeTime(guild.joinedTimestamp)}
+									</span>
+								</>
+							)}
+						</Detail>
+						<Detail label="Discovered">
+							{guild.discoveredAt == null ? (
+								"Unavailable"
+							) : (
+								<>
+									<span className="block">{DateHandler.getDateTime(guild.discoveredAt)}</span>
+									<span className="text-sm text-muted-foreground">
+										{DateHandler.getRelativeTime(guild.discoveredAt)}
+									</span>
+								</>
+							)}
+						</Detail>
+						<Detail label="System channel">
+							{guild.systemChannel === undefined ? (
+								"Unavailable"
+							) : guild.systemChannel === null ? (
+								"None"
+							) : (
+								<>
+									<DiscordTextLink
+										href={`https://discord.com/channels/${encodeURIComponent(guild.id)}/${encodeURIComponent(guild.systemChannel.id)}`}
+										text={guild.systemChannel.name}
+									/>
+									<span className="block break-all text-xs text-muted-foreground">
+										{guild.systemChannel.id}
+									</span>
+								</>
+							)}
+						</Detail>
+						<Detail label="Required permissions">
+							{guild.hasRequiredPermissions === undefined ? (
+								"Unavailable"
+							) : guild.hasRequiredPermissions ? (
+								<span className="text-success">All granted</span>
+							) : (
+								<span className="text-destructive">Some missing</span>
+							)}
+						</Detail>
+						<Detail label="Description">
+							{guild.description === undefined ? "Unavailable" : (guild.description ?? "None")}
+						</Detail>
+					</dl>
+				</Card>
+			</TabsPanel>
+			<TabsPanel value="guild-actions" keepMounted>
+				<GuildActions key={guild.id} guild={guild} />
+			</TabsPanel>
+			<TabsPanel value="guild-channels" keepMounted>
+				<GuildChannels guild={guild} />
+			</TabsPanel>
+			<TabsPanel value="service-preferences" keepMounted>
+				<GuildPreferencesEditor guild={guild} />
+			</TabsPanel>
+			<TabsPanel value="bot-permissions" keepMounted>
+				<Card id="bot-permissions" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
+					<h2 className="flex items-center gap-1 text-lg font-semibold">
+						Bot permissions <SectionLink id="bot-permissions" label="bot permissions" />
+					</h2>
+					{guild.permissions === undefined ? (
+						<p className="mt-3 text-muted-foreground">Unavailable</p>
+					) : guild.permissions.length === 0 ? (
+						<p className="mt-3 text-muted-foreground">None</p>
+					) : (
+						<ul className="mt-3 flex flex-wrap gap-2">
+							{guild.permissions.map((permission) => (
+								<li
+									key={permission}
+									className="rounded-md border border-border bg-muted px-3 py-1 text-sm"
+								>
+									{permission}
 								</li>
-							);
-						})}
-					</ul>
-				)}
-			</Card>
-		</div>
+							))}
+						</ul>
+					)}
+				</Card>
+			</TabsPanel>
+			<TabsPanel value="command-permissions" keepMounted>
+				<Card id="command-permissions" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
+					<h2 className="flex items-center gap-1 text-lg font-semibold">
+						Command permissions <SectionLink id="command-permissions" label="command permissions" />
+					</h2>
+					<p className="mt-1 text-sm text-muted-foreground">
+						Declared bot permissions at guild level. Channel overrides and other requirements can affect
+						whether a command works.
+					</p>
+					{guild.permissions === undefined ? (
+						<p className="mt-3 text-muted-foreground">Unavailable</p>
+					) : commandsQuery.isPending ? (
+						<LoadingIndicator label="Loading commands" />
+					) : commandsQuery.isError ? (
+						<div role="alert" className="mt-3">
+							<p>Could not load command permissions. Please try again.</p>
+							<Button size="sm" variant="outline-primary" onClick={() => void commandsQuery.refetch()}>
+								Retry
+							</Button>
+						</div>
+					) : !commands?.length ? (
+						<p className="mt-3 text-muted-foreground">No commands available</p>
+					) : (
+						<ul className="mt-3 grid gap-3 sm:grid-cols-2">
+							{commands.map(({ name, requiredBotPermissions }) => {
+								const permissions = requiredBotPermissions.map(
+									(permission) =>
+										[permission, isAdministrator || grantedPermissions.has(permission)] as const,
+								);
+								const missing = permissions.some(([, granted]) => !granted);
+								return (
+									<li key={name} className="min-w-0 rounded-md border border-border p-3">
+										<div className="flex flex-wrap items-center justify-between gap-2">
+											<h3 className="wrap-break-word font-medium">/{name}</h3>
+											<span className={missing ? "text-destructive" : "text-success"}>
+												{missing
+													? "Some required permissions missing"
+													: "All required permissions granted"}
+											</span>
+										</div>
+										{permissions.length === 0 ? (
+											<p className="mt-2 text-sm text-muted-foreground">
+												No declared permissions
+											</p>
+										) : (
+											<ul className="mt-2 space-y-1 text-sm">
+												{permissions.map(([permission, granted]) => (
+													<li key={permission} className="flex justify-between gap-3">
+														<span className="min-w-0 wrap-break-word">{permission}</span>
+														<span className={granted ? "text-success" : "text-destructive"}>
+															{granted ? "Granted" : "Missing"}
+														</span>
+													</li>
+												))}
+											</ul>
+										)}
+									</li>
+								);
+							})}
+						</ul>
+					)}
+				</Card>
+			</TabsPanel>
+		</Tabs>
 	);
 }
 
-export default function ViewGuild({ scrollContainerRef }: { scrollContainerRef: RefObject<HTMLDivElement | null> }) {
+export default function ViewGuild() {
 	const { guildId = "" } = useParams();
 	document.title = `Admin - View Guild (${guildId})`;
 	const navigate = useNavigate();
@@ -1241,7 +1106,7 @@ export default function ViewGuild({ scrollContainerRef }: { scrollContainerRef: 
 			</div>
 		);
 	} else {
-		content = <GuildDetails guild={guildQuery.data} scrollContainerRef={scrollContainerRef} />;
+		content = <GuildDetails guild={guildQuery.data} />;
 	}
 
 	return (
