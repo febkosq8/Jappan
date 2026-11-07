@@ -2,7 +2,7 @@ import { Avatar, Menu, ThemeSwitcher } from "@febkosq8/arc";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { isAdminSession, useSessionQuery } from "@jappan/handlers/auth";
-import AuthControls from "./AuthControls";
+import AuthHeaderControls from "./AuthHeaderControls";
 
 export default function Header() {
 	const { data: session, isError } = useSessionQuery();
@@ -12,10 +12,10 @@ export default function Header() {
 	const isCommandsPage = location.pathname === "/commands";
 	const isViewGuildPage = location.pathname === "/admin/guild" || location.pathname.startsWith("/admin/guild/");
 	const isListGuildsPage = location.pathname === "/admin/guilds";
-	const showAdmin = !isError && isAdminSession(session);
+	const isAdmin = !isError && isAdminSession(session);
 	const currentPage = isHomePage ? "Home" : isCommandsPage ? "Commands" : "Pages";
 	const mobilePage =
-		showAdmin && isViewGuildPage ? "View Guild" : showAdmin && isListGuildsPage ? "List Guilds" : currentPage;
+		isAdmin && isViewGuildPage ? "View Guild" : isAdmin && isListGuildsPage ? "List Guilds" : currentPage;
 	const homeItem = (
 		<Menu.Item asChild nativeButton={false} active={isHomePage}>
 			<a href="/" aria-current={isHomePage ? "page" : undefined}>
@@ -30,20 +30,14 @@ export default function Header() {
 			</a>
 		</Menu.Item>
 	);
-	const viewGuildItem = (
-		<Menu.Item active={isViewGuildPage} onClick={() => navigate("/admin/guild")}>
-			View Guild
-		</Menu.Item>
-	);
-	const listGuildsItem = (
-		<Menu.Item active={isListGuildsPage} onClick={() => navigate("/admin/guilds")}>
-			List Guilds
-		</Menu.Item>
-	);
 	const guildMenu = (
 		<Menu.Sub buttonText="Guild">
-			{viewGuildItem}
-			{listGuildsItem}
+			<Menu.Item active={isListGuildsPage} onClick={() => navigate("/admin/guilds")}>
+				List Guilds
+			</Menu.Item>
+			<Menu.Item active={isViewGuildPage} onClick={() => navigate("/admin/guild")}>
+				View Guild
+			</Menu.Item>
 		</Menu.Sub>
 	);
 
@@ -59,7 +53,7 @@ export default function Header() {
 						<Menu buttonText={mobilePage}>
 							{homeItem}
 							{commandsItem}
-							{showAdmin && (
+							{isAdmin && (
 								<Menu.Sub buttonText="Admin" active={location.pathname.startsWith("/admin")}>
 									{guildMenu}
 								</Menu.Sub>
@@ -71,13 +65,13 @@ export default function Header() {
 							{homeItem}
 							{commandsItem}
 						</Menu>
-						{showAdmin && (
+						{isAdmin && (
 							<Menu buttonText="Admin" active={location.pathname.startsWith("/admin")}>
 								{guildMenu}
 							</Menu>
 						)}
 					</nav>
-					<AuthControls />
+					<AuthHeaderControls />
 					<ThemeSwitcher variant="toggle" />
 				</div>
 			</div>

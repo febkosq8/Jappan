@@ -1,4 +1,4 @@
-import { Avatar, Button, Menu, type AvatarProps } from "@febkosq8/arc";
+import { Avatar, Button, GridLoader, Menu, Pill, type AvatarProps } from "@febkosq8/arc";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { FiLogIn } from "react-icons/fi";
@@ -6,7 +6,6 @@ import { toast } from "sonner";
 
 import { authClient, sessionQueryKey, useSessionQuery } from "@jappan/handlers/auth";
 import { authErrorURL, safeCallbackPath } from "@jappan/handlers/authRedirect";
-import LoadingIndicator from "./LoadingIndicator";
 
 export default function AuthControls() {
 	const queryClient = useQueryClient();
@@ -67,7 +66,31 @@ export default function AuthControls() {
 	return (
 		<div className="flex flex-wrap items-center justify-end gap-2 text-sm">
 			{isPending ? (
-				<LoadingIndicator label="Checking session" inline />
+				<Pill
+					className="px-1"
+					children={
+						<>
+							<Avatar name={"User"} variant="default" size="lg" />
+							<GridLoader
+								label={"Loading session"}
+								colors={[
+									"var(--color-primary)",
+									"var(--color-success)",
+									"var(--color-warning)",
+									"var(--color-destructive)",
+								]}
+								columns={5}
+								rows={1}
+								shape="mixed"
+								shapes={["circle", "square", "diamond", "star", "heart", "hexagon"]}
+								size={60}
+								symbols={["*", "#", "@"]}
+								aria-hidden={true}
+							/>
+							<span className="sr-only"> account menu</span>
+						</>
+					}
+				/>
 			) : !isError && session ? (
 				<Menu
 					className="px-1"
@@ -106,11 +129,12 @@ export default function AuthControls() {
 				<Button
 					size="sm"
 					variant="outline-primary"
+					className="min-h-11 min-w-11 gap-1 px-2 md:min-h-8 md:min-w-0 md:px-3"
 					aria-label="Sign in"
 					disabled={busy}
 					onClick={() => void signIn()}
 				>
-					<FiLogIn className="size-4 pr-1" aria-hidden="true" />
+					<FiLogIn className="size-4" aria-hidden="true" />
 					<span className="hidden md:inline">Sign in</span>
 				</Button>
 			)}

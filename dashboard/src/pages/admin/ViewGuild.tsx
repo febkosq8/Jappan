@@ -34,9 +34,9 @@ import GuildPreferencesEditor from "./GuildPreferencesEditor";
 const guildIdPattern = /^\d{17,20}$/u;
 const guildSections = [
 	{ id: "guild-overview", label: "Overview" },
-	{ id: "guild-actions", label: "Admin actions" },
+	{ id: "admin-actions", label: "Admin actions" },
 	{ id: "guild-channels", label: "Channels" },
-	{ id: "service-preferences", label: "Preferences" },
+	{ id: "service-preferences", label: "Service Preferences" },
 	{ id: "bot-permissions", label: "Bot permissions" },
 	{ id: "command-permissions", label: "Command permissions" },
 ];
@@ -476,9 +476,9 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 	}
 
 	return (
-		<Card id="guild-actions" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
+		<Card id="admin-actions" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
 			<h2 className="flex items-center gap-1 text-lg font-semibold">
-				Admin actions <SectionLink id="guild-actions" label="admin actions" />
+				Admin actions <SectionLink id="admin-actions" label="admin actions" />
 			</h2>
 			<p className="mt-1 text-sm text-muted-foreground">
 				Send an admin message, get an invite, or remove the bot from this guild.
@@ -953,7 +953,7 @@ function GuildDetails({ guild }: { guild: AdminGuildDetails }) {
 					</dl>
 				</Card>
 			</TabsPanel>
-			<TabsPanel value="guild-actions" keepMounted>
+			<TabsPanel value="admin-actions" keepMounted>
 				<GuildActions key={guild.id} guild={guild} />
 			</TabsPanel>
 			<TabsPanel value="guild-channels" keepMounted>
@@ -1115,7 +1115,7 @@ export default function ViewGuild() {
 				<FiArrowLeft aria-hidden="true" />
 				All guilds
 			</PillLink>
-			<h1 className="mb-5 typography-heading-2 text-3xl font-bold tracking-tight">Guild details</h1>
+			<h1 className="mb-5 typography-heading-2 text-3xl font-bold tracking-tight">Guild : {guildId}</h1>
 			{validGuildId && guildQuery.isSuccess ? (
 				<Button
 					type="button"
