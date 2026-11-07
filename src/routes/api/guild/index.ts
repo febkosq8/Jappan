@@ -54,7 +54,7 @@ const parameters = [
 const accessResponses = {
 	400: { description: "Invalid guild ID", schema: errorResponseSchema },
 	401: { description: "Authentication required", schema: errorResponseSchema },
-	403: { description: "Admin or Manage Server access required", schema: errorResponseSchema },
+	403: { description: "Manage Server access required", schema: errorResponseSchema },
 } as const;
 
 async function resolveGuild(guildId: unknown, response: Response): Promise<Guild | null> {

@@ -88,22 +88,32 @@ function createAuth() {
 								message: "This account is blocked",
 							});
 						}
-						if (context?.path !== "/callback/:id") return;
-						if (!user?.username || !user.discordAccountId) {
-							throw new Error("Discord username or account ID is missing from the authenticated user");
+						if (context?.path === "/callback/:id") {
+							if (!user?.username || !user.discordAccountId) {
+								throw new Error(
+									"Discord username or account ID is missing from the authenticated user",
+								);
+							}
+							const result = await AuthAccountModel.updateOne(
+								{ userId, providerId: "discord", accountId: user.discordAccountId },
+								{ $set: { username: user.username } },
+							);
+							if (result.matchedCount !== 1) {
+								throw new Error("Discord account was not found while synchronizing username");
+							}
+							const role = config.ADMIN_USER_IDS.includes(user.discordAccountId) ? "admin" : "user";
+							const updatedUser = await AuthUserModel.updateOne({ _id: userId }, { $set: { role } });
+							if (updatedUser.matchedCount !== 1) {
+								throw new Error("User was not found while synchronizing role");
+							}
 						}
-						const result = await AuthAccountModel.updateOne(
-							{ userId, providerId: "discord", accountId: user.discordAccountId },
-							{ $set: { username: user.username } },
-						);
-						if (result.matchedCount !== 1) {
-							throw new Error("Discord account was not found while synchronizing username");
-						}
-						const role = config.ADMIN_USER_IDS.includes(user.discordAccountId) ? "admin" : "user";
-						const updatedUser = await AuthUserModel.updateOne({ _id: userId }, { $set: { role } });
-						if (updatedUser.matchedCount !== 1) {
-							throw new Error("User was not found while synchronizing role");
-						}
+						await AuthSessionModel.deleteMany({ userId });
+					},
+				},
+				delete: {
+					after: async (session, context) => {
+						if (context?.path !== "/sign-out") return;
+						await AuthSessionModel.deleteMany({ userId: new mongoose.Types.ObjectId(session.userId) });
 					},
 				},
 			},

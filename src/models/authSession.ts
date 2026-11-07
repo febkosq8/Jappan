@@ -18,7 +18,7 @@ const authSessionSchema = new Schema(
 );
 
 authSessionSchema.index({ token: 1 }, { unique: true });
-authSessionSchema.index({ userId: 1 });
+authSessionSchema.index({ userId: 1 }, { unique: true });
 authSessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 export type AuthSession = InferSchemaType<typeof authSessionSchema>;
