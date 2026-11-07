@@ -66,6 +66,25 @@ middleware descriptions and JSON error schema as an alternative. Middleware
 error schemas list the exact possible error strings.
 Swagger also provides a selectable example for each middleware error.
 
+`GET /api/v1/public/commands` lists global slash commands and subcommands
+without requiring authentication. Each entry contains `id`, `type` (`command` or
+`sub-command`), `name` (space-separated for subcommands), `description`,
+`category`, `requiredBotPermissions`, and
+`requiredUserPermissions`. Permission names use Discord's canonical keys, such
+as `ViewChannel`. Subcommands
+share the parent Discord command ID because Discord does not assign separate
+IDs to subcommands. The ID is `null` until registration succeeds or when no
+registered ID is available. Subcommands include their parent command's declared
+permissions. An empty
+`requiredUserPermissions` array means no default member permission requirement;
+Discord server configuration and command-specific checks can restrict access.
+Bot permissions are declared requirements, not a guarantee of availability in
+any guild or channel. Guild-scoped admin commands are not included. The endpoint
+returns 500 if command definitions have not yet loaded.
+The dashboard's `/commands` page displays this public listing. The optional
+`category` query parameter filters it by category; omitting it shows all
+categories. The bot's help command and help button link to this page.
+
 `GET /api/v1/admin/guilds` requires an active admin session and returns all stored
 guilds, including those the bot has left. Each entry contains `id`, `name`, and
 `isActiveMember` (whether the bot is still in the guild, including temporarily
@@ -73,10 +92,16 @@ unavailable guilds). Active memberships appear first, with each group sorted by
 name. When Discord guild data is available, the entry also includes `icon`
 (`null` if the guild has no icon), `memberCount`, `joinedTimestamp` (Unix
 milliseconds), `systemChannel` (an object with `id` and `name`, or `null`),
-the bot's `permissions`, `hasRequiredPermissions`, and `owner` with `userId`,
-`avatarUrl`, and `username`. `hasRequiredPermissions` checks guild-level
-permissions against all permissions declared by public commands and
-subcommands; it does not account for channel-specific permission overrides.
+the bot's `permissions`, `hasRequiredPermissions`, and
+`owner` with `userId`, `avatarUrl`, and `username`. `hasRequiredPermissions`
+indicates whether all permissions declared by public commands and subcommands
+are granted at guild level, including Discord's Administrator override; it does
+not account for channel-specific permission overrides. The `permissions` array
+lists the bot's explicitly granted guild-level permission flags.
+The dashboard combines these flags with the public command requirements to show
+guild-level command permission coverage, treating Administrator as granting all
+permissions. This does not guarantee command availability: channel overrides,
+user permissions, and other dependencies also apply.
 Otherwise those fields are omitted and the stored name is used. The endpoint
 returns 503 when Discord is disconnected rather than reporting unreliable
 membership. If the owner or bot member cannot be fetched, the request fails

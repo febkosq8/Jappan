@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getBotVersion } from "../../helpers/utils.js";
 import { defineRouter } from "../../helpers/route.js";
 import type { RouteDefinition } from "../../helpers/route.js";
+import commandsRouter from "./commands.js";
 import healthRouter from "./health.js";
 
 const aboutResponseSchema = z.object({
@@ -32,4 +33,4 @@ const publicRoutes: RouteDefinition[] = [
 	},
 ];
 
-export default defineRouter("/public", [...publicRoutes, healthRouter]);
+export default defineRouter("/public", [...publicRoutes, commandsRouter, healthRouter]);

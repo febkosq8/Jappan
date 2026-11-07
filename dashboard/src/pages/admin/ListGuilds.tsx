@@ -119,51 +119,6 @@ const columns: TableColumnDef<AdminGuild>[] = [
 			);
 		},
 	},
-	{
-		id: "systemChannelName",
-		accessorFn: (guild) =>
-			guild.systemChannel === undefined ? "Unavailable" : (guild.systemChannel?.name ?? "None"),
-		header: "System channel",
-		filterFn: "includesString",
-		cell: ({ row }) => {
-			const guild = row.original;
-			return guild.systemChannel ? (
-				<span className="min-w-0">
-					<span className="block truncate" title={guild.systemChannel.name}>
-						{guild.systemChannel.name}
-					</span>
-					<span className="block text-xs text-muted-foreground">{guild.systemChannel.id}</span>
-				</span>
-			) : guild.systemChannel === null ? (
-				"None"
-			) : (
-				<Unavailable />
-			);
-		},
-	},
-	{
-		id: "permissionNames",
-		accessorFn: (guild) =>
-			guild.permissions === undefined ? "Unavailable" : guild.permissions.join(", ") || "None",
-		header: "Bot permissions",
-		filterFn: "includesString",
-		mobileFullWidth: true,
-		cell: ({ row }) => {
-			const permissions = row.original.permissions;
-			return permissions === undefined ? (
-				<Unavailable />
-			) : permissions.length === 0 ? (
-				"None"
-			) : (
-				<details className="whitespace-normal">
-					<summary className="cursor-pointer">
-						{permissions.length} {permissions.length === 1 ? "permission" : "permissions"}
-					</summary>
-					<span className="block wrap-break-word">{permissions.join(", ")}</span>
-				</details>
-			);
-		},
-	},
 ];
 
 export default function AdminGuilds() {

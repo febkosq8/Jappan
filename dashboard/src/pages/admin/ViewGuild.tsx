@@ -2,8 +2,8 @@ import { Avatar, Button, Card, DateHandler, Input, PillLink, TextLink } from "@f
 import { useForm } from "@tanstack/react-form";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
-import type { ReactNode } from "react";
-import { FiArrowLeft, FiRefreshCw } from "react-icons/fi";
+import { useEffect, type ReactNode } from "react";
+import { FiArrowLeft } from "react-icons/fi";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -85,6 +85,17 @@ function Detail({ label, children }: { label: string; children: ReactNode }) {
 }
 
 function GuildDetails({ guild }: { guild: AdminGuild }) {
+	const commandsQuery = useQuery({
+		queryKey: ["public", "commands"],
+		queryFn: APIHandler.getGlobalCommands,
+		enabled: guild.permissions !== undefined,
+	});
+	const grantedPermissions = new Set(guild.permissions);
+	const isAdministrator = grantedPermissions.has("Administrator");
+	const commands = commandsQuery.data?.filter(
+		(command, _index, all) => !all.some((other) => other.name.startsWith(`${command.name} `)),
+	);
+
 	return (
 		<div className="space-y-5">
 			<Card hoverable={false} className="p-5 sm:p-6">
@@ -156,11 +167,13 @@ function GuildDetails({ guild }: { guild: AdminGuild }) {
 						)}
 					</Detail>
 					<Detail label="Required permissions">
-						{guild.hasRequiredPermissions === undefined
-							? "Unavailable"
-							: guild.hasRequiredPermissions
-								? "All granted"
-								: "Some missing"}
+						{guild.hasRequiredPermissions === undefined ? (
+							"Unavailable"
+						) : guild.hasRequiredPermissions ? (
+							<span className="text-success">All granted</span>
+						) : (
+							<span className="text-destructive">Some missing</span>
+						)}
 					</Detail>
 				</dl>
 			</Card>
@@ -177,6 +190,63 @@ function GuildDetails({ guild }: { guild: AdminGuild }) {
 								{permission}
 							</li>
 						))}
+					</ul>
+				)}
+			</Card>
+			<Card hoverable={false} className="p-5 sm:p-6">
+				<h2 className="text-lg font-semibold">Command permissions</h2>
+				<p className="mt-1 text-sm text-muted-foreground">
+					Declared bot permissions at guild level. Channel overrides and other requirements can affect whether
+					a command works.
+				</p>
+				{guild.permissions === undefined ? (
+					<p className="mt-3 text-muted-foreground">Unavailable</p>
+				) : commandsQuery.isPending ? (
+					<LoadingIndicator label="Loading commands" />
+				) : commandsQuery.isError ? (
+					<div role="alert" className="mt-3">
+						<p>Could not load command permissions. Please try again.</p>
+						<Button size="sm" variant="outline-primary" onClick={() => void commandsQuery.refetch()}>
+							Retry
+						</Button>
+					</div>
+				) : !commands?.length ? (
+					<p className="mt-3 text-muted-foreground">No commands available</p>
+				) : (
+					<ul className="mt-3 grid gap-3 sm:grid-cols-2">
+						{commands.map(({ name, requiredBotPermissions }) => {
+							const permissions = requiredBotPermissions.map(
+								(permission) =>
+									[permission, isAdministrator || grantedPermissions.has(permission)] as const,
+							);
+							const missing = permissions.some(([, granted]) => !granted);
+							return (
+								<li key={name} className="min-w-0 rounded-md border border-border p-3">
+									<div className="flex flex-wrap items-center justify-between gap-2">
+										<h3 className="wrap-break-word font-medium">/{name}</h3>
+										<span className={missing ? "text-destructive" : "text-success"}>
+											{missing
+												? "Some required permissions missing"
+												: "All required permissions granted"}
+										</span>
+									</div>
+									{permissions.length === 0 ? (
+										<p className="mt-2 text-sm text-muted-foreground">No declared permissions</p>
+									) : (
+										<ul className="mt-2 space-y-1 text-sm">
+											{permissions.map(([permission, granted]) => (
+												<li key={permission} className="flex justify-between gap-3">
+													<span className="min-w-0 wrap-break-word">{permission}</span>
+													<span className={granted ? "text-success" : "text-destructive"}>
+														{granted ? "Granted" : "Missing"}
+													</span>
+												</li>
+											))}
+										</ul>
+									)}
+								</li>
+							);
+						})}
 					</ul>
 				)}
 			</Card>
@@ -197,12 +267,19 @@ export default function ViewGuild() {
 		enabled: isAdmin && validGuildId,
 	});
 
+	const guildNotFound =
+		guildQuery.isError && axios.isAxiosError(guildQuery.error) && guildQuery.error.response?.status === 404;
+
+	useEffect(() => {
+		if (!isAdmin || !validGuildId || guildQuery.isFetching || !guildNotFound) return;
+		toast.warning(`Guild ${guildId} not found.`, { id: "guild-not-found" });
+		navigate("/admin/guild", { replace: true });
+	}, [guildId, guildNotFound, guildQuery.isFetching, isAdmin, navigate, validGuildId]);
+
 	async function refreshGuild() {
 		const result = await guildQuery.refetch();
 		if (result.isError) {
-			if (axios.isAxiosError(result.error) && result.error.response?.status === 404) {
-				toast.warning("Guild not found.");
-			} else {
+			if (!axios.isAxiosError(result.error) || result.error.response?.status !== 404) {
 				toast.error("Could not refresh guild details. Please try again.");
 			}
 		} else {
@@ -228,20 +305,17 @@ export default function ViewGuild() {
 		content = <p className="text-muted-foreground">Enter a guild ID to view its details.</p>;
 	} else if (!validGuildId) {
 		content = <p role="alert">Invalid guild ID.</p>;
-	} else if (guildQuery.isPending) {
+	} else if (guildQuery.isPending || guildQuery.isFetching) {
 		content = <LoadingIndicator label="Loading guild" />;
 	} else if (guildQuery.isError) {
-		content =
-			axios.isAxiosError(guildQuery.error) && guildQuery.error.response?.status === 404 ? (
-				<p role="alert">Guild not found.</p>
-			) : (
-				<div role="alert">
-					<p>Could not load guild details. Check your access and try again.</p>
-					<Button size="sm" variant="outline-primary" onClick={() => void guildQuery.refetch()}>
-						Retry
-					</Button>
-				</div>
-			);
+		content = guildNotFound ? null : (
+			<div role="alert">
+				<p>Could not load guild details. Check your access and try again.</p>
+				<Button size="sm" variant="outline-primary" onClick={() => void guildQuery.refetch()}>
+					Retry
+				</Button>
+			</div>
+		);
 	} else {
 		content = <GuildDetails guild={guildQuery.data} />;
 	}
@@ -252,21 +326,18 @@ export default function ViewGuild() {
 				<FiArrowLeft aria-hidden="true" />
 				All guilds
 			</PillLink>
-			<div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-				<h1 className="typography-heading-2 text-3xl font-bold tracking-tight">Guild details</h1>
-				{isAdmin && validGuildId && guildQuery.isSuccess && (
-					<Button
-						size="sm"
-						variant="outline-primary"
-						disabled={guildQuery.isFetching}
-						onClick={() => void refreshGuild()}
-					>
-						<FiRefreshCw className="mr-2" aria-hidden="true" />
-						{guildQuery.isFetching ? "Refreshing..." : "Refresh"}
-					</Button>
-				)}
-			</div>
-			{isAdmin && (
+			<h1 className="mb-5 typography-heading-2 text-3xl font-bold tracking-tight">Guild details</h1>
+			{isAdmin && validGuildId && guildQuery.isSuccess ? (
+				<Button
+					type="button"
+					size="sm"
+					variant="outline-primary"
+					className="mb-6"
+					onClick={() => navigate("/admin/guild")}
+				>
+					Reset
+				</Button>
+			) : isAdmin ? (
 				<GuildLookup
 					key={guildId}
 					guildId={guildId}
@@ -278,7 +349,7 @@ export default function ViewGuild() {
 						}
 					}}
 				/>
-			)}
+			) : null}
 			{content}
 		</main>
 	);

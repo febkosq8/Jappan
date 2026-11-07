@@ -123,7 +123,11 @@ export async function getAdminGuild(client: Client, guildId: string) {
 	if (!storedGuild) {
 		return null;
 	}
-	return getStoredGuildDetails({ client, ...storedGuild, requiredPermissions: getRequiredGlobalBotPermissions() });
+	return getStoredGuildDetails({
+		client,
+		...storedGuild,
+		requiredPermissions: getRequiredGlobalBotPermissions(),
+	});
 }
 
 export async function listAllGuilds(client: Client) {

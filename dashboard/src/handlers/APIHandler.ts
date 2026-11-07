@@ -30,9 +30,24 @@ export interface AdminGuild {
 	owner?: { userId: string; avatarUrl: string; username: string };
 }
 
+export interface GlobalCommand {
+	id: string | null;
+	type: "command" | "sub-command";
+	name: string;
+	description: string;
+	category: "general" | "music" | "level" | "fun" | "moderator" | "admin";
+	requiredBotPermissions: string[];
+	requiredUserPermissions: string[];
+}
+
 class APIHandler {
 	static async getHealth(): Promise<HealthResponse> {
 		const { data } = await apiClient.get<HealthResponse>("/api/v1/public/health/");
+		return data;
+	}
+
+	static async getGlobalCommands(): Promise<GlobalCommand[]> {
+		const { data } = await apiClient.get<GlobalCommand[]>("/api/v1/public/commands");
 		return data;
 	}
 

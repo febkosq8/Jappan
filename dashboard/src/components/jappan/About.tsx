@@ -9,6 +9,7 @@ import {
 	FiLifeBuoy,
 	FiRadio,
 	FiRefreshCw,
+	FiTerminal,
 	FiXCircle,
 } from "react-icons/fi";
 import { SiDiscord } from "react-icons/si";
@@ -82,9 +83,13 @@ export default function About() {
 						<SiDiscord className="size-4 shrink-0" aria-hidden="true" />
 						Invite Jappan
 					</PillLink>
-					<PillLink href="#features" variant="outline-secondary" size="md" className="gap-2.5">
+					<PillLink href="#features" variant="outline" size="md" className="gap-2.5">
 						<FiLayers className="size-4 shrink-0" aria-hidden="true" />
 						Explore features
+					</PillLink>
+					<PillLink href="/commands" variant="outline" size="md" className="gap-2.5">
+						<FiTerminal className="size-4 shrink-0" aria-hidden="true" />
+						Explore commands
 					</PillLink>
 					<PillLink
 						href="https://github.com/febkosq8/Jappan"
