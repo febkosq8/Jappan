@@ -1,10 +1,11 @@
 import { fromNodeHeaders } from "better-auth/node";
 import type { RequestHandler } from "express";
 
+import { documentUnavailable } from "../helpers/middleware.js";
 import { getAuth, type AuthSession } from "../services/auth.js";
 import { logger } from "../services/logger.js";
 
-export const requireSession: RequestHandler = async (request, response, next) => {
+export const requireSession: RequestHandler = documentUnavailable(async (request, response, next) => {
 	const auth = getAuth();
 	if (!auth) {
 		response.status(503).json({ error: "Authentication is unavailable" });
@@ -32,7 +33,7 @@ export const requireSession: RequestHandler = async (request, response, next) =>
 		});
 		response.status(500).json({ error: "Session validation failed" });
 	}
-};
+}, "Authentication unavailable");
 
 export const requireAdmin: RequestHandler = (_request, response, next) => {
 	const session: AuthSession | undefined = response.locals.authSession;

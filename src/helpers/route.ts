@@ -60,10 +60,14 @@ export interface RouteDefinition {
 
 export type ExternalRouteDefinition = Omit<RouteDefinition, "handler" | "middleware" | "errorHandler">;
 
+export type DocumentedRoute = (RouteDefinition | ExternalRouteDefinition) & {
+	inheritedMiddleware?: readonly RequestHandler[];
+};
+
 export interface RouterDefinition {
 	basePath: string;
 	router: ExpressRouter;
-	routes: readonly (RouteDefinition | ExternalRouteDefinition)[];
+	routes: readonly DocumentedRoute[];
 }
 
 export interface RouterOptions {
@@ -83,7 +87,7 @@ export function defineRouter(
 	options: RouterOptions = {},
 ): RouterDefinition {
 	const router: ExpressRouter = Router();
-	const routes: (RouteDefinition | ExternalRouteDefinition)[] = [];
+	const routes: DocumentedRoute[] = [];
 	if (options.middleware?.length) {
 		router.use(...options.middleware);
 	}
@@ -91,12 +95,16 @@ export function defineRouter(
 		if ("router" in entry) {
 			router.use(entry.basePath, entry.router);
 			routes.push(
-				...entry.routes.map((route) => ({ ...route, path: joinRoutePaths(entry.basePath, route.path) })),
+				...entry.routes.map((route) => ({
+					...route,
+					path: joinRoutePaths(entry.basePath, route.path),
+					inheritedMiddleware: [...(options.middleware ?? []), ...(route.inheritedMiddleware ?? [])],
+				})),
 			);
 			continue;
 		}
 		const route = entry;
-		routes.push(route);
+		routes.push({ ...route, inheritedMiddleware: options.middleware ?? [] });
 		const handleRouteError: ErrorRequestHandler = async (error, request, response, next) => {
 			logger.error("HTTP", route.errorMessage, {
 				method: request.method,

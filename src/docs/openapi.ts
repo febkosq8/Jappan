@@ -1,9 +1,11 @@
 import { z } from "zod";
 
+import { getUnavailableDescription } from "../helpers/middleware.js";
 import {
 	errorResponseSchema,
 	type RouteMediaType,
 	type RouteParameter,
+	type RouteResponse,
 	type RouterDefinition,
 } from "../helpers/route.js";
 import { getConfig } from "../services/config.js";
@@ -104,11 +106,47 @@ export function getOpenApiDocument(routers: readonly RouterDefinition[], options
 			}
 			route.tags.forEach((tag) => tags.add(tag));
 			const responses: Record<string, unknown> = {};
-			for (const [status, response] of Object.entries(route.responses)) {
+			const unavailableDescriptions = [
+				...new Set(
+					[...(route.inheritedMiddleware ?? []), ...("middleware" in route ? (route.middleware ?? []) : [])]
+						.map(getUnavailableDescription)
+						.filter((description): description is string => description !== undefined),
+				),
+			];
+			const unavailableResponse = route.responses[503];
+			const routeResponses: Record<number, RouteResponse> = {
+				...route.responses,
+				...(unavailableDescriptions.length && {
+					503: {
+						...(unavailableResponse ?? { schema: errorResponseSchema }),
+						description: [unavailableResponse?.description, ...unavailableDescriptions]
+							.filter(Boolean)
+							.join("; "),
+					},
+				}),
+			};
+			for (const [status, response] of Object.entries(routeResponses)) {
 				if (response.schema && response.content) {
 					throw new Error(
 						`Response ${status} for ${basePath}${route.path} cannot have both schema and content`,
 					);
+				}
+				let content = response.schema
+					? { "application/json": { schema: toJsonSchema(response.schema) } }
+					: response.content
+						? toContent(response.content, "output")
+						: undefined;
+				if (status === "503" && unavailableDescriptions.length && unavailableResponse) {
+					const jsonResponse = content?.["application/json"];
+					const middlewareSchema = toJsonSchema(errorResponseSchema);
+					content = {
+						...content,
+						"application/json": {
+							schema: jsonResponse
+								? { anyOf: [jsonResponse.schema, middlewareSchema] }
+								: middlewareSchema,
+						},
+					};
 				}
 				responses[status] = {
 					description: response.description,
@@ -122,10 +160,7 @@ export function getOpenApiDocument(routers: readonly RouterDefinition[], options
 							]),
 						),
 					}),
-					...(response.schema && {
-						content: { "application/json": { schema: toJsonSchema(response.schema) } },
-					}),
-					...(response.content && { content: toContent(response.content, "output") }),
+					...(content && { content }),
 				};
 			}
 			if (!responses["500"] && !hasCustomErrorHandler) {

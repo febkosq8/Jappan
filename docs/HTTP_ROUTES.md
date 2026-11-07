@@ -58,6 +58,11 @@ Routes can opt into `requireDatabase` and `requireDiscord` from
 `src/handlers/availability.ts` to return 503 when those dependencies are
 unavailable. These checks run only on routes that declare them; they do not
 replace authorization or guarantee a dependency stays connected during a request.
+The OpenAPI document automatically adds a JSON 503 response for `requireDatabase`,
+`requireDiscord`, and `requireSession`, combining the unavailable services when
+multiple checks apply. Router-level middleware is included for nested routes. An
+explicit 503 response keeps its content and adds the middleware descriptions
+and JSON error schema as an alternative.
 
 `GET /api/v1/admin/guilds` requires an active admin session and returns all stored
 guilds, including those the bot has left. Each entry contains `id`, `name`, and

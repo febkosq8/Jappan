@@ -10,13 +10,13 @@ export default defineRouter("/admin", [
 	{
 		method: "get",
 		path: "/guilds",
-		tags: ["Admin"],
-		summary: "List stored guilds",
+		tags: ["Admin Guilds"],
+		summary: "List registered guilds",
 		errorMessage: "Failed to list guilds",
 		security: [{ sessionCookie: [] }],
 		responses: {
 			200: {
-				description: "Stored guilds with current Discord membership and available details",
+				description: "Registered guilds with current Discord membership and available details",
 				schema: z.array(
 					z.object({
 						id: z.string(),
@@ -41,7 +41,6 @@ export default defineRouter("/admin", [
 			401: { description: "Authentication required", schema: errorResponseSchema },
 			403: { description: "Admin access required", schema: errorResponseSchema },
 			500: { description: "Failed to list guilds", schema: errorResponseSchema },
-			503: { description: "Database, authentication, or Discord unavailable", schema: errorResponseSchema },
 		},
 		middleware: [requireDatabase, requireDiscord, requireSession, requireAdmin],
 		handler: async (_request, response) => {
