@@ -65,8 +65,10 @@ function PlayerSession({ session }: { session: AdminBotPlayerSession }) {
 									<ExternalTextLink
 										href={`https://discord.com/channels/${encodeURIComponent(session.guild.id)}/${encodeURIComponent(session.channel.id)}`}
 										text={session.channel.name}
-									/>{" "}
-									({session.channel.id})
+									/>
+									<span className="block break-all text-xs text-muted-foreground">
+										{session.channel.id}
+									</span>
 								</>
 							) : (
 								"Not connected"
