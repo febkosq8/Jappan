@@ -345,6 +345,18 @@ function GuildDetails({
 							</>
 						)}
 					</Detail>
+					<Detail label="Discovered">
+						{guild.discoveredAt == null ? (
+							"Unavailable"
+						) : (
+							<>
+								<span className="block">{DateHandler.getDateTime(guild.discoveredAt)}</span>
+								<span className="text-sm text-muted-foreground">
+									{DateHandler.getRelativeTime(guild.discoveredAt)}
+								</span>
+							</>
+						)}
+					</Detail>
 					<Detail label="System channel">
 						{guild.systemChannel === undefined ? (
 							"Unavailable"

@@ -22,6 +22,7 @@ const guildSchema = z.object({
 const preferenceEntitySchema = z.object({ id: z.string(), name: z.string().nullable() }).nullable();
 
 const guildDetailsSchema = guildSchema.extend({
+	discoveredAt: z.number().int().nullable(),
 	preferences: z.object({
 		auditLog: z.object({
 			enabled: z.boolean(),

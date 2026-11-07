@@ -36,6 +36,7 @@ export interface PreferenceEntity {
 }
 
 export interface AdminGuildDetails extends AdminGuild {
+	discoveredAt: number | null;
 	preferences: {
 		auditLog: { enabled: boolean; channel: PreferenceEntity | null; fullVerbosity: boolean };
 		leveling: { enabled: boolean; threshold: number | null; role: PreferenceEntity | null };

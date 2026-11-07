@@ -113,7 +113,9 @@ returns 503 when Discord is disconnected rather than reporting unreliable
 membership. If the owner or bot member cannot be fetched, the request fails
 instead of returning incomplete details.
 `GET /api/v1/admin/guilds/{guildId}` requires the same access and dependencies and
-returns the same fields for one stored guild plus `preferences`: `auditLog`
+returns the same fields for one stored guild plus `discoveredAt` (the database
+record's creation time in Unix milliseconds, or `null` if unavailable) and
+`preferences`: `auditLog`
 (`enabled`, `channel`, `fullVerbosity`), `leveling` (`enabled`, `threshold`,
 `role`), `memberAnnouncements` (`joinEnabled`, `leaveEnabled`,
 `joinChannel`, `leaveChannel`), and `warnings` (`timeoutThreshold`,

@@ -149,7 +149,16 @@ async function getPreferenceRole(guild: Guild | undefined, roleId: string | null
 
 export async function getAdminGuild(client: Client, guildId: string) {
 	const storedGuild = await GuildModel.findOne({ guildId })
-		.select({ _id: 0, guildId: 1, guildName: 1, auditLog: 1, leveling: 1, memberAnnouncements: 1, warnings: 1 })
+		.select({
+			_id: 0,
+			guildId: 1,
+			guildName: 1,
+			createdAt: 1,
+			auditLog: 1,
+			leveling: 1,
+			memberAnnouncements: 1,
+			warnings: 1,
+		})
 		.exec();
 	if (!storedGuild) {
 		return null;
@@ -182,6 +191,7 @@ export async function getAdminGuild(client: Client, guildId: string) {
 	};
 	return {
 		...details,
+		discoveredAt: storedGuild.createdAt?.getTime() ?? null,
 		preferences: {
 			auditLog: {
 				enabled: storedGuild.auditLog.enabled,
