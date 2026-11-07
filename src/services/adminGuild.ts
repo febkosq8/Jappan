@@ -1,4 +1,4 @@
-import type { Client, Guild, Invite } from "discord.js";
+import type { Client, Guild, GuildBasedChannel, GuildMember, Invite } from "discord.js";
 import {
 	ApplicationCommandType,
 	ChannelType,
@@ -262,11 +262,26 @@ export async function getAdminGuildForAction(client: Client, guildId: string) {
 	return { status: "ok", guild } as const;
 }
 
+export function canSendAdminMessage(channel: GuildBasedChannel, botMember: GuildMember): boolean {
+	return (
+		channel.isTextBased() &&
+		(channel
+			.permissionsFor(botMember)
+			?.has([
+				PermissionFlagsBits.ViewChannel,
+				PermissionFlagsBits.SendMessages,
+				PermissionFlagsBits.EmbedLinks,
+			]) ??
+			false)
+	);
+}
+
 export async function listAdminGuildChannels(client: Client, guildId: string) {
 	const adminGuild = await getAdminGuildForAction(client, guildId);
 	if (adminGuild.status !== "ok") return adminGuild;
 	const { guild } = adminGuild;
 
+	const botMember = guild.members.me ?? (await guild.members.fetchMe());
 	const fetched = await guild.channels.fetch();
 	const channels = [...fetched.values()].map((channel) => {
 		if (!channel) throw new Error(`Discord returned an unsupported channel type in guild ${guildId}`);
@@ -279,6 +294,7 @@ export async function listAdminGuildChannels(client: Client, guildId: string) {
 			createdAt: channel.createdTimestamp,
 			parent: channel.parentId ? { id: channel.parentId, name: parent?.name ?? null } : null,
 			position: channel.rawPosition,
+			canSendMessage: canSendAdminMessage(channel, botMember),
 			...("topic" in channel ? { topic: channel.topic } : {}),
 			...("nsfw" in channel ? { nsfw: channel.nsfw } : {}),
 			...("rateLimitPerUser" in channel ? { rateLimitPerUser: channel.rateLimitPerUser } : {}),
@@ -351,31 +367,37 @@ export async function kickGuild({
 	guild,
 	config,
 	additionalMessage,
+	channelId,
 	invoker,
 }: {
 	guild: Guild;
 	config: Config;
 	additionalMessage?: string;
+	channelId?: string | null;
 	invoker?: AdminInvoker;
 }): Promise<KickGuildResult> {
-	const departureMessage = await sendGuildAdminMessage({
-		guild,
-		message: [
-			`${config.BOT_NAME} admin's decision has led to the removal of the bot from this server.`,
-			`Please [contact the developer](${config.BOT_WEBSITE}) for more information.`,
-			additionalMessage ? `Message from admins:\n${blockQuote(additionalMessage)}` : undefined,
-		]
-			.filter(Boolean)
-			.join("\n"),
-		config,
-		...(invoker ? { invoker } : {}),
-	}).catch((error: unknown) => {
-		logger.warn("ADMIN", "Could not send guild departure message", {
-			guild: formatGuild(guild),
-			error,
-		});
-		return null;
-	});
+	const departureMessage =
+		channelId === null
+			? null
+			: await sendGuildAdminMessage({
+					guild,
+					message: [
+						`${config.BOT_NAME} admin's decision has led to the removal of the bot from this server.`,
+						`Please [contact the developer](${config.BOT_WEBSITE}) for more information.`,
+						additionalMessage ? `Message from admins:\n${blockQuote(additionalMessage)}` : undefined,
+					]
+						.filter(Boolean)
+						.join("\n"),
+					config,
+					...(channelId ? { channelId } : {}),
+					...(invoker ? { invoker } : {}),
+				}).catch((error: unknown) => {
+					logger.warn("ADMIN", "Could not send guild departure message", {
+						guild: formatGuild(guild),
+						error,
+					});
+					return null;
+				});
 	try {
 		await guild.leave();
 	} catch (error: unknown) {

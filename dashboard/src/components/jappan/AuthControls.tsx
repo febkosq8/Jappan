@@ -10,7 +10,7 @@ import LoadingIndicator from "./LoadingIndicator";
 
 export default function AuthControls() {
 	const queryClient = useQueryClient();
-	const { data: session, isPending, error: sessionError, refetch } = useSessionQuery();
+	const { data: session, isPending, isError } = useSessionQuery();
 	const [busy, setBusy] = useState(false);
 
 	async function signIn() {
@@ -68,11 +68,7 @@ export default function AuthControls() {
 		<div className="flex flex-wrap items-center justify-end gap-2 text-sm">
 			{isPending ? (
 				<LoadingIndicator label="Checking session" inline />
-			) : sessionError ? (
-				<button type="button" className="underline" onClick={() => void refetch()}>
-					Session unavailable. Retry
-				</button>
-			) : session ? (
+			) : !isError && session ? (
 				<Menu
 					className="px-1"
 					contentClassName="min-w-52"

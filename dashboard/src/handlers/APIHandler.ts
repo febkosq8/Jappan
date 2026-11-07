@@ -46,6 +46,7 @@ export interface AdminGuildChannel {
 	createdAt: number;
 	parent: PreferenceEntity | null;
 	position: number;
+	canSendMessage: boolean;
 	topic?: string | null;
 	nsfw?: boolean;
 	rateLimitPerUser?: number | null;
@@ -57,6 +58,15 @@ export interface AdminGuildMessageResult {
 	channelId: string;
 	channelName: string;
 	messageUrl: string;
+}
+
+export interface AdminGuildKickResult {
+	departureMessage: {
+		channelId: string;
+		channelName: string;
+		messageUrl: string;
+		messageType: "embed" | "normal";
+	} | null;
 }
 
 export interface AdminGuildInvite {
@@ -151,6 +161,19 @@ class APIHandler {
 			`/api/v1/admin/guilds/${encodeURIComponent(guildId)}/invite`,
 			undefined,
 			{ withCredentials: true },
+		);
+		return data;
+	}
+
+	static async kickAdminGuild(
+		guildId: string,
+		message: string,
+		channelId: string | null,
+	): Promise<AdminGuildKickResult> {
+		const { data } = await apiClient.post<AdminGuildKickResult>(
+			`/api/v1/admin/guilds/${encodeURIComponent(guildId)}/kick`,
+			{ confirm: true, message, channelId },
+			{ withCredentials: true, timeout: 120000 },
 		);
 		return data;
 	}

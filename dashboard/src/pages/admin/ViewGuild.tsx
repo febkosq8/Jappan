@@ -1,9 +1,9 @@
 import { Avatar, Button, Card, DateHandler, Input, PillLink, TextLink } from "@febkosq8/arc";
 import { useForm } from "@tanstack/react-form";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { useEffect, useState, type FormEvent, type ReactNode, type RefObject } from "react";
-import { FiArrowLeft, FiExternalLink, FiLink } from "react-icons/fi";
+import { FiArrowLeft, FiCopy, FiExternalLink, FiLink } from "react-icons/fi";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -357,6 +357,10 @@ function ChannelGroupList({ guildId, channels }: { guildId: string; channels: Ad
 												<dd>{channel.typeName.replace(/([a-z])([A-Z])/g, "$1 $2")}</dd>
 											</div>
 											<div className="flex flex-wrap gap-x-1">
+												<dt className="text-muted-foreground">Can send message:</dt>
+												<dd>{channel.canSendMessage ? "Yes" : "No"}</dd>
+											</div>
+											<div className="flex flex-wrap gap-x-1">
 												<dt className="text-muted-foreground">Created:</dt>
 												<dd>
 													{DateHandler.getDateTime(channel.createdAt)}{" "}
@@ -460,9 +464,23 @@ function getActionErrorMessage(error: unknown, fallback: string): string {
 	return fallback;
 }
 
+function isBotChannelPermissionError(error: unknown): boolean {
+	if (!axios.isAxiosError<{ error?: string; code?: string }>(error) || error.response?.status !== 403) {
+		return false;
+	}
+	return (
+		error.response.data?.code === "BOT_CHANNEL_PERMISSION_DENIED" ||
+		error.response.data?.error === "Bot cannot send an embedded message to this channel"
+	);
+}
+
 function GuildActions({ guild }: { guild: AdminGuildDetails }) {
+	const queryClient = useQueryClient();
 	const [channelId, setChannelId] = useState("");
 	const [message, setMessage] = useState("");
+	const [kickMessage, setKickMessage] = useState("");
+	const [kickConfirmed, setKickConfirmed] = useState(false);
+	const [kickChannelId, setKickChannelId] = useState("");
 	const channelsQuery = useQuery({
 		queryKey: ["admin", "guild", guild.id, "channels"],
 		queryFn: () => APIHandler.getAdminGuildChannels(guild.id),
@@ -473,22 +491,70 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 		mutationFn: ({ channelId: selectedChannelId, message: content }) =>
 			APIHandler.sendAdminGuildMessage(guild.id, content, selectedChannelId),
 		onSuccess: () => toast.success("Admin message sent."),
+		onError: (error) => {
+			if (isBotChannelPermissionError(error) || !accessErrorStatus(error)) {
+				toast.error(getActionErrorMessage(error, "Could not send the admin message."));
+			}
+		},
 	});
 	const inviteMutation = useMutation<AdminGuildInvite, Error>({
 		mutationFn: () => APIHandler.createAdminGuildInvite(guild.id),
 		onSuccess: () => toast.success("Guild invite ready."),
 	});
+	const kickMutation = useMutation({
+		mutationFn: (selectedChannel: string | null) =>
+			APIHandler.kickAdminGuild(guild.id, kickMessage, selectedChannel),
+		onSuccess: (result) => {
+			if (result.departureMessage) {
+				toast.success("The bot left the guild and sent a departure message.");
+			} else {
+				toast.warning("The bot left the guild without sending a departure message.");
+			}
+			queryClient.removeQueries({ queryKey: ["admin", "guild", guild.id, "channels"] });
+			void queryClient.invalidateQueries({ queryKey: ["admin", "guild", guild.id] });
+			void queryClient.invalidateQueries({ queryKey: ["admin", "list-guilds"] });
+		},
+		onError: (error) => {
+			if (!accessErrorStatus(error)) {
+				toast.error(
+					axios.isAxiosError(error) && !error.response
+						? "Could not confirm whether the bot left. Refresh guild details before retrying."
+						: getActionErrorMessage(error, "Could not remove the bot from the guild."),
+				);
+			}
+		},
+	});
+	useEffect(() => {
+		const isAvailable = (id: string) =>
+			channelsQuery.data?.some(
+				(channel) =>
+					channel.id === id &&
+					channel.canSendMessage &&
+					["GuildText", "GuildAnnouncement"].includes(channel.typeName),
+			);
+		if (channelId && channelsQuery.data && !isAvailable(channelId)) {
+			setChannelId("");
+		}
+		if (kickChannelId && channelsQuery.data && !isAvailable(kickChannelId)) {
+			setKickChannelId("");
+		}
+	}, [channelId, kickChannelId, channelsQuery.data]);
 	const accessStatus =
 		accessErrorStatus(channelsQuery.error) ??
-		accessErrorStatus(sendMessageMutation.error) ??
-		accessErrorStatus(inviteMutation.error);
+		(isBotChannelPermissionError(sendMessageMutation.error)
+			? undefined
+			: accessErrorStatus(sendMessageMutation.error)) ??
+		accessErrorStatus(inviteMutation.error) ??
+		accessErrorStatus(kickMutation.error);
 	if (accessStatus) return <AccessRedirect status={accessStatus} />;
 
 	const textChannels =
-		channelsQuery.data?.filter((channel) => ["GuildText", "GuildAnnouncement"].includes(channel.typeName)) ?? [];
-	const sendMessageError = sendMessageMutation.isError
-		? getActionErrorMessage(sendMessageMutation.error, "Could not send the admin message.")
-		: null;
+		channelsQuery.data?.filter(
+			(channel) => channel.canSendMessage && ["GuildText", "GuildAnnouncement"].includes(channel.typeName),
+		) ?? [];
+	const selectedChannelId = textChannels.some((channel) => channel.id === channelId) ? channelId : "";
+	const selectedKickChannelId = textChannels.some((channel) => channel.id === kickChannelId) ? kickChannelId : "";
+	const kickChannelsReady = !!channelsQuery.data && !channelsQuery.isError && !channelsQuery.isFetching;
 	const inviteError = inviteMutation.isError
 		? getActionErrorMessage(inviteMutation.error, "Could not get a guild invite.")
 		: null;
@@ -498,7 +564,11 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 
 	function submitMessage(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
-		sendMessageMutation.mutate({ channelId, message });
+		if (!selectedChannelId) {
+			toast.error("Select an available channel before sending.");
+			return;
+		}
+		sendMessageMutation.mutate({ channelId: selectedChannelId, message });
 	}
 
 	async function copyInvite(inviteUrl: string) {
@@ -515,7 +585,9 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 			<h2 className="flex items-center gap-1 text-lg font-semibold">
 				Admin actions <SectionLink id="guild-actions" label="admin actions" />
 			</h2>
-			<p className="mt-1 text-sm text-muted-foreground">Send an admin message or get an invite for this guild.</p>
+			<p className="mt-1 text-sm text-muted-foreground">
+				Send an admin message, get an invite, or remove the bot from this guild.
+			</p>
 			{!guild.isActiveMember ? (
 				<p className="mt-4 text-muted-foreground">The bot is not a member of this guild.</p>
 			) : (
@@ -553,7 +625,7 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 									</label>
 									<select
 										id="admin-message-channel"
-										value={channelId}
+										value={selectedChannelId}
 										onChange={(event) => setChannelId(event.target.value)}
 										required
 										disabled={textChannels.length === 0 || sendMessageMutation.isPending}
@@ -590,7 +662,7 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 									type="submit"
 									size="sm"
 									disabled={
-										!channelId ||
+										!selectedChannelId ||
 										message.trim().length === 0 ||
 										textChannels.length === 0 ||
 										sendMessageMutation.isPending
@@ -598,11 +670,6 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 								>
 									{sendMessageMutation.isPending ? "Sending…" : "Send message"}
 								</Button>
-								{sendMessageError && (
-									<p role="alert" className="text-sm text-destructive">
-										{sendMessageError}
-									</p>
-								)}
 								{sendMessageMutation.data && (
 									<p className="text-sm text-success">
 										Message sent to {sendMessageMutation.data.channelName}.{" "}
@@ -613,7 +680,9 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 									</p>
 								)}
 								{channelsQuery.data && textChannels.length === 0 && (
-									<p className="text-sm text-muted-foreground">No text channels are available.</p>
+									<p className="text-sm text-muted-foreground">
+										No text channels are available for the bot to send an embedded message.
+									</p>
 								)}
 							</form>
 						)}
@@ -644,8 +713,8 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 							</p>
 						)}
 						{inviteMutation.data && (
-							<div className="mt-4 space-y-2 break-words text-sm">
-								<p>
+							<div className="mt-4 space-y-2 wrap-break-word text-sm">
+								<div className="flex flex-wrap items-center gap-2">
 									<a
 										href={inviteMutation.data.url}
 										target="_blank"
@@ -654,7 +723,18 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 									>
 										{inviteMutation.data.url}
 									</a>
-								</p>
+									<Button
+										type="button"
+										size="icon-xs"
+										variant="ghost"
+										className="shrink-0"
+										aria-label="Copy invite"
+										title="Copy invite"
+										onClick={() => void copyInvite(inviteMutation.data.url)}
+									>
+										<FiCopy className="size-4" aria-hidden="true" />
+									</Button>
+								</div>
 								<dl className="grid gap-x-3 gap-y-1 sm:grid-cols-2">
 									<div>
 										<dt className="text-muted-foreground">Channel</dt>
@@ -665,16 +745,6 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 													({inviteMutation.data.channel.id})
 												</span>
 											)}
-										</dd>
-									</div>
-									<div>
-										<dt className="text-muted-foreground">Age</dt>
-										<dd>
-											{inviteMutation.data.maxAge === 0
-												? "Never"
-												: inviteMutation.data.maxAge === null
-													? "Unknown"
-													: `${Math.floor(inviteMutation.data.maxAge / 3600)} hours`}
 										</dd>
 									</div>
 									<div>
@@ -711,16 +781,118 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 										<dd>{inviteMutation.data.inviter?.username ?? "Unknown"}</dd>
 									</div>
 								</dl>
-								<Button
-									type="button"
-									size="sm"
-									variant="outline-secondary"
-									onClick={() => void copyInvite(inviteMutation.data.url)}
-								>
-									Copy invite
-								</Button>
 							</div>
 						)}
+					</section>
+					<section aria-labelledby="guild-kick-title" className="min-w-0 rounded-md border border-border p-4">
+						<h3 id="guild-kick-title" className="font-semibold">
+							Remove bot from guild
+						</h3>
+						<p className="mt-1 text-sm text-muted-foreground">
+							Choose a channel for the departure message. The bot will still leave if sending fails.
+						</p>
+						<Button
+							type="button"
+							size="sm"
+							variant="outline-primary"
+							className="mt-3"
+							disabled={channelsQuery.isFetching || kickMutation.isPending}
+							onClick={() => void channelsQuery.refetch()}
+						>
+							{channelsQuery.data ? "Refresh channels" : "Load channels"}
+						</Button>
+						{channelsError && (
+							<p role="alert" className="mt-3 text-sm text-destructive">
+								{channelsError}
+							</p>
+						)}
+						<form
+							className="mt-4 space-y-3"
+							onSubmit={(event) => {
+								event.preventDefault();
+								if (!kickConfirmed) {
+									toast.error("Confirm removal before continuing.");
+									return;
+								}
+								if (!kickChannelsReady || (textChannels.length > 0 && !selectedKickChannelId)) {
+									toast.error("Load channels and select an available departure channel.");
+									return;
+								}
+								kickMutation.mutate(selectedKickChannelId || null);
+							}}
+						>
+							{channelsQuery.data && !channelsQuery.isError && (
+								<div>
+									<label htmlFor="guild-kick-channel" className="mb-1 block text-sm font-medium">
+										Departure channel
+									</label>
+									<select
+										id="guild-kick-channel"
+										value={selectedKickChannelId}
+										onChange={(event) => setKickChannelId(event.target.value)}
+										required={textChannels.length > 0}
+										disabled={
+											textChannels.length === 0 ||
+											channelsQuery.isFetching ||
+											kickMutation.isPending
+										}
+										className="h-10 w-full rounded-md border border-input bg-background px-3 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-opacity-75"
+									>
+										<option value="">Select a channel</option>
+										{textChannels.map((channel) => (
+											<option key={channel.id} value={channel.id}>
+												#{channel.name} ({channel.id})
+											</option>
+										))}
+									</select>
+									{textChannels.length === 0 && (
+										<p className="mt-1 text-sm text-muted-foreground">
+											No sendable channels are available. The bot will leave without sending a
+											departure message.
+										</p>
+									)}
+								</div>
+							)}
+							<div>
+								<label htmlFor="guild-kick-message" className="mb-1 block text-sm font-medium">
+									Additional departure message (optional)
+								</label>
+								<textarea
+									id="guild-kick-message"
+									value={kickMessage}
+									onChange={(event) => setKickMessage(event.target.value)}
+									maxLength={1000}
+									rows={3}
+									disabled={
+										kickMutation.isPending || (kickChannelsReady && textChannels.length === 0)
+									}
+									className="w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-opacity-75"
+								/>
+							</div>
+							<label className="flex items-start gap-2 text-sm">
+								<input
+									type="checkbox"
+									checked={kickConfirmed}
+									onChange={(event) => setKickConfirmed(event.target.checked)}
+									disabled={kickMutation.isPending}
+									className="mt-1"
+								/>
+								<span>I confirm the bot should leave {guild.name}.</span>
+							</label>
+							<Button
+								type="submit"
+								size="sm"
+								variant="outline-destructive"
+								disabled={
+									!kickConfirmed ||
+									kickMutation.isPending ||
+									!kickChannelsReady ||
+									(textChannels.length > 0 && !selectedKickChannelId)
+								}
+							>
+								{kickMutation.isPending ? "Removing bot…" : "Remove bot from guild"}
+							</Button>
+						</form>
 					</section>
 				</div>
 			)}

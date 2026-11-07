@@ -1,4 +1,3 @@
-import { Button } from "@febkosq8/arc";
 import axios from "axios";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 
@@ -7,17 +6,30 @@ import { authErrorURL } from "@jappan/handlers/authRedirect";
 import LoadingIndicator from "./LoadingIndicator";
 
 export function AccessRedirect({ status }: { status: 401 | 403 }) {
-	const location = useLocation();
 	const { data: session } = useSessionQuery();
-	const returnTo = `${location.pathname}${location.search}${location.hash}`;
-	const errorURL = new URL(
-		authErrorURL(window.location.origin, returnTo, status === 401 ? "UNAUTHENTICATED" : "FORBIDDEN"),
+	return (
+		<AuthErrorRedirect
+			errorCode={status === 401 ? "UNAUTHENTICATED" : "FORBIDDEN"}
+			rejectedSessionId={session?.session.id}
+		/>
 	);
+}
+
+function AuthErrorRedirect({
+	errorCode,
+	rejectedSessionId,
+}: {
+	errorCode: "UNAUTHENTICATED" | "FORBIDDEN" | "SESSION_UNAVAILABLE";
+	rejectedSessionId?: string;
+}) {
+	const location = useLocation();
+	const returnTo = `${location.pathname}${location.search}${location.hash}`;
+	const errorURL = new URL(authErrorURL(window.location.origin, returnTo, errorCode));
 	return (
 		<Navigate
 			to={`${errorURL.pathname}${errorURL.search}`}
 			replace
-			state={{ rejectedSessionId: session?.session.id }}
+			state={{ rejectedSessionId }}
 		/>
 	);
 }
@@ -33,16 +45,8 @@ export default function AdminRoute() {
 	const sessionQuery = useSessionQuery();
 
 	if (sessionQuery.isPending) return <LoadingIndicator label="Checking session" />;
-	if (sessionQuery.isError) {
-		return (
-			<main className="mx-auto w-full max-w-6xl px-4 py-10" role="alert">
-				<p>Session unavailable.</p>
-				<Button size="sm" variant="outline-primary" onClick={() => void sessionQuery.refetch()}>
-					Retry
-				</Button>
-			</main>
-		);
-	}
+	if (sessionQuery.isError)
+		return <AuthErrorRedirect errorCode="SESSION_UNAVAILABLE" rejectedSessionId={sessionQuery.data?.session.id} />;
 	if (!sessionQuery.data) return <AccessRedirect status={401} />;
 	if (!isAdminSession(sessionQuery.data)) return <AccessRedirect status={403} />;
 	return <Outlet />;

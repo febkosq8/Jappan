@@ -27,23 +27,40 @@ export default function AuthError() {
 	const errorCode = searchParams.get("error") ?? "unknown";
 	const unauthenticated = errorCode === "UNAUTHENTICATED";
 	const forbidden = errorCode === "FORBIDDEN";
+	const sessionUnavailable = errorCode === "SESSION_UNAVAILABLE";
 	const callbackPath = safeCallbackPath(searchParams.get("callbackURL"), window.location.origin);
 	const state: unknown = location.state;
 	const rejectedSessionId =
 		typeof state === "object" && state !== null && "rejectedSessionId" in state ? state.rejectedSessionId : null;
-	const errorMessage = unauthenticated
-		? "Sign in to access this page."
-		: forbidden
-			? "Your account does not have permission to access this page."
-			: (authErrorMessages[errorCode] ?? "Discord sign-in couldn't be completed. Please try again later.");
-	const title = unauthenticated ? "Sign in required" : forbidden ? "Access forbidden" : "We couldn't sign you in";
-	document.title = unauthenticated
-		? "Sign in required - Jappan"
-		: forbidden
-			? "Access forbidden - Jappan"
-			: "Sign-in error - Jappan";
+	const errorMessage = sessionUnavailable
+		? "We couldn't check your session. Please try again later."
+		: unauthenticated
+			? "Sign in to access this page."
+			: forbidden
+				? "Your account does not have permission to access this page."
+				: (authErrorMessages[errorCode] ?? "Discord sign-in couldn't be completed. Please try again later.");
+	const title = sessionUnavailable
+		? "Session unavailable"
+		: unauthenticated
+			? "Sign in required"
+			: forbidden
+				? "Access forbidden"
+				: "We couldn't sign you in";
+	document.title = sessionUnavailable
+		? "Session unavailable - Jappan"
+		: unauthenticated
+			? "Sign in required - Jappan"
+			: forbidden
+				? "Access forbidden - Jappan"
+				: "Sign-in error - Jappan";
 
-	if (callbackPath && sessionQuery.data && sessionQuery.data.session.id !== rejectedSessionId) {
+	if (
+		(unauthenticated || sessionUnavailable) &&
+		callbackPath &&
+		sessionQuery.isSuccess &&
+		sessionQuery.data &&
+		(sessionUnavailable || sessionQuery.data.session.id !== rejectedSessionId)
+	) {
 		return <Navigate to={callbackPath} replace />;
 	}
 
@@ -58,7 +75,7 @@ export default function AuthError() {
 						<FiAlertTriangle className="size-7" />
 					</span>
 					<p className="text-sm font-semibold uppercase tracking-wide text-destructive">
-						{unauthenticated ? "401" : forbidden ? "403" : "Sign-in error"}
+						{sessionUnavailable ? "Session error" : unauthenticated ? "401" : forbidden ? "403" : "Sign-in error"}
 					</p>
 					<h1 id="auth-error-title" className="mt-2 text-2xl font-bold tracking-tight">
 						{title}
@@ -72,7 +89,7 @@ export default function AuthError() {
 					)}
 					<PillLink href="/" variant="outline-secondary" className="mt-6 gap-2">
 						<FiArrowLeft aria-hidden="true" />
-						Back home
+						Go home
 					</PillLink>
 				</Card.Content>
 			</Card>
