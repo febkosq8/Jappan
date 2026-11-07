@@ -34,7 +34,6 @@ const commandData = {
 			description: "Leave every other guild with an optional message and progress updates",
 			category: "admin",
 		},
-		{ name: "kick", description: "Leave a guild", category: "admin" },
 	],
 	isDBDependant: false,
 	requiredBotPermissions: [
@@ -110,23 +109,6 @@ const command: BotCommand = {
 			subcommand
 				.setName("selfkick")
 				.setDescription("Leave every other guild with an optional message and progress updates")
-				.addBooleanOption((option) =>
-					option.setName("confirm").setDescription("Confirm this destructive action").setRequired(true),
-				)
-				.addStringOption((option) =>
-					option
-						.setName("message")
-						.setDescription("Additional message to send before leaving")
-						.setRequired(false),
-				),
-		)
-		.addSubcommand((subcommand) =>
-			subcommand
-				.setName("kick")
-				.setDescription("Leave a guild")
-				.addStringOption((option) =>
-					option.setName("guild-id").setDescription("Guild ID").setAutocomplete(true).setRequired(true),
-				)
 				.addBooleanOption((option) =>
 					option.setName("confirm").setDescription("Confirm this destructive action").setRequired(true),
 				)
@@ -250,46 +232,6 @@ const command: BotCommand = {
 			return;
 		}
 
-		const guildId = interaction.options.getString("guild-id", true);
-		const guild = await interaction.client.guilds.fetch(guildId).catch(() => null);
-		if (!guild) {
-			await interaction.editReply("⛔ Guild not found.");
-			return;
-		}
-
-		if (subcommand === "kick") {
-			if (!interaction.options.getBoolean("confirm", true)) {
-				await interaction.editReply("⛔ Confirmation is required for this destructive action.");
-				return;
-			}
-			if (guild.id === interaction.guildId) {
-				await interaction.editReply("⛔ You cannot kick the guild where this command is being used.");
-				return;
-			}
-			const owner = await interaction.client.users.fetch(guild.ownerId).catch(() => null);
-			const additionalMessage = interaction.options.getString("message");
-			const kickResult = await kickGuild({
-				guild,
-				config,
-				...(additionalMessage ? { additionalMessage } : {}),
-				invoker,
-			});
-			if (!kickResult.success) {
-				await interaction.editReply("⛔ Failed to leave the guild.");
-				return;
-			}
-			const guildEmbed = createGuildLeftEmbed({
-				guild,
-				config,
-				owner,
-				kickResult,
-				pageNumber: 1,
-				totalPages: 1,
-			});
-			await interaction.editReply({ embeds: [guildEmbed] });
-			return;
-		}
-
 		await interaction.editReply({
 			embeds: [
 				new EmbedBuilder()
@@ -298,20 +240,6 @@ const command: BotCommand = {
 					.setTimestamp(),
 			],
 		});
-	},
-	autocomplete: async (interaction) => {
-		const focused = interaction.options.getFocused(true);
-		const query = focused.value.toLowerCase();
-
-		if (focused.name === "guild-id") {
-			await interaction.respond(
-				[...interaction.client.guilds.cache.values()]
-					.filter((guild) => `${guild.name} ${guild.id}`.toLowerCase().includes(query))
-					.slice(0, 25)
-					.map((guild) => ({ name: `${guild.name} (${guild.id})`, value: guild.id })),
-			);
-			return;
-		}
 	},
 };
 
