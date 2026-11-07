@@ -23,7 +23,10 @@ function getErrorMessage(error: unknown): string {
 function channelOptions(channels: AdminGuildChannel[] | undefined, current: PreferenceEntity | null) {
 	const options = (channels ?? [])
 		.filter((channel) => textChannelTypes.includes(channel.typeName))
-		.map((channel) => ({ key: channel.id, label: `${channel.name} (${channel.id})` }));
+		.map((channel) => ({
+			key: channel.id,
+			label: `#${channel.name} (${channel.id}) | ${channel.parent?.name ?? "No Category"}`,
+		}));
 	if (current && !options.some((option) => option.key === current.id)) {
 		options.unshift({ key: current.id, label: `${current.name ?? "unavailable"} (${current.id})` });
 	}
@@ -171,11 +174,7 @@ interface SectionProps {
 	onSaved: () => Promise<void>;
 }
 
-function useSave<Input>(
-	save: (input: Input) => Promise<void>,
-	label: string,
-	onSaved: SectionProps["onSaved"],
-) {
+function useSave<Input>(save: (input: Input) => Promise<void>, label: string, onSaved: SectionProps["onSaved"]) {
 	return useMutation<void, Error, Input>({
 		mutationFn: save,
 		onSuccess: async () => {

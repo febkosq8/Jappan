@@ -526,7 +526,7 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 											{ key: "", label: "Select a channel", disabled: true },
 											...textChannels.map((channel) => ({
 												key: channel.id,
-												label: `${channel.name} (${channel.id})`,
+												label: `#${channel.name} (${channel.id}) | ${channel.parent?.name ?? "No Category"}`,
 											})),
 										]}
 									/>
@@ -726,7 +726,7 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 											{ key: "", label: "No departure message" },
 											...textChannels.map((channel) => ({
 												key: channel.id,
-												label: `${channel.name} (${channel.id})`,
+												label: `#${channel.name} (${channel.id}) | ${channel.parent?.name ?? "No Category"}`,
 											})),
 										]}
 									/>

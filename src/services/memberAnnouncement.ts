@@ -1,5 +1,5 @@
 import type { Guild, GuildBasedChannel, GuildMember, PartialGuildMember } from "discord.js";
-import { EmbedBuilder, channelMention, chatInputApplicationCommandMention } from "discord.js";
+import { EmbedBuilder, channelMention, chatInputApplicationCommandMention, userMention } from "discord.js";
 
 import { formatUserMention } from "../helpers/discord.js";
 import { sendGuildMessage } from "../helpers/guildHelper.js";
@@ -146,8 +146,8 @@ async function postAnnouncement({
 					.setTitle(event === "join" ? "New Member" : "Member Departed")
 					.setDescription(
 						event === "join"
-							? `🎉 Welcome, ${formatUserMention(member.user)}! Glad to have you here.`
-							: `👋 ${formatUserMention(member.user)} has left the server. We wish them well!`,
+							? `🎉 Welcome, ${userMention(member.user.id)}! Glad to have you here.`
+							: `👋 ${userMention(member.user.id)} has left the server. We wish them well!`,
 					)
 					.setThumbnail(member.user.displayAvatarURL({ size: 256 }))
 					.addFields(
