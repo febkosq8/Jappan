@@ -27,10 +27,10 @@ import APIHandler, {
 	type AdminGuildDetails,
 	type AdminGuildMessageResult,
 } from "@jappan/handlers/APIHandler";
-import { AccessRedirect, accessErrorStatus } from "@jappan/components/jappan/AdminRoute";
-import ExternalTextLink from "@jappan/components/jappan/ExternalTextLink";
-import GuildCommandDeployment from "@jappan/components/jappan/GuildCommandDeployment";
-import LoadingIndicator from "@jappan/components/jappan/LoadingIndicator";
+import { AccessRedirect, accessErrorStatus } from "@jappan/components/AdminRoute";
+import ExternalTextLink from "@jappan/components/ExternalTextLink";
+import GuildCommandDeployment from "@jappan/components/GuildCommandDeployment";
+import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import GuildPreferencesEditor from "./GuildPreferencesEditor";
 
 const guildIdPattern = /^\d{17,20}$/u;

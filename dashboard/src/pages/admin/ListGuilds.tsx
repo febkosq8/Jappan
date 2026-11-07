@@ -2,8 +2,8 @@ import { Avatar, Button, DateHandler, Table, TextLink, type TableColumnDef } fro
 import { useQuery } from "@tanstack/react-query";
 
 import APIHandler, { type AdminGuild } from "@jappan/handlers/APIHandler";
-import { AccessRedirect, accessErrorStatus } from "@jappan/components/jappan/AdminRoute";
-import LoadingIndicator from "@jappan/components/jappan/LoadingIndicator";
+import { AccessRedirect, accessErrorStatus } from "@jappan/components/AdminRoute";
+import LoadingIndicator from "@jappan/components/LoadingIndicator";
 
 function Unavailable() {
 	return <span className="text-muted-foreground">Unavailable</span>;

@@ -15,7 +15,7 @@ import {
 import { SiDiscord } from "react-icons/si";
 import { toast } from "sonner";
 import APIHandler from "@jappan/handlers/APIHandler";
-import LoadingIndicator from "./LoadingIndicator";
+import LoadingIndicator from "../LoadingIndicator";
 
 const serviceNames = [
 	{ key: "db", label: "Database" },

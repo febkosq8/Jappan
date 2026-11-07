@@ -1,5 +1,5 @@
-import About from "@jappan/components/jappan/About";
-import Features from "@jappan/components/jappan/Features";
+import About from "@jappan/components/home/About";
+import Features from "@jappan/components/home/Features";
 
 export default function Jappan() {
 	return (

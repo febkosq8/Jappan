@@ -4,7 +4,7 @@ import { FiCopy } from "react-icons/fi";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 
-import LoadingIndicator from "@jappan/components/jappan/LoadingIndicator";
+import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import APIHandler, { type GlobalCommand } from "@jappan/handlers/APIHandler";
 
 function CopyCommandButton({ command }: { command: GlobalCommand }) {

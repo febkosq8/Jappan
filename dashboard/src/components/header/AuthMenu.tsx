@@ -1,4 +1,4 @@
-import { Avatar, Button, GridLoader, Menu, Pill, type AvatarProps } from "@febkosq8/arc";
+import { Avatar, Button, Menu, Pill, type AvatarProps } from "@febkosq8/arc";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { FiLogIn } from "react-icons/fi";
@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 import { authClient, sessionQueryKey, useSessionQuery } from "@jappan/handlers/auth";
 import { authErrorURL, safeCallbackPath } from "@jappan/handlers/authRedirect";
-import LoadingIndicator from "./LoadingIndicator";
+import LoadingIndicator from "../LoadingIndicator";
 
 export default function AuthControls() {
 	const queryClient = useQueryClient();

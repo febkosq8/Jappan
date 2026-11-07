@@ -5,9 +5,9 @@ import { useState } from "react";
 import { FiAlertTriangle, FiCheckCircle, FiMusic, FiPower, FiRefreshCw, FiXCircle } from "react-icons/fi";
 import { toast } from "sonner";
 
-import { AccessRedirect, accessErrorStatus } from "@jappan/components/jappan/AdminRoute";
-import ExternalTextLink from "@jappan/components/jappan/ExternalTextLink";
-import LoadingIndicator from "@jappan/components/jappan/LoadingIndicator";
+import { AccessRedirect, accessErrorStatus } from "@jappan/components/AdminRoute";
+import ExternalTextLink from "@jappan/components/ExternalTextLink";
+import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import APIHandler, { type AdminBotPlayerSession } from "@jappan/handlers/APIHandler";
 
 function HealthCard({ label, healthy }: { label: string; healthy: boolean | undefined }) {

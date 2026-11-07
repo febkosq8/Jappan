@@ -2,24 +2,22 @@ import { Avatar, Menu, ThemeSwitcher } from "@febkosq8/arc";
 import { Link, useLocation } from "react-router-dom";
 
 import { isAdminSession, useSessionQuery } from "@jappan/handlers/auth";
-import AuthHeaderControls from "./AuthHeaderControls";
+import AdminMenu from "./header/AdminMenu";
+import AuthHeaderControls from "./header/AuthMenu";
 
 export default function Header() {
 	const { data: session, isError } = useSessionQuery();
 	const location = useLocation();
 	const isHomePage = location.pathname === "/";
 	const isCommandsPage = location.pathname === "/commands";
-	const isViewGuildPage = location.pathname === "/admin/guild" || location.pathname.startsWith("/admin/guild/");
-	const isListGuildsPage = location.pathname === "/admin/guilds";
-	const isViewBotPage = location.pathname === "/admin/bot";
 	const isAdmin = !isError && isAdminSession(session);
 	const currentPage = isHomePage ? "Home" : isCommandsPage ? "Commands" : "Pages";
 	const mobilePage =
-		isAdmin && isViewBotPage
+		isAdmin && location.pathname === "/admin/bot"
 			? "Manage Bot"
-			: isAdmin && isViewGuildPage
+			: isAdmin && (location.pathname === "/admin/guild" || location.pathname.startsWith("/admin/guild/"))
 				? "View Guild"
-				: isAdmin && isListGuildsPage
+				: isAdmin && location.pathname === "/admin/guilds"
 					? "List Guilds"
 					: currentPage;
 	const homeItem = (
@@ -36,30 +34,6 @@ export default function Header() {
 			</Link>
 		</Menu.Item>
 	);
-	const guildMenu = (
-		<Menu.Sub buttonText="Guild">
-			<Menu.Item asChild nativeButton={false} active={isListGuildsPage}>
-				<Link to="/admin/guilds" aria-current={isListGuildsPage ? "page" : undefined}>
-					List Guilds
-				</Link>
-			</Menu.Item>
-			<Menu.Item asChild nativeButton={false} active={isViewGuildPage}>
-				<Link to="/admin/guild" aria-current={isViewGuildPage ? "page" : undefined}>
-					View Guild
-				</Link>
-			</Menu.Item>
-		</Menu.Sub>
-	);
-	const botMenu = (
-		<Menu.Sub buttonText="Bot">
-			<Menu.Item asChild nativeButton={false} active={isViewBotPage}>
-				<Link to="/admin/bot" aria-current={isViewBotPage ? "page" : undefined}>
-					Manage Bot
-				</Link>
-			</Menu.Item>
-		</Menu.Sub>
-	);
-
 	return (
 		<header className="sticky top-0 z-50 w-full border-b border-border bg-background/90 backdrop-blur">
 			<div className="mx-auto flex min-h-16 max-w-6xl flex-wrap items-center justify-between gap-2 px-3 py-2 sm:px-6">
@@ -72,12 +46,7 @@ export default function Header() {
 						<Menu buttonText={mobilePage}>
 							{homeItem}
 							{commandsItem}
-							{isAdmin && (
-								<Menu.Sub buttonText="Admin" active={location.pathname.startsWith("/admin")}>
-									{guildMenu}
-									{botMenu}
-								</Menu.Sub>
-							)}
+							{isAdmin && <AdminMenu asSubmenu />}
 						</Menu>
 					</nav>
 					<nav aria-label="Main navigation" className="hidden items-center gap-1 sm:flex">
@@ -85,12 +54,7 @@ export default function Header() {
 							{homeItem}
 							{commandsItem}
 						</Menu>
-						{isAdmin && (
-							<Menu buttonText="Admin" active={location.pathname.startsWith("/admin")}>
-								{guildMenu}
-								{botMenu}
-							</Menu>
-						)}
+						{isAdmin && <AdminMenu />}
 					</nav>
 					<AuthHeaderControls />
 					<ThemeSwitcher variant="toggle" />

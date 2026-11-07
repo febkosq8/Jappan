@@ -25,13 +25,7 @@ function AuthErrorRedirect({
 	const location = useLocation();
 	const returnTo = `${location.pathname}${location.search}${location.hash}`;
 	const errorURL = new URL(authErrorURL(window.location.origin, returnTo, errorCode));
-	return (
-		<Navigate
-			to={`${errorURL.pathname}${errorURL.search}`}
-			replace
-			state={{ rejectedSessionId }}
-		/>
-	);
+	return <Navigate to={`${errorURL.pathname}${errorURL.search}`} replace state={{ rejectedSessionId }} />;
 }
 
 export function accessErrorStatus(error: unknown): 401 | 403 | undefined {
