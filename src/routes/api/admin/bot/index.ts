@@ -38,6 +38,7 @@ const adminBotStatusSchema = z.object({
 	bootedAtMs: z.number(),
 	guildCount: z.number().int().nonnegative(),
 	memberCount: z.number().int().nonnegative().nullable(),
+	gatewayLatencyMs: z.number().nonnegative().nullable(),
 });
 
 const stopBotRequestSchema = z.object({ confirm: z.literal(true) });
@@ -98,6 +99,7 @@ export default defineRouter("/bot", [
 				return response.status(503).json({ error: "Discord is unavailable" });
 			}
 			const guilds = [...client.guilds.cache.values()];
+			const gatewayLatency = client.ws.ping;
 			const returnData = {
 				botName: botUser.username,
 				botAvatarUrl: botUser.displayAvatarURL(),
@@ -108,6 +110,7 @@ export default defineRouter("/bot", [
 				memberCount: guilds.every((guild) => guild.available && Number.isFinite(guild.memberCount))
 					? guilds.reduce((total, guild) => total + guild.memberCount, 0)
 					: null,
+				gatewayLatencyMs: Number.isFinite(gatewayLatency) && gatewayLatency >= 0 ? gatewayLatency : null,
 			};
 			return response.status(200).json(returnData);
 		},

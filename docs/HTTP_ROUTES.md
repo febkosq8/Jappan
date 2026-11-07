@@ -85,6 +85,10 @@ This document records design decisions and behavior that is easy to miss.
   unavailable. Player timestamps describe the current track's playback position,
   not queue creation; total duration can be unknown. Dashboard data refreshes
   every 30 seconds.
+- Bot overview gateway latency is the Discord client's current WebSocket ping,
+  or null when unavailable. Dashboard API latency measures the browser's
+  round trip for the bot-status request, not the bot's Discord command response
+  time.
 - Global guild-command undeployment requires confirmation, reports failures and
   time-limit truncation, and rejects concurrent dashboard runs.
 - Dashboard self-kick requires confirmation and leaves all cached guilds except

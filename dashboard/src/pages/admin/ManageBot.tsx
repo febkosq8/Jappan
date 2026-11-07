@@ -138,7 +138,11 @@ export default function ManageBot() {
 	const [shutdownScheduled, setShutdownScheduled] = useState(false);
 	const statusQuery = useQuery({
 		queryKey: ["admin", "bot", "status"],
-		queryFn: APIHandler.getAdminBotStatus,
+		queryFn: async () => {
+			const startedAt = performance.now();
+			const status = await APIHandler.getAdminBotStatus();
+			return { ...status, apiLatencyMs: Math.round(performance.now() - startedAt) };
+		},
 		refetchInterval: shutdownScheduled ? false : 30_000,
 	});
 	const healthQuery = useQuery({
@@ -308,6 +312,31 @@ export default function ManageBot() {
 												columns={5}
 												size={80}
 												label={`Loading ${label.toLowerCase()} count`}
+												inline
+											/>
+										</div>
+									)}
+								</Card.Content>
+							</Card>
+						))}
+						{[
+							{ label: "Gateway latency", value: bot?.gatewayLatencyMs },
+							{ label: "Dashboard API latency", value: bot?.apiLatencyMs },
+						].map(({ label, value }) => (
+							<Card key={label} hoverable={false} className="rounded-md border-border">
+								<Card.Content className="flex min-h-24 flex-col items-start justify-between gap-3 p-3!">
+									<p className="text-sm font-semibold">{label}</p>
+									{bot ? (
+										<strong className="self-end text-right text-lg">
+											{value == null ? "Unavailable" : `${value.toLocaleString()} ms`}
+										</strong>
+									) : (
+										<div className="self-end">
+											<LoadingIndicator
+												rows={1}
+												columns={5}
+												size={80}
+												label={`Loading ${label.toLowerCase()}`}
 												inline
 											/>
 										</div>

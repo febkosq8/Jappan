@@ -38,6 +38,7 @@ export interface AdminBotStatus {
 	bootedAtMs: number;
 	guildCount: number;
 	memberCount: number | null;
+	gatewayLatencyMs: number | null;
 }
 
 export interface AdminBotShutdownResult {
