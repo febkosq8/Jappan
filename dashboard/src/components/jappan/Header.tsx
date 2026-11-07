@@ -1,5 +1,5 @@
 import { Avatar, Menu, ThemeSwitcher } from "@febkosq8/arc";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
 import { isAdminSession, useSessionQuery } from "@jappan/handlers/auth";
 import AuthHeaderControls from "./AuthHeaderControls";
@@ -7,7 +7,6 @@ import AuthHeaderControls from "./AuthHeaderControls";
 export default function Header() {
 	const { data: session, isError } = useSessionQuery();
 	const location = useLocation();
-	const navigate = useNavigate();
 	const isHomePage = location.pathname === "/";
 	const isCommandsPage = location.pathname === "/commands";
 	const isViewGuildPage = location.pathname === "/admin/guild" || location.pathname.startsWith("/admin/guild/");
@@ -25,32 +24,38 @@ export default function Header() {
 					: currentPage;
 	const homeItem = (
 		<Menu.Item asChild nativeButton={false} active={isHomePage}>
-			<a href="/" aria-current={isHomePage ? "page" : undefined}>
+			<Link to="/" aria-current={isHomePage ? "page" : undefined}>
 				Home
-			</a>
+			</Link>
 		</Menu.Item>
 	);
 	const commandsItem = (
 		<Menu.Item asChild nativeButton={false} active={isCommandsPage}>
-			<a href="/commands" aria-current={isCommandsPage ? "page" : undefined}>
+			<Link to="/commands" aria-current={isCommandsPage ? "page" : undefined}>
 				Commands
-			</a>
+			</Link>
 		</Menu.Item>
 	);
 	const guildMenu = (
 		<Menu.Sub buttonText="Guild">
-			<Menu.Item active={isListGuildsPage} onClick={() => navigate("/admin/guilds")}>
-				List Guilds
+			<Menu.Item asChild nativeButton={false} active={isListGuildsPage}>
+				<Link to="/admin/guilds" aria-current={isListGuildsPage ? "page" : undefined}>
+					List Guilds
+				</Link>
 			</Menu.Item>
-			<Menu.Item active={isViewGuildPage} onClick={() => navigate("/admin/guild")}>
-				View Guild
+			<Menu.Item asChild nativeButton={false} active={isViewGuildPage}>
+				<Link to="/admin/guild" aria-current={isViewGuildPage ? "page" : undefined}>
+					View Guild
+				</Link>
 			</Menu.Item>
 		</Menu.Sub>
 	);
 	const botMenu = (
 		<Menu.Sub buttonText="Bot">
-			<Menu.Item active={isViewBotPage} onClick={() => navigate("/admin/bot")}>
-				Manage Bot
+			<Menu.Item asChild nativeButton={false} active={isViewBotPage}>
+				<Link to="/admin/bot" aria-current={isViewBotPage ? "page" : undefined}>
+					Manage Bot
+				</Link>
 			</Menu.Item>
 		</Menu.Sub>
 	);
