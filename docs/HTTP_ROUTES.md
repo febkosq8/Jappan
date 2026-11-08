@@ -72,7 +72,7 @@ This document records design decisions and behavior that is easy to miss.
   be omitted. Required-permission coverage is guild-level and does not account
   for channel overrides. Discord disconnection or unexpected detail lookup
   failures are errors rather than incomplete success responses.
-- Guild preferences remain available for stored guilds even when Discord
+- Service preferences remain available for stored guilds even when Discord
   details cannot be resolved. Configured channels and roles retain their IDs
   with null names when unresolved. Guild command deployment counts compare
   registered command names, not definitions or freshness.

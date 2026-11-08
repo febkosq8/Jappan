@@ -32,7 +32,7 @@ export const adminGuildSchema = guildBaseSchema.extend({
 
 const preferenceEntitySchema = z.object({ id: z.string(), name: z.string().nullable() }).nullable();
 
-export const guildPreferencesSchema = z.object({
+export const servicePreferencesSchema = z.object({
 	auditLog: z.object({
 		enabled: z.boolean(),
 		channel: preferenceEntitySchema,
@@ -57,19 +57,16 @@ export const guildPreferencesSchema = z.object({
 	}),
 });
 
-const guildDetailsFields = {
-	discoveredTimestampMs: z.number().int().nullable(),
-	servicePreferences: guildPreferencesSchema,
-};
-
 export const guildDetailsSchema = guildSchema.extend({
-	...guildDetailsFields,
+	servicePreferences: servicePreferencesSchema,
 	createdTimestampMs: z.number().int().optional(),
 	joinedTimestampMs: z.number().int().optional(),
 	permissions: z.array(z.string()).optional(),
 });
 
-export const adminGuildDetailsSchema = adminGuildSchema.extend(guildDetailsFields);
+export const adminGuildDetailsSchema = adminGuildSchema.extend({
+	servicePreferences: servicePreferencesSchema,
+});
 
 const snowflake = (label: string) => z.string().regex(/^\d{17,20}$/u, `Invalid ${label} ID`);
 const threshold = z.number().int().min(1).max(1000);

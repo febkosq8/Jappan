@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 import APIHandler, {
 	type AdminGuildChannel,
-	type GuildPreferencesEditorGuild,
+	type ServicePreferencesEditorGuild,
 	type GuildRole,
 	type PreferenceEntity,
 } from "@jappan/handlers/APIHandler";
@@ -176,7 +176,7 @@ function PreferenceForm({
 }
 
 interface SectionProps {
-	guild: GuildPreferencesEditorGuild;
+	guild: ServicePreferencesEditorGuild;
 	channels: AdminGuildChannel[] | undefined;
 	roles: GuildRole[] | undefined;
 	readOnly: boolean;
@@ -423,7 +423,7 @@ function WarningsSection({ guild, channels, readOnly, onSaved }: SectionProps) {
 	);
 }
 
-export default function GuildPreferencesEditor({ guild }: { guild: GuildPreferencesEditorGuild }) {
+export default function ServicePreferencesEditor({ guild }: { guild: ServicePreferencesEditorGuild }) {
 	const queryClient = useQueryClient();
 	const channelsQuery = useQuery({
 		queryKey: ["user", "guild", guild.id, "channels"],

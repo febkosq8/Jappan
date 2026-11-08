@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import APIHandler, { type UserGuildDetails } from "@jappan/handlers/APIHandler";
 import { AccessRedirect } from "@jappan/components/AdminRoute";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
-import GuildPreferencesEditor from "@jappan/pages/admin/GuildPreferencesEditor";
+import ServicePreferencesEditor from "@jappan/components/guild/ServicePreferencesEditor";
 import {
 	guildIdPattern,
 	GuildLookup,
@@ -61,7 +61,7 @@ function GuildDetails({ guild }: { guild: UserGuildDetails }) {
 				<GuildOverview guild={guild} />
 			</TabsPanel>
 			<TabsPanel value="service-preferences" keepMounted>
-				<GuildPreferencesEditor guild={{ ...guild, isActiveMember: true }} />
+				<ServicePreferencesEditor guild={{ ...guild, isActiveMember: true }} />
 			</TabsPanel>
 			<TabsPanel value="bot-permissions" keepMounted>
 				<BotPermissionsPanel permissions={guild.permissions} />

@@ -23,7 +23,7 @@ import {
 	updateLevelingPreference,
 	updateMemberAnnouncementsPreference,
 	updateWarningsPreference,
-} from "../../../services/guildPreferences.js";
+} from "../../../services/servicePreferences.js";
 import {
 	auditLogPreferenceSchema,
 	guildDetailsSchema,
@@ -219,7 +219,7 @@ export default defineRouter("/guilds", [
 		path: "/:guildId/audit-log",
 		tags,
 		summary: "Update audit log preferences",
-		errorMessage: "Failed to update guild preferences",
+		errorMessage: "Failed to update service preferences",
 		security,
 		parameters,
 		requestBody: {
@@ -232,7 +232,7 @@ export default defineRouter("/guilds", [
 			404: { description: "Guild not found", schema: errorResponseSchema },
 			409: { description: "Bot is not a guild member", schema: errorResponseSchema },
 			503: { description: "Guild or service unavailable", schema: errorResponseSchema },
-			500: { description: "Failed to update guild preferences", schema: errorResponseSchema },
+			500: { description: "Failed to update service preferences", schema: errorResponseSchema },
 		},
 		middleware,
 		handler: async (request, response) => {
@@ -254,7 +254,7 @@ export default defineRouter("/guilds", [
 		path: "/:guildId/leveling",
 		tags,
 		summary: "Update leveling preferences",
-		errorMessage: "Failed to update guild preferences",
+		errorMessage: "Failed to update service preferences",
 		security,
 		parameters,
 		requestBody: {
@@ -267,7 +267,7 @@ export default defineRouter("/guilds", [
 			404: { description: "Guild not found", schema: errorResponseSchema },
 			409: { description: "Bot is not a guild member", schema: errorResponseSchema },
 			503: { description: "Guild or service unavailable", schema: errorResponseSchema },
-			500: { description: "Failed to update guild preferences", schema: errorResponseSchema },
+			500: { description: "Failed to update service preferences", schema: errorResponseSchema },
 		},
 		middleware,
 		handler: async (request, response) => {
@@ -289,7 +289,7 @@ export default defineRouter("/guilds", [
 		path: "/:guildId/member-announcements",
 		tags,
 		summary: "Update member announcement preferences",
-		errorMessage: "Failed to update guild preferences",
+		errorMessage: "Failed to update service preferences",
 		security,
 		parameters,
 		requestBody: {
@@ -302,7 +302,7 @@ export default defineRouter("/guilds", [
 			404: { description: "Guild not found", schema: errorResponseSchema },
 			409: { description: "Bot is not a guild member", schema: errorResponseSchema },
 			503: { description: "Guild or service unavailable", schema: errorResponseSchema },
-			500: { description: "Failed to update guild preferences", schema: errorResponseSchema },
+			500: { description: "Failed to update service preferences", schema: errorResponseSchema },
 		},
 		middleware,
 		handler: async (request, response) => {
@@ -324,7 +324,7 @@ export default defineRouter("/guilds", [
 		path: "/:guildId/warnings",
 		tags,
 		summary: "Update warning preferences",
-		errorMessage: "Failed to update guild preferences",
+		errorMessage: "Failed to update service preferences",
 		security,
 		parameters,
 		requestBody: {
@@ -337,7 +337,7 @@ export default defineRouter("/guilds", [
 			404: { description: "Guild not found", schema: errorResponseSchema },
 			409: { description: "Bot is not a guild member", schema: errorResponseSchema },
 			503: { description: "Guild or service unavailable", schema: errorResponseSchema },
-			500: { description: "Failed to update guild preferences", schema: errorResponseSchema },
+			500: { description: "Failed to update service preferences", schema: errorResponseSchema },
 		},
 		middleware,
 		handler: async (request, response) => {
@@ -381,7 +381,6 @@ export default defineRouter("/guilds", [
 				guildId,
 				keys: [
 					...extendedGuildKeys,
-					"discoveredTimestampMs",
 					"joinedTimestampMs",
 					"createdTimestampMs",
 					"servicePreferences",

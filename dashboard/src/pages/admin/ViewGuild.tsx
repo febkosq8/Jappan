@@ -28,7 +28,7 @@ import APIHandler, {
 import { AccessRedirect, accessErrorStatus } from "@jappan/components/AdminRoute";
 import ExternalTextLink from "@jappan/components/ExternalTextLink";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
-import GuildPreferencesEditor from "./GuildPreferencesEditor";
+import ServicePreferencesEditor from "@jappan/components/guild/ServicePreferencesEditor";
 import {
 	guildIdPattern,
 	GuildLookup,
@@ -813,7 +813,7 @@ function GuildDetails({ guild }: { guild: AdminGuildDetails }) {
 				<GuildChannels guild={guild} />
 			</TabsPanel>
 			<TabsPanel value="service-preferences" keepMounted>
-				<GuildPreferencesEditor guild={guild} />
+				<ServicePreferencesEditor guild={guild} />
 			</TabsPanel>
 			<TabsPanel value="bot-permissions" keepMounted>
 				<BotPermissionsPanel permissions={guild.permissions} />

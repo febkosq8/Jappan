@@ -77,9 +77,9 @@ async function getPreferenceRole(guild: Guild | undefined, roleId: string | null
 	}
 }
 
-type StoredGuildPreferences = Pick<StoredGuild, "auditLog" | "leveling" | "memberAnnouncements" | "warnings">;
+type StoredServicePreferences = Pick<StoredGuild, "auditLog" | "leveling" | "memberAnnouncements" | "warnings">;
 
-async function resolveGuildPreferences(guild: Guild | undefined, storedGuild: StoredGuildPreferences) {
+async function resolveServicePreferences(guild: Guild | undefined, storedGuild: StoredServicePreferences) {
 	const channelIds = [
 		storedGuild.auditLog.channelId,
 		storedGuild.memberAnnouncements.joinChannelId,
@@ -138,7 +138,7 @@ export interface GuildState {
 	owner?: { userId: string; avatarUrl: string; username: string };
 	guildCommandDeploymentState?: { deployed: number; total: number };
 	discoveredTimestampMs?: number | null;
-	servicePreferences?: Awaited<ReturnType<typeof resolveGuildPreferences>>;
+	servicePreferences?: Awaited<ReturnType<typeof resolveServicePreferences>>;
 }
 
 export const baseGuildKeys = ["id", "name", "icon"] as const;
@@ -161,7 +161,7 @@ export const allGuildKeys = [
 ] as const satisfies readonly (keyof GuildState)[];
 
 type StoredGuildState = Pick<StoredGuild, "guildId" | "guildName"> &
-	Partial<Pick<StoredGuild, "createdAt" | keyof StoredGuildPreferences>>;
+	Partial<Pick<StoredGuild, "createdAt" | keyof StoredServicePreferences>>;
 
 type ComputedGuildState = Pick<GuildState, "id" | "name"> & Partial<GuildState>;
 
@@ -208,7 +208,7 @@ export async function getGuildState(
 		if (!auditLog || !leveling || !memberAnnouncements || !warnings) {
 			throw new Error(`Stored preferences are required for guild ${storedGuild.guildId}`);
 		}
-		returnData.servicePreferences = await resolveGuildPreferences(guild, {
+		returnData.servicePreferences = await resolveServicePreferences(guild, {
 			auditLog,
 			leveling,
 			memberAnnouncements,

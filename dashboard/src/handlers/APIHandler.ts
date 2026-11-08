@@ -132,7 +132,7 @@ export interface AdminGuildInvite {
 	inviter: { id: string; username: string } | null;
 }
 
-export interface GuildPreferences {
+export interface ServicePreferences {
 	auditLog: { enabled: boolean; channel: PreferenceEntity | null; fullVerbosity: boolean };
 	leveling: { enabled: boolean; threshold: number | null; role: PreferenceEntity | null };
 	memberAnnouncements: {
@@ -152,7 +152,7 @@ export interface GuildPreferences {
 export interface AdminGuildDetails extends AdminGuildBase {
 	discoveredTimestampMs: number | null;
 	guildCommandDeploymentState?: { deployed: number; total: number };
-	servicePreferences: GuildPreferences;
+	servicePreferences: ServicePreferences;
 }
 
 export interface UserGuild {
@@ -167,14 +167,14 @@ export interface UserGuildDetails extends UserGuild {
 	discoveredTimestampMs: number | null;
 	createdTimestampMs?: number;
 	joinedTimestampMs?: number;
-	servicePreferences: GuildPreferences;
+	servicePreferences: ServicePreferences;
 	permissions?: string[];
 }
 
-export interface GuildPreferencesEditorGuild {
+export interface ServicePreferencesEditorGuild {
 	id: string;
 	isActiveMember: boolean;
-	servicePreferences: GuildPreferences;
+	servicePreferences: ServicePreferences;
 }
 
 export interface GuildRole {
@@ -316,26 +316,26 @@ class APIHandler {
 		return data;
 	}
 
-	private static async updateGuildPreference<Input>(guildId: string, action: string, input: Input): Promise<void> {
+	private static async updateServicePreference<Input>(guildId: string, action: string, input: Input): Promise<void> {
 		await apiClient.patch<void>(`/api/v1/guilds/${encodeURIComponent(guildId)}/${action}`, input, {
 			withCredentials: true,
 		});
 	}
 
 	static updateAuditLogPreference(guildId: string, input: AuditLogPreferenceInput) {
-		return APIHandler.updateGuildPreference(guildId, "audit-log", input);
+		return APIHandler.updateServicePreference(guildId, "audit-log", input);
 	}
 
 	static updateLevelingPreference(guildId: string, input: LevelingPreferenceInput) {
-		return APIHandler.updateGuildPreference(guildId, "leveling", input);
+		return APIHandler.updateServicePreference(guildId, "leveling", input);
 	}
 
 	static updateMemberAnnouncementsPreference(guildId: string, input: MemberAnnouncementsPreferenceInput) {
-		return APIHandler.updateGuildPreference(guildId, "member-announcements", input);
+		return APIHandler.updateServicePreference(guildId, "member-announcements", input);
 	}
 
 	static updateWarningsPreference(guildId: string, input: WarningsPreferenceInput) {
-		return APIHandler.updateGuildPreference(guildId, "warnings", input);
+		return APIHandler.updateServicePreference(guildId, "warnings", input);
 	}
 
 	static async sendAdminGuildMessage(

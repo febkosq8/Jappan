@@ -126,6 +126,11 @@ export function GuildOverview({ guild }: { guild: AdminGuildDetails | UserGuildD
 				{"channelCount" in guild && (
 					<GuildDetail label="Channels">{guild.channelCount?.toLocaleString() ?? "Unavailable"}</GuildDetail>
 				)}
+				{"createdTimestampMs" in guild && (
+					<GuildDateDetail label="Created" timestamp={guild.createdTimestampMs} />
+				)}
+				{"joinedTimestampMs" in guild && <GuildDateDetail label="Joined" timestamp={guild.joinedTimestampMs} />}
+				<GuildDateDetail label="Discovered" timestamp={guild.discoveredTimestampMs} />
 				{"owner" in guild && (
 					<GuildDetail label="Owner">
 						{guild.owner ? (
@@ -149,11 +154,6 @@ export function GuildOverview({ guild }: { guild: AdminGuildDetails | UserGuildD
 						)}
 					</GuildDetail>
 				)}
-				{"createdTimestampMs" in guild && (
-					<GuildDateDetail label="Created" timestamp={guild.createdTimestampMs} />
-				)}
-				{"joinedTimestampMs" in guild && <GuildDateDetail label="Joined" timestamp={guild.joinedTimestampMs} />}
-				<GuildDateDetail label="Discovered" timestamp={guild.discoveredTimestampMs} />
 				{"systemChannel" in guild && (
 					<GuildDetail label="System channel">
 						{guild.systemChannel === undefined ? (
