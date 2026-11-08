@@ -10,6 +10,7 @@ import APIHandler, {
 	type GuildRole,
 	type PreferenceEntity,
 } from "@jappan/handlers/APIHandler";
+import LoadingIndicator from "@jappan/components/LoadingIndicator";
 
 const textChannelTypes = ["GuildText", "GuildAnnouncement"];
 
@@ -69,6 +70,7 @@ function SelectField({
 	onChange,
 	data,
 	disabled,
+	loading,
 }: {
 	id: string;
 	label: string;
@@ -76,11 +78,22 @@ function SelectField({
 	onChange: (value: string) => void;
 	data: { key: string; label: string }[];
 	disabled: boolean;
+	loading: boolean;
 }) {
 	return (
 		<div>
-			<LabelField id={id} label={label} className="mb-1" />
-			<Select id={id} value={value} onChange={onChange} data={data} disabled={disabled} className="h-10" />
+			<div className="mb-1 flex items-center gap-2">
+				<LabelField id={id} label={label} />
+				{loading && <LoadingIndicator label={`Loading options for ${label}`} inline size={16} />}
+			</div>
+			<Select
+				id={id}
+				value={value}
+				onChange={onChange}
+				data={data}
+				disabled={disabled || loading}
+				className="h-10"
+			/>
 		</div>
 	);
 }
@@ -179,6 +192,8 @@ interface SectionProps {
 	guild: ServicePreferencesEditorGuild;
 	channels: AdminGuildChannel[] | undefined;
 	roles: GuildRole[] | undefined;
+	channelsLoading: boolean;
+	rolesLoading: boolean;
 	readOnly: boolean;
 	onSaved: () => Promise<void>;
 }
@@ -200,7 +215,7 @@ function useSave<Input>(save: (input: Input) => Promise<void>, label: string, on
 	});
 }
 
-function AuditLogSection({ guild, channels, readOnly, onSaved }: SectionProps) {
+function AuditLogSection({ guild, channels, channelsLoading, readOnly, onSaved }: SectionProps) {
 	const { auditLog } = guild.servicePreferences;
 	const [enabled, setEnabled] = useState(auditLog.enabled);
 	const [channelId, setChannelId] = useState(auditLog.channel?.id ?? "");
@@ -230,6 +245,7 @@ function AuditLogSection({ guild, channels, readOnly, onSaved }: SectionProps) {
 				value={channelId}
 				onChange={setChannelId}
 				data={channelOptions(channels, auditLog.channel)}
+				loading={channelsLoading}
 				disabled={disabled || !enabled}
 			/>
 			<ToggleField
@@ -242,7 +258,7 @@ function AuditLogSection({ guild, channels, readOnly, onSaved }: SectionProps) {
 	);
 }
 
-function LevelingSection({ guild, roles, readOnly, onSaved }: SectionProps) {
+function LevelingSection({ guild, roles, rolesLoading, readOnly, onSaved }: SectionProps) {
 	const { leveling } = guild.servicePreferences;
 	const [enabled, setEnabled] = useState(leveling.enabled);
 	const [threshold, setThreshold] = useState(leveling.threshold?.toString() ?? "");
@@ -279,13 +295,14 @@ function LevelingSection({ guild, roles, readOnly, onSaved }: SectionProps) {
 				value={roleId}
 				onChange={setRoleId}
 				data={roleOptions(roles, leveling.role)}
+				loading={rolesLoading}
 				disabled={disabled || !enabled}
 			/>
 		</PreferenceForm>
 	);
 }
 
-function MemberAnnouncementsSection({ guild, channels, readOnly, onSaved }: SectionProps) {
+function MemberAnnouncementsSection({ guild, channels, channelsLoading, readOnly, onSaved }: SectionProps) {
 	const { memberAnnouncements } = guild.servicePreferences;
 	const [joinEnabled, setJoinEnabled] = useState(memberAnnouncements.joinEnabled);
 	const [joinChannelId, setJoinChannelId] = useState(memberAnnouncements.joinChannel?.id ?? "");
@@ -330,6 +347,7 @@ function MemberAnnouncementsSection({ guild, channels, readOnly, onSaved }: Sect
 				value={joinChannelId}
 				onChange={setJoinChannelId}
 				data={channelOptions(channels, memberAnnouncements.joinChannel)}
+				loading={channelsLoading}
 				disabled={disabled || !joinEnabled}
 			/>
 			<ToggleField
@@ -344,13 +362,14 @@ function MemberAnnouncementsSection({ guild, channels, readOnly, onSaved }: Sect
 				value={leaveChannelId}
 				onChange={setLeaveChannelId}
 				data={channelOptions(channels, memberAnnouncements.leaveChannel)}
+				loading={channelsLoading}
 				disabled={disabled || !leaveEnabled}
 			/>
 		</PreferenceForm>
 	);
 }
 
-function WarningsSection({ guild, channels, readOnly, onSaved }: SectionProps) {
+function WarningsSection({ guild, channels, channelsLoading, readOnly, onSaved }: SectionProps) {
 	const { warnings } = guild.servicePreferences;
 	const [timeoutThreshold, setTimeoutThreshold] = useState(warnings.timeoutThreshold?.toString() ?? "");
 	const [timeoutDuration, setTimeoutDuration] = useState(warnings.timeoutDurationHours?.toString() ?? "");
@@ -417,24 +436,31 @@ function WarningsSection({ guild, channels, readOnly, onSaved }: SectionProps) {
 				value={auditChannelId}
 				onChange={setAuditChannelId}
 				data={channelOptions(channels, warnings.auditChannel)}
+				loading={channelsLoading}
 				disabled={disabled}
 			/>
 		</PreferenceForm>
 	);
 }
 
-export default function ServicePreferencesEditor({ guild }: { guild: ServicePreferencesEditorGuild }) {
+export default function ServicePreferencesEditor({
+	guild,
+	active,
+}: {
+	guild: ServicePreferencesEditorGuild;
+	active: boolean;
+}) {
 	const queryClient = useQueryClient();
 	const channelsQuery = useQuery({
 		queryKey: ["user", "guild", guild.id, "channels"],
 		queryFn: () => APIHandler.getGuildChannels(guild.id),
-		enabled: guild.isActiveMember,
+		enabled: guild.isActiveMember && active,
 		retry: false,
 	});
 	const rolesQuery = useQuery({
 		queryKey: ["user", "guild", guild.id, "roles"],
 		queryFn: () => APIHandler.getGuildRoles(guild.id),
-		enabled: guild.isActiveMember,
+		enabled: guild.isActiveMember && active,
 		retry: false,
 	});
 	const handleSaved = async () => {
@@ -448,6 +474,8 @@ export default function ServicePreferencesEditor({ guild }: { guild: ServicePref
 		guild,
 		channels: channelsQuery.data,
 		roles: rolesQuery.data,
+		channelsLoading: guild.isActiveMember && active && channelsQuery.isFetching,
+		rolesLoading: guild.isActiveMember && active && rolesQuery.isFetching,
 		readOnly: !guild.isActiveMember,
 		onSaved: handleSaved,
 	};
@@ -469,7 +497,7 @@ export default function ServicePreferencesEditor({ guild }: { guild: ServicePref
 				</p>
 			)}
 			<fieldset
-				disabled={!guild.isActiveMember || channelsQuery.isPending || rolesQuery.isPending}
+				disabled={!guild.isActiveMember}
 				className="mt-4 grid min-w-0 gap-4 sm:grid-cols-2"
 			>
 				<AuditLogSection key={JSON.stringify(guild.servicePreferences.auditLog)} {...sectionProps} />

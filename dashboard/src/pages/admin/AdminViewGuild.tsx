@@ -813,7 +813,7 @@ function GuildDetails({ guild }: { guild: AdminGuildDetails }) {
 				<GuildChannels guild={guild} />
 			</TabsPanel>
 			<TabsPanel value="service-preferences" keepMounted>
-				<ServicePreferencesEditor guild={guild} />
+				<ServicePreferencesEditor guild={guild} active={section === "service-preferences"} />
 			</TabsPanel>
 			<TabsPanel value="bot-permissions" keepMounted>
 				<BotPermissionsPanel permissions={guild.permissions} />

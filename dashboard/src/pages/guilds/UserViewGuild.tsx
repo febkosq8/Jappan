@@ -61,7 +61,10 @@ function GuildDetails({ guild }: { guild: UserGuildDetails }) {
 				<GuildOverview guild={guild} />
 			</TabsPanel>
 			<TabsPanel value="service-preferences" keepMounted>
-				<ServicePreferencesEditor guild={{ ...guild, isActiveMember: true }} />
+				<ServicePreferencesEditor
+					guild={{ ...guild, isActiveMember: true }}
+					active={section === "service-preferences"}
+				/>
 			</TabsPanel>
 			<TabsPanel value="bot-permissions" keepMounted>
 				<BotPermissionsPanel permissions={guild.permissions} />
