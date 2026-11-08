@@ -14,13 +14,7 @@ import {
 import { requireDatabase, requireDiscord } from "../../../handlers/availability.js";
 import { defineRouter, errorResponseSchema } from "../../../helpers/route.js";
 import { listAdminGuildChannels, listAdminGuildRoles } from "../../../helpers/adminGuild.js";
-import {
-	baseGuildKeys,
-	computeGuildState,
-	extendedGuildKeys,
-	getAdminGuildForAction,
-	getGuildData,
-} from "../../../helpers/guild.js";
+import { baseGuildKeys, getGuildState, extendedGuildKeys, getAdminGuildForAction } from "../../../helpers/guild.js";
 import { listGuilds } from "../../../services/adminGuild.js";
 import type { AuthSession } from "../../../services/auth.js";
 import AuthUserModel from "../../../models/authUser.js";
@@ -383,14 +377,13 @@ export default defineRouter("/guilds", [
 			if (typeof guildId !== "string" || !guildIdPattern.test(guildId)) {
 				return response.status(400).json({ error: "Invalid guild ID" });
 			}
-			const storedGuild = await getGuildData(guildId);
-			if (!storedGuild) {
-				return response.status(404).json({ error: "Guild not found" });
-			}
-			const guild = await computeGuildState({
-				storedGuild,
+			const guild = await getGuildState({
+				guildId,
 				keys: [...baseGuildKeys, "owner", "discoveredAt", "servicePreferences"],
 			});
+			if (!guild) {
+				return response.status(404).json({ error: "Guild not found" });
+			}
 			return response.status(200).json(guild);
 		},
 	},

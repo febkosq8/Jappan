@@ -2,7 +2,7 @@ import type { Client, PermissionResolvable } from "discord.js";
 import { DiscordAPIError, RESTJSONErrorCodes } from "discord.js";
 
 import { formatUser } from "../helpers/discord.js";
-import { computeGuildState, getClientGuilds, getGuildDataList } from "../helpers/guild.js";
+import { getGuildState, getClientGuilds, getGuildDataList } from "../helpers/guild.js";
 import { getRequiredGlobalBotPermissions } from "./commandLoader.js";
 import type { Config } from "./config.js";
 import { logger } from "./logger.js";
@@ -53,7 +53,7 @@ export async function validateAdminUsers(client: Client, config: Config): Promis
 	}
 }
 
-type GuildListDetails = Awaited<ReturnType<typeof computeGuildState>>;
+type GuildListDetails = Awaited<ReturnType<typeof getGuildState>>;
 type GuildListItem = Required<Pick<GuildListDetails, "id" | "name" | "isActiveMember">> &
 	Omit<GuildListDetails, "id" | "name" | "isActiveMember">;
 
@@ -105,14 +105,14 @@ export async function listGuilds<K extends keyof GuildListItem>({
 	const storedGuilds = await getGuildDataList(guildIds);
 
 	const guilds: GuildListItem[] = [];
-	for (const storedGuild of storedGuilds) {
-		const details = await computeGuildState({
-			storedGuild,
+	for (const guildData of storedGuilds) {
+		const details = await getGuildState({
+			guildData,
 			requiredPermissions,
 			keys: [...keys, "isActiveMember"],
 		});
 		if (details.isActiveMember === undefined) {
-			throw new Error(`Failed to compute sorting state for guild ${storedGuild.guildId}`);
+			throw new Error(`Failed to compute sorting state for guild ${guildData.guildId}`);
 		}
 		guilds.push({ ...details, isActiveMember: details.isActiveMember });
 	}

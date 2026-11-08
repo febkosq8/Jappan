@@ -163,16 +163,35 @@ export const allGuildKeys = [
 type StoredGuildState = Pick<StoredGuild, "guildId" | "guildName"> &
 	Partial<Pick<StoredGuild, "createdAt" | keyof StoredGuildPreferences>>;
 
-export async function computeGuildState({
-	storedGuild,
-	requiredPermissions,
-	keys = allGuildKeys,
-}: {
-	storedGuild: StoredGuildState;
+type ComputedGuildState = Pick<GuildState, "id" | "name"> & Partial<GuildState>;
+
+type ComputeGuildStateOptions = {
 	requiredPermissions?: PermissionsBitField | undefined;
 	keys?: readonly (keyof GuildState)[];
-}): Promise<Pick<GuildState, "id" | "name"> & Partial<GuildState>> {
-	const guild = getClientGuild(storedGuild.guildId);
+};
+
+export function getGuildState(
+	options: ComputeGuildStateOptions &
+		({ guildId: string; clientGuild?: never } | { clientGuild: Guild; guildId?: never }) & {
+			guildData?: undefined;
+		},
+): Promise<ComputedGuildState | null>;
+export function getGuildState(
+	options: ComputeGuildStateOptions & { guildData: StoredGuildState; clientGuild?: Guild | undefined },
+): Promise<ComputedGuildState>;
+export async function getGuildState(
+	options: ComputeGuildStateOptions & {
+		guildData?: StoredGuildState | undefined;
+		clientGuild?: Guild | undefined;
+		guildId?: string | undefined;
+	},
+): Promise<ComputedGuildState | null> {
+	const { requiredPermissions, keys = allGuildKeys } = options;
+	const resolvedGuildId = options.guildData?.guildId ?? options.clientGuild?.id ?? options.guildId;
+	if (!resolvedGuildId) return null;
+	const storedGuild = options.guildData ?? (await getGuildData(resolvedGuildId));
+	if (!storedGuild) return null;
+	const guild = options.clientGuild ?? getClientGuild(resolvedGuildId);
 	const returnData: Pick<GuildState, "id" | "name"> & Partial<GuildState> = {
 		id: storedGuild.guildId,
 		name: guild?.available ? guild.name : storedGuild.guildName,

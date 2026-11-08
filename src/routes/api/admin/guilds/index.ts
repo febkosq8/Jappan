@@ -9,10 +9,9 @@ import { getGuildInvite, kickGuild, sendGuildAdminMessage } from "../../../../he
 import {
 	allGuildKeys,
 	canSendMessage,
-	computeGuildState,
+	getGuildState,
 	extendedGuildKeys,
 	getAdminGuildForAction,
-	getGuildData,
 } from "../../../../helpers/guild.js";
 import { listGuilds } from "../../../../services/adminGuild.js";
 import { setGuildCommands } from "../../../../services/adminDeployment.js";
@@ -462,11 +461,10 @@ export default defineRouter("/guilds", [
 			if (typeof guildId !== "string" || !/^\d{17,20}$/u.test(guildId)) {
 				return response.status(400).json({ error: "Invalid guild ID" });
 			}
-			const storedGuild = await getGuildData(guildId);
-			if (!storedGuild) {
+			const guild = await getGuildState({ guildId, keys: allGuildKeys });
+			if (!guild) {
 				return response.status(404).json({ error: "Guild not found" });
 			}
-			const guild = await computeGuildState({ storedGuild, keys: allGuildKeys });
 			return response.status(200).json(guild);
 		},
 	},
