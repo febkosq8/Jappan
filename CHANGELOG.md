@@ -12,13 +12,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Expanded API documentation to support request details, response formats, and authentication requirements.
 - Added an on-demand admin guild channel list endpoint and dashboard card with channel-specific details.
 - Added guild command deployment status to the admin guild API and dashboard.
-- Added `PATCH /api/v1/guild/{guildId}/audit-log`, `/leveling`, `/member-announcements`, and `/warnings` to update service preferences, and a `GET /api/v1/guild/{guildId}/roles` role list.
+- Added `PATCH /api/v1/guilds/{guildId}/audit-log`, `/leveling`, `/member-announcements`, and `/warnings` to update service preferences, and a `GET /api/v1/guilds/{guildId}/roles` role list.
+- Added `GET /api/v1/guilds` to list registered guilds the signed-in user is a member of and can manage (Manage Server).
 - Added editable service preferences to the dashboard guild view.
-- Allowed users with Manage Server to use the guild preference and detail endpoints, in addition to admins.
+- Allowed users with Manage Server to use the guild preference and detail endpoints; admins can also use the preference endpoints.
 
 ### Changed
 
-- Moved `GET /api/v1/admin/guilds/{guildId}` and `GET /api/v1/admin/guilds/{guildId}/channels` to `/api/v1/guild/{guildId}` and `/api/v1/guild/{guildId}/channels`.
+- Moved `GET /api/v1/admin/guilds/{guildId}/channels` to `/api/v1/guilds/{guildId}/channels`.
+- Separated admin and manager guild list and detail endpoints; command deployment state is returned only by the admin endpoints.
 
 ### Removed
 

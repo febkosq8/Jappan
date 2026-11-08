@@ -8,16 +8,18 @@ import { requireDatabase, requireDiscord } from "../../../../handlers/availabili
 import { defineRouter, errorResponseSchema } from "../../../../helpers/route.js";
 import {
 	canSendAdminMessage,
+	adminGuildListKeys,
+	getAdminGuild,
 	getAdminGuildForAction,
 	getGuildInvite,
 	kickGuild,
-	listAllGuilds,
+	listGuilds,
 	sendGuildAdminMessage,
 } from "../../../../services/adminGuild.js";
 import { setGuildCommands } from "../../../../services/adminDeployment.js";
 import type { AuthSession } from "../../../../services/auth.js";
 import { getConfig } from "../../../../services/config.js";
-import { guildSchema } from "../../guild/schemas.js";
+import { adminGuildDetailsSchema, adminGuildSchema } from "../../guilds/schemas.js";
 
 const adminGuildCommandsResultSchema = z.object({
 	action: z.enum(["deploy", "undeploy"]),
@@ -390,14 +392,52 @@ export default defineRouter("/guilds", [
 		responses: {
 			200: {
 				description: "Registered guilds with current Discord membership and available details",
-				schema: z.array(guildSchema),
+				schema: z.array(adminGuildSchema),
 			},
 			500: { description: "Failed to list guilds", schema: errorResponseSchema },
 		},
 		middleware: [requireDatabase, requireDiscord, requireSession, requireAdmin],
 		handler: async (_request, response) => {
-			const guilds = await listAllGuilds(getClient());
+			const guilds = await listGuilds({ keys: adminGuildListKeys });
 			return response.status(200).json(guilds);
+		},
+	},
+	{
+		method: "get",
+		path: "/:guildId",
+		tags: ["Admin Guilds"],
+		summary: "Get a registered guild as an admin",
+		errorMessage: "Failed to get guild",
+		security: [{ sessionCookie: [] }],
+		parameters: [
+			{
+				name: "guildId",
+				in: "path",
+				required: true,
+				description: "Discord guild ID",
+				schema: z.string().regex(/^\d{17,20}$/u),
+			},
+		],
+		responses: {
+			200: {
+				description: "Registered guild details including command deployment",
+				schema: adminGuildDetailsSchema,
+			},
+			400: { description: "Invalid guild ID", schema: errorResponseSchema },
+			404: { description: "Guild not found", schema: errorResponseSchema },
+			500: { description: "Failed to get guild", schema: errorResponseSchema },
+		},
+		middleware: [requireDatabase, requireDiscord, requireSession, requireAdmin],
+		handler: async (request, response) => {
+			const guildId = request.params.guildId;
+			if (typeof guildId !== "string" || !/^\d{17,20}$/u.test(guildId)) {
+				return response.status(400).json({ error: "Invalid guild ID" });
+			}
+			const guild = await getAdminGuild(getClient(), { guildId, includeGuildCommandsState: true });
+			if (!guild) {
+				return response.status(404).json({ error: "Guild not found" });
+			}
+			return response.status(200).json(guild);
 		},
 	},
 ]);

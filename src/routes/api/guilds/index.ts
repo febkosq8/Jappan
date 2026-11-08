@@ -1,4 +1,4 @@
-import type { Guild } from "discord.js";
+import { PermissionFlagsBits, type Guild } from "discord.js";
 import type { Response } from "express";
 import { z } from "zod";
 
@@ -7,6 +7,7 @@ import {
 	isBotAdmin,
 	isGuildManager,
 	requireAnyAuthorization,
+	requireGuildManager,
 	requireSession,
 	requireValidGuildId,
 } from "../../../handlers/auth.js";
@@ -15,9 +16,13 @@ import { defineRouter, errorResponseSchema } from "../../../helpers/route.js";
 import {
 	getAdminGuild,
 	getAdminGuildForAction,
+	guildListKeys,
 	listAdminGuildChannels,
 	listAdminGuildRoles,
+	listGuilds,
 } from "../../../services/adminGuild.js";
+import type { AuthSession } from "../../../services/auth.js";
+import AuthUserModel from "../../../models/authUser.js";
 import {
 	updateAuditLogPreference,
 	updateLevelingPreference,
@@ -27,6 +32,7 @@ import {
 import {
 	auditLogPreferenceSchema,
 	guildDetailsSchema,
+	guildSchema,
 	levelingPreferenceSchema,
 	memberAnnouncementsPreferenceSchema,
 	warningsPreferenceSchema,
@@ -78,7 +84,41 @@ async function resolveGuild(guildId: unknown, response: Response): Promise<Guild
 	}
 }
 
-export default defineRouter("/guild", [
+export default defineRouter("/guilds", [
+	{
+		method: "get",
+		path: "/",
+		tags,
+		summary: "List guilds the user can manage",
+		errorMessage: "Failed to list guilds",
+		security,
+		responses: {
+			200: {
+				description: "Registered guilds the user can manage",
+				schema: z.array(guildSchema),
+			},
+			401: { description: "Authentication required", schema: errorResponseSchema },
+			403: { description: "Active account and linked Discord account required", schema: errorResponseSchema },
+			500: { description: "Failed to list guilds", schema: errorResponseSchema },
+		},
+		middleware: [requireDatabase, requireDiscord, requireSession],
+		handler: async (_request, response) => {
+			const session: AuthSession = response.locals.authSession;
+			if (session.user.status !== "active" && session.user.status !== undefined) {
+				return response.status(403).json({ error: "Active account required" });
+			}
+			const user = await AuthUserModel.findById(session.user.id).select({ discordAccountId: 1 }).exec();
+			if (!user?.discordAccountId) {
+				return response.status(403).json({ error: "Linked Discord account required" });
+			}
+			return response.status(200).json(
+				await listGuilds({
+					userFilter: { userId: user.discordAccountId, permissions: [PermissionFlagsBits.ManageGuild] },
+					keys: guildListKeys,
+				}),
+			);
+		},
+	},
 	{
 		method: "get",
 		path: "/:guildId/channels",
@@ -329,20 +369,23 @@ export default defineRouter("/guild", [
 		parameters,
 		responses: {
 			200: {
-				description: "Registered guild with current Discord membership and available details",
+				description: "Registered guild details",
 				schema: guildDetailsSchema,
 			},
 			...accessResponses,
 			404: { description: "Guild not found", schema: errorResponseSchema },
 			500: { description: "Failed to get guild", schema: errorResponseSchema },
 		},
-		middleware,
+		middleware: [requireDatabase, requireDiscord, requireSession, requireValidGuildId, requireGuildManager],
 		handler: async (request, response) => {
 			const guildId = request.params.guildId;
 			if (typeof guildId !== "string" || !guildIdPattern.test(guildId)) {
 				return response.status(400).json({ error: "Invalid guild ID" });
 			}
-			const guild = await getAdminGuild(getClient(), guildId);
+			const guild = await getAdminGuild(getClient(), {
+				guildId,
+				includeGuildCommandsState: false,
+			});
 			if (!guild) {
 				return response.status(404).json({ error: "Guild not found" });
 			}

@@ -3,12 +3,13 @@ This internal repository is to develop and host the dashboard / website for Japp
 Signed-in administrators can open **Admin → List Guilds** to view stored guilds
 and their available Discord details. The dashboard requests
 `GET /api/v1/admin/guilds` using the session cookie; the API enforces admin access.
+Guild details are retrieved from `GET /api/v1/admin/guilds/{guildId}`.
 If the session cannot be checked or sign-in is required, the auth error page
 returns to the requested admin page when a valid session becomes available.
 Guild details also provide admin actions for sending a message to a selected text
 channel and getting an invite through authenticated API endpoints. The Preferences
 tab edits audit log, leveling, member announcement, and warning settings through
-`PATCH /api/v1/guild/{guildId}/...`; those endpoints also allow users with Manage Server.
+`PATCH /api/v1/guilds/{guildId}/...`; those endpoints also allow users with Manage Server.
 Administrators can also confirm removal of the bot from a guild, optionally
 adding a departure message and selecting a sendable channel. The bot still
 leaves if sending fails or no sendable channel is available.

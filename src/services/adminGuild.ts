@@ -1,13 +1,15 @@
-import type { Client, Guild, GuildBasedChannel, GuildMember, Invite, Role } from "discord.js";
+import type { Client, Guild, GuildBasedChannel, GuildMember, Invite, PermissionResolvable, Role } from "discord.js";
 import {
 	ApplicationCommandType,
 	ChannelType,
 	DiscordAPIError,
 	EmbedBuilder,
 	PermissionFlagsBits,
+	RESTJSONErrorCodes,
 	blockQuote,
 } from "discord.js";
 
+import { getClient } from "../bot.js";
 import { formatChannel, formatGuild, formatUser } from "../helpers/discord.js";
 import type { SentGuildMessage } from "../helpers/guildHelper.js";
 import { beginGuildDeparture, cancelGuildDeparture, sendGuildMessage } from "../helpers/guildHelper.js";
@@ -72,14 +74,48 @@ export async function validateAdminUsers(client: Client, config: Config): Promis
 	}
 }
 
-async function fetchGuildDetails(
-	guild: Guild,
-	requiredPermissions: ReturnType<typeof getRequiredGlobalBotPermissions>,
-) {
-	const owner = await guild.client.users.fetch(guild.ownerId);
-	const botMember = guild.members.me ?? (await guild.members.fetchMe());
-	const expectedCommands = getGuildCommands();
-	const registeredCommands = await guild.commands.fetch();
+async function getStoredGuildDetails({
+	client,
+	guildId,
+	guildName,
+	requiredPermissions,
+	keys,
+}: {
+	client: Client;
+	guildId: string;
+	guildName: string;
+	requiredPermissions: ReturnType<typeof getRequiredGlobalBotPermissions> | undefined;
+	keys: readonly ((typeof adminGuildListKeys)[number] | "guildCommandDeployment")[];
+}) {
+	const includeGuildCommandsState = keys.includes("guildCommandsDeployed") || keys.includes("guildCommandDeployment");
+	const guild = client.guilds.cache.get(guildId);
+	if (!guild?.available) {
+		return {
+			id: guildId,
+			name: guildName,
+			isActiveMember: guild !== undefined,
+			...(includeGuildCommandsState ? { guildCommandDeployment: null } : {}),
+		};
+	}
+
+	const owner = keys.includes("owner") ? await guild.client.users.fetch(guild.ownerId) : undefined;
+	const botMember =
+		keys.includes("permissions") || keys.includes("hasRequiredPermissions")
+			? (guild.members.me ?? (await guild.members.fetchMe()))
+			: undefined;
+	let guildCommandDeployment: { deployed: number; total: number } | undefined;
+	if (includeGuildCommandsState) {
+		const expectedCommands = getGuildCommands();
+		const registeredCommands = await guild.commands.fetch();
+		guildCommandDeployment = {
+			deployed: [...expectedCommands.keys()].filter((name) =>
+				registeredCommands.some(
+					(command) => command.name === name && command.type === ApplicationCommandType.ChatInput,
+				),
+			).length,
+			total: expectedCommands.size,
+		};
+	}
 
 	return {
 		id: guild.id,
@@ -92,37 +128,15 @@ async function fetchGuildDetails(
 		description: guild.description,
 		joinedTimestamp: guild.joinedTimestamp,
 		systemChannel: guild.systemChannel ? { id: guild.systemChannel.id, name: guild.systemChannel.name } : null,
-		permissions: botMember.permissions.toArray(),
-		hasRequiredPermissions: botMember.permissions.has(requiredPermissions),
-		owner: { userId: owner.id, avatarUrl: owner.displayAvatarURL(), username: owner.username },
-		guildCommandDeployment: {
-			deployed: [...expectedCommands.keys()].filter((name) =>
-				registeredCommands.some(
-					(command) => command.name === name && command.type === ApplicationCommandType.ChatInput,
-				),
-			).length,
-			total: expectedCommands.size,
-		},
+		...(botMember ? { permissions: botMember.permissions.toArray() } : {}),
+		...(botMember && requiredPermissions
+			? { hasRequiredPermissions: botMember.permissions.has(requiredPermissions) }
+			: {}),
+		...(owner
+			? { owner: { userId: owner.id, avatarUrl: owner.displayAvatarURL(), username: owner.username } }
+			: {}),
+		...(guildCommandDeployment !== undefined ? { guildCommandDeployment } : {}),
 	};
-}
-
-async function getStoredGuildDetails({
-	client,
-	guildId,
-	guildName,
-	requiredPermissions,
-}: {
-	client: Client;
-	guildId: string;
-	guildName: string;
-	requiredPermissions: ReturnType<typeof getRequiredGlobalBotPermissions>;
-}) {
-	const guild = client.guilds.cache.get(guildId);
-	if (!guild?.available) {
-		return { id: guildId, name: guildName, isActiveMember: guild !== undefined, guildCommandDeployment: null };
-	}
-
-	return fetchGuildDetails(guild, requiredPermissions);
 }
 
 async function getPreferenceChannel(guild: Guild | undefined, channelId: string) {
@@ -165,13 +179,10 @@ async function resolveGuildPreferences(guild: Guild | undefined, storedGuild: St
 		storedGuild.memberAnnouncements.leaveChannelId,
 		storedGuild.warnings.auditChannelId,
 	];
-	const channels = new Map(
-		await Promise.all(
-			[...new Set(channelIds.filter((id): id is string => !!id))].map(
-				async (id) => [id, await getPreferenceChannel(guild, id)] as const,
-			),
-		),
-	);
+	const channels = new Map<string, Awaited<ReturnType<typeof getPreferenceChannel>>>();
+	for (const id of new Set(channelIds.filter((id): id is string => !!id))) {
+		channels.set(id, await getPreferenceChannel(guild, id));
+	}
 	const channelFor = (id: string | null | undefined) => {
 		if (!id) return null;
 		const channel = channels.get(id);
@@ -204,7 +215,10 @@ async function resolveGuildPreferences(guild: Guild | undefined, storedGuild: St
 	};
 }
 
-export async function getAdminGuild(client: Client, guildId: string) {
+export async function getAdminGuild(
+	client: Client,
+	{ guildId, includeGuildCommandsState }: { guildId: string; includeGuildCommandsState: boolean },
+) {
 	const storedGuild = await GuildModel.findOne({ guildId })
 		.select({
 			_id: 0,
@@ -222,6 +236,7 @@ export async function getAdminGuild(client: Client, guildId: string) {
 		guildId: storedGuild.guildId,
 		guildName: storedGuild.guildName,
 		requiredPermissions: getRequiredGlobalBotPermissions(),
+		keys: includeGuildCommandsState ? [...guildListKeys, "guildCommandDeployment"] : guildListKeys,
 	});
 	const guild = client.guilds.cache.get(guildId);
 	return {
@@ -231,31 +246,108 @@ export async function getAdminGuild(client: Client, guildId: string) {
 	};
 }
 
-export async function listAllGuilds(client: Client) {
-	const requiredPermissions = getRequiredGlobalBotPermissions();
-	const storedGuilds = await GuildModel.find()
+type GuildListDetails = Omit<
+	Extract<Awaited<ReturnType<typeof getStoredGuildDetails>>, { icon: string | null }>,
+	"guildCommandDeployment"
+>;
+type GuildListItem = Pick<GuildListDetails, "id" | "name" | "isActiveMember"> &
+	Partial<Omit<GuildListDetails, "id" | "name" | "isActiveMember">> & {
+		guildCommandsDeployed?: boolean | null;
+	};
+
+export const guildListKeys = [
+	"id",
+	"name",
+	"isActiveMember",
+	"icon",
+	"memberCount",
+	"channelCount",
+	"createdAt",
+	"description",
+	"joinedTimestamp",
+	"systemChannel",
+	"permissions",
+	"hasRequiredPermissions",
+	"owner",
+] as const;
+
+export const adminGuildListKeys = [...guildListKeys, "guildCommandsDeployed"] as const;
+
+export interface GuildUserFilter {
+	userId: string;
+	/** All listed guild permissions are required; omitted or empty means membership only. */
+	permissions?: readonly PermissionResolvable[];
+}
+
+export async function listGuilds<K extends keyof GuildListItem>({
+	keys,
+	userFilter,
+}: {
+	keys: readonly K[];
+	userFilter?: GuildUserFilter | readonly GuildUserFilter[];
+}) {
+	const client = getClient();
+	const selectedKeys: ReadonlySet<keyof GuildListItem> = new Set(keys);
+	const userFilters: readonly GuildUserFilter[] =
+		userFilter === undefined ? [] : "userId" in userFilter ? [userFilter] : userFilter;
+	let guildIds: string[] | undefined;
+	if (userFilters.length > 0) {
+		guildIds = [];
+		for (const guild of client.guilds.cache.values()) {
+			if (!guild.available) continue;
+			let matches = true;
+			for (const { userId, permissions = [] } of userFilters) {
+				try {
+					const member = await guild.members.fetch(userId);
+					if (!permissions.every((permission) => member.permissions.has(permission))) {
+						matches = false;
+						break;
+					}
+				} catch (error: unknown) {
+					if (error instanceof DiscordAPIError && error.code === RESTJSONErrorCodes.UnknownMember) {
+						matches = false;
+						break;
+					}
+					throw error;
+				}
+			}
+			if (matches) guildIds.push(guild.id);
+		}
+	}
+	const requiredPermissions = selectedKeys.has("hasRequiredPermissions")
+		? getRequiredGlobalBotPermissions()
+		: undefined;
+	const storedGuilds = await GuildModel.find(guildIds ? { guildId: { $in: guildIds } } : {})
 		.select({ _id: 0, guildId: 1, guildName: 1 })
 		.sort({ guildName: 1, guildId: 1 })
 		.lean();
 
-	const guilds = await Promise.all(
-		storedGuilds.map(async ({ guildId, guildName }) => {
-			const { guildCommandDeployment, ...details } = await getStoredGuildDetails({
-				client,
-				guildId,
-				guildName,
-				requiredPermissions,
-			});
-			return {
-				...details,
-				guildCommandsDeployed: guildCommandDeployment === null ? null : guildCommandDeployment.deployed > 0,
-			};
-		}),
-	);
-	return guilds.sort(
+	const guilds: GuildListItem[] = [];
+	for (const { guildId, guildName } of storedGuilds) {
+		const { guildCommandDeployment, ...details } = await getStoredGuildDetails({
+			client,
+			guildId,
+			guildName,
+			requiredPermissions,
+			keys,
+		});
+		guilds.push({
+			...details,
+			...(guildCommandDeployment !== undefined
+				? {
+						guildCommandsDeployed:
+							guildCommandDeployment === null ? null : guildCommandDeployment.deployed > 0,
+					}
+				: {}),
+		});
+	}
+	guilds.sort(
 		(first, second) =>
 			Number(second.isActiveMember) - Number(first.isActiveMember) || first.name.localeCompare(second.name),
 	);
+	return guilds.map((guild) =>
+		Object.fromEntries(keys.filter((key) => key in guild).map((key) => [key, guild[key]])),
+	) as Pick<GuildListItem, K>[];
 }
 
 export async function getAdminGuildForAction(client: Client, guildId: string) {

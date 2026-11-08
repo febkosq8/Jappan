@@ -26,7 +26,7 @@ pnpm run format:check
 
 `pnpm run migrate:v1tov2 -- <v1-db-url> <v2-db-url>` is the intentional, environment-dependent one-time migration from v1 to v2, not a routine development command. It clears the v2 destination database after a 10-second cancellation window; create a destination backup before running it.
 
-The project currently has no automated test script. Use typecheck, build, and focused manual verification when validating changes.
+The project intentionally has no test files or automated test script. Do not add test files. Use typecheck, build, and focused manual verification when validating changes.
 
 The required validation command for code changes is:
 

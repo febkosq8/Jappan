@@ -769,14 +769,15 @@ export async function handleAuditUserUpdate(oldUser: PartialUser | User, newUser
 		return;
 	}
 
-	await Promise.all(
-		newUser.client.guilds.cache.map(async (guild) => {
+	const errors: unknown[] = [];
+	for (const guild of newUser.client.guilds.cache.values()) {
+		try {
 			if (!isActiveGuild(guild) || isOwnBot(guild, newUser.id)) {
-				return;
+				continue;
 			}
 			const member = await guild.members.fetch(newUser.id).catch(() => null);
 			if (!member || !(await isAuditLogEnabled(guild))) {
-				return;
+				continue;
 			}
 
 			const auditEventId = createAuditEventId();
@@ -811,8 +812,12 @@ export async function handleAuditUserUpdate(oldUser: PartialUser | User, newUser
 				});
 			}
 			await postAuditEvent(guild, { embeds: [embed], allowedMentions: { parse: [] } });
-		}),
-	);
+		} catch (error: unknown) {
+			errors.push(error);
+		}
+	}
+	if (errors.length === 1) throw errors[0];
+	if (errors.length > 1) throw new AggregateError(errors, "Failed to post user update audit events");
 }
 
 export async function handleAuditMessageUpdate(

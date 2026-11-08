@@ -195,11 +195,18 @@ export async function shutdownPlayer(): Promise<void> {
 	const activePlayer = player;
 	player = undefined;
 	try {
-		const statusUpdates = [...activePlayer.nodes.cache.values()]
-			.map((queue) => queue.metadata.statusMessage)
-			.filter((message): message is Message => Boolean(message))
-			.map((message) => markPlayerStatusMessageShutdown(message));
-		await Promise.allSettled(statusUpdates);
+		for (const queue of activePlayer.nodes.cache.values()) {
+			const message = queue.metadata.statusMessage;
+			if (!message) continue;
+			try {
+				await markPlayerStatusMessageShutdown(message);
+			} catch (error: unknown) {
+				logger.warn("PLAYER", "Failed to update player status during shutdown", {
+					messageId: message.id,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+		}
 		await activePlayer.destroy();
 		logger.info("PLAYER", "All active player queues stopped");
 	} catch (error: unknown) {

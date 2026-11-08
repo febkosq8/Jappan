@@ -261,7 +261,7 @@ class APIHandler {
 	}
 
 	static async getAdminGuild(guildId: string): Promise<AdminGuildDetails> {
-		const { data } = await apiClient.get<AdminGuildDetails>(`/api/v1/guild/${encodeURIComponent(guildId)}`, {
+		const { data } = await apiClient.get<AdminGuildDetails>(`/api/v1/admin/guilds/${encodeURIComponent(guildId)}`, {
 			withCredentials: true,
 		});
 		return data;
@@ -269,21 +269,21 @@ class APIHandler {
 
 	static async getAdminGuildChannels(guildId: string): Promise<AdminGuildChannel[]> {
 		const { data } = await apiClient.get<AdminGuildChannel[]>(
-			`/api/v1/guild/${encodeURIComponent(guildId)}/channels`,
+			`/api/v1/guilds/${encodeURIComponent(guildId)}/channels`,
 			{ withCredentials: true },
 		);
 		return data;
 	}
 
 	static async getGuildRoles(guildId: string): Promise<GuildRole[]> {
-		const { data } = await apiClient.get<GuildRole[]>(`/api/v1/guild/${encodeURIComponent(guildId)}/roles`, {
+		const { data } = await apiClient.get<GuildRole[]>(`/api/v1/guilds/${encodeURIComponent(guildId)}/roles`, {
 			withCredentials: true,
 		});
 		return data;
 	}
 
 	private static async updateGuildPreference<Input>(guildId: string, action: string, input: Input): Promise<void> {
-		await apiClient.patch<void>(`/api/v1/guild/${encodeURIComponent(guildId)}/${action}`, input, {
+		await apiClient.patch<void>(`/api/v1/guilds/${encodeURIComponent(guildId)}/${action}`, input, {
 			withCredentials: true,
 		});
 	}

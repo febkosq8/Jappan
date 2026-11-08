@@ -2,7 +2,7 @@ import { defineRouter, type RouterDefinition } from "../helpers/route.js";
 import type { OpenApiOptions } from "../docs/openapi.js";
 import adminRoutes from "./api/admin/index.js";
 import authRouter from "./api/auth/auth.js";
-import guildRoutes from "./api/guild/index.js";
+import guildRoutes from "./api/guilds/index.js";
 import base from "./base.js";
 import publicRoutes from "./public/index.js";
 
