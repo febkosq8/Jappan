@@ -16,7 +16,13 @@ const guildBaseSchema = z.object({
 	owner: z.object({ userId: z.string(), avatarUrl: z.string(), username: z.string() }).optional(),
 });
 
-export const guildSchema = guildBaseSchema;
+export const guildSchema = z.object({
+	id: z.string(),
+	name: z.string(),
+	icon: z.string().nullable().optional(),
+	hasRequiredPermissions: z.boolean().optional(),
+	owner: z.object({ userId: z.string(), avatarUrl: z.string(), username: z.string() }).optional(),
+});
 
 export const adminGuildSchema = guildBaseSchema.extend({
 	guildCommandDeploymentState: z

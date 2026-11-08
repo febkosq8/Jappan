@@ -1,7 +1,7 @@
 import type { Guild as DiscordGuild } from "discord.js";
 import { EmbedBuilder, chatInputApplicationCommandMention } from "discord.js";
 
-import { isActiveGuild, sendGuildMessage } from "../helpers/guildHelper.js";
+import { isActiveGuild, sendGuildMessage } from "../helpers/guild.js";
 import GuildModel, { type GuildDocument } from "../models/guild.js";
 import { getCommandId } from "./commandLoader.js";
 import { getConfig } from "./config.js";

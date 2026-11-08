@@ -13,14 +13,8 @@ import {
 } from "../../../handlers/auth.js";
 import { requireDatabase, requireDiscord } from "../../../handlers/availability.js";
 import { defineRouter, errorResponseSchema } from "../../../helpers/route.js";
-import {
-	getAdminGuild,
-	getAdminGuildForAction,
-	guildListKeys,
-	listAdminGuildChannels,
-	listAdminGuildRoles,
-	listGuilds,
-} from "../../../services/adminGuild.js";
+import { getAdminGuildForAction, listAdminGuildChannels, listAdminGuildRoles } from "../../../helpers/adminGuild.js";
+import { getAdminGuild, guildListKeys, listGuilds } from "../../../services/adminGuild.js";
 import type { AuthSession } from "../../../services/auth.js";
 import AuthUserModel from "../../../models/authUser.js";
 import {

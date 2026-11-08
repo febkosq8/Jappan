@@ -8,7 +8,7 @@ import {
 	userMention,
 } from "discord.js";
 
-import { isActiveGuild, sendGuildMessage } from "../helpers/guildHelper.js";
+import { isActiveGuild, sendGuildMessage } from "../helpers/guild.js";
 import type { GuildMemberStateDocument } from "../models/guildMemberState.js";
 import GuildMemberStateModel from "../models/guildMemberState.js";
 import { getCommandId } from "./commandLoader.js";

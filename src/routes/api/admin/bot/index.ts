@@ -7,7 +7,7 @@ import { requireDiscord } from "../../../../handlers/availability.js";
 import { DISCORD_INTERACTION_TIME_LIMIT_MS } from "../../../../helpers/interaction.js";
 import { defineRouter, errorResponseSchema } from "../../../../helpers/route.js";
 import { undeployGuildCommandsGlobally } from "../../../../services/adminDeployment.js";
-import { selfKickGuilds } from "../../../../services/adminGuild.js";
+import { selfKickGuilds } from "../../../../helpers/adminGuild.js";
 import type { AuthSession } from "../../../../services/auth.js";
 import { getConfig } from "../../../../services/config.js";
 import { logger } from "../../../../services/logger.js";

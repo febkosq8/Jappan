@@ -8,14 +8,12 @@ import { requireDatabase, requireDiscord } from "../../../../handlers/availabili
 import { defineRouter, errorResponseSchema } from "../../../../helpers/route.js";
 import {
 	canSendAdminMessage,
-	adminGuildListKeys,
-	getAdminGuild,
 	getAdminGuildForAction,
 	getGuildInvite,
 	kickGuild,
-	listGuilds,
 	sendGuildAdminMessage,
-} from "../../../../services/adminGuild.js";
+} from "../../../../helpers/adminGuild.js";
+import { adminGuildListKeys, getAdminGuild, listGuilds } from "../../../../services/adminGuild.js";
 import { setGuildCommands } from "../../../../services/adminDeployment.js";
 import type { AuthSession } from "../../../../services/auth.js";
 import { getConfig } from "../../../../services/config.js";

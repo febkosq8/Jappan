@@ -1,6 +1,6 @@
 import { PermissionFlagsBits, type Guild } from "discord.js";
 
-import { canAssignRole } from "./adminGuild.js";
+import { canAssignRole } from "../helpers/adminGuild.js";
 import { setAuditLog } from "./auditLog.js";
 import { setLeveling } from "./leveling.js";
 import { setMemberAnnouncement } from "./memberAnnouncement.js";

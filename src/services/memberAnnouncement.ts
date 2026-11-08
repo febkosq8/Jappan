@@ -2,7 +2,7 @@ import type { Guild, GuildBasedChannel, GuildMember, PartialGuildMember } from "
 import { EmbedBuilder, channelMention, chatInputApplicationCommandMention, userMention } from "discord.js";
 
 import { formatUserMention } from "../helpers/discord.js";
-import { isActiveGuild, sendGuildMessage } from "../helpers/guildHelper.js";
+import { isActiveGuild, sendGuildMessage } from "../helpers/guild.js";
 import type { GuildDocument } from "../models/guild.js";
 import { getCommandId } from "./commandLoader.js";
 import { getConfig } from "./config.js";

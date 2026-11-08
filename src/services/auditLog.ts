@@ -51,7 +51,7 @@ import {
 	isOwnBot,
 } from "../helpers/auditLog.js";
 import { formatChannelMention, formatRoleMention, formatUserMention } from "../helpers/discord.js";
-import { isActiveGuild, sendGuildMessage } from "../helpers/guildHelper.js";
+import { isActiveGuild, sendGuildMessage } from "../helpers/guild.js";
 import { sendResponse } from "../helpers/response.js";
 import { splitString, trimString } from "../helpers/string.js";
 import type { GuildDocument } from "../models/guild.js";

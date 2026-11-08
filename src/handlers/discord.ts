@@ -4,7 +4,7 @@ import type { Client } from "discord.js";
 
 import { getClient } from "../bot.js";
 import { formatInteractionLogDetails, formatUser } from "../helpers/discord.js";
-import { isActiveGuild } from "../helpers/guildHelper.js";
+import { isActiveGuild } from "../helpers/guild.js";
 import { getPrefixCommand, handlePrefixMessage } from "../services/adminDeployment.js";
 import { validateAdminUsers } from "../services/adminGuild.js";
 import {
