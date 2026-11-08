@@ -112,71 +112,63 @@ export function GuildOverview({ guild }: { guild: AdminGuildDetails | UserGuildD
 				</div>
 			</div>
 			<dl className="mt-5 grid gap-3 sm:grid-cols-2">
-				{"hasRequiredPermissions" in guild && (
+				{"hasRequiredPermissions" in guild && guild.hasRequiredPermissions !== undefined && (
 					<GuildDetail label="Required permissions">
-						{guild.hasRequiredPermissions === undefined ? (
-							"Unavailable"
-						) : guild.hasRequiredPermissions ? (
+						{guild.hasRequiredPermissions ? (
 							<span className="text-success">All granted</span>
 						) : (
 							<span className="text-destructive">Some missing</span>
 						)}
 					</GuildDetail>
 				)}
-				{"owner" in guild && (
+				{"owner" in guild && guild.owner && (
 					<GuildDetail label="Owner">
-						{guild.owner ? (
-							<div className="flex items-center gap-2">
-								<Avatar
-									name={guild.owner.username}
-									image={guild.owner.avatarUrl}
-									size="sm"
-									aria-hidden="true"
+						<div className="flex items-center gap-2">
+							<Avatar
+								name={guild.owner.username}
+								image={guild.owner.avatarUrl}
+								size="sm"
+								aria-hidden="true"
+							/>
+							<div className="min-w-0">
+								<ExternalTextLink
+									href={`https://discord.com/users/${encodeURIComponent(guild.owner.userId)}`}
+									text={guild.owner.username}
 								/>
-								<div className="min-w-0">
-									<ExternalTextLink
-										href={`https://discord.com/users/${encodeURIComponent(guild.owner.userId)}`}
-										text={guild.owner.username}
-									/>
-									<p className="break-all text-xs text-muted-foreground">{guild.owner.userId}</p>
-								</div>
+								<p className="break-all text-xs text-muted-foreground">{guild.owner.userId}</p>
 							</div>
-						) : (
-							"Unavailable"
-						)}
+						</div>
 					</GuildDetail>
-				)}{" "}
+				)}
 				{"isActiveMember" in guild && (
 					<GuildDetail label="Bot membership">{guild.isActiveMember ? "Active" : "Inactive"}</GuildDetail>
 				)}
-				{"description" in guild && (
-					<GuildDetail label="Description">
-						{guild.description === undefined ? "Unavailable" : (guild.description ?? "None")}
-					</GuildDetail>
+				{"description" in guild && guild.description !== undefined && (
+					<GuildDetail label="Description">{guild.description}</GuildDetail>
 				)}
-				{"memberCount" in guild && (
-					<GuildDetail label="Members">{guild.memberCount?.toLocaleString() ?? "Unavailable"}</GuildDetail>
+				{"memberCount" in guild && guild.memberCount !== undefined && (
+					<GuildDetail label="Members">{guild.memberCount.toLocaleString()}</GuildDetail>
 				)}
-				{"channelCount" in guild && (
-					<GuildDetail label="Channels">{guild.channelCount?.toLocaleString() ?? "Unavailable"}</GuildDetail>
+				{"channelCount" in guild && guild.channelCount !== undefined && (
+					<GuildDetail label="Channels">{guild.channelCount.toLocaleString()}</GuildDetail>
 				)}
-				{"createdTimestampMs" in guild && (
+				{"createdTimestampMs" in guild && guild.createdTimestampMs !== undefined && (
 					<GuildDateDetail label="Created" timestamp={guild.createdTimestampMs} />
 				)}
-				{"joinedTimestampMs" in guild && <GuildDateDetail label="Joined" timestamp={guild.joinedTimestampMs} />}
-				{"discoveredTimestampMs" in guild && (
+				{"joinedTimestampMs" in guild && guild.joinedTimestampMs !== undefined && (
+					<GuildDateDetail label="Joined" timestamp={guild.joinedTimestampMs} />
+				)}
+				{"discoveredTimestampMs" in guild && guild.discoveredTimestampMs !== null && (
 					<GuildDateDetail label="Discovered" timestamp={guild.discoveredTimestampMs} />
 				)}
-				{"guildCommandDeploymentState" in guild && (
+				{"guildCommandDeploymentState" in guild && guild.guildCommandDeploymentState !== undefined && (
 					<GuildDetail label="Guild commands">
 						<GuildCommandDeployment deployment={guild.guildCommandDeploymentState} />
 					</GuildDetail>
 				)}
-				{"systemChannel" in guild && (
+				{"systemChannel" in guild && guild.systemChannel !== undefined && (
 					<GuildDetail label="System channel">
-						{guild.systemChannel === undefined ? (
-							"Unavailable"
-						) : guild.systemChannel === null ? (
+						{guild.systemChannel === null ? (
 							"None"
 						) : (
 							<>
@@ -196,17 +188,11 @@ export function GuildOverview({ guild }: { guild: AdminGuildDetails | UserGuildD
 	);
 }
 
-function GuildDateDetail({ label, timestamp }: { label: string; timestamp: number | null | undefined }) {
+function GuildDateDetail({ label, timestamp }: { label: string; timestamp: number }) {
 	return (
 		<GuildDetail label={label}>
-			{timestamp == null ? (
-				"Unavailable"
-			) : (
-				<>
-					<span className="block">{DateHandler.getDateTime(timestamp)}</span>
-					<span className="text-sm text-muted-foreground">{DateHandler.getRelativeTime(timestamp)}</span>
-				</>
-			)}
+			<span className="block">{DateHandler.getDateTime(timestamp)}</span>
+			<span className="text-sm text-muted-foreground">{DateHandler.getRelativeTime(timestamp)}</span>
 		</GuildDetail>
 	);
 }
