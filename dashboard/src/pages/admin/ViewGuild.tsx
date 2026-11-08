@@ -12,11 +12,10 @@ import {
 	TabsPanel,
 	TabsTab,
 } from "@febkosq8/arc";
-import { useForm } from "@tanstack/react-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { useEffect, useState, type ReactNode, type SubmitEvent } from "react";
-import { FiArrowLeft, FiCopy, FiLink } from "react-icons/fi";
+import { FiArrowLeft, FiCopy } from "react-icons/fi";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -29,11 +28,18 @@ import APIHandler, {
 } from "@jappan/handlers/APIHandler";
 import { AccessRedirect, accessErrorStatus } from "@jappan/components/AdminRoute";
 import ExternalTextLink from "@jappan/components/ExternalTextLink";
-import GuildCommandDeployment from "@jappan/components/GuildCommandDeployment";
+import GuildCommandDeployment from "@jappan/components/guild/GuildCommandDeployment";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import GuildPreferencesEditor from "./GuildPreferencesEditor";
+import {
+	guildIdPattern,
+	GuildLookup,
+	GuildSectionLink,
+	GuildDetail,
+	BotPermissionsPanel,
+	CommandPermissionsPanel,
+} from "@jappan/components/guild/panels";
 
-const guildIdPattern = /^\d{17,20}$/u;
 const guildSections = [
 	{ id: "guild-overview", label: "Overview" },
 	{ id: "admin-actions", label: "Admin actions" },
@@ -47,88 +53,6 @@ const readSectionFromHash = () => {
 	const id = window.location.hash.slice(1);
 	return guildSections.some((section) => section.id === id) ? id : guildSections[0].id;
 };
-
-function SectionLink({ id, label }: { id: string; label: string }) {
-	return (
-		<a
-			href={`#${id}`}
-			aria-label={`Link to ${label}`}
-			title={`Link to ${label}`}
-			className="inline-flex shrink-0 rounded-md p-1 text-muted-foreground hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-		>
-			<FiLink className="size-4" aria-hidden="true" />
-		</a>
-	);
-}
-
-function GuildLookup({ guildId, onLookup }: { guildId: string; onLookup: (guildId: string) => void }) {
-	const form = useForm({
-		defaultValues: { guildId },
-		onSubmit: ({ value }) => onLookup(value.guildId.trim()),
-	});
-
-	return (
-		<form
-			onSubmit={(event) => {
-				event.preventDefault();
-				void form.handleSubmit();
-			}}
-			className="mb-6 max-w-xl"
-		>
-			<form.Field
-				name="guildId"
-				validators={{
-					onSubmit: ({ value }) =>
-						guildIdPattern.test(value.trim())
-							? undefined
-							: "Enter a valid Discord guild ID (17 to 20 digits).",
-					onChange: ({ value }) =>
-						guildIdPattern.test(value.trim())
-							? undefined
-							: "Enter a valid Discord guild ID (17 to 20 digits).",
-				}}
-			>
-				{(field) => {
-					const error = field.state.meta.errors[0];
-					return (
-						<>
-							<LabelField id="guild-id" label="Guild ID" className="mb-2" />
-							<div className="flex flex-col gap-2 sm:flex-row">
-								<Input
-									id="guild-id"
-									name={field.name}
-									value={field.state.value}
-									onChange={(event) => field.handleChange(event.target.value)}
-									onBlur={field.handleBlur}
-									inputMode="numeric"
-									placeholder="Enter a Discord guild ID"
-									aria-invalid={!!error}
-									aria-describedby={error ? "guild-id-error" : undefined}
-									className="h-10 min-w-0 flex-1"
-								/>
-								<Button type="submit">View guild</Button>
-							</div>
-							{error && (
-								<p id="guild-id-error" role="alert" className="mt-2 text-sm text-destructive">
-									{error}
-								</p>
-							)}
-						</>
-					);
-				}}
-			</form.Field>
-		</form>
-	);
-}
-
-function Detail({ label, children }: { label: string; children: ReactNode }) {
-	return (
-		<Card hoverable={false} className="min-w-0 rounded-md border-border p-3">
-			<dt className="text-sm text-muted-foreground">{label}</dt>
-			<dd className="mt-1 wrap-break-word font-medium">{children}</dd>
-		</Card>
-	);
-}
 
 function ChannelGroupList({ guildId, channels }: { guildId: string; channels: AdminGuildChannel[] }) {
 	const categoryType = 4;
@@ -313,7 +237,7 @@ function GuildChannels({ guild }: { guild: AdminGuildDetails }) {
 	return (
 		<Card id="guild-channels" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
 			<h2 className="flex items-center gap-1 text-lg font-semibold">
-				Channels <SectionLink id="guild-channels" label="channels" />
+				Channels <GuildSectionLink id="guild-channels" label="channels" />
 			</h2>
 			<p className="mt-1 text-sm text-muted-foreground">
 				Load the current channels and categories from Discord. Threads are not included.
@@ -497,7 +421,7 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 	return (
 		<Card id="admin-actions" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
 			<h2 className="flex items-center gap-1 text-lg font-semibold">
-				Admin actions <SectionLink id="admin-actions" label="admin actions" />
+				Admin actions <GuildSectionLink id="admin-actions" label="admin actions" />
 			</h2>
 			<p className="mt-1 text-sm text-muted-foreground">
 				Manage guild commands, send an admin message, get an invite, or remove the bot from this guild.
@@ -853,17 +777,6 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 }
 
 function GuildDetails({ guild }: { guild: AdminGuildDetails }) {
-	const commandsQuery = useQuery({
-		queryKey: ["public", "commands"],
-		queryFn: APIHandler.getGlobalCommands,
-		enabled: guild.permissions !== undefined,
-	});
-	const grantedPermissions = new Set(guild.permissions);
-	const isAdministrator = grantedPermissions.has("Administrator");
-	const commands = commandsQuery.data?.filter(
-		(command, _index, all) => !all.some((other) => other.name.startsWith(`${command.name} `)),
-	);
-
 	const [section, setSection] = useState(readSectionFromHash);
 
 	useEffect(() => {
@@ -893,7 +806,7 @@ function GuildDetails({ guild }: { guild: AdminGuildDetails }) {
 			<TabsPanel value="guild-overview" keepMounted>
 				<Card id="guild-overview" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
 					<h2 className="flex items-center gap-1 text-lg font-semibold">
-						Guild overview <SectionLink id="guild-overview" label="guild overview" />
+						Guild overview <GuildSectionLink id="guild-overview" label="guild overview" />
 					</h2>
 					<div className="mt-4 flex items-center gap-4">
 						<Avatar name={guild.name} image={guild.icon} size="lg" aria-hidden="true" />
@@ -908,17 +821,17 @@ function GuildDetails({ guild }: { guild: AdminGuildDetails }) {
 						</div>
 					</div>
 					<dl className="mt-5 grid gap-3 sm:grid-cols-2">
-						<Detail label="Bot membership">{guild.isActiveMember ? "Active" : "Inactive"}</Detail>
-						<Detail label="Guild commands">
+						<GuildDetail label="Bot membership">{guild.isActiveMember ? "Active" : "Inactive"}</GuildDetail>
+						<GuildDetail label="Guild commands">
 							<GuildCommandDeployment deployment={guild.guildCommandDeploymentState} />
-						</Detail>
-						<Detail label="Members">
+						</GuildDetail>
+						<GuildDetail label="Members">
 							{guild.memberCount === undefined ? "Unavailable" : guild.memberCount.toLocaleString()}
-						</Detail>
-						<Detail label="Channels">
+						</GuildDetail>
+						<GuildDetail label="Channels">
 							{guild.channelCount === undefined ? "Unavailable" : guild.channelCount.toLocaleString()}
-						</Detail>
-						<Detail label="Owner">
+						</GuildDetail>
+						<GuildDetail label="Owner">
 							{guild.owner ? (
 								<div className="flex items-center gap-2">
 									<Avatar
@@ -938,8 +851,8 @@ function GuildDetails({ guild }: { guild: AdminGuildDetails }) {
 							) : (
 								"Unavailable"
 							)}
-						</Detail>
-						<Detail label="Created">
+						</GuildDetail>
+						<GuildDetail label="Created">
 							{guild.createdAt === undefined ? (
 								"Unavailable"
 							) : (
@@ -950,8 +863,8 @@ function GuildDetails({ guild }: { guild: AdminGuildDetails }) {
 									</span>
 								</>
 							)}
-						</Detail>
-						<Detail label="Joined">
+						</GuildDetail>
+						<GuildDetail label="Joined">
 							{guild.joinedTimestamp === undefined ? (
 								"Unavailable"
 							) : (
@@ -962,8 +875,8 @@ function GuildDetails({ guild }: { guild: AdminGuildDetails }) {
 									</span>
 								</>
 							)}
-						</Detail>
-						<Detail label="Discovered">
+						</GuildDetail>
+						<GuildDetail label="Discovered">
 							{guild.discoveredAt == null ? (
 								"Unavailable"
 							) : (
@@ -974,8 +887,8 @@ function GuildDetails({ guild }: { guild: AdminGuildDetails }) {
 									</span>
 								</>
 							)}
-						</Detail>
-						<Detail label="System channel">
+						</GuildDetail>
+						<GuildDetail label="System channel">
 							{guild.systemChannel === undefined ? (
 								"Unavailable"
 							) : guild.systemChannel === null ? (
@@ -991,8 +904,8 @@ function GuildDetails({ guild }: { guild: AdminGuildDetails }) {
 									</span>
 								</>
 							)}
-						</Detail>
-						<Detail label="Required permissions">
+						</GuildDetail>
+						<GuildDetail label="Required permissions">
 							{guild.hasRequiredPermissions === undefined ? (
 								"Unavailable"
 							) : guild.hasRequiredPermissions ? (
@@ -1000,10 +913,10 @@ function GuildDetails({ guild }: { guild: AdminGuildDetails }) {
 							) : (
 								<span className="text-destructive">Some missing</span>
 							)}
-						</Detail>
-						<Detail label="Description">
+						</GuildDetail>
+						<GuildDetail label="Description">
 							{guild.description === undefined ? "Unavailable" : (guild.description ?? "None")}
-						</Detail>
+						</GuildDetail>
 					</dl>
 				</Card>
 			</TabsPanel>
@@ -1017,90 +930,10 @@ function GuildDetails({ guild }: { guild: AdminGuildDetails }) {
 				<GuildPreferencesEditor guild={guild} />
 			</TabsPanel>
 			<TabsPanel value="bot-permissions" keepMounted>
-				<Card id="bot-permissions" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
-					<h2 className="flex items-center gap-1 text-lg font-semibold">
-						Bot permissions <SectionLink id="bot-permissions" label="bot permissions" />
-					</h2>
-					{guild.permissions === undefined ? (
-						<p className="mt-3 text-muted-foreground">Unavailable</p>
-					) : guild.permissions.length === 0 ? (
-						<p className="mt-3 text-muted-foreground">None</p>
-					) : (
-						<ul className="mt-3 flex flex-wrap gap-2">
-							{guild.permissions.map((permission) => (
-								<li
-									key={permission}
-									className="rounded-md border border-border bg-muted px-3 py-1 text-sm"
-								>
-									{permission}
-								</li>
-							))}
-						</ul>
-					)}
-				</Card>
+				<BotPermissionsPanel permissions={guild.permissions} />
 			</TabsPanel>
 			<TabsPanel value="command-permissions" keepMounted>
-				<Card id="command-permissions" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
-					<h2 className="flex items-center gap-1 text-lg font-semibold">
-						Command permissions <SectionLink id="command-permissions" label="command permissions" />
-					</h2>
-					<p className="mt-1 text-sm text-muted-foreground">
-						Declared bot permissions at guild level. Channel overrides and other requirements can affect
-						whether a command works.
-					</p>
-					{guild.permissions === undefined ? (
-						<p className="mt-3 text-muted-foreground">Unavailable</p>
-					) : commandsQuery.isPending ? (
-						<LoadingIndicator label="Loading commands" />
-					) : commandsQuery.isError ? (
-						<div role="alert" className="mt-3">
-							<p>Could not load command permissions. Please try again.</p>
-							<Button size="sm" variant="outline-primary" onClick={() => void commandsQuery.refetch()}>
-								Retry
-							</Button>
-						</div>
-					) : !commands?.length ? (
-						<p className="mt-3 text-muted-foreground">No commands available</p>
-					) : (
-						<ul className="mt-3 grid gap-3 sm:grid-cols-2">
-							{commands.map(({ name, requiredBotPermissions }) => {
-								const permissions = requiredBotPermissions.map(
-									(permission) =>
-										[permission, isAdministrator || grantedPermissions.has(permission)] as const,
-								);
-								const missing = permissions.some(([, granted]) => !granted);
-								return (
-									<li key={name} className="min-w-0 rounded-md border border-border p-3">
-										<div className="flex flex-wrap items-center justify-between gap-2">
-											<h3 className="wrap-break-word font-medium">/{name}</h3>
-											<span className={missing ? "text-destructive" : "text-success"}>
-												{missing
-													? "Some required permissions missing"
-													: "All required permissions granted"}
-											</span>
-										</div>
-										{permissions.length === 0 ? (
-											<p className="mt-2 text-sm text-muted-foreground">
-												No declared permissions
-											</p>
-										) : (
-											<ul className="mt-2 space-y-1 text-sm">
-												{permissions.map(([permission, granted]) => (
-													<li key={permission} className="flex justify-between gap-3">
-														<span className="min-w-0 wrap-break-word">{permission}</span>
-														<span className={granted ? "text-success" : "text-destructive"}>
-															{granted ? "Granted" : "Missing"}
-														</span>
-													</li>
-												))}
-											</ul>
-										)}
-									</li>
-								);
-							})}
-						</ul>
-					)}
-				</Card>
+				<CommandPermissionsPanel permissions={guild.permissions} />
 			</TabsPanel>
 		</Tabs>
 	);
