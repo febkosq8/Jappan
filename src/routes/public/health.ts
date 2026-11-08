@@ -6,12 +6,12 @@ import { isDatabaseConnected } from "../../services/database.js";
 import { isPlayerAvailable } from "../../services/player.js";
 
 const serviceHealthSchema = z.object({ healthy: z.boolean() });
-
+const tags = ["Health"];
 const healthRoutes: RouteDefinition[] = [
 	{
 		method: "get",
 		path: "/db",
-		tags: ["Health"],
+		tags,
 		summary: "Database health",
 		errorMessage: "Something went wrong while returning database health check",
 		responses: { 200: { description: "Database health status", schema: serviceHealthSchema } },
@@ -22,7 +22,7 @@ const healthRoutes: RouteDefinition[] = [
 	{
 		method: "get",
 		path: "/discord",
-		tags: ["Health"],
+		tags,
 		summary: "Discord health",
 		errorMessage: "Something went wrong while returning discord health check",
 		responses: { 200: { description: "Discord health status", schema: serviceHealthSchema } },
@@ -33,7 +33,7 @@ const healthRoutes: RouteDefinition[] = [
 	{
 		method: "get",
 		path: "/player",
-		tags: ["Health"],
+		tags,
 		summary: "Player health",
 		errorMessage: "Something went wrong while returning player health check",
 		responses: { 200: { description: "Player health status", schema: serviceHealthSchema } },
@@ -44,7 +44,7 @@ const healthRoutes: RouteDefinition[] = [
 	{
 		method: "get",
 		path: "/",
-		tags: ["Health"],
+		tags,
 		summary: "Overall service health",
 		errorMessage: "Something went wrong while returning health check",
 		responses: {
