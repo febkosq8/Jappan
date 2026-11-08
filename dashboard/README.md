@@ -8,7 +8,7 @@ returns to the requested admin page when a valid session becomes available.
 Guild details also provide admin actions for sending a message to a selected text
 channel and getting an invite through authenticated API endpoints. The Preferences
 tab edits audit log, leveling, member announcement, and warning settings through
-`PUT /api/v1/guild/{guildId}/...`; those endpoints also allow users with Manage Server.
+`PATCH /api/v1/guild/{guildId}/...`; those endpoints also allow users with Manage Server.
 Administrators can also confirm removal of the bot from a guild, optionally
 adding a departure message and selecting a sendable channel. The bot still
 leaves if sending fails or no sendable channel is available.

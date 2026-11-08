@@ -283,7 +283,7 @@ class APIHandler {
 	}
 
 	private static async updateGuildPreference<Input>(guildId: string, action: string, input: Input): Promise<void> {
-		await apiClient.put<void>(`/api/v1/guild/${encodeURIComponent(guildId)}/${action}`, input, {
+		await apiClient.patch<void>(`/api/v1/guild/${encodeURIComponent(guildId)}/${action}`, input, {
 			withCredentials: true,
 		});
 	}

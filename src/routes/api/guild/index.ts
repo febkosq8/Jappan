@@ -180,7 +180,7 @@ export default defineRouter("/guild", [
 		},
 	},
 	{
-		method: "put",
+		method: "patch",
 		path: "/:guildId/audit-log",
 		tags,
 		summary: "Update audit log preferences",
@@ -215,7 +215,7 @@ export default defineRouter("/guild", [
 		},
 	},
 	{
-		method: "put",
+		method: "patch",
 		path: "/:guildId/leveling",
 		tags,
 		summary: "Update leveling preferences",
@@ -250,7 +250,7 @@ export default defineRouter("/guild", [
 		},
 	},
 	{
-		method: "put",
+		method: "patch",
 		path: "/:guildId/member-announcements",
 		tags,
 		summary: "Update member announcement preferences",
@@ -285,7 +285,7 @@ export default defineRouter("/guild", [
 		},
 	},
 	{
-		method: "put",
+		method: "patch",
 		path: "/:guildId/warnings",
 		tags,
 		summary: "Update warning preferences",
