@@ -1,58 +1,40 @@
 import { Avatar, Button, Menu, Pill, type AvatarProps } from "@febkosq8/arc";
-import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { FiLogIn } from "react-icons/fi";
 import { toast } from "sonner";
 
-import { authClient, sessionQueryKey, useSessionQuery } from "@jappan/handlers/auth";
-import { authErrorURL, safeCallbackPath } from "@jappan/handlers/authRedirect";
+import { authClient, SIGN_OUT_FLASH_KEY, useSignIn, useSessionQuery } from "@jappan/handlers/auth";
 import LoadingIndicator from "../LoadingIndicator";
 
 export default function AuthControls() {
-	const queryClient = useQueryClient();
 	const { data: session, isPending, isError } = useSessionQuery();
-	const [busy, setBusy] = useState(false);
-
-	async function signIn() {
-		setBusy(true);
-		try {
-			const callbackPath =
-				window.location.pathname === "/auth/error"
-					? (safeCallbackPath(
-							new URLSearchParams(window.location.search).get("callbackURL"),
-							window.location.origin,
-						) ?? "/")
-					: `${window.location.pathname}${window.location.search}${window.location.hash}`;
-			const result = await authClient.signIn.social({
-				provider: "discord",
-				callbackURL: `${window.location.origin}${callbackPath}`,
-				errorCallbackURL: authErrorURL(window.location.origin, callbackPath),
-			});
-			if (result.error) {
-				toast.error("Could not start Discord sign-in. Please try again.");
-			}
-		} catch {
-			toast.error("Could not start Discord sign-in. Please try again.");
-		} finally {
-			setBusy(false);
-		}
-	}
+	const { signIn, busy: signInBusy } = useSignIn();
+	const [signOutBusy, setSignOutBusy] = useState(false);
 
 	async function signOut() {
-		setBusy(true);
+		setSignOutBusy(true);
 		try {
 			const result = await authClient.signOut();
 			if (result.error) {
 				toast.error("Could not sign out. Please try again.");
 			} else {
-				queryClient.removeQueries({ queryKey: ["admin"] });
-				queryClient.setQueryData(sessionQueryKey, null);
-				toast.success("Signed out successfully.");
+				// Reload to home rather than navigate in-app: mutating the React
+				// Query cache while a protected page is still mounted races that
+				// page's guard, which redirects to /auth/error when the session
+				// flips to null or a query refetches into a 401. A full reload
+				// discards all mounted state so no guard can fire, and the flash
+				// flag re-surfaces the success toast on the home page.
+				try {
+					sessionStorage.setItem(SIGN_OUT_FLASH_KEY, "1");
+				} catch {
+					// sessionStorage unavailable; still redirect home below.
+				}
+				window.location.assign("/");
 			}
 		} catch {
 			toast.error("Could not sign out. Please try again.");
 		} finally {
-			setBusy(false);
+			setSignOutBusy(false);
 		}
 	}
 
@@ -107,8 +89,8 @@ export default function AuthControls() {
 							</p>
 						</div>
 					</div>
-					<Menu.Item disabled={busy} onClick={() => void signOut()}>
-						{busy ? "Signing out..." : "Sign out"}
+					<Menu.Item disabled={signOutBusy} onClick={() => void signOut()}>
+						{signOutBusy ? "Signing out..." : "Sign out"}
 					</Menu.Item>
 				</Menu>
 			) : (
@@ -117,7 +99,7 @@ export default function AuthControls() {
 					variant="outline-primary"
 					className="min-h-11 min-w-11 gap-1 px-2 md:min-h-8 md:min-w-0 md:px-3"
 					aria-label="Sign in"
-					disabled={busy}
+					disabled={signInBusy}
 					onClick={() => void signIn()}
 				>
 					<FiLogIn className="size-4" aria-hidden="true" />

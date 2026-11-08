@@ -7,10 +7,11 @@ import ListGuilds from "@jappan/pages/admin/ListGuilds";
 import ViewGuild from "@jappan/pages/admin/ViewGuild";
 import ManageBot from "@jappan/pages/admin/ManageBot";
 import WrongPage from "@jappan/pages/WrongPage";
+import { SIGN_OUT_FLASH_KEY } from "@jappan/handlers/auth";
 import { updateHashOnScroll } from "@febkosq8/arc";
 import { useEffect, useRef } from "react";
 import { Route, Routes, useLocation } from "react-router-dom";
-import { Toaster } from "sonner";
+import { toast, Toaster } from "sonner";
 
 const sectionIds = ["about", "features", "team"];
 
@@ -29,6 +30,18 @@ function App() {
 			sectionIds,
 		});
 	}, [location.pathname]);
+
+	// Surface the sign-out success toast queued before the reload to home.
+	useEffect(() => {
+		try {
+			if (sessionStorage.getItem(SIGN_OUT_FLASH_KEY) === "1") {
+				sessionStorage.removeItem(SIGN_OUT_FLASH_KEY);
+				toast.success("Signed out successfully.");
+			}
+		} catch {
+			// sessionStorage unavailable; nothing to surface.
+		}
+	}, []);
 
 	return (
 		<div ref={containerRef} className="h-dvh overflow-y-auto scroll-smooth bg-background text-foreground">
