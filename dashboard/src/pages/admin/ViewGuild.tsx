@@ -534,8 +534,8 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 								variant="outline-destructive"
 								disabled={
 									commandDeploymentMutation.isPending ||
-									!guild.guildCommandDeployment ||
-									guild.guildCommandDeployment.deployed === 0
+									!guild.guildCommandDeploymentState ||
+									guild.guildCommandDeploymentState.deployed === 0
 								}
 								onClick={() => commandDeploymentMutation.mutate("undeploy")}
 							>
@@ -910,7 +910,7 @@ function GuildDetails({ guild }: { guild: AdminGuildDetails }) {
 					<dl className="mt-5 grid gap-3 sm:grid-cols-2">
 						<Detail label="Bot membership">{guild.isActiveMember ? "Active" : "Inactive"}</Detail>
 						<Detail label="Guild commands">
-							<GuildCommandDeployment deployment={guild.guildCommandDeployment} />
+							<GuildCommandDeployment deployment={guild.guildCommandDeploymentState} />
 						</Detail>
 						<Detail label="Members">
 							{guild.memberCount === undefined ? "Unavailable" : guild.memberCount.toLocaleString()}

@@ -75,26 +75,25 @@ export async function validateAdminUsers(client: Client, config: Config): Promis
 }
 
 async function getStoredGuildDetails({
-	client,
 	guildId,
 	guildName,
 	requiredPermissions,
 	keys,
 }: {
-	client: Client;
 	guildId: string;
 	guildName: string;
 	requiredPermissions: ReturnType<typeof getRequiredGlobalBotPermissions> | undefined;
-	keys: readonly ((typeof adminGuildListKeys)[number] | "guildCommandDeployment")[];
+	keys: readonly ((typeof adminGuildListKeys)[number] | "guildCommandDeploymentState")[];
 }) {
-	const includeGuildCommandsState = keys.includes("guildCommandsDeployed") || keys.includes("guildCommandDeployment");
+	const client = getClient();
+	const includeGuildCommandsState = keys.includes("guildCommandDeploymentState");
 	const guild = client.guilds.cache.get(guildId);
 	if (!guild?.available) {
 		return {
 			id: guildId,
 			name: guildName,
 			isActiveMember: guild !== undefined,
-			...(includeGuildCommandsState ? { guildCommandDeployment: null } : {}),
+			...(includeGuildCommandsState ? { guildCommandDeploymentState: null } : {}),
 		};
 	}
 
@@ -103,11 +102,11 @@ async function getStoredGuildDetails({
 		keys.includes("permissions") || keys.includes("hasRequiredPermissions")
 			? (guild.members.me ?? (await guild.members.fetchMe()))
 			: undefined;
-	let guildCommandDeployment: { deployed: number; total: number } | undefined;
+	let guildCommandDeploymentState: { deployed: number; total: number } | undefined;
 	if (includeGuildCommandsState) {
 		const expectedCommands = getGuildCommands();
 		const registeredCommands = await guild.commands.fetch();
-		guildCommandDeployment = {
+		guildCommandDeploymentState = {
 			deployed: [...expectedCommands.keys()].filter((name) =>
 				registeredCommands.some(
 					(command) => command.name === name && command.type === ApplicationCommandType.ChatInput,
@@ -135,7 +134,7 @@ async function getStoredGuildDetails({
 		...(owner
 			? { owner: { userId: owner.id, avatarUrl: owner.displayAvatarURL(), username: owner.username } }
 			: {}),
-		...(guildCommandDeployment !== undefined ? { guildCommandDeployment } : {}),
+		...(guildCommandDeploymentState !== undefined ? { guildCommandDeploymentState } : {}),
 	};
 }
 
@@ -232,11 +231,10 @@ export async function getAdminGuild(
 		return null;
 	}
 	const details = await getStoredGuildDetails({
-		client,
 		guildId: storedGuild.guildId,
 		guildName: storedGuild.guildName,
 		requiredPermissions: getRequiredGlobalBotPermissions(),
-		keys: includeGuildCommandsState ? [...guildListKeys, "guildCommandDeployment"] : guildListKeys,
+		keys: includeGuildCommandsState ? [...guildListKeys, "guildCommandDeploymentState"] : guildListKeys,
 	});
 	const guild = client.guilds.cache.get(guildId);
 	return {
@@ -248,11 +246,11 @@ export async function getAdminGuild(
 
 type GuildListDetails = Omit<
 	Extract<Awaited<ReturnType<typeof getStoredGuildDetails>>, { icon: string | null }>,
-	"guildCommandDeployment"
+	"guildCommandDeploymentState"
 >;
 type GuildListItem = Pick<GuildListDetails, "id" | "name" | "isActiveMember"> &
 	Partial<Omit<GuildListDetails, "id" | "name" | "isActiveMember">> & {
-		guildCommandsDeployed?: boolean | null;
+		guildCommandDeploymentState?: { deployed: number; total: number } | null;
 	};
 
 export const guildListKeys = [
@@ -271,7 +269,7 @@ export const guildListKeys = [
 	"owner",
 ] as const;
 
-export const adminGuildListKeys = [...guildListKeys, "guildCommandsDeployed"] as const;
+export const adminGuildListKeys = [...guildListKeys, "guildCommandDeploymentState"] as const;
 
 export interface GuildUserFilter {
 	userId: string;
@@ -311,7 +309,9 @@ export async function listGuilds<K extends keyof GuildListItem>({
 					throw error;
 				}
 			}
-			if (matches) guildIds.push(guild.id);
+			if (matches) {
+				guildIds.push(guild.id);
+			}
 		}
 	}
 	const requiredPermissions = selectedKeys.has("hasRequiredPermissions")
@@ -324,22 +324,13 @@ export async function listGuilds<K extends keyof GuildListItem>({
 
 	const guilds: GuildListItem[] = [];
 	for (const { guildId, guildName } of storedGuilds) {
-		const { guildCommandDeployment, ...details } = await getStoredGuildDetails({
-			client,
+		const details = await getStoredGuildDetails({
 			guildId,
 			guildName,
 			requiredPermissions,
 			keys,
 		});
-		guilds.push({
-			...details,
-			...(guildCommandDeployment !== undefined
-				? {
-						guildCommandsDeployed:
-							guildCommandDeployment === null ? null : guildCommandDeployment.deployed > 0,
-					}
-				: {}),
-		});
+		guilds.push(details);
 	}
 	guilds.sort(
 		(first, second) =>

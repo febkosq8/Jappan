@@ -19,7 +19,9 @@ const guildBaseSchema = z.object({
 export const guildSchema = guildBaseSchema;
 
 export const adminGuildSchema = guildBaseSchema.extend({
-	guildCommandsDeployed: z.boolean().nullable(),
+	guildCommandDeploymentState: z
+		.object({ deployed: z.number().int().nonnegative(), total: z.number().int().nonnegative() })
+		.nullable(),
 });
 
 const preferenceEntitySchema = z.object({ id: z.string(), name: z.string().nullable() }).nullable();
@@ -55,7 +57,7 @@ export const guildDetailsSchema = guildBaseSchema.extend({
 });
 
 export const adminGuildDetailsSchema = guildDetailsSchema.extend({
-	guildCommandDeployment: z
+	guildCommandDeploymentState: z
 		.object({ deployed: z.number().int().nonnegative(), total: z.number().int().nonnegative() })
 		.nullable(),
 });

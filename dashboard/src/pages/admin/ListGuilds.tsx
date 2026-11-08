@@ -101,20 +101,20 @@ const columns: TableColumnDef<AdminGuild>[] = [
 	},
 	{
 		id: "guildCommands",
-		accessorFn: (guild) =>
-			guild.guildCommandsDeployed === null ? undefined : guild.guildCommandsDeployed ? "Yes" : "No",
+		accessorFn: (guild) => {
+			const deployment = guild.guildCommandDeploymentState;
+			return deployment === null ? undefined : `${deployment.deployed} / ${deployment.total}`;
+		},
 		header: "Guild commands",
 		size: 150,
-		filterSelectOptions: [
-			{ value: "Yes", label: "Yes" },
-			{ value: "No", label: "No" },
-			{ value: "Unavailable", label: "Unavailable" },
-		],
-		filterFn: (row, columnId, filterValue) => (row.getValue(columnId) ?? "Unavailable") === filterValue,
+		filterFn: (row, columnId, filterValue) =>
+			String(row.getValue(columnId) ?? "Unavailable")
+				.toLowerCase()
+				.includes(String(filterValue).toLowerCase()),
 		sortingFn: "alphanumeric",
 		sortUndefined: "last",
 		cell: ({ row, getValue }) =>
-			row.original.guildCommandsDeployed === null ? <Unavailable /> : String(getValue()),
+			row.original.guildCommandDeploymentState === null ? <Unavailable /> : String(getValue()),
 	},
 	{
 		id: "joined",

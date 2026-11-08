@@ -1,6 +1,6 @@
 import type { AdminGuildDetails } from "@jappan/handlers/APIHandler";
 
-type Deployment = AdminGuildDetails["guildCommandDeployment"];
+type Deployment = AdminGuildDetails["guildCommandDeploymentState"];
 
 export function getGuildCommandDeploymentStatus(deployment: Deployment) {
 	if (deployment === null) return "Unavailable";
