@@ -17,7 +17,7 @@ import {
 import { getConfig } from "../services/config.js";
 import { logger } from "../services/logger.js";
 import { formatChannel, formatGuild, formatUser } from "./discord.js";
-import { getGuild } from "./guild.js";
+import { getClientGuild } from "./guild.js";
 import { trimString } from "./string.js";
 import { wait } from "./utils.js";
 
@@ -490,7 +490,7 @@ export async function checkPlayerHealth(initializedPlayer: Player): Promise<Play
 	const healthCheckPlaybackMsTimeout = getConfig("PLAYER_HEALTH_CHECK_PLAYBACK_MS_TIMEOUT");
 	const healthCheckPlaybackStabilityMsTimeout = getConfig("PLAYER_HEALTH_CHECK_PLAYBACK_STABILITY_MS_TIMEOUT");
 	if (healthCheckGuildId && healthCheckChannelId && healthCheckTracks > 0) {
-		const guild = getGuild({ source: "discord", guildId: healthCheckGuildId });
+		const guild = getClientGuild(healthCheckGuildId);
 		const channel = guild?.channels.cache.get(healthCheckChannelId);
 		if (healthCheckDebug) {
 			logger.debug("PLAYER", "Player health-check playback probe initialized", {

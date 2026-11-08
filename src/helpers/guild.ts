@@ -6,61 +6,40 @@ import GuildModel, { type Guild as StoredGuild, type GuildDocument } from "../mo
 import { logger } from "../services/logger.js";
 import type { LogDetails } from "./logger.js";
 
-export type GuildSource = "database" | "discord";
+export function getGuildData(guildId: string): Promise<GuildDocument | null> {
+	return GuildModel.findOne({ guildId }).exec();
+}
 
-export function getGuild(options: { source: "database"; guildId: string }): Promise<GuildDocument | null>;
-export function getGuild(options: { source: "discord"; guildId: string }): Guild | undefined;
-export function getGuild({
-	source,
-	guildId,
-}: {
-	source: GuildSource;
-	guildId: string;
-}): Promise<GuildDocument | null> | Guild | undefined {
-	if (source === "database") {
-		return GuildModel.findOne({ guildId }).exec();
-	}
+export function getClientGuild(guildId: string): Guild | undefined {
 	return getClient().guilds.cache.get(guildId);
 }
 
-export function getGuilds(options: { source: "discord" }): Guild[];
-export function getGuilds({
-	source,
-	guildIds,
-}: {
-	source: "database";
-	guildIds?: readonly string[];
-}): Promise<Pick<StoredGuild, "guildId" | "guildName">[]>;
-export function getGuilds({
-	source,
-	guildIds,
-}: {
-	source: GuildSource;
-	guildIds?: readonly string[];
-}): Promise<Pick<StoredGuild, "guildId" | "guildName">[]> | Guild[] {
-	if (source === "database") {
-		return GuildModel.find(guildIds ? { guildId: { $in: guildIds } } : {})
-			.select({ _id: 0, guildId: 1, guildName: 1 })
-			.sort({ guildName: 1, guildId: 1 })
-			.lean()
-			.exec();
-	}
+export function getGuildDataList(guildIds?: readonly string[]): Promise<Pick<StoredGuild, "guildId" | "guildName">[]> {
+	return GuildModel.find(guildIds ? { guildId: { $in: guildIds } } : {})
+		.select({ _id: 0, guildId: 1, guildName: 1 })
+		.sort({ guildName: 1, guildId: 1 })
+		.lean()
+		.exec();
+}
+
+export function getClientGuilds(): Guild[] {
 	return [...getClient().guilds.cache.values()];
+}
+
+export async function hasGuildData(guildId: string): Promise<boolean> {
+	return (await GuildModel.exists({ guildId })) !== null;
 }
 
 const departingGuilds = new WeakSet<Guild>();
 
 export function isActiveGuild(guild: Guild): boolean {
-	return (
-		guild.available && getGuild({ source: "discord", guildId: guild.id }) === guild && !departingGuilds.has(guild)
-	);
+	return guild.available && getClientGuild(guild.id) === guild && !departingGuilds.has(guild);
 }
 
 export async function getAdminGuildForAction(guildId: string) {
-	const storedGuild = await getGuild({ source: "database", guildId });
-	if (!storedGuild) return { status: "not_found" } as const;
+	if (!(await hasGuildData(guildId))) return { status: "not_found" } as const;
 
-	const guild = getGuild({ source: "discord", guildId });
+	const guild = getClientGuild(guildId);
 	if (!guild) return { status: "not_member" } as const;
 	if (!guild.available) return { status: "unavailable" } as const;
 	return { status: "ok", guild } as const;

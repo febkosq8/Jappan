@@ -1,7 +1,7 @@
 import type { Guild as DiscordGuild } from "discord.js";
 import { EmbedBuilder, chatInputApplicationCommandMention } from "discord.js";
 
-import { getGuild, isActiveGuild, sendGuildMessage } from "../helpers/guild.js";
+import { getGuildData, isActiveGuild, sendGuildMessage } from "../helpers/guild.js";
 import GuildModel, { type GuildDocument } from "../models/guild.js";
 import { getCommandId } from "./commandLoader.js";
 import { getConfig } from "./config.js";
@@ -20,7 +20,7 @@ export async function getGuildSettings({ guildId, guildName, guild }: GuildSetti
 		throw new Error("Guild ID and guild name are required when guild is not provided");
 	}
 
-	let storedGuildData = await getGuild({ source: "database", guildId: resolvedGuildId });
+	let storedGuildData = await getGuildData(resolvedGuildId);
 	if (!storedGuildData) {
 		storedGuildData = await GuildModel.create({ guildId: resolvedGuildId, guildName: resolvedGuildName });
 	}

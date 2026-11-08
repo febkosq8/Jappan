@@ -8,8 +8,8 @@ import {
 	canSendMessage,
 	cancelGuildDeparture,
 	getAdminGuildForAction,
-	getGuild,
-	getGuilds,
+	getClientGuild,
+	getClientGuilds,
 	sendGuildMessage,
 } from "./guild.js";
 import type { Config } from "../services/config.js";
@@ -228,9 +228,9 @@ export async function selfKickGuilds({
 	timeLimitReached: boolean;
 }> {
 	const protectedGuild = config.PLAYER_HEALTH_CHECK_GUILD_ID
-		? getGuild({ source: "discord", guildId: config.PLAYER_HEALTH_CHECK_GUILD_ID })
+		? getClientGuild(config.PLAYER_HEALTH_CHECK_GUILD_ID)
 		: undefined;
-	const guilds = getGuilds({ source: "discord" }).filter((guild) => guild.id !== protectedGuild?.id);
+	const guilds = getClientGuilds().filter((guild) => guild.id !== protectedGuild?.id);
 	const leftGuilds: { id: string; name: string; messageSent: boolean }[] = [];
 	const failedGuilds: { id: string; name: string; messageSent: boolean }[] = [];
 	let timeLimitReached = false;

@@ -3,7 +3,7 @@ import { DiscordAPIError, PermissionFlagsBits, RESTJSONErrorCodes } from "discor
 import type { Request, RequestHandler } from "express";
 
 import { getClient } from "../bot.js";
-import { getGuild } from "../helpers/guild.js";
+import { getClientGuild } from "../helpers/guild.js";
 import { documentMiddlewareResponses } from "../helpers/middleware.js";
 import AuthUserModel from "../models/authUser.js";
 import { getAuth, type AuthSession } from "../services/auth.js";
@@ -135,7 +135,7 @@ export const isGuildManager: AuthorizationCheck = authorizationCheck(
 		if (!isValidGuildId(guildId)) return "invalidGuildId";
 
 		const user = await AuthUserModel.findById(session.user.id).select({ discordAccountId: 1 }).exec();
-		const guild = getGuild({ source: "discord", guildId });
+		const guild = getClientGuild(guildId);
 		if (!user?.discordAccountId || !guild?.available) return "denied";
 
 		try {

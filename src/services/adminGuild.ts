@@ -2,7 +2,7 @@ import type { Client, Guild, PermissionResolvable } from "discord.js";
 import { ApplicationCommandType, DiscordAPIError, RESTJSONErrorCodes } from "discord.js";
 
 import { formatUser } from "../helpers/discord.js";
-import { getGuild, getGuilds } from "../helpers/guild.js";
+import { getClientGuild, getClientGuilds, getGuildData, getGuildDataList } from "../helpers/guild.js";
 import type { Guild as StoredGuild } from "../models/guild.js";
 import { getGuildCommands, getRequiredGlobalBotPermissions } from "./commandLoader.js";
 import type { Config } from "./config.js";
@@ -66,7 +66,7 @@ async function getStoredGuildDetails({
 	keys: readonly (typeof adminGuildListKeys)[number][];
 }) {
 	const includeGuildCommandsState = keys.includes("guildCommandDeploymentState");
-	const guild = getGuild({ source: "discord", guildId });
+	const guild = getClientGuild(guildId);
 	if (!guild?.available) {
 		return {
 			id: guildId,
@@ -198,7 +198,7 @@ export async function getAdminGuild({
 	guildId: string;
 	includeGuildCommandsState: boolean;
 }) {
-	const storedGuild = await getGuild({ source: "database", guildId });
+	const storedGuild = await getGuildData(guildId);
 	if (!storedGuild) {
 		return null;
 	}
@@ -210,7 +210,7 @@ export async function getAdminGuild({
 			? adminGuildListKeys
 			: adminGuildListKeys.filter((key) => key !== "guildCommandDeploymentState"),
 	});
-	const guild = getGuild({ source: "discord", guildId });
+	const guild = getClientGuild(guildId);
 	return {
 		...details,
 		discoveredAt: storedGuild.createdAt?.getTime() ?? null,
@@ -261,7 +261,7 @@ export async function listGuilds<K extends keyof GuildListItem>({
 	let guildIds: string[] | undefined;
 	if (userFilters.length > 0) {
 		guildIds = [];
-		for (const guild of getGuilds({ source: "discord" })) {
+		for (const guild of getClientGuilds()) {
 			if (!guild.available) continue;
 			let matches = true;
 			for (const { userId, permissions = [] } of userFilters) {
@@ -287,7 +287,7 @@ export async function listGuilds<K extends keyof GuildListItem>({
 	const requiredPermissions = selectedKeys.has("hasRequiredPermissions")
 		? getRequiredGlobalBotPermissions()
 		: undefined;
-	const storedGuilds = await getGuilds({ source: "database", ...(guildIds ? { guildIds } : {}) });
+	const storedGuilds = await getGuildDataList(guildIds);
 
 	const guilds: GuildListItem[] = [];
 	for (const { guildId, guildName } of storedGuilds) {
