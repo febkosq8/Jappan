@@ -1,10 +1,16 @@
 import type { Client, Guild, PermissionResolvable } from "discord.js";
-import { ApplicationCommandType, DiscordAPIError, RESTJSONErrorCodes } from "discord.js";
+import { DiscordAPIError, RESTJSONErrorCodes } from "discord.js";
 
 import { formatUser } from "../helpers/discord.js";
-import { getClientGuild, getClientGuilds, getGuildData, getGuildDataList } from "../helpers/guild.js";
+import {
+	computeGuildState,
+	getClientGuild,
+	getClientGuilds,
+	getGuildData,
+	getGuildDataList,
+} from "../helpers/guild.js";
 import type { Guild as StoredGuild } from "../models/guild.js";
-import { getGuildCommands, getRequiredGlobalBotPermissions } from "./commandLoader.js";
+import { getRequiredGlobalBotPermissions } from "./commandLoader.js";
 import type { Config } from "./config.js";
 import { logger } from "./logger.js";
 
@@ -52,69 +58,6 @@ export async function validateAdminUsers(client: Client, config: Config): Promis
 			`Admin user validation failed: ${invalidCount} invalid and ${unverifiedCount} could not be verified`,
 		);
 	}
-}
-
-async function getStoredGuildDetails({
-	guildId,
-	guildName,
-	requiredPermissions,
-	keys,
-}: {
-	guildId: string;
-	guildName: string;
-	requiredPermissions: ReturnType<typeof getRequiredGlobalBotPermissions> | undefined;
-	keys: readonly (typeof adminGuildListKeys)[number][];
-}) {
-	const includeGuildCommandsState = keys.includes("guildCommandDeploymentState");
-	const guild = getClientGuild(guildId);
-	if (!guild?.available) {
-		return {
-			id: guildId,
-			name: guildName,
-			isActiveMember: guild !== undefined,
-			...(includeGuildCommandsState ? { guildCommandDeploymentState: null } : {}),
-		};
-	}
-
-	const owner = keys.includes("owner") ? await guild.client.users.fetch(guild.ownerId) : undefined;
-	const botMember =
-		keys.includes("permissions") || keys.includes("hasRequiredPermissions")
-			? (guild.members.me ?? (await guild.members.fetchMe()))
-			: undefined;
-	let guildCommandDeploymentState: { deployed: number; total: number } | undefined;
-	if (includeGuildCommandsState) {
-		const expectedCommands = getGuildCommands();
-		const registeredCommands = await guild.commands.fetch();
-		guildCommandDeploymentState = {
-			deployed: [...expectedCommands.keys()].filter((name) =>
-				registeredCommands.some(
-					(command) => command.name === name && command.type === ApplicationCommandType.ChatInput,
-				),
-			).length,
-			total: expectedCommands.size,
-		};
-	}
-
-	return {
-		id: guild.id,
-		name: guild.name,
-		isActiveMember: true,
-		icon: guild.iconURL(),
-		memberCount: guild.memberCount,
-		channelCount: guild.channels.cache.size,
-		createdAt: guild.createdTimestamp,
-		description: guild.description,
-		joinedTimestamp: guild.joinedTimestamp,
-		systemChannel: guild.systemChannel ? { id: guild.systemChannel.id, name: guild.systemChannel.name } : null,
-		...(botMember ? { permissions: botMember.permissions.toArray() } : {}),
-		...(botMember && requiredPermissions
-			? { hasRequiredPermissions: botMember.permissions.has(requiredPermissions) }
-			: {}),
-		...(owner
-			? { owner: { userId: owner.id, avatarUrl: owner.displayAvatarURL(), username: owner.username } }
-			: {}),
-		...(guildCommandDeploymentState !== undefined ? { guildCommandDeploymentState } : {}),
-	};
 }
 
 async function getPreferenceChannel(guild: Guild | undefined, channelId: string) {
@@ -202,7 +145,7 @@ export async function getAdminGuild({
 	if (!storedGuild) {
 		return null;
 	}
-	const details = await getStoredGuildDetails({
+	const details = await computeGuildState({
 		guildId: storedGuild.guildId,
 		guildName: storedGuild.guildName,
 		requiredPermissions: getRequiredGlobalBotPermissions(),
@@ -218,19 +161,15 @@ export async function getAdminGuild({
 	};
 }
 
-type GuildListDetails = Omit<
-	Extract<Awaited<ReturnType<typeof getStoredGuildDetails>>, { icon: string | null }>,
-	"guildCommandDeploymentState"
->;
-type GuildListItem = Pick<GuildListDetails, "id" | "name" | "isActiveMember"> &
-	Partial<Omit<GuildListDetails, "id" | "name" | "isActiveMember">> & {
-		guildCommandDeploymentState?: { deployed: number; total: number } | null;
-	};
-
-export const guildListKeys = ["id", "name", "icon", "hasRequiredPermissions", "owner"] as const;
-
-export const adminGuildListKeys = [
-	...guildListKeys,
+type GuildListDetails = Awaited<ReturnType<typeof computeGuildState>>;
+type GuildListItem = Required<Pick<GuildListDetails, "id" | "name" | "isActiveMember">> &
+	Omit<GuildListDetails, "id" | "name" | "isActiveMember">;
+export const baseGuildKeys = ["id", "name"];
+export const extendedGuildKeys = [
+	...baseGuildKeys,
+	"icon",
+	"hasRequiredPermissions",
+	"owner",
 	"isActiveMember",
 	"memberCount",
 	"channelCount",
@@ -239,6 +178,15 @@ export const adminGuildListKeys = [
 	"joinedTimestamp",
 	"systemChannel",
 	"permissions",
+	"guildCommandDeploymentState",
+];
+export const guildListKeys = [...baseGuildKeys, "icon", "hasRequiredPermissions", "owner"] as const;
+
+export const adminGuildListKeys = [
+	...guildListKeys,
+	"isActiveMember",
+	"memberCount",
+	"joinedTimestamp",
 	"guildCommandDeploymentState",
 ] as const;
 
@@ -291,19 +239,24 @@ export async function listGuilds<K extends keyof GuildListItem>({
 
 	const guilds: GuildListItem[] = [];
 	for (const { guildId, guildName } of storedGuilds) {
-		const details = await getStoredGuildDetails({
+		const details = await computeGuildState({
 			guildId,
 			guildName,
 			requiredPermissions,
-			keys,
+			keys: [...keys, "isActiveMember"],
 		});
-		guilds.push(details);
+		if (details.isActiveMember === undefined) {
+			throw new Error(`Failed to compute sorting state for guild ${guildId}`);
+		}
+		guilds.push({ ...details, isActiveMember: details.isActiveMember });
 	}
 	guilds.sort(
 		(first, second) =>
 			Number(second.isActiveMember) - Number(first.isActiveMember) || first.name.localeCompare(second.name),
 	);
-	return guilds.map((guild) =>
-		Object.fromEntries(keys.filter((key) => key in guild).map((key) => [key, guild[key]])),
-	) as Pick<GuildListItem, K>[];
+	return guilds.map((guild) => ({
+		id: guild.id,
+		name: guild.name,
+		...Object.fromEntries(keys.filter((key) => key in guild).map((key) => [key, guild[key]])),
+	})) as Pick<GuildListItem, K | "id" | "name">[];
 }

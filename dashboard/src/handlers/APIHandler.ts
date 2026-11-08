@@ -76,7 +76,7 @@ interface AdminGuildBase {
 }
 
 export interface AdminGuild extends AdminGuildBase {
-	guildCommandDeploymentState: { deployed: number; total: number } | null;
+	guildCommandDeploymentState?: { deployed: number; total: number };
 }
 
 export interface PreferenceEntity {
@@ -151,7 +151,7 @@ export interface GuildPreferences {
 
 export interface AdminGuildDetails extends AdminGuildBase {
 	discoveredAt: number | null;
-	guildCommandDeploymentState: { deployed: number; total: number } | null;
+	guildCommandDeploymentState?: { deployed: number; total: number };
 	preferences: GuildPreferences;
 }
 

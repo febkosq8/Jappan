@@ -1,8 +1,16 @@
-import type { Guild, GuildBasedChannel, GuildMember, MessageCreateOptions, PermissionResolvable } from "discord.js";
-import { PermissionFlagsBits } from "discord.js";
+import type {
+	Guild,
+	GuildBasedChannel,
+	GuildMember,
+	MessageCreateOptions,
+	PermissionResolvable,
+	PermissionsBitField,
+} from "discord.js";
+import { ApplicationCommandType, PermissionFlagsBits } from "discord.js";
 
 import { getClient } from "../bot.js";
 import GuildModel, { type Guild as StoredGuild, type GuildDocument } from "../models/guild.js";
+import { getGuildCommands } from "../services/commandLoader.js";
 import { logger } from "../services/logger.js";
 import type { LogDetails } from "./logger.js";
 
@@ -38,6 +46,87 @@ export async function getOrCreateGuildData({ guildId, guildName, guild }: GuildD
 
 export function getClientGuild(guildId: string): Guild | undefined {
 	return getClient().guilds.cache.get(guildId);
+}
+
+export interface GuildState {
+	id: string;
+	name: string;
+	isActiveMember: boolean;
+	icon?: string | null;
+	memberCount?: Guild["memberCount"];
+	channelCount?: number;
+	createdAt?: Guild["createdTimestamp"];
+	description?: Guild["description"];
+	joinedTimestamp?: Guild["joinedTimestamp"];
+	systemChannel?: { id: string; name: string } | null;
+	permissions?: ReturnType<PermissionsBitField["toArray"]>;
+	hasRequiredPermissions?: boolean;
+	owner?: { userId: string; avatarUrl: string; username: string };
+	guildCommandDeploymentState?: { deployed: number; total: number };
+}
+
+export async function computeGuildState({
+	guildId,
+	guildName,
+	requiredPermissions,
+	keys,
+}: {
+	guildId: string;
+	guildName: string;
+	requiredPermissions: PermissionsBitField | undefined;
+	keys: readonly (keyof GuildState)[];
+}): Promise<Pick<GuildState, "id" | "name"> & Partial<GuildState>> {
+	const includeGuildCommandsState = keys.includes("guildCommandDeploymentState");
+	const guild = getClientGuild(guildId);
+	const returnData: Pick<GuildState, "id" | "name"> & Partial<GuildState> = {
+		id: guildId,
+		name: guild?.available ? guild.name : guildName,
+	};
+	if (keys.includes("isActiveMember")) returnData.isActiveMember = guild !== undefined;
+	if (!guild || !guild.available) {
+		return returnData;
+	}
+	const botMember =
+		keys.includes("permissions") || keys.includes("hasRequiredPermissions")
+			? (guild.members.me ?? (await guild.members.fetchMe()))
+			: undefined;
+	let guildCommandDeploymentState: { deployed: number; total: number } | undefined;
+	if (includeGuildCommandsState) {
+		const expectedCommands = getGuildCommands();
+		const registeredCommands = await guild.commands.fetch();
+		guildCommandDeploymentState = {
+			deployed: [...expectedCommands.keys()].filter((name) =>
+				registeredCommands.some(
+					(command) => command.name === name && command.type === ApplicationCommandType.ChatInput,
+				),
+			).length,
+			total: expectedCommands.size,
+		};
+	}
+
+	if (keys.includes("icon")) returnData.icon = guild.iconURL();
+	if (keys.includes("memberCount")) returnData.memberCount = guild.memberCount;
+	if (keys.includes("channelCount")) returnData.channelCount = guild.channels.cache.size;
+	if (keys.includes("createdAt")) returnData.createdAt = guild.createdTimestamp;
+	if (keys.includes("description")) returnData.description = guild.description;
+	if (keys.includes("joinedTimestamp")) returnData.joinedTimestamp = guild.joinedTimestamp;
+	if (keys.includes("systemChannel") && guild.systemChannel) {
+		returnData.systemChannel = { id: guild.systemChannel.id, name: guild.systemChannel.name };
+	}
+	if (botMember) {
+		if (keys.includes("permissions")) returnData.permissions = botMember.permissions.toArray();
+		if (keys.includes("hasRequiredPermissions") && requiredPermissions) {
+			returnData.hasRequiredPermissions = botMember.permissions.has(requiredPermissions);
+		}
+	}
+	if (keys.includes("owner")) {
+		const owner = await guild.client.users.fetch(guild.ownerId);
+		returnData.owner = { userId: owner.id, avatarUrl: owner.displayAvatarURL(), username: owner.username };
+	}
+	if (guildCommandDeploymentState !== undefined) {
+		returnData.guildCommandDeploymentState = guildCommandDeploymentState;
+	}
+	return returnData;
 }
 
 export function getGuildDataList(guildIds?: readonly string[]): Promise<Pick<StoredGuild, "guildId" | "guildName">[]> {

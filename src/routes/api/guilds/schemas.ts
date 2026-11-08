@@ -27,7 +27,7 @@ export const guildSchema = z.object({
 export const adminGuildSchema = guildBaseSchema.extend({
 	guildCommandDeploymentState: z
 		.object({ deployed: z.number().int().nonnegative(), total: z.number().int().nonnegative() })
-		.nullable(),
+		.optional(),
 });
 
 const preferenceEntitySchema = z.object({ id: z.string(), name: z.string().nullable() }).nullable();
@@ -65,7 +65,7 @@ export const guildDetailsSchema = guildBaseSchema.extend({
 export const adminGuildDetailsSchema = guildDetailsSchema.extend({
 	guildCommandDeploymentState: z
 		.object({ deployed: z.number().int().nonnegative(), total: z.number().int().nonnegative() })
-		.nullable(),
+		.optional(),
 });
 
 const snowflake = (label: string) => z.string().regex(/^\d{17,20}$/u, `Invalid ${label} ID`);

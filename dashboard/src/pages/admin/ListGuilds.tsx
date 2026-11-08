@@ -103,7 +103,7 @@ const columns: TableColumnDef<AdminGuild>[] = [
 		id: "guildCommands",
 		accessorFn: (guild) => {
 			const deployment = guild.guildCommandDeploymentState;
-			return deployment === null ? undefined : `${deployment.deployed} / ${deployment.total}`;
+			return deployment == null ? undefined : `${deployment.deployed} / ${deployment.total}`;
 		},
 		header: "Guild commands",
 		size: 150,
@@ -114,7 +114,7 @@ const columns: TableColumnDef<AdminGuild>[] = [
 		sortingFn: "alphanumeric",
 		sortUndefined: "last",
 		cell: ({ row, getValue }) =>
-			row.original.guildCommandDeploymentState === null ? <Unavailable /> : String(getValue()),
+			row.original.guildCommandDeploymentState == null ? <Unavailable /> : String(getValue()),
 	},
 	{
 		id: "joined",
