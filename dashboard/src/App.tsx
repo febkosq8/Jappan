@@ -1,11 +1,13 @@
 import Header from "@jappan/components/Header";
-import AdminRoute from "@jappan/components/AdminRoute";
+import AdminRoute, { AuthRoute } from "@jappan/components/AdminRoute";
 import Home from "@jappan/pages/Home";
 import Commands from "@jappan/pages/Commands";
 import AuthError from "@jappan/pages/auth/AuthError";
 import ListGuilds from "@jappan/pages/admin/ListGuilds";
 import ViewGuild from "@jappan/pages/admin/ViewGuild";
 import ManageBot from "@jappan/pages/admin/ManageBot";
+import UserListGuilds from "@jappan/pages/guilds/ListGuilds";
+import UserViewGuild from "@jappan/pages/guilds/ViewGuild";
 import WrongPage from "@jappan/pages/WrongPage";
 import { SIGN_OUT_FLASH_KEY } from "@jappan/handlers/auth";
 import { updateHashOnScroll } from "@febkosq8/arc";
@@ -54,6 +56,10 @@ function App() {
 					<Route path="/admin/guilds" element={<ListGuilds />} />
 					<Route path="/admin/guild/:guildId?" element={<ViewGuild />} />
 					<Route path="/admin/bot" element={<ManageBot />} />
+				</Route>
+				<Route element={<AuthRoute />}>
+					<Route path="/guilds" element={<UserListGuilds />} />
+					<Route path="/guild/:guildId?" element={<UserViewGuild />} />
 				</Route>
 				<Route path="*" element={<WrongPage />} />
 			</Routes>

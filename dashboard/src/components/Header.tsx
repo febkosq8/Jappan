@@ -4,6 +4,7 @@ import { Link, useLocation } from "react-router-dom";
 import { isAdminSession, useSessionQuery } from "@jappan/handlers/auth";
 import AdminMenu from "./header/AdminMenu";
 import AuthHeaderControls from "./header/AuthMenu";
+import GuildMenu from "./header/GuildMenu";
 
 export default function Header() {
 	const { data: session, isError } = useSessionQuery();
@@ -11,6 +12,7 @@ export default function Header() {
 	const isHomePage = location.pathname === "/";
 	const isCommandsPage = location.pathname === "/commands";
 	const isAdmin = !isError && isAdminSession(session);
+	const isAuthenticated = !isError && !!session;
 	const currentPage = isHomePage ? "Home" : isCommandsPage ? "Commands" : "Pages";
 	const mobilePage =
 		isAdmin && location.pathname === "/admin/bot"
@@ -19,7 +21,11 @@ export default function Header() {
 				? "View Guild"
 				: isAdmin && location.pathname === "/admin/guilds"
 					? "List Guilds"
-					: currentPage;
+					: isAuthenticated && location.pathname === "/guilds"
+						? "My Guilds"
+						: isAuthenticated && (location.pathname === "/guild" || location.pathname.startsWith("/guild/"))
+							? "View Guild"
+							: currentPage;
 	const homeItem = (
 		<Menu.Item asChild nativeButton={false} active={isHomePage}>
 			<Link to="/" aria-current={isHomePage ? "page" : undefined}>
@@ -46,6 +52,7 @@ export default function Header() {
 						<Menu buttonText={mobilePage}>
 							{homeItem}
 							{commandsItem}
+							{isAuthenticated && <GuildMenu asSubmenu />}
 							{isAdmin && <AdminMenu asSubmenu />}
 						</Menu>
 					</nav>
@@ -54,6 +61,7 @@ export default function Header() {
 							{homeItem}
 							{commandsItem}
 						</Menu>
+						{isAuthenticated && <GuildMenu />}
 						{isAdmin && <AdminMenu />}
 					</nav>
 					<AuthHeaderControls />

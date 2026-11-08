@@ -45,3 +45,13 @@ export default function AdminRoute() {
 	if (!isAdminSession(sessionQuery.data)) return <AccessRedirect status={403} />;
 	return <Outlet />;
 }
+
+export function AuthRoute() {
+	const sessionQuery = useSessionQuery();
+
+	if (sessionQuery.isPending) return <LoadingIndicator label="Checking session" />;
+	if (sessionQuery.isError)
+		return <AuthErrorRedirect errorCode="SESSION_UNAVAILABLE" rejectedSessionId={sessionQuery.data?.session.id} />;
+	if (!sessionQuery.data) return <AccessRedirect status={401} />;
+	return <Outlet />;
+}

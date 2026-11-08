@@ -379,7 +379,7 @@ export default defineRouter("/guilds", [
 			}
 			const guild = await getGuildState({
 				guildId,
-				keys: [...baseGuildKeys, "owner", "discoveredAt", "servicePreferences"],
+				keys: [...extendedGuildKeys, "discoveredAt", "servicePreferences", "permissions"],
 			});
 			if (!guild) {
 				return response.status(404).json({ error: "Guild not found" });

@@ -155,6 +155,26 @@ export interface AdminGuildDetails extends AdminGuildBase {
 	servicePreferences: GuildPreferences;
 }
 
+export interface UserGuild {
+	id: string;
+	name: string;
+	icon?: string | null;
+	hasRequiredPermissions?: boolean;
+	owner?: { userId: string; avatarUrl: string; username: string };
+}
+
+export interface UserGuildDetails extends UserGuild {
+	discoveredAt: number | null;
+	servicePreferences: GuildPreferences;
+	permissions?: string[];
+}
+
+export interface GuildPreferencesEditorGuild {
+	id: string;
+	isActiveMember: boolean;
+	servicePreferences: GuildPreferences;
+}
+
 export interface GuildRole {
 	id: string;
 	name: string;
@@ -212,6 +232,18 @@ class APIHandler {
 
 	static async getAdminGuilds(): Promise<AdminGuild[]> {
 		const { data } = await apiClient.get<AdminGuild[]>("/api/v1/admin/guilds", { withCredentials: true });
+		return data;
+	}
+
+	static async getUserGuilds(): Promise<UserGuild[]> {
+		const { data } = await apiClient.get<UserGuild[]>("/api/v1/guilds/", { withCredentials: true });
+		return data;
+	}
+
+	static async getUserGuild(guildId: string): Promise<UserGuildDetails> {
+		const { data } = await apiClient.get<UserGuildDetails>(`/api/v1/guilds/${encodeURIComponent(guildId)}`, {
+			withCredentials: true,
+		});
 		return data;
 	}
 

@@ -37,7 +37,7 @@ export async function fetchSession() {
 	return data;
 }
 
-export function useSessionQuery(refetchOnWindowFocus = false) {
+export function useSessionQuery(refetchOnWindowFocus = true) {
 	return useQuery({ queryKey: sessionQueryKey, queryFn: fetchSession, refetchOnWindowFocus });
 }
 

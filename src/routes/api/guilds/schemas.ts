@@ -62,7 +62,10 @@ const guildDetailsFields = {
 	servicePreferences: guildPreferencesSchema,
 };
 
-export const guildDetailsSchema = guildSchema.extend(guildDetailsFields);
+export const guildDetailsSchema = guildSchema.extend({
+	...guildDetailsFields,
+	permissions: z.array(z.string()).optional(),
+});
 
 export const adminGuildDetailsSchema = adminGuildSchema.extend(guildDetailsFields);
 

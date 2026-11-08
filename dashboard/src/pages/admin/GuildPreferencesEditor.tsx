@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 import APIHandler, {
 	type AdminGuildChannel,
-	type AdminGuildDetails,
+	type GuildPreferencesEditorGuild,
 	type GuildRole,
 	type PreferenceEntity,
 } from "@jappan/handlers/APIHandler";
@@ -176,7 +176,7 @@ function PreferenceForm({
 }
 
 interface SectionProps {
-	guild: AdminGuildDetails;
+	guild: GuildPreferencesEditorGuild;
 	channels: AdminGuildChannel[] | undefined;
 	roles: GuildRole[] | undefined;
 	readOnly: boolean;
@@ -423,7 +423,13 @@ function WarningsSection({ guild, channels, readOnly, onSaved }: SectionProps) {
 	);
 }
 
-export default function GuildPreferencesEditor({ guild }: { guild: AdminGuildDetails }) {
+export default function GuildPreferencesEditor({
+	guild,
+	onSaved,
+}: {
+	guild: GuildPreferencesEditorGuild;
+	onSaved?: () => Promise<void>;
+}) {
 	const queryClient = useQueryClient();
 	const channelsQuery = useQuery({
 		queryKey: ["admin", "guild", guild.id, "channels"],
@@ -437,16 +443,15 @@ export default function GuildPreferencesEditor({ guild }: { guild: AdminGuildDet
 		enabled: guild.isActiveMember,
 		retry: false,
 	});
-	function onSaved() {
-		return queryClient.invalidateQueries({ queryKey: ["admin", "guild", guild.id], exact: true });
-	}
+	const handleSaved =
+		onSaved ?? (() => queryClient.invalidateQueries({ queryKey: ["admin", "guild", guild.id], exact: true }));
 
 	const sectionProps: SectionProps = {
 		guild,
 		channels: channelsQuery.data,
 		roles: rolesQuery.data,
 		readOnly: !guild.isActiveMember,
-		onSaved,
+		onSaved: handleSaved,
 	};
 
 	return (
