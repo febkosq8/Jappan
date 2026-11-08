@@ -7,6 +7,7 @@ import about from "../commands/about.js";
 import auditlog from "../commands/auditlog.js";
 import clear from "../commands/clear.js";
 import doppelganger from "../commands/doppelganger.js";
+import admin from "../commands/guildCommands/admin.js";
 import help from "../commands/help.js";
 import leaderboard from "../commands/leaderboard.js";
 import level from "../commands/level.js";
@@ -35,7 +36,7 @@ const globalCommandModules: readonly unknown[] = [
 	soundboard,
 	warn,
 ];
-const guildCommandModules: readonly unknown[] = [];
+const guildCommandModules: readonly unknown[] = [admin];
 
 let loadedCommands: Collection<string, BotCommand> | undefined;
 let loadedGlobalCommands: Collection<string, BotCommand> | undefined;
