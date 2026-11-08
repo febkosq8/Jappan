@@ -67,7 +67,7 @@ const publicRoutes: RouteDefinition[] = [
 	{
 		method: "get",
 		path: "/commands",
-		tags: ["Commands"],
+		tags: ["Public"],
 		summary: "List global slash commands and subcommands",
 		errorMessage: "Failed to list commands",
 		responses: {
