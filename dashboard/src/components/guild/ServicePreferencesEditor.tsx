@@ -226,14 +226,14 @@ function AuditLogSection({ guild, channels, channelsLoading, readOnly, onSaved }
 		"Audit log",
 		onSaved,
 	);
-	const disabled = readOnly || mutation.isPending;
+	const disabled = readOnly || mutation.isPending || channelsLoading;
 	return (
 		<PreferenceForm
 			id="audit-preferences"
 			title="Audit log"
 			description="Post moderation and server events to a channel."
 			pending={mutation.isPending}
-			disabled={readOnly || (enabled && !channelId)}
+			disabled={disabled || (enabled && !channelId)}
 			onSubmit={() =>
 				mutation.mutate({ enabled, channelId: channelId || null, fullVerbosity: enabled && fullVerbosity })
 			}
@@ -269,14 +269,14 @@ function LevelingSection({ guild, roles, rolesLoading, readOnly, onSaved }: Sect
 		"Leveling",
 		onSaved,
 	);
-	const disabled = readOnly || mutation.isPending;
+	const disabled = readOnly || mutation.isPending || rolesLoading;
 	return (
 		<PreferenceForm
 			id="leveling-preferences"
 			title="Leveling"
 			description="Reward members with a role once they reach a level."
 			pending={mutation.isPending}
-			disabled={readOnly || (enabled && (threshold.trim() === "") !== (roleId === ""))}
+			disabled={disabled || (enabled && (threshold.trim() === "") !== (roleId === ""))}
 			onSubmit={() => mutation.mutate({ enabled, threshold: toNumberOrNull(threshold), roleId: roleId || null })}
 		>
 			<ToggleField label="Enabled" checked={enabled} onChange={setEnabled} disabled={disabled} />
@@ -318,14 +318,14 @@ function MemberAnnouncementsSection({ guild, channels, channelsLoading, readOnly
 		"Member announcement",
 		onSaved,
 	);
-	const disabled = readOnly || mutation.isPending;
+	const disabled = readOnly || mutation.isPending || channelsLoading;
 	return (
 		<PreferenceForm
 			id="announcement-preferences"
 			title="Member announcements"
 			description="Announce members joining and leaving."
 			pending={mutation.isPending}
-			disabled={readOnly || (joinEnabled && !joinChannelId) || (leaveEnabled && !leaveChannelId)}
+			disabled={disabled || (joinEnabled && !joinChannelId) || (leaveEnabled && !leaveChannelId)}
 			onSubmit={() =>
 				mutation.mutate({
 					joinEnabled,
@@ -385,7 +385,7 @@ function WarningsSection({ guild, channels, channelsLoading, readOnly, onSaved }
 		"Warning",
 		onSaved,
 	);
-	const disabled = readOnly || mutation.isPending;
+	const disabled = readOnly || mutation.isPending || channelsLoading;
 	const hasTimeout = timeoutThreshold.trim() !== "";
 	return (
 		<PreferenceForm
@@ -393,7 +393,7 @@ function WarningsSection({ guild, channels, channelsLoading, readOnly, onSaved }
 			title="Warnings"
 			description="Escalate repeated warnings to a timeout or ban. Leave a threshold empty to turn it off."
 			pending={mutation.isPending}
-			disabled={readOnly || (hasTimeout && timeoutDuration.trim() === "")}
+			disabled={disabled || (hasTimeout && timeoutDuration.trim() === "")}
 			onSubmit={() =>
 				mutation.mutate({
 					timeoutThreshold: toNumberOrNull(timeoutThreshold),
@@ -496,10 +496,7 @@ export default function ServicePreferencesEditor({
 					Could not load channels or roles. Current selections are still shown.
 				</p>
 			)}
-			<fieldset
-				disabled={!guild.isActiveMember}
-				className="mt-4 grid min-w-0 gap-4 sm:grid-cols-2"
-			>
+			<fieldset disabled={!guild.isActiveMember} className="mt-4 grid min-w-0 gap-4 sm:grid-cols-2">
 				<AuditLogSection key={JSON.stringify(guild.servicePreferences.auditLog)} {...sectionProps} />
 				<LevelingSection key={JSON.stringify(guild.servicePreferences.leveling)} {...sectionProps} />
 				<MemberAnnouncementsSection
