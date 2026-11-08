@@ -389,7 +389,7 @@ export default defineRouter("/guilds", [
 			}
 			const guild = await computeGuildState({
 				storedGuild,
-				keys: [...baseGuildKeys, "discoveredAt", "servicePreferences"],
+				keys: [...baseGuildKeys, "owner", "discoveredAt", "servicePreferences"],
 			});
 			return response.status(200).json(guild);
 		},

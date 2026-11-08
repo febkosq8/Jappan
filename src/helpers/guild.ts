@@ -172,7 +172,6 @@ export async function computeGuildState({
 	requiredPermissions?: PermissionsBitField | undefined;
 	keys?: readonly (keyof GuildState)[];
 }): Promise<Pick<GuildState, "id" | "name"> & Partial<GuildState>> {
-	const includeGuildCommandsState = keys.includes("guildCommandDeploymentState");
 	const guild = getClientGuild(storedGuild.guildId);
 	const returnData: Pick<GuildState, "id" | "name"> & Partial<GuildState> = {
 		id: storedGuild.guildId,
@@ -199,11 +198,24 @@ export async function computeGuildState({
 		keys.includes("permissions") || keys.includes("hasRequiredPermissions")
 			? (guild.members.me ?? (await guild.members.fetchMe()))
 			: undefined;
-	let guildCommandDeploymentState: { deployed: number; total: number } | undefined;
-	if (includeGuildCommandsState) {
+
+	if (keys.includes("icon")) returnData.icon = guild.iconURL();
+	if (keys.includes("memberCount")) returnData.memberCount = guild.memberCount;
+	if (keys.includes("channelCount")) returnData.channelCount = guild.channels.cache.size;
+	if (keys.includes("owner")) {
+		const owner = await guild.client.users.fetch(guild.ownerId);
+		returnData.owner = { userId: owner.id, avatarUrl: owner.displayAvatarURL(), username: owner.username };
+	}
+	if (keys.includes("createdAt")) returnData.createdAt = guild.createdTimestamp;
+	if (keys.includes("description")) returnData.description = guild.description;
+	if (keys.includes("joinedTimestamp")) returnData.joinedTimestamp = guild.joinedTimestamp;
+	if (keys.includes("systemChannel") && guild.systemChannel) {
+		returnData.systemChannel = { id: guild.systemChannel.id, name: guild.systemChannel.name };
+	}
+	if (keys.includes("guildCommandDeploymentState")) {
 		const expectedCommands = getGuildCommands();
 		const registeredCommands = await guild.commands.fetch();
-		guildCommandDeploymentState = {
+		returnData.guildCommandDeploymentState = {
 			deployed: [...expectedCommands.keys()].filter((name) =>
 				registeredCommands.some(
 					(command) => command.name === name && command.type === ApplicationCommandType.ChatInput,
@@ -212,16 +224,6 @@ export async function computeGuildState({
 			total: expectedCommands.size,
 		};
 	}
-
-	if (keys.includes("icon")) returnData.icon = guild.iconURL();
-	if (keys.includes("memberCount")) returnData.memberCount = guild.memberCount;
-	if (keys.includes("channelCount")) returnData.channelCount = guild.channels.cache.size;
-	if (keys.includes("createdAt")) returnData.createdAt = guild.createdTimestamp;
-	if (keys.includes("description")) returnData.description = guild.description;
-	if (keys.includes("joinedTimestamp")) returnData.joinedTimestamp = guild.joinedTimestamp;
-	if (keys.includes("systemChannel") && guild.systemChannel) {
-		returnData.systemChannel = { id: guild.systemChannel.id, name: guild.systemChannel.name };
-	}
 	if (botMember) {
 		if (keys.includes("permissions")) returnData.permissions = botMember.permissions.toArray();
 		if (keys.includes("hasRequiredPermissions")) {
@@ -229,13 +231,6 @@ export async function computeGuildState({
 				requiredPermissions ?? getRequiredGlobalBotPermissions(),
 			);
 		}
-	}
-	if (keys.includes("owner")) {
-		const owner = await guild.client.users.fetch(guild.ownerId);
-		returnData.owner = { userId: owner.id, avatarUrl: owner.displayAvatarURL(), username: owner.username };
-	}
-	if (guildCommandDeploymentState !== undefined) {
-		returnData.guildCommandDeploymentState = guildCommandDeploymentState;
 	}
 	return returnData;
 }
