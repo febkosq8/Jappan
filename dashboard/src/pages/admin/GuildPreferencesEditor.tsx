@@ -201,7 +201,7 @@ function useSave<Input>(save: (input: Input) => Promise<void>, label: string, on
 }
 
 function AuditLogSection({ guild, channels, readOnly, onSaved }: SectionProps) {
-	const { auditLog } = guild.preferences;
+	const { auditLog } = guild.servicePreferences;
 	const [enabled, setEnabled] = useState(auditLog.enabled);
 	const [channelId, setChannelId] = useState(auditLog.channel?.id ?? "");
 	const [fullVerbosity, setFullVerbosity] = useState(auditLog.fullVerbosity);
@@ -243,7 +243,7 @@ function AuditLogSection({ guild, channels, readOnly, onSaved }: SectionProps) {
 }
 
 function LevelingSection({ guild, roles, readOnly, onSaved }: SectionProps) {
-	const { leveling } = guild.preferences;
+	const { leveling } = guild.servicePreferences;
 	const [enabled, setEnabled] = useState(leveling.enabled);
 	const [threshold, setThreshold] = useState(leveling.threshold?.toString() ?? "");
 	const [roleId, setRoleId] = useState(leveling.role?.id ?? "");
@@ -286,7 +286,7 @@ function LevelingSection({ guild, roles, readOnly, onSaved }: SectionProps) {
 }
 
 function MemberAnnouncementsSection({ guild, channels, readOnly, onSaved }: SectionProps) {
-	const { memberAnnouncements } = guild.preferences;
+	const { memberAnnouncements } = guild.servicePreferences;
 	const [joinEnabled, setJoinEnabled] = useState(memberAnnouncements.joinEnabled);
 	const [joinChannelId, setJoinChannelId] = useState(memberAnnouncements.joinChannel?.id ?? "");
 	const [leaveEnabled, setLeaveEnabled] = useState(memberAnnouncements.leaveEnabled);
@@ -351,7 +351,7 @@ function MemberAnnouncementsSection({ guild, channels, readOnly, onSaved }: Sect
 }
 
 function WarningsSection({ guild, channels, readOnly, onSaved }: SectionProps) {
-	const { warnings } = guild.preferences;
+	const { warnings } = guild.servicePreferences;
 	const [timeoutThreshold, setTimeoutThreshold] = useState(warnings.timeoutThreshold?.toString() ?? "");
 	const [timeoutDuration, setTimeoutDuration] = useState(warnings.timeoutDurationHours?.toString() ?? "");
 	const [banThreshold, setBanThreshold] = useState(warnings.banThreshold?.toString() ?? "");
@@ -469,13 +469,13 @@ export default function GuildPreferencesEditor({ guild }: { guild: AdminGuildDet
 				disabled={!guild.isActiveMember || channelsQuery.isPending || rolesQuery.isPending}
 				className="mt-4 grid min-w-0 gap-4 sm:grid-cols-2"
 			>
-				<AuditLogSection key={JSON.stringify(guild.preferences.auditLog)} {...sectionProps} />
-				<LevelingSection key={JSON.stringify(guild.preferences.leveling)} {...sectionProps} />
+				<AuditLogSection key={JSON.stringify(guild.servicePreferences.auditLog)} {...sectionProps} />
+				<LevelingSection key={JSON.stringify(guild.servicePreferences.leveling)} {...sectionProps} />
 				<MemberAnnouncementsSection
-					key={JSON.stringify(guild.preferences.memberAnnouncements)}
+					key={JSON.stringify(guild.servicePreferences.memberAnnouncements)}
 					{...sectionProps}
 				/>
-				<WarningsSection key={JSON.stringify(guild.preferences.warnings)} {...sectionProps} />
+				<WarningsSection key={JSON.stringify(guild.servicePreferences.warnings)} {...sectionProps} />
 			</fieldset>
 		</Card>
 	);

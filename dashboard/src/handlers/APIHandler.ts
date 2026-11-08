@@ -152,7 +152,7 @@ export interface GuildPreferences {
 export interface AdminGuildDetails extends AdminGuildBase {
 	discoveredAt: number | null;
 	guildCommandDeploymentState?: { deployed: number; total: number };
-	preferences: GuildPreferences;
+	servicePreferences: GuildPreferences;
 }
 
 export interface GuildRole {

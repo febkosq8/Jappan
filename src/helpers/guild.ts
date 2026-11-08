@@ -6,11 +6,11 @@ import type {
 	PermissionResolvable,
 	PermissionsBitField,
 } from "discord.js";
-import { ApplicationCommandType, PermissionFlagsBits } from "discord.js";
+import { ApplicationCommandType, DiscordAPIError, PermissionFlagsBits } from "discord.js";
 
 import { getClient } from "../bot.js";
 import GuildModel, { type Guild as StoredGuild, type GuildDocument } from "../models/guild.js";
-import { getGuildCommands } from "../services/commandLoader.js";
+import { getGuildCommands, getRequiredGlobalBotPermissions } from "../services/commandLoader.js";
 import { logger } from "../services/logger.js";
 import type { LogDetails } from "./logger.js";
 
@@ -48,6 +48,80 @@ export function getClientGuild(guildId: string): Guild | undefined {
 	return getClient().guilds.cache.get(guildId);
 }
 
+async function getPreferenceChannel(guild: Guild | undefined, channelId: string) {
+	if (!guild?.available) return { id: channelId, name: null };
+
+	try {
+		const channel = guild.channels.cache.get(channelId) ?? (await guild.channels.fetch(channelId));
+		return { id: channelId, name: channel?.guildId === guild.id ? channel.name : null };
+	} catch (error: unknown) {
+		if (error instanceof DiscordAPIError && [10003, 50001, 50013].includes(Number(error.code))) {
+			return { id: channelId, name: null };
+		}
+		throw error;
+	}
+}
+
+async function getPreferenceRole(guild: Guild | undefined, roleId: string | null | undefined) {
+	if (!roleId) return null;
+	if (!guild?.available) return { id: roleId, name: null };
+
+	try {
+		const role = guild.roles.cache.get(roleId) ?? (await guild.roles.fetch(roleId));
+		return { id: roleId, name: role?.name ?? null };
+	} catch (error: unknown) {
+		if (error instanceof DiscordAPIError && [10011, 50001, 50013].includes(Number(error.code))) {
+			return { id: roleId, name: null };
+		}
+		throw error;
+	}
+}
+
+type StoredGuildPreferences = Pick<StoredGuild, "auditLog" | "leveling" | "memberAnnouncements" | "warnings">;
+
+async function resolveGuildPreferences(guild: Guild | undefined, storedGuild: StoredGuildPreferences) {
+	const channelIds = [
+		storedGuild.auditLog.channelId,
+		storedGuild.memberAnnouncements.joinChannelId,
+		storedGuild.memberAnnouncements.leaveChannelId,
+		storedGuild.warnings.auditChannelId,
+	];
+	const channels = new Map<string, Awaited<ReturnType<typeof getPreferenceChannel>>>();
+	for (const id of new Set(channelIds.filter((id): id is string => !!id))) {
+		channels.set(id, await getPreferenceChannel(guild, id));
+	}
+	const channelFor = (id: string | null | undefined) => {
+		if (!id) return null;
+		const channel = channels.get(id);
+		if (!channel) throw new Error(`Failed to resolve preference channel ${id}`);
+		return channel;
+	};
+	return {
+		auditLog: {
+			enabled: storedGuild.auditLog.enabled,
+			channel: channelFor(storedGuild.auditLog.channelId),
+			fullVerbosity: storedGuild.auditLog.fullVerbosity,
+		},
+		leveling: {
+			enabled: storedGuild.leveling.enabled,
+			threshold: storedGuild.leveling.threshold ?? null,
+			role: await getPreferenceRole(guild, storedGuild.leveling.roleId),
+		},
+		memberAnnouncements: {
+			joinEnabled: storedGuild.memberAnnouncements.joinEnabled,
+			leaveEnabled: storedGuild.memberAnnouncements.leaveEnabled,
+			joinChannel: channelFor(storedGuild.memberAnnouncements.joinChannelId),
+			leaveChannel: channelFor(storedGuild.memberAnnouncements.leaveChannelId),
+		},
+		warnings: {
+			timeoutThreshold: storedGuild.warnings.timeoutThreshold ?? null,
+			timeoutDurationHours: storedGuild.warnings.timeoutDurationHours ?? null,
+			banThreshold: storedGuild.warnings.banThreshold ?? null,
+			auditChannel: channelFor(storedGuild.warnings.auditChannelId),
+		},
+	};
+}
+
 export interface GuildState {
 	id: string;
 	name: string;
@@ -63,6 +137,8 @@ export interface GuildState {
 	hasRequiredPermissions?: boolean;
 	owner?: { userId: string; avatarUrl: string; username: string };
 	guildCommandDeploymentState?: { deployed: number; total: number };
+	discoveredAt?: number | null;
+	servicePreferences?: Awaited<ReturnType<typeof resolveGuildPreferences>>;
 }
 
 export const baseGuildKeys = ["id", "name", "icon"] as const;
@@ -80,26 +156,42 @@ export const allGuildKeys = [
 	"systemChannel",
 	"permissions",
 	"guildCommandDeploymentState",
+	"discoveredAt",
+	"servicePreferences",
 ] as const satisfies readonly (keyof GuildState)[];
 
+type StoredGuildState = Pick<StoredGuild, "guildId" | "guildName"> &
+	Partial<Pick<StoredGuild, "createdAt" | keyof StoredGuildPreferences>>;
+
 export async function computeGuildState({
-	guildId,
-	guildName,
+	storedGuild,
 	requiredPermissions,
 	keys = allGuildKeys,
 }: {
-	guildId: string;
-	guildName: string;
-	requiredPermissions: PermissionsBitField | undefined;
+	storedGuild: StoredGuildState;
+	requiredPermissions?: PermissionsBitField | undefined;
 	keys?: readonly (keyof GuildState)[];
 }): Promise<Pick<GuildState, "id" | "name"> & Partial<GuildState>> {
 	const includeGuildCommandsState = keys.includes("guildCommandDeploymentState");
-	const guild = getClientGuild(guildId);
+	const guild = getClientGuild(storedGuild.guildId);
 	const returnData: Pick<GuildState, "id" | "name"> & Partial<GuildState> = {
-		id: guildId,
-		name: guild?.available ? guild.name : guildName,
+		id: storedGuild.guildId,
+		name: guild?.available ? guild.name : storedGuild.guildName,
 	};
 	if (keys.includes("isActiveMember")) returnData.isActiveMember = guild !== undefined;
+	if (keys.includes("discoveredAt")) returnData.discoveredAt = storedGuild.createdAt?.getTime() ?? null;
+	if (keys.includes("servicePreferences")) {
+		const { auditLog, leveling, memberAnnouncements, warnings } = storedGuild;
+		if (!auditLog || !leveling || !memberAnnouncements || !warnings) {
+			throw new Error(`Stored preferences are required for guild ${storedGuild.guildId}`);
+		}
+		returnData.servicePreferences = await resolveGuildPreferences(guild, {
+			auditLog,
+			leveling,
+			memberAnnouncements,
+			warnings,
+		});
+	}
 	if (!guild || !guild.available) {
 		return returnData;
 	}
@@ -132,8 +224,10 @@ export async function computeGuildState({
 	}
 	if (botMember) {
 		if (keys.includes("permissions")) returnData.permissions = botMember.permissions.toArray();
-		if (keys.includes("hasRequiredPermissions") && requiredPermissions) {
-			returnData.hasRequiredPermissions = botMember.permissions.has(requiredPermissions);
+		if (keys.includes("hasRequiredPermissions")) {
+			returnData.hasRequiredPermissions = botMember.permissions.has(
+				requiredPermissions ?? getRequiredGlobalBotPermissions(),
+			);
 		}
 	}
 	if (keys.includes("owner")) {

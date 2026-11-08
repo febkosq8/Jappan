@@ -1,17 +1,8 @@
-import type { Client, Guild, PermissionResolvable } from "discord.js";
+import type { Client, PermissionResolvable } from "discord.js";
 import { DiscordAPIError, RESTJSONErrorCodes } from "discord.js";
 
 import { formatUser } from "../helpers/discord.js";
-import {
-	baseGuildKeys,
-	computeGuildState,
-	getClientGuild,
-	getClientGuilds,
-	getGuildData,
-	getGuildDataList,
-	type GuildState,
-} from "../helpers/guild.js";
-import type { Guild as StoredGuild } from "../models/guild.js";
+import { computeGuildState, getClientGuilds, getGuildDataList } from "../helpers/guild.js";
 import { getRequiredGlobalBotPermissions } from "./commandLoader.js";
 import type { Config } from "./config.js";
 import { logger } from "./logger.js";
@@ -60,99 +51,6 @@ export async function validateAdminUsers(client: Client, config: Config): Promis
 			`Admin user validation failed: ${invalidCount} invalid and ${unverifiedCount} could not be verified`,
 		);
 	}
-}
-
-async function getPreferenceChannel(guild: Guild | undefined, channelId: string) {
-	if (!guild?.available) return { id: channelId, name: null };
-
-	try {
-		const channel = guild.channels.cache.get(channelId) ?? (await guild.channels.fetch(channelId));
-		return { id: channelId, name: channel?.guildId === guild.id ? channel.name : null };
-	} catch (error: unknown) {
-		if (error instanceof DiscordAPIError && [10003, 50001, 50013].includes(Number(error.code))) {
-			return { id: channelId, name: null };
-		}
-		throw error;
-	}
-}
-
-async function getPreferenceRole(guild: Guild | undefined, roleId: string | null | undefined) {
-	if (!roleId) return null;
-	if (!guild?.available) return { id: roleId, name: null };
-
-	try {
-		const role = guild.roles.cache.get(roleId) ?? (await guild.roles.fetch(roleId));
-		return { id: roleId, name: role?.name ?? null };
-	} catch (error: unknown) {
-		if (error instanceof DiscordAPIError && [10011, 50001, 50013].includes(Number(error.code))) {
-			return { id: roleId, name: null };
-		}
-		throw error;
-	}
-}
-
-type StoredGuildPreferences = Pick<StoredGuild, "auditLog" | "leveling" | "memberAnnouncements" | "warnings">;
-
-async function resolveGuildPreferences(guild: Guild | undefined, storedGuild: StoredGuildPreferences) {
-	const channelIds = [
-		storedGuild.auditLog.channelId,
-		storedGuild.memberAnnouncements.joinChannelId,
-		storedGuild.memberAnnouncements.leaveChannelId,
-		storedGuild.warnings.auditChannelId,
-	];
-	const channels = new Map<string, Awaited<ReturnType<typeof getPreferenceChannel>>>();
-	for (const id of new Set(channelIds.filter((id): id is string => !!id))) {
-		channels.set(id, await getPreferenceChannel(guild, id));
-	}
-	const channelFor = (id: string | null | undefined) => {
-		if (!id) return null;
-		const channel = channels.get(id);
-		if (!channel) throw new Error(`Failed to resolve preference channel ${id}`);
-		return channel;
-	};
-	return {
-		auditLog: {
-			enabled: storedGuild.auditLog.enabled,
-			channel: channelFor(storedGuild.auditLog.channelId),
-			fullVerbosity: storedGuild.auditLog.fullVerbosity,
-		},
-		leveling: {
-			enabled: storedGuild.leveling.enabled,
-			threshold: storedGuild.leveling.threshold ?? null,
-			role: await getPreferenceRole(guild, storedGuild.leveling.roleId),
-		},
-		memberAnnouncements: {
-			joinEnabled: storedGuild.memberAnnouncements.joinEnabled,
-			leaveEnabled: storedGuild.memberAnnouncements.leaveEnabled,
-			joinChannel: channelFor(storedGuild.memberAnnouncements.joinChannelId),
-			leaveChannel: channelFor(storedGuild.memberAnnouncements.leaveChannelId),
-		},
-		warnings: {
-			timeoutThreshold: storedGuild.warnings.timeoutThreshold ?? null,
-			timeoutDurationHours: storedGuild.warnings.timeoutDurationHours ?? null,
-			banThreshold: storedGuild.warnings.banThreshold ?? null,
-			auditChannel: channelFor(storedGuild.warnings.auditChannelId),
-		},
-	};
-}
-
-export async function getGuildDetails({ guildId, keys }: { guildId: string; keys: readonly (keyof GuildState)[] }) {
-	const storedGuild = await getGuildData(guildId);
-	if (!storedGuild) {
-		return null;
-	}
-	const details = await computeGuildState({
-		guildId: storedGuild.guildId,
-		guildName: storedGuild.guildName,
-		requiredPermissions: getRequiredGlobalBotPermissions(),
-		keys,
-	});
-	const guild = getClientGuild(guildId);
-	return {
-		...details,
-		discoveredAt: storedGuild.createdAt?.getTime() ?? null,
-		preferences: await resolveGuildPreferences(guild, storedGuild),
-	};
 }
 
 type GuildListDetails = Awaited<ReturnType<typeof computeGuildState>>;
@@ -207,15 +105,14 @@ export async function listGuilds<K extends keyof GuildListItem>({
 	const storedGuilds = await getGuildDataList(guildIds);
 
 	const guilds: GuildListItem[] = [];
-	for (const { guildId, guildName } of storedGuilds) {
+	for (const storedGuild of storedGuilds) {
 		const details = await computeGuildState({
-			guildId,
-			guildName,
+			storedGuild,
 			requiredPermissions,
 			keys: [...keys, "isActiveMember"],
 		});
 		if (details.isActiveMember === undefined) {
-			throw new Error(`Failed to compute sorting state for guild ${guildId}`);
+			throw new Error(`Failed to compute sorting state for guild ${storedGuild.guildId}`);
 		}
 		guilds.push({ ...details, isActiveMember: details.isActiveMember });
 	}

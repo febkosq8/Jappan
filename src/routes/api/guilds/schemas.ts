@@ -59,7 +59,7 @@ export const guildPreferencesSchema = z.object({
 
 const guildDetailsFields = {
 	discoveredAt: z.number().int().nullable(),
-	preferences: guildPreferencesSchema,
+	servicePreferences: guildPreferencesSchema,
 };
 
 export const guildDetailsSchema = guildSchema.extend(guildDetailsFields);
