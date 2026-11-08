@@ -3,11 +3,11 @@ import AdminRoute, { AuthRoute } from "@jappan/components/AdminRoute";
 import Home from "@jappan/pages/Home";
 import Commands from "@jappan/pages/Commands";
 import AuthError from "@jappan/pages/auth/AuthError";
-import ListGuilds from "@jappan/pages/admin/ListGuilds";
-import ViewGuild from "@jappan/pages/admin/ViewGuild";
+import AdminListGuilds from "@jappan/pages/admin/AdminListGuilds";
+import AdminViewGuild from "@jappan/pages/admin/AdminViewGuild";
 import ManageBot from "@jappan/pages/admin/ManageBot";
-import UserListGuilds from "@jappan/pages/guilds/ListGuilds";
-import UserViewGuild from "@jappan/pages/guilds/ViewGuild";
+import UserListGuilds from "@jappan/pages/guilds/UserListGuilds";
+import UserViewGuild from "@jappan/pages/guilds/UserViewGuild";
 import WrongPage from "@jappan/pages/WrongPage";
 import { SIGN_OUT_FLASH_KEY } from "@jappan/handlers/auth";
 import { updateHashOnScroll } from "@febkosq8/arc";
@@ -53,8 +53,8 @@ function App() {
 				<Route path="/commands" element={<Commands />} />
 				<Route path="/auth/error" element={<AuthError />} />
 				<Route element={<AdminRoute />}>
-					<Route path="/admin/guilds" element={<ListGuilds />} />
-					<Route path="/admin/guild/:guildId?" element={<ViewGuild />} />
+					<Route path="/admin/guilds" element={<AdminListGuilds />} />
+					<Route path="/admin/guild/:guildId?" element={<AdminViewGuild />} />
 					<Route path="/admin/bot" element={<ManageBot />} />
 				</Route>
 				<Route element={<AuthRoute />}>

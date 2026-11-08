@@ -66,6 +66,7 @@ export const guildDetailsSchema = guildSchema.extend({
 
 export const adminGuildDetailsSchema = adminGuildSchema.extend({
 	servicePreferences: servicePreferencesSchema,
+	discoveredTimestampMs: z.number().int().nullable(),
 });
 
 const snowflake = (label: string) => z.string().regex(/^\d{17,20}$/u, `Invalid ${label} ID`);

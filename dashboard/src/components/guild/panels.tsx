@@ -130,7 +130,9 @@ export function GuildOverview({ guild }: { guild: AdminGuildDetails | UserGuildD
 					<GuildDateDetail label="Created" timestamp={guild.createdTimestampMs} />
 				)}
 				{"joinedTimestampMs" in guild && <GuildDateDetail label="Joined" timestamp={guild.joinedTimestampMs} />}
-				<GuildDateDetail label="Discovered" timestamp={guild.discoveredTimestampMs} />
+				{"discoveredTimestampMs" in guild && (
+					<GuildDateDetail label="Discovered" timestamp={guild.discoveredTimestampMs} />
+				)}
 				{"owner" in guild && (
 					<GuildDetail label="Owner">
 						{guild.owner ? (

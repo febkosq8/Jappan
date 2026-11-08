@@ -153,7 +153,7 @@ const columns: TableColumnDef<AdminGuild>[] = [
 	},
 ];
 
-export default function AdminGuilds() {
+export default function AdminListGuilds() {
 	document.title = "Admin - List Guilds";
 	const guildsQuery = useQuery({
 		queryKey: ["admin", "list-guilds"],

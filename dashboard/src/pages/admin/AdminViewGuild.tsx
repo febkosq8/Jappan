@@ -825,7 +825,7 @@ function GuildDetails({ guild }: { guild: AdminGuildDetails }) {
 	);
 }
 
-export default function ViewGuild() {
+export default function AdminViewGuild() {
 	const { guildId = "" } = useParams();
 	document.title = `Admin - View Guild (${guildId})`;
 	const navigate = useNavigate();

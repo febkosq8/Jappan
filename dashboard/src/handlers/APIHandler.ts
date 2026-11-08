@@ -164,7 +164,6 @@ export interface UserGuild {
 }
 
 export interface UserGuildDetails extends UserGuild {
-	discoveredTimestampMs: number | null;
 	createdTimestampMs?: number;
 	joinedTimestampMs?: number;
 	servicePreferences: ServicePreferences;
