@@ -170,28 +170,32 @@ type ComputeGuildStateOptions = {
 	keys?: readonly (keyof GuildState)[];
 };
 
+type GuildStateSource =
+	| { guildData: StoredGuildState; clientGuild?: never; guildId?: never }
+	| { clientGuild: Guild; guildData?: never; guildId?: never }
+	| { guildId: string; guildData?: never; clientGuild?: never };
+
 export function getGuildState(
-	options: ComputeGuildStateOptions &
-		({ guildId: string; clientGuild?: never } | { clientGuild: Guild; guildId?: never }) & {
-			guildData?: undefined;
-		},
+	options: ComputeGuildStateOptions & { clientGuild: Guild; guildData?: never; guildId?: never },
 ): Promise<ComputedGuildState | null>;
 export function getGuildState(
-	options: ComputeGuildStateOptions & { guildData: StoredGuildState; clientGuild?: Guild | undefined },
+	options: ComputeGuildStateOptions & { guildId: string; guildData?: never; clientGuild?: never },
+): Promise<ComputedGuildState | null>;
+export function getGuildState(
+	options: ComputeGuildStateOptions & { guildData: StoredGuildState; clientGuild?: never; guildId?: never },
 ): Promise<ComputedGuildState>;
 export async function getGuildState(
-	options: ComputeGuildStateOptions & {
-		guildData?: StoredGuildState | undefined;
-		clientGuild?: Guild | undefined;
-		guildId?: string | undefined;
-	},
+	options: ComputeGuildStateOptions & GuildStateSource,
 ): Promise<ComputedGuildState | null> {
 	const { requiredPermissions, keys = allGuildKeys } = options;
-	const resolvedGuildId = options.guildData?.guildId ?? options.clientGuild?.id ?? options.guildId;
-	if (!resolvedGuildId) return null;
-	const storedGuild = options.guildData ?? (await getGuildData(resolvedGuildId));
+	const guildId = options.guildData
+		? options.guildData.guildId
+		: options.clientGuild
+			? options.clientGuild.id
+			: options.guildId;
+	const storedGuild = options.guildData ?? (await getGuildData(guildId));
 	if (!storedGuild) return null;
-	const guild = options.clientGuild ?? getClientGuild(resolvedGuildId);
+	const guild = options.clientGuild ?? getClientGuild(guildId);
 	const returnData: Pick<GuildState, "id" | "name"> & Partial<GuildState> = {
 		id: storedGuild.guildId,
 		name: guild?.available ? guild.name : storedGuild.guildName,
