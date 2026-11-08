@@ -1,10 +1,17 @@
-import type { Client, Guild, GuildBasedChannel, GuildMember, Invite, Role } from "discord.js";
+import type { Guild, GuildMember, Invite, Role } from "discord.js";
 import { ChannelType, EmbedBuilder, PermissionFlagsBits, blockQuote } from "discord.js";
 
 import { formatChannel, formatGuild } from "./discord.js";
 import type { SentGuildMessage } from "./guild.js";
-import { beginGuildDeparture, cancelGuildDeparture, sendGuildMessage } from "./guild.js";
-import GuildModel from "../models/guild.js";
+import {
+	beginGuildDeparture,
+	canSendMessage,
+	cancelGuildDeparture,
+	getAdminGuildForAction,
+	getGuild,
+	getGuilds,
+	sendGuildMessage,
+} from "./guild.js";
 import type { Config } from "../services/config.js";
 import { logger } from "../services/logger.js";
 
@@ -18,32 +25,8 @@ export interface KickGuildResult {
 	departureMessage: SentGuildMessage | null;
 }
 
-export async function getAdminGuildForAction(client: Client, guildId: string) {
-	const storedGuild = await GuildModel.exists({ guildId });
-	if (!storedGuild) return { status: "not_found" } as const;
-
-	const guild = client.guilds.cache.get(guildId);
-	if (!guild) return { status: "not_member" } as const;
-	if (!guild.available) return { status: "unavailable" } as const;
-	return { status: "ok", guild } as const;
-}
-
-export function canSendAdminMessage(channel: GuildBasedChannel, botMember: GuildMember): boolean {
-	return (
-		channel.isTextBased() &&
-		(channel
-			.permissionsFor(botMember)
-			?.has([
-				PermissionFlagsBits.ViewChannel,
-				PermissionFlagsBits.SendMessages,
-				PermissionFlagsBits.EmbedLinks,
-			]) ??
-			false)
-	);
-}
-
-export async function listAdminGuildChannels(client: Client, guildId: string) {
-	const adminGuild = await getAdminGuildForAction(client, guildId);
+export async function listAdminGuildChannels(guildId: string) {
+	const adminGuild = await getAdminGuildForAction(guildId);
 	if (adminGuild.status !== "ok") return adminGuild;
 	const { guild } = adminGuild;
 
@@ -60,7 +43,15 @@ export async function listAdminGuildChannels(client: Client, guildId: string) {
 			createdAt: channel.createdTimestamp,
 			parent: channel.parentId ? { id: channel.parentId, name: parent?.name ?? null } : null,
 			position: channel.rawPosition,
-			canSendMessage: canSendAdminMessage(channel, botMember),
+			canSendMessage: canSendMessage({
+				channel,
+				botMember,
+				permissions: [
+					PermissionFlagsBits.ViewChannel,
+					PermissionFlagsBits.SendMessages,
+					PermissionFlagsBits.EmbedLinks,
+				],
+			}),
 			...("topic" in channel ? { topic: channel.topic } : {}),
 			...("nsfw" in channel ? { nsfw: channel.nsfw } : {}),
 			...("rateLimitPerUser" in channel ? { rateLimitPerUser: channel.rateLimitPerUser } : {}),
@@ -94,8 +85,8 @@ export async function listAdminGuildChannels(client: Client, guildId: string) {
 	return { status: "ok", channels: ordered } as const;
 }
 
-export async function listAdminGuildRoles(client: Client, guildId: string) {
-	const adminGuild = await getAdminGuildForAction(client, guildId);
+export async function listAdminGuildRoles(guildId: string) {
+	const adminGuild = await getAdminGuildForAction(guildId);
 	if (adminGuild.status !== "ok") return adminGuild;
 	const { guild } = adminGuild;
 
@@ -221,13 +212,11 @@ export async function kickGuild({
 }
 
 export async function selfKickGuilds({
-	client,
 	config,
 	additionalMessage,
 	invoker,
 	deadlineAt,
 }: {
-	client: Client;
 	config: Config;
 	additionalMessage?: string;
 	invoker: AdminInvoker;
@@ -239,9 +228,9 @@ export async function selfKickGuilds({
 	timeLimitReached: boolean;
 }> {
 	const protectedGuild = config.PLAYER_HEALTH_CHECK_GUILD_ID
-		? client.guilds.cache.get(config.PLAYER_HEALTH_CHECK_GUILD_ID)
+		? getGuild({ source: "discord", guildId: config.PLAYER_HEALTH_CHECK_GUILD_ID })
 		: undefined;
-	const guilds = [...client.guilds.cache.values()].filter((guild) => guild.id !== protectedGuild?.id);
+	const guilds = getGuilds({ source: "discord" }).filter((guild) => guild.id !== protectedGuild?.id);
 	const leftGuilds: { id: string; name: string; messageSent: boolean }[] = [];
 	const failedGuilds: { id: string; name: string; messageSent: boolean }[] = [];
 	let timeLimitReached = false;

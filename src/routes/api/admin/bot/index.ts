@@ -185,7 +185,6 @@ export default defineRouter("/bot", [
 					user: `${invoker.userName} <${invoker.userId}>`,
 				});
 				const result = await selfKickGuilds({
-					client: getClient(),
 					config: getConfig(),
 					invoker,
 					deadlineAt: Date.now() + DISCORD_INTERACTION_TIME_LIMIT_MS,

@@ -1,18 +1,13 @@
 import { z } from "zod";
-import { DiscordAPIError } from "discord.js";
+import { DiscordAPIError, PermissionFlagsBits } from "discord.js";
 import type { Request, Response } from "express";
 
 import { getClient } from "../../../../bot.js";
 import { requireAdmin, requireSession } from "../../../../handlers/auth.js";
 import { requireDatabase, requireDiscord } from "../../../../handlers/availability.js";
 import { defineRouter, errorResponseSchema } from "../../../../helpers/route.js";
-import {
-	canSendAdminMessage,
-	getAdminGuildForAction,
-	getGuildInvite,
-	kickGuild,
-	sendGuildAdminMessage,
-} from "../../../../helpers/adminGuild.js";
+import { getGuildInvite, kickGuild, sendGuildAdminMessage } from "../../../../helpers/adminGuild.js";
+import { canSendMessage, getAdminGuildForAction } from "../../../../helpers/guild.js";
 import { adminGuildListKeys, getAdminGuild, listGuilds } from "../../../../services/adminGuild.js";
 import { setGuildCommands } from "../../../../services/adminDeployment.js";
 import type { AuthSession } from "../../../../services/auth.js";
@@ -30,7 +25,7 @@ async function updateGuildCommands(request: Request, response: Response, action:
 		return response.status(400).json({ error: "Invalid guild ID" });
 	}
 
-	const adminGuild = await getAdminGuildForAction(getClient(), guildId);
+	const adminGuild = await getAdminGuildForAction(guildId);
 	switch (adminGuild.status) {
 		case "not_found":
 			return response.status(404).json({ error: "Guild not found" });
@@ -191,7 +186,7 @@ export default defineRouter("/guilds", [
 			}
 			activeGuildKicks.add(guildId);
 			try {
-				const adminGuild = await getAdminGuildForAction(getClient(), guildId);
+				const adminGuild = await getAdminGuildForAction(guildId);
 				switch (adminGuild.status) {
 					case "not_found":
 						return response.status(404).json({ error: "Guild not found" });
@@ -212,7 +207,19 @@ export default defineRouter("/guilds", [
 							throw error;
 						});
 					const botMember = adminGuild.guild.members.me ?? (await adminGuild.guild.members.fetchMe());
-					if (!channel || channel.guildId !== guildId || !canSendAdminMessage(channel, botMember)) {
+					if (
+						!channel ||
+						channel.guildId !== guildId ||
+						!canSendMessage({
+							channel,
+							botMember,
+							permissions: [
+								PermissionFlagsBits.ViewChannel,
+								PermissionFlagsBits.SendMessages,
+								PermissionFlagsBits.EmbedLinks,
+							],
+						})
+					) {
 						return response.status(409).json({
 							error: "The selected channel is unavailable for sending a departure message. Refresh channels and try again.",
 						});
@@ -285,7 +292,7 @@ export default defineRouter("/guilds", [
 				return response.status(400).json({ error: body.error.issues[0]?.message ?? "Invalid message request" });
 			}
 
-			const adminGuild = await getAdminGuildForAction(getClient(), guildId);
+			const adminGuild = await getAdminGuildForAction(guildId);
 			switch (adminGuild.status) {
 				case "not_found":
 					return response.status(404).json({ error: "Guild not found" });
@@ -307,7 +314,17 @@ export default defineRouter("/guilds", [
 			}
 
 			const botMember = adminGuild.guild.members.me ?? (await adminGuild.guild.members.fetchMe());
-			if (!canSendAdminMessage(channel, botMember)) {
+			if (
+				!canSendMessage({
+					channel,
+					botMember,
+					permissions: [
+						PermissionFlagsBits.ViewChannel,
+						PermissionFlagsBits.SendMessages,
+						PermissionFlagsBits.EmbedLinks,
+					],
+				})
+			) {
 				return response.status(403).json({
 					error: "Bot cannot send an embedded message to this channel",
 					code: "BOT_CHANNEL_PERMISSION_DENIED",
@@ -356,7 +373,7 @@ export default defineRouter("/guilds", [
 				return response.status(400).json({ error: "Invalid guild ID" });
 			}
 
-			const adminGuild = await getAdminGuildForAction(getClient(), guildId);
+			const adminGuild = await getAdminGuildForAction(guildId);
 			switch (adminGuild.status) {
 				case "not_found":
 					return response.status(404).json({ error: "Guild not found" });
@@ -431,7 +448,7 @@ export default defineRouter("/guilds", [
 			if (typeof guildId !== "string" || !/^\d{17,20}$/u.test(guildId)) {
 				return response.status(400).json({ error: "Invalid guild ID" });
 			}
-			const guild = await getAdminGuild(getClient(), { guildId, includeGuildCommandsState: true });
+			const guild = await getAdminGuild({ guildId, includeGuildCommandsState: true });
 			if (!guild) {
 				return response.status(404).json({ error: "Guild not found" });
 			}

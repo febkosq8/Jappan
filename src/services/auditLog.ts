@@ -51,7 +51,7 @@ import {
 	isOwnBot,
 } from "../helpers/auditLog.js";
 import { formatChannelMention, formatRoleMention, formatUserMention } from "../helpers/discord.js";
-import { isActiveGuild, sendGuildMessage } from "../helpers/guild.js";
+import { getGuild, getGuilds, isActiveGuild, sendGuildMessage } from "../helpers/guild.js";
 import { sendResponse } from "../helpers/response.js";
 import { splitString, trimString } from "../helpers/string.js";
 import type { GuildDocument } from "../models/guild.js";
@@ -703,7 +703,7 @@ export async function handleAuditMemberUpdate(
 }
 
 export async function handleAuditInviteCreate(invite: Invite): Promise<void> {
-	const guild = invite.guild ? invite.client.guilds.cache.get(invite.guild.id) : undefined;
+	const guild = invite.guild ? getGuild({ source: "discord", guildId: invite.guild.id }) : undefined;
 	if (!guild || !invite.inviterId || isOwnBot(guild, invite.inviterId)) {
 		return;
 	}
@@ -739,7 +739,7 @@ export async function handleAuditInviteCreate(invite: Invite): Promise<void> {
 }
 
 export async function handleAuditInviteDelete(invite: Invite): Promise<void> {
-	const guild = invite.guild ? invite.client.guilds.cache.get(invite.guild.id) : undefined;
+	const guild = invite.guild ? getGuild({ source: "discord", guildId: invite.guild.id }) : undefined;
 	if (!guild) {
 		return;
 	}
@@ -770,7 +770,7 @@ export async function handleAuditUserUpdate(oldUser: PartialUser | User, newUser
 	}
 
 	const errors: unknown[] = [];
-	for (const guild of newUser.client.guilds.cache.values()) {
+	for (const guild of getGuilds({ source: "discord" })) {
 		try {
 			if (!isActiveGuild(guild) || isOwnBot(guild, newUser.id)) {
 				continue;

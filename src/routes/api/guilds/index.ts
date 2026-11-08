@@ -13,7 +13,8 @@ import {
 } from "../../../handlers/auth.js";
 import { requireDatabase, requireDiscord } from "../../../handlers/availability.js";
 import { defineRouter, errorResponseSchema } from "../../../helpers/route.js";
-import { getAdminGuildForAction, listAdminGuildChannels, listAdminGuildRoles } from "../../../helpers/adminGuild.js";
+import { listAdminGuildChannels, listAdminGuildRoles } from "../../../helpers/adminGuild.js";
+import { getAdminGuildForAction } from "../../../helpers/guild.js";
 import { getAdminGuild, guildListKeys, listGuilds } from "../../../services/adminGuild.js";
 import type { AuthSession } from "../../../services/auth.js";
 import AuthUserModel from "../../../models/authUser.js";
@@ -62,7 +63,7 @@ async function resolveGuild(guildId: unknown, response: Response): Promise<Guild
 		response.status(400).json({ error: "Invalid guild ID" });
 		return null;
 	}
-	const result = await getAdminGuildForAction(getClient(), guildId);
+	const result = await getAdminGuildForAction(guildId);
 	switch (result.status) {
 		case "not_found":
 			response.status(404).json({ error: "Guild not found" });
@@ -154,7 +155,7 @@ export default defineRouter("/guilds", [
 			if (typeof guildId !== "string" || !guildIdPattern.test(guildId)) {
 				return response.status(400).json({ error: "Invalid guild ID" });
 			}
-			const result = await listAdminGuildChannels(getClient(), guildId);
+			const result = await listAdminGuildChannels(guildId);
 			switch (result.status) {
 				case "not_found":
 					return response.status(404).json({ error: "Guild not found" });
@@ -200,7 +201,7 @@ export default defineRouter("/guilds", [
 			if (typeof guildId !== "string" || !guildIdPattern.test(guildId)) {
 				return response.status(400).json({ error: "Invalid guild ID" });
 			}
-			const result = await listAdminGuildRoles(getClient(), guildId);
+			const result = await listAdminGuildRoles(guildId);
 			switch (result.status) {
 				case "not_found":
 					return response.status(404).json({ error: "Guild not found" });
@@ -376,7 +377,7 @@ export default defineRouter("/guilds", [
 			if (typeof guildId !== "string" || !guildIdPattern.test(guildId)) {
 				return response.status(400).json({ error: "Invalid guild ID" });
 			}
-			const guild = await getAdminGuild(getClient(), {
+			const guild = await getAdminGuild({
 				guildId,
 				includeGuildCommandsState: false,
 			});

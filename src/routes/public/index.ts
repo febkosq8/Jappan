@@ -2,6 +2,7 @@ import { PermissionsBitField } from "discord.js";
 import { z } from "zod";
 
 import { getClient } from "../../bot.js";
+import { getGuilds } from "../../helpers/guild.js";
 import { defineRouter, errorResponseSchema } from "../../helpers/route.js";
 import type { RouteDefinition } from "../../helpers/route.js";
 import { getBotVersion } from "../../helpers/utils.js";
@@ -47,7 +48,7 @@ const publicRoutes: RouteDefinition[] = [
 			if (!botUser) {
 				return response.status(503).json({ error: "Discord is unavailable" });
 			}
-			const guilds = [...client.guilds.cache.values()];
+			const guilds = getGuilds({ source: "discord" });
 			const gatewayLatency = client.ws.ping;
 			const returnData = {
 				botName: botUser.username,

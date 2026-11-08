@@ -1,9 +1,9 @@
 import type { Client, Guild, PermissionResolvable } from "discord.js";
 import { ApplicationCommandType, DiscordAPIError, RESTJSONErrorCodes } from "discord.js";
 
-import { getClient } from "../bot.js";
 import { formatUser } from "../helpers/discord.js";
-import GuildModel, { type Guild as StoredGuild } from "../models/guild.js";
+import { getGuild, getGuilds } from "../helpers/guild.js";
+import type { Guild as StoredGuild } from "../models/guild.js";
 import { getGuildCommands, getRequiredGlobalBotPermissions } from "./commandLoader.js";
 import type { Config } from "./config.js";
 import { logger } from "./logger.js";
@@ -65,9 +65,8 @@ async function getStoredGuildDetails({
 	requiredPermissions: ReturnType<typeof getRequiredGlobalBotPermissions> | undefined;
 	keys: readonly (typeof adminGuildListKeys)[number][];
 }) {
-	const client = getClient();
 	const includeGuildCommandsState = keys.includes("guildCommandDeploymentState");
-	const guild = client.guilds.cache.get(guildId);
+	const guild = getGuild({ source: "discord", guildId });
 	if (!guild?.available) {
 		return {
 			id: guildId,
@@ -149,8 +148,6 @@ async function getPreferenceRole(guild: Guild | undefined, roleId: string | null
 
 type StoredGuildPreferences = Pick<StoredGuild, "auditLog" | "leveling" | "memberAnnouncements" | "warnings">;
 
-const storedPreferencesProjection = { auditLog: 1, leveling: 1, memberAnnouncements: 1, warnings: 1 } as const;
-
 async function resolveGuildPreferences(guild: Guild | undefined, storedGuild: StoredGuildPreferences) {
 	const channelIds = [
 		storedGuild.auditLog.channelId,
@@ -194,19 +191,14 @@ async function resolveGuildPreferences(guild: Guild | undefined, storedGuild: St
 	};
 }
 
-export async function getAdminGuild(
-	client: Client,
-	{ guildId, includeGuildCommandsState }: { guildId: string; includeGuildCommandsState: boolean },
-) {
-	const storedGuild = await GuildModel.findOne({ guildId })
-		.select({
-			_id: 0,
-			guildId: 1,
-			guildName: 1,
-			createdAt: 1,
-			...storedPreferencesProjection,
-		})
-		.exec();
+export async function getAdminGuild({
+	guildId,
+	includeGuildCommandsState,
+}: {
+	guildId: string;
+	includeGuildCommandsState: boolean;
+}) {
+	const storedGuild = await getGuild({ source: "database", guildId });
 	if (!storedGuild) {
 		return null;
 	}
@@ -218,7 +210,7 @@ export async function getAdminGuild(
 			? adminGuildListKeys
 			: adminGuildListKeys.filter((key) => key !== "guildCommandDeploymentState"),
 	});
-	const guild = client.guilds.cache.get(guildId);
+	const guild = getGuild({ source: "discord", guildId });
 	return {
 		...details,
 		discoveredAt: storedGuild.createdAt?.getTime() ?? null,
@@ -263,14 +255,13 @@ export async function listGuilds<K extends keyof GuildListItem>({
 	keys: readonly K[];
 	userFilter?: GuildUserFilter | readonly GuildUserFilter[];
 }) {
-	const client = getClient();
 	const selectedKeys: ReadonlySet<keyof GuildListItem> = new Set(keys);
 	const userFilters: readonly GuildUserFilter[] =
 		userFilter === undefined ? [] : "userId" in userFilter ? [userFilter] : userFilter;
 	let guildIds: string[] | undefined;
 	if (userFilters.length > 0) {
 		guildIds = [];
-		for (const guild of client.guilds.cache.values()) {
+		for (const guild of getGuilds({ source: "discord" })) {
 			if (!guild.available) continue;
 			let matches = true;
 			for (const { userId, permissions = [] } of userFilters) {
@@ -296,10 +287,7 @@ export async function listGuilds<K extends keyof GuildListItem>({
 	const requiredPermissions = selectedKeys.has("hasRequiredPermissions")
 		? getRequiredGlobalBotPermissions()
 		: undefined;
-	const storedGuilds = await GuildModel.find(guildIds ? { guildId: { $in: guildIds } } : {})
-		.select({ _id: 0, guildId: 1, guildName: 1 })
-		.sort({ guildName: 1, guildId: 1 })
-		.lean();
+	const storedGuilds = await getGuilds({ source: "database", ...(guildIds ? { guildIds } : {}) });
 
 	const guilds: GuildListItem[] = [];
 	for (const { guildId, guildName } of storedGuilds) {

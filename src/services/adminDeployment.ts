@@ -1,6 +1,7 @@
 import type { Client, Guild, Message } from "discord.js";
 
 import { formatGuild } from "../helpers/discord.js";
+import { getGuilds } from "../helpers/guild.js";
 import { getGuildCommands } from "./commandLoader.js";
 import type { Config } from "./config.js";
 import { logger } from "./logger.js";
@@ -19,7 +20,7 @@ export async function undeployGuildCommandsGlobally({
 	failedGuilds: Guild[];
 	timeLimitReached: boolean;
 }> {
-	const guilds = [...client.guilds.cache.values()];
+	const guilds = getGuilds({ source: "discord" });
 	const undeployedGuilds: Guild[] = [];
 	const failedGuilds: Guild[] = [];
 	let timeLimitReached = false;
