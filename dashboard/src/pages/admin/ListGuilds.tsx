@@ -183,7 +183,7 @@ export default function AdminGuilds() {
 
 	return (
 		<main className="mx-auto w-full  px-4 py-10 sm:px-6">
-			<h1 className="text-3xl font-bold tracking-tight typography-heading-2">List Guilds</h1>
+			<h1 className="text-3xl font-bold tracking-tight typography-heading-2">Admin - List Guilds</h1>
 			{content}
 		</main>
 	);
