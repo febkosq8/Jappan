@@ -129,15 +129,15 @@ export interface GuildState {
 	icon?: string | null;
 	memberCount?: Guild["memberCount"];
 	channelCount?: number;
-	createdAt?: Guild["createdTimestamp"];
+	createdTimestampMs?: Guild["createdTimestamp"];
 	description?: Guild["description"];
-	joinedTimestamp?: Guild["joinedTimestamp"];
+	joinedTimestampMs?: Guild["joinedTimestamp"];
 	systemChannel?: { id: string; name: string } | null;
 	permissions?: ReturnType<PermissionsBitField["toArray"]>;
 	hasRequiredPermissions?: boolean;
 	owner?: { userId: string; avatarUrl: string; username: string };
 	guildCommandDeploymentState?: { deployed: number; total: number };
-	discoveredAt?: number | null;
+	discoveredTimestampMs?: number | null;
 	servicePreferences?: Awaited<ReturnType<typeof resolveGuildPreferences>>;
 }
 
@@ -150,13 +150,13 @@ export const allGuildKeys = [
 	"isActiveMember",
 	"memberCount",
 	"channelCount",
-	"createdAt",
+	"createdTimestampMs",
 	"description",
-	"joinedTimestamp",
+	"joinedTimestampMs",
 	"systemChannel",
 	"permissions",
 	"guildCommandDeploymentState",
-	"discoveredAt",
+	"discoveredTimestampMs",
 	"servicePreferences",
 ] as const satisfies readonly (keyof GuildState)[];
 
@@ -201,7 +201,8 @@ export async function getGuildState(
 		name: guild?.available ? guild.name : storedGuild.guildName,
 	};
 	if (keys.includes("isActiveMember")) returnData.isActiveMember = guild !== undefined;
-	if (keys.includes("discoveredAt")) returnData.discoveredAt = storedGuild.createdAt?.getTime() ?? null;
+	if (keys.includes("discoveredTimestampMs"))
+		returnData.discoveredTimestampMs = storedGuild.createdAt?.getTime() ?? null;
 	if (keys.includes("servicePreferences")) {
 		const { auditLog, leveling, memberAnnouncements, warnings } = storedGuild;
 		if (!auditLog || !leveling || !memberAnnouncements || !warnings) {
@@ -229,9 +230,9 @@ export async function getGuildState(
 		const owner = await guild.client.users.fetch(guild.ownerId);
 		returnData.owner = { userId: owner.id, avatarUrl: owner.displayAvatarURL(), username: owner.username };
 	}
-	if (keys.includes("createdAt")) returnData.createdAt = guild.createdTimestamp;
+	if (keys.includes("createdTimestampMs")) returnData.createdTimestampMs = guild.createdTimestamp;
 	if (keys.includes("description")) returnData.description = guild.description;
-	if (keys.includes("joinedTimestamp")) returnData.joinedTimestamp = guild.joinedTimestamp;
+	if (keys.includes("joinedTimestampMs")) returnData.joinedTimestampMs = guild.joinedTimestamp;
 	if (keys.includes("systemChannel") && guild.systemChannel) {
 		returnData.systemChannel = { id: guild.systemChannel.id, name: guild.systemChannel.name };
 	}

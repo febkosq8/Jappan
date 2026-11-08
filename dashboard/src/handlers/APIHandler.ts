@@ -35,7 +35,7 @@ export interface BotStatus {
 	botAvatarUrl: string;
 	botId: string | null;
 	version: string;
-	bootedAtMs: number;
+	bootedTimestampMs: number;
 	guildCount: number;
 	memberCount: number | null;
 	gatewayLatencyMs: number | null;
@@ -66,9 +66,9 @@ interface AdminGuildBase {
 	icon?: string | null;
 	memberCount?: number;
 	channelCount?: number;
-	createdAt?: number;
+	createdTimestampMs?: number;
 	description?: string | null;
-	joinedTimestamp?: number;
+	joinedTimestampMs?: number;
 	systemChannel?: { id: string; name: string } | null;
 	permissions?: string[];
 	hasRequiredPermissions?: boolean;
@@ -89,7 +89,7 @@ export interface AdminGuildChannel {
 	name: string;
 	type: number;
 	typeName: string;
-	createdAt: number;
+	createdTimestampMs: number;
 	parent: PreferenceEntity | null;
 	position: number;
 	canSendMessage: boolean;
@@ -124,8 +124,8 @@ export interface AdminGuildInvite {
 	url: string;
 	channel: { id: string; name: string | null } | null;
 	maxAge: number | null;
-	createdTimestamp: number | null;
-	expiresTimestamp: number | null;
+	createdTimestampMs: number | null;
+	expiresTimestampMs: number | null;
 	uses: number | null;
 	maxUses: number | null;
 	temporary: boolean;
@@ -150,7 +150,7 @@ export interface GuildPreferences {
 }
 
 export interface AdminGuildDetails extends AdminGuildBase {
-	discoveredAt: number | null;
+	discoveredTimestampMs: number | null;
 	guildCommandDeploymentState?: { deployed: number; total: number };
 	servicePreferences: GuildPreferences;
 }
@@ -164,7 +164,9 @@ export interface UserGuild {
 }
 
 export interface UserGuildDetails extends UserGuild {
-	discoveredAt: number | null;
+	discoveredTimestampMs: number | null;
+	createdTimestampMs?: number;
+	joinedTimestampMs?: number;
 	servicePreferences: GuildPreferences;
 	permissions?: string[];
 }
@@ -299,7 +301,7 @@ class APIHandler {
 		return data;
 	}
 
-	static async getAdminGuildChannels(guildId: string): Promise<AdminGuildChannel[]> {
+	static async getGuildChannels(guildId: string): Promise<AdminGuildChannel[]> {
 		const { data } = await apiClient.get<AdminGuildChannel[]>(
 			`/api/v1/guilds/${encodeURIComponent(guildId)}/channels`,
 			{ withCredentials: true },

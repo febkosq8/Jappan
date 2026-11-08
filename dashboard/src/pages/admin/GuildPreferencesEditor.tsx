@@ -423,28 +423,26 @@ function WarningsSection({ guild, channels, readOnly, onSaved }: SectionProps) {
 	);
 }
 
-export default function GuildPreferencesEditor({
-	guild,
-	onSaved,
-}: {
-	guild: GuildPreferencesEditorGuild;
-	onSaved?: () => Promise<void>;
-}) {
+export default function GuildPreferencesEditor({ guild }: { guild: GuildPreferencesEditorGuild }) {
 	const queryClient = useQueryClient();
 	const channelsQuery = useQuery({
-		queryKey: ["admin", "guild", guild.id, "channels"],
-		queryFn: () => APIHandler.getAdminGuildChannels(guild.id),
+		queryKey: ["user", "guild", guild.id, "channels"],
+		queryFn: () => APIHandler.getGuildChannels(guild.id),
 		enabled: guild.isActiveMember,
 		retry: false,
 	});
 	const rolesQuery = useQuery({
-		queryKey: ["admin", "guild", guild.id, "roles"],
+		queryKey: ["user", "guild", guild.id, "roles"],
 		queryFn: () => APIHandler.getGuildRoles(guild.id),
 		enabled: guild.isActiveMember,
 		retry: false,
 	});
-	const handleSaved =
-		onSaved ?? (() => queryClient.invalidateQueries({ queryKey: ["admin", "guild", guild.id], exact: true }));
+	const handleSaved = async () => {
+		await Promise.all([
+			queryClient.invalidateQueries({ queryKey: ["user", "guild", guild.id], exact: true }),
+			queryClient.invalidateQueries({ queryKey: ["admin", "guild", guild.id], exact: true }),
+		]);
+	};
 
 	const sectionProps: SectionProps = {
 		guild,

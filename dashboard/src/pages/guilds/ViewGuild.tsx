@@ -1,5 +1,5 @@
-import { Avatar, Button, Card, DateHandler, PillLink, Tabs, TabsList, TabsPanel, TabsTab } from "@febkosq8/arc";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Button, PillLink, Tabs, TabsList, TabsPanel, TabsTab } from "@febkosq8/arc";
+import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useEffect, useState, type ReactNode } from "react";
 import { FiArrowLeft } from "react-icons/fi";
@@ -8,14 +8,12 @@ import { toast } from "sonner";
 
 import APIHandler, { type UserGuildDetails } from "@jappan/handlers/APIHandler";
 import { AccessRedirect } from "@jappan/components/AdminRoute";
-import ExternalTextLink from "@jappan/components/ExternalTextLink";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import GuildPreferencesEditor from "@jappan/pages/admin/GuildPreferencesEditor";
 import {
 	guildIdPattern,
 	GuildLookup,
-	GuildSectionLink,
-	GuildDetail,
+	GuildOverview,
 	BotPermissionsPanel,
 	CommandPermissionsPanel,
 } from "@jappan/components/guild/panels";
@@ -32,74 +30,7 @@ const readSectionFromHash = () => {
 	return guildSections.some((section) => section.id === id) ? id : guildSections[0].id;
 };
 
-function GuildOverview({ guild }: { guild: UserGuildDetails }) {
-	return (
-		<Card id="guild-overview" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
-			<h2 className="flex items-center gap-1 text-lg font-semibold">
-				Guild overview <GuildSectionLink id="guild-overview" label="guild overview" />
-			</h2>
-			<div className="mt-4 flex items-center gap-4">
-				<Avatar name={guild.name} image={guild.icon} size="lg" aria-hidden="true" />
-				<div className="min-w-0">
-					<h3 className="wrap-break-word text-xl font-bold">
-						<ExternalTextLink
-							href={`https://discord.com/channels/${encodeURIComponent(guild.id)}`}
-							text={guild.name}
-						/>
-					</h3>
-					<p className="break-all text-sm text-muted-foreground">{guild.id}</p>
-				</div>
-			</div>
-			<dl className="mt-5 grid gap-3 sm:grid-cols-2">
-				<GuildDetail label="Owner">
-					{guild.owner ? (
-						<div className="flex items-center gap-2">
-							<Avatar
-								name={guild.owner.username}
-								image={guild.owner.avatarUrl}
-								size="sm"
-								aria-hidden="true"
-							/>
-							<div className="min-w-0">
-								<ExternalTextLink
-									href={`https://discord.com/users/${encodeURIComponent(guild.owner.userId)}`}
-									text={guild.owner.username}
-								/>
-								<p className="break-all text-xs text-muted-foreground">{guild.owner.userId}</p>
-							</div>
-						</div>
-					) : (
-						"Unavailable"
-					)}
-				</GuildDetail>
-				<GuildDetail label="Discovered">
-					{guild.discoveredAt == null ? (
-						"Unavailable"
-					) : (
-						<>
-							<span className="block">{DateHandler.getDateTime(guild.discoveredAt)}</span>
-							<span className="text-sm text-muted-foreground">
-								{DateHandler.getRelativeTime(guild.discoveredAt)}
-							</span>
-						</>
-					)}
-				</GuildDetail>
-				<GuildDetail label="Required permissions">
-					{guild.hasRequiredPermissions === undefined ? (
-						"Unavailable"
-					) : guild.hasRequiredPermissions ? (
-						<span className="text-success">All granted</span>
-					) : (
-						<span className="text-destructive">Some missing</span>
-					)}
-				</GuildDetail>
-			</dl>
-		</Card>
-	);
-}
-
 function GuildDetails({ guild }: { guild: UserGuildDetails }) {
-	const queryClient = useQueryClient();
 	const [section, setSection] = useState(readSectionFromHash);
 
 	useEffect(() => {
@@ -130,12 +61,7 @@ function GuildDetails({ guild }: { guild: UserGuildDetails }) {
 				<GuildOverview guild={guild} />
 			</TabsPanel>
 			<TabsPanel value="service-preferences" keepMounted>
-				<GuildPreferencesEditor
-					guild={{ ...guild, isActiveMember: true }}
-					onSaved={() =>
-						queryClient.invalidateQueries({ queryKey: ["user", "guild", guild.id], exact: true })
-					}
-				/>
+				<GuildPreferencesEditor guild={{ ...guild, isActiveMember: true }} />
 			</TabsPanel>
 			<TabsPanel value="bot-permissions" keepMounted>
 				<BotPermissionsPanel permissions={guild.permissions} />
@@ -149,7 +75,7 @@ function GuildDetails({ guild }: { guild: UserGuildDetails }) {
 
 export default function UserViewGuild() {
 	const { guildId = "" } = useParams();
-	document.title = guildId ? `Guild : ${guildId}` : "View Guild";
+	document.title = guildId ? `View Guild : ${guildId}` : "View Guild";
 	const navigate = useNavigate();
 	const validGuildId = guildIdPattern.test(guildId);
 	const guildQuery = useQuery({
@@ -172,9 +98,7 @@ export default function UserViewGuild() {
 
 	let content: ReactNode;
 	if (!guildId) {
-		content = (
-			<p className="text-muted-foreground">Enter a guild ID to view its details and manage preferences.</p>
-		);
+		content = <p className="text-muted-foreground">Enter a guild ID to view its details and manage preferences.</p>;
 	} else if (!validGuildId) {
 		content = <p role="alert">Invalid guild ID.</p>;
 	} else if (guildQuery.isPending || guildQuery.isFetching) {

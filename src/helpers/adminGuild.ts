@@ -40,7 +40,7 @@ export async function listAdminGuildChannels(guildId: string) {
 			name: channel.name,
 			type: channel.type,
 			typeName: ChannelType[channel.type] ?? `Unknown (${channel.type})`,
-			createdAt: channel.createdTimestamp,
+			createdTimestampMs: channel.createdTimestamp,
 			parent: channel.parentId ? { id: channel.parentId, name: parent?.name ?? null } : null,
 			position: channel.rawPosition,
 			canSendMessage: canSendMessage({

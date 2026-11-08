@@ -59,6 +59,10 @@ This document records design decisions and behavior that is easy to miss.
 
 ## Public commands and guild data
 
+- Numeric bot, guild, channel, and invite timestamps use `*TimestampMs` field names
+  and represent milliseconds since the Unix epoch. These replace the previous
+  `createdAt`, `joinedTimestamp`, `discoveredAt`, `createdTimestamp`,
+  `expiresTimestamp`, and `bootedAtMs` response fields. Better Auth uses its own ISO date fields.
 - The public command listing contains global commands only. Subcommands share
   their parent's Discord ID and inherit declared permissions; IDs can be null
   before registration. Permission requirements are not a guarantee of

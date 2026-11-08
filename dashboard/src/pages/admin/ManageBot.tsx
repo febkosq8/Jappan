@@ -190,6 +190,7 @@ export default function ManageBot() {
 		},
 		onSettled: () => {
 			void queryClient.invalidateQueries({ queryKey: ["admin", "guild"] });
+			void queryClient.invalidateQueries({ queryKey: ["user", "guild"] });
 			void queryClient.invalidateQueries({ queryKey: ["admin", "list-guilds"] });
 			void queryClient.invalidateQueries({ queryKey: ["admin", "bot", "status"] });
 			void queryClient.invalidateQueries({ queryKey: ["admin", "bot", "player-sessions"] });
@@ -274,10 +275,13 @@ export default function ManageBot() {
 								{bot ? (
 									<time
 										className="min-w-0 max-w-full truncate self-end text-right text-lg font-semibold whitespace-pre-wrap"
-										dateTime={new Date(bot.bootedAtMs).toISOString()}
-										title={DateHandler.getFormattedTime(bot.bootedAtMs, "$ISO$ ($RELATIVE$)")}
+										dateTime={new Date(bot.bootedTimestampMs).toISOString()}
+										title={DateHandler.getFormattedTime(
+											bot.bootedTimestampMs,
+											"$ISO$ ($RELATIVE$)",
+										)}
 									>
-										{`${DateHandler.getDateTime(bot.bootedAtMs)}\n${DateHandler.getRelativeTime(bot.bootedAtMs)}`}
+										{`${DateHandler.getDateTime(bot.bootedTimestampMs)}\n${DateHandler.getRelativeTime(bot.bootedTimestampMs)}`}
 									</time>
 								) : (
 									<div className="self-end">

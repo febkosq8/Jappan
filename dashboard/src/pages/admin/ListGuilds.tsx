@@ -119,9 +119,9 @@ const columns: TableColumnDef<AdminGuild>[] = [
 	{
 		id: "joined",
 		accessorFn: (guild) =>
-			guild.joinedTimestamp === undefined
+			guild.joinedTimestampMs === undefined
 				? undefined
-				: DateHandler.getFormattedTime(guild.joinedTimestamp, "$ISO$\n($RELATIVE$)"),
+				: DateHandler.getFormattedTime(guild.joinedTimestampMs, "$ISO$\n($RELATIVE$)"),
 		header: "Joined",
 		size: 185,
 		filterFn: (row, columnId, filterValue) =>
@@ -130,15 +130,15 @@ const columns: TableColumnDef<AdminGuild>[] = [
 				.includes(String(filterValue).toLowerCase()),
 		sortUndefined: "last",
 		sortingFn: (first, second) => {
-			const firstTimestamp = first.original.joinedTimestamp;
-			const secondTimestamp = second.original.joinedTimestamp;
+			const firstTimestamp = first.original.joinedTimestampMs;
+			const secondTimestamp = second.original.joinedTimestampMs;
 			if (firstTimestamp === undefined || secondTimestamp === undefined) {
 				throw new Error("Cannot compare unavailable join timestamps");
 			}
 			return firstTimestamp - secondTimestamp;
 		},
 		cell: ({ row }) => {
-			const joinedTimestamp = row.original.joinedTimestamp;
+			const joinedTimestamp = row.original.joinedTimestampMs;
 			return joinedTimestamp === undefined ? (
 				<Unavailable />
 			) : (

@@ -7,9 +7,9 @@ const guildBaseSchema = z.object({
 	icon: z.string().nullable().optional(),
 	memberCount: z.number().int().optional(),
 	channelCount: z.number().int().nonnegative().optional(),
-	createdAt: z.number().int().optional(),
+	createdTimestampMs: z.number().int().optional(),
 	description: z.string().nullable().optional(),
-	joinedTimestamp: z.number().int().optional(),
+	joinedTimestampMs: z.number().int().optional(),
 	systemChannel: z.object({ id: z.string(), name: z.string() }).nullable().optional(),
 	permissions: z.array(z.string()).optional(),
 	hasRequiredPermissions: z.boolean().optional(),
@@ -58,12 +58,14 @@ export const guildPreferencesSchema = z.object({
 });
 
 const guildDetailsFields = {
-	discoveredAt: z.number().int().nullable(),
+	discoveredTimestampMs: z.number().int().nullable(),
 	servicePreferences: guildPreferencesSchema,
 };
 
 export const guildDetailsSchema = guildSchema.extend({
 	...guildDetailsFields,
+	createdTimestampMs: z.number().int().optional(),
+	joinedTimestampMs: z.number().int().optional(),
 	permissions: z.array(z.string()).optional(),
 });
 

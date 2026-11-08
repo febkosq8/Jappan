@@ -131,7 +131,7 @@ export default defineRouter("/guilds", [
 						name: z.string(),
 						type: z.number().int(),
 						typeName: z.string(),
-						createdAt: z.number().int(),
+						createdTimestampMs: z.number().int(),
 						parent: z.object({ id: z.string(), name: z.string().nullable() }).nullable(),
 						position: z.number().int(),
 						canSendMessage: z.boolean(),
@@ -379,7 +379,14 @@ export default defineRouter("/guilds", [
 			}
 			const guild = await getGuildState({
 				guildId,
-				keys: [...extendedGuildKeys, "discoveredAt", "servicePreferences", "permissions"],
+				keys: [
+					...extendedGuildKeys,
+					"discoveredTimestampMs",
+					"joinedTimestampMs",
+					"createdTimestampMs",
+					"servicePreferences",
+					"permissions",
+				],
 			});
 			if (!guild) {
 				return response.status(404).json({ error: "Guild not found" });

@@ -24,7 +24,7 @@ const botStatusSchema = z.object({
 	botAvatarUrl: z.string().url(),
 	botId: z.string().nullable(),
 	version: z.string(),
-	bootedAtMs: z.number(),
+	bootedTimestampMs: z.number(),
 	guildCount: z.number().int().nonnegative(),
 	memberCount: z.number().int().nonnegative().nullable(),
 	gatewayLatencyMs: z.number().nonnegative().nullable(),
@@ -55,7 +55,7 @@ const publicRoutes: RouteDefinition[] = [
 				botAvatarUrl: botUser.displayAvatarURL(),
 				botId: botUser.id,
 				version: getBotVersion(),
-				bootedAtMs: Date.now() - Math.floor(process.uptime() * 1000),
+				bootedTimestampMs: Date.now() - Math.floor(process.uptime() * 1000),
 				guildCount: guilds.length,
 				memberCount: guilds.every((guild) => guild.available && Number.isFinite(guild.memberCount))
 					? guilds.reduce((total, guild) => total + guild.memberCount, 0)

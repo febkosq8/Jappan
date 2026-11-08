@@ -1,5 +1,4 @@
 import {
-	Avatar,
 	Button,
 	Card,
 	DateHandler,
@@ -28,14 +27,13 @@ import APIHandler, {
 } from "@jappan/handlers/APIHandler";
 import { AccessRedirect, accessErrorStatus } from "@jappan/components/AdminRoute";
 import ExternalTextLink from "@jappan/components/ExternalTextLink";
-import GuildCommandDeployment from "@jappan/components/guild/GuildCommandDeployment";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import GuildPreferencesEditor from "./GuildPreferencesEditor";
 import {
 	guildIdPattern,
 	GuildLookup,
 	GuildSectionLink,
-	GuildDetail,
+	GuildOverview,
 	BotPermissionsPanel,
 	CommandPermissionsPanel,
 } from "@jappan/components/guild/panels";
@@ -79,7 +77,7 @@ function ChannelGroupList({ guildId, channels }: { guildId: string; channels: Ad
 						name: "No parent category",
 						categoryId: null,
 						unavailable: false,
-						createdAt: null,
+						createdTimestampMs: null,
 						channels: uncategorized,
 					},
 				]
@@ -89,7 +87,7 @@ function ChannelGroupList({ guildId, channels }: { guildId: string; channels: Ad
 			name: category.name,
 			categoryId: category.id,
 			unavailable: false,
-			createdAt: category.createdAt,
+			createdTimestampMs: category.createdTimestampMs,
 			channels: childrenByParent.get(category.id) ?? [],
 		})),
 		...missingCategories.map(([id, children]) => ({
@@ -97,7 +95,7 @@ function ChannelGroupList({ guildId, channels }: { guildId: string; channels: Ad
 			name: children[0]?.parent?.name ?? "Unavailable category",
 			categoryId: id,
 			unavailable: true,
-			createdAt: null,
+			createdTimestampMs: null,
 			channels: children,
 		})),
 	];
@@ -119,10 +117,10 @@ function ChannelGroupList({ guildId, channels }: { guildId: string; channels: Ad
 							{group.categoryId}
 						</p>
 					)}
-					{group.createdAt !== null && (
+					{group.createdTimestampMs !== null && (
 						<p className="mt-1 text-sm text-muted-foreground">
-							Created: {DateHandler.getDateTime(group.createdAt)} (
-							{DateHandler.getRelativeTime(group.createdAt)})
+							Created: {DateHandler.getDateTime(group.createdTimestampMs)} (
+							{DateHandler.getRelativeTime(group.createdTimestampMs)})
 						</p>
 					)}
 					{group.channels.length === 0 ? (
@@ -176,9 +174,9 @@ function ChannelGroupList({ guildId, channels }: { guildId: string; channels: Ad
 											<div className="flex flex-wrap gap-x-1">
 												<dt className="text-muted-foreground">Created:</dt>
 												<dd>
-													{DateHandler.getDateTime(channel.createdAt)}{" "}
+													{DateHandler.getDateTime(channel.createdTimestampMs)}{" "}
 													<span className="text-muted-foreground">
-														({DateHandler.getRelativeTime(channel.createdAt)})
+														({DateHandler.getRelativeTime(channel.createdTimestampMs)})
 													</span>
 												</dd>
 											</div>
@@ -216,8 +214,8 @@ function ChannelGroupList({ guildId, channels }: { guildId: string; channels: Ad
 
 function GuildChannels({ guild }: { guild: AdminGuildDetails }) {
 	const channelsQuery = useQuery({
-		queryKey: ["admin", "guild", guild.id, "channels"],
-		queryFn: () => APIHandler.getAdminGuildChannels(guild.id),
+		queryKey: ["user", "guild", guild.id, "channels"],
+		queryFn: () => APIHandler.getGuildChannels(guild.id),
 		enabled: false,
 		retry: false,
 	});
@@ -295,8 +293,8 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 	const [kickConfirmed, setKickConfirmed] = useState(false);
 	const [kickChannelId, setKickChannelId] = useState("");
 	const channelsQuery = useQuery({
-		queryKey: ["admin", "guild", guild.id, "channels"],
-		queryFn: () => APIHandler.getAdminGuildChannels(guild.id),
+		queryKey: ["user", "guild", guild.id, "channels"],
+		queryFn: () => APIHandler.getGuildChannels(guild.id),
 		enabled: false,
 		retry: false,
 	});
@@ -357,7 +355,9 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 			return promise;
 		},
 		onSuccess: () => {
-			queryClient.removeQueries({ queryKey: ["admin", "guild", guild.id, "channels"] });
+			queryClient.removeQueries({ queryKey: ["user", "guild", guild.id, "channels"], exact: true });
+			queryClient.removeQueries({ queryKey: ["user", "guild", guild.id, "roles"], exact: true });
+			void queryClient.invalidateQueries({ queryKey: ["user", "guild", guild.id], exact: true });
 			void queryClient.invalidateQueries({ queryKey: ["admin", "guild", guild.id] });
 			void queryClient.invalidateQueries({ queryKey: ["admin", "list-guilds"] });
 		},
@@ -632,17 +632,17 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 									<div>
 										<dt className="text-muted-foreground">Created at</dt>
 										<dd>
-											{inviteMutation.data.createdTimestamp === null
+											{inviteMutation.data.createdTimestampMs === null
 												? "Unknown"
-												: DateHandler.getDateTime(inviteMutation.data.createdTimestamp)}
+												: DateHandler.getDateTime(inviteMutation.data.createdTimestampMs)}
 										</dd>
 									</div>
 									<div>
 										<dt className="text-muted-foreground">Expires at</dt>
 										<dd>
-											{inviteMutation.data.expiresTimestamp === null
+											{inviteMutation.data.expiresTimestampMs === null
 												? "Never"
-												: DateHandler.getDateTime(inviteMutation.data.expiresTimestamp)}
+												: DateHandler.getDateTime(inviteMutation.data.expiresTimestampMs)}
 										</dd>
 									</div>
 									<div>
@@ -804,121 +804,7 @@ function GuildDetails({ guild }: { guild: AdminGuildDetails }) {
 				))}
 			</TabsList>
 			<TabsPanel value="guild-overview" keepMounted>
-				<Card id="guild-overview" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
-					<h2 className="flex items-center gap-1 text-lg font-semibold">
-						Guild overview <GuildSectionLink id="guild-overview" label="guild overview" />
-					</h2>
-					<div className="mt-4 flex items-center gap-4">
-						<Avatar name={guild.name} image={guild.icon} size="lg" aria-hidden="true" />
-						<div className="min-w-0">
-							<h3 className="wrap-break-word text-xl font-bold">
-								<ExternalTextLink
-									href={`https://discord.com/channels/${encodeURIComponent(guild.id)}`}
-									text={guild.name}
-								/>
-							</h3>
-							<p className="break-all text-sm text-muted-foreground">{guild.id}</p>
-						</div>
-					</div>
-					<dl className="mt-5 grid gap-3 sm:grid-cols-2">
-						<GuildDetail label="Bot membership">{guild.isActiveMember ? "Active" : "Inactive"}</GuildDetail>
-						<GuildDetail label="Guild commands">
-							<GuildCommandDeployment deployment={guild.guildCommandDeploymentState} />
-						</GuildDetail>
-						<GuildDetail label="Members">
-							{guild.memberCount === undefined ? "Unavailable" : guild.memberCount.toLocaleString()}
-						</GuildDetail>
-						<GuildDetail label="Channels">
-							{guild.channelCount === undefined ? "Unavailable" : guild.channelCount.toLocaleString()}
-						</GuildDetail>
-						<GuildDetail label="Owner">
-							{guild.owner ? (
-								<div className="flex items-center gap-2">
-									<Avatar
-										name={guild.owner.username}
-										image={guild.owner.avatarUrl}
-										size="sm"
-										aria-hidden="true"
-									/>
-									<div className="min-w-0">
-										<ExternalTextLink
-											href={`https://discord.com/users/${encodeURIComponent(guild.owner.userId)}`}
-											text={guild.owner.username}
-										/>
-										<p className="break-all text-xs text-muted-foreground">{guild.owner.userId}</p>
-									</div>
-								</div>
-							) : (
-								"Unavailable"
-							)}
-						</GuildDetail>
-						<GuildDetail label="Created">
-							{guild.createdAt === undefined ? (
-								"Unavailable"
-							) : (
-								<>
-									<span className="block">{DateHandler.getDateTime(guild.createdAt)}</span>
-									<span className="text-sm text-muted-foreground">
-										{DateHandler.getRelativeTime(guild.createdAt)}
-									</span>
-								</>
-							)}
-						</GuildDetail>
-						<GuildDetail label="Joined">
-							{guild.joinedTimestamp === undefined ? (
-								"Unavailable"
-							) : (
-								<>
-									<span className="block">{DateHandler.getDateTime(guild.joinedTimestamp)}</span>
-									<span className="text-sm text-muted-foreground">
-										{DateHandler.getRelativeTime(guild.joinedTimestamp)}
-									</span>
-								</>
-							)}
-						</GuildDetail>
-						<GuildDetail label="Discovered">
-							{guild.discoveredAt == null ? (
-								"Unavailable"
-							) : (
-								<>
-									<span className="block">{DateHandler.getDateTime(guild.discoveredAt)}</span>
-									<span className="text-sm text-muted-foreground">
-										{DateHandler.getRelativeTime(guild.discoveredAt)}
-									</span>
-								</>
-							)}
-						</GuildDetail>
-						<GuildDetail label="System channel">
-							{guild.systemChannel === undefined ? (
-								"Unavailable"
-							) : guild.systemChannel === null ? (
-								"None"
-							) : (
-								<>
-									<ExternalTextLink
-										href={`https://discord.com/channels/${encodeURIComponent(guild.id)}/${encodeURIComponent(guild.systemChannel.id)}`}
-										text={guild.systemChannel.name}
-									/>
-									<span className="block break-all text-xs text-muted-foreground">
-										{guild.systemChannel.id}
-									</span>
-								</>
-							)}
-						</GuildDetail>
-						<GuildDetail label="Required permissions">
-							{guild.hasRequiredPermissions === undefined ? (
-								"Unavailable"
-							) : guild.hasRequiredPermissions ? (
-								<span className="text-success">All granted</span>
-							) : (
-								<span className="text-destructive">Some missing</span>
-							)}
-						</GuildDetail>
-						<GuildDetail label="Description">
-							{guild.description === undefined ? "Unavailable" : (guild.description ?? "None")}
-						</GuildDetail>
-					</dl>
-				</Card>
+				<GuildOverview guild={guild} />
 			</TabsPanel>
 			<TabsPanel value="admin-actions" keepMounted>
 				<GuildActions key={guild.id} guild={guild} />

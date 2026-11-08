@@ -1,10 +1,12 @@
-import { Button, Card, Input, LabelField } from "@febkosq8/arc";
+import { Avatar, Button, Card, DateHandler, Input, LabelField } from "@febkosq8/arc";
 import { useForm } from "@tanstack/react-form";
 import { useQuery } from "@tanstack/react-query";
 import { type ReactNode } from "react";
 import { FiLink } from "react-icons/fi";
 
-import APIHandler from "@jappan/handlers/APIHandler";
+import APIHandler, { type AdminGuildDetails, type UserGuildDetails } from "@jappan/handlers/APIHandler";
+import ExternalTextLink from "@jappan/components/ExternalTextLink";
+import GuildCommandDeployment from "@jappan/components/guild/GuildCommandDeployment";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 
 export const guildIdPattern = /^\d{17,20}$/u;
@@ -91,6 +93,122 @@ export function GuildDetail({ label, children }: { label: string; children: Reac
 	);
 }
 
+export function GuildOverview({ guild }: { guild: AdminGuildDetails | UserGuildDetails }) {
+	return (
+		<Card id="guild-overview" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
+			<h2 className="flex items-center gap-1 text-lg font-semibold">
+				Guild overview <GuildSectionLink id="guild-overview" label="guild overview" />
+			</h2>
+			<div className="mt-4 flex items-center gap-4">
+				<Avatar name={guild.name} image={guild.icon} size="lg" aria-hidden="true" />
+				<div className="min-w-0">
+					<h3 className="wrap-break-word text-xl font-bold">
+						<ExternalTextLink
+							href={`https://discord.com/channels/${encodeURIComponent(guild.id)}`}
+							text={guild.name}
+						/>
+					</h3>
+					<p className="break-all text-sm text-muted-foreground">{guild.id}</p>
+				</div>
+			</div>
+			<dl className="mt-5 grid gap-3 sm:grid-cols-2">
+				{"isActiveMember" in guild && (
+					<GuildDetail label="Bot membership">{guild.isActiveMember ? "Active" : "Inactive"}</GuildDetail>
+				)}
+				{"guildCommandDeploymentState" in guild && (
+					<GuildDetail label="Guild commands">
+						<GuildCommandDeployment deployment={guild.guildCommandDeploymentState} />
+					</GuildDetail>
+				)}
+				{"memberCount" in guild && (
+					<GuildDetail label="Members">{guild.memberCount?.toLocaleString() ?? "Unavailable"}</GuildDetail>
+				)}
+				{"channelCount" in guild && (
+					<GuildDetail label="Channels">{guild.channelCount?.toLocaleString() ?? "Unavailable"}</GuildDetail>
+				)}
+				{"owner" in guild && (
+					<GuildDetail label="Owner">
+						{guild.owner ? (
+							<div className="flex items-center gap-2">
+								<Avatar
+									name={guild.owner.username}
+									image={guild.owner.avatarUrl}
+									size="sm"
+									aria-hidden="true"
+								/>
+								<div className="min-w-0">
+									<ExternalTextLink
+										href={`https://discord.com/users/${encodeURIComponent(guild.owner.userId)}`}
+										text={guild.owner.username}
+									/>
+									<p className="break-all text-xs text-muted-foreground">{guild.owner.userId}</p>
+								</div>
+							</div>
+						) : (
+							"Unavailable"
+						)}
+					</GuildDetail>
+				)}
+				{"createdTimestampMs" in guild && (
+					<GuildDateDetail label="Created" timestamp={guild.createdTimestampMs} />
+				)}
+				{"joinedTimestampMs" in guild && <GuildDateDetail label="Joined" timestamp={guild.joinedTimestampMs} />}
+				<GuildDateDetail label="Discovered" timestamp={guild.discoveredTimestampMs} />
+				{"systemChannel" in guild && (
+					<GuildDetail label="System channel">
+						{guild.systemChannel === undefined ? (
+							"Unavailable"
+						) : guild.systemChannel === null ? (
+							"None"
+						) : (
+							<>
+								<ExternalTextLink
+									href={`https://discord.com/channels/${encodeURIComponent(guild.id)}/${encodeURIComponent(guild.systemChannel.id)}`}
+									text={guild.systemChannel.name}
+								/>
+								<span className="block break-all text-xs text-muted-foreground">
+									{guild.systemChannel.id}
+								</span>
+							</>
+						)}
+					</GuildDetail>
+				)}
+				{"hasRequiredPermissions" in guild && (
+					<GuildDetail label="Required permissions">
+						{guild.hasRequiredPermissions === undefined ? (
+							"Unavailable"
+						) : guild.hasRequiredPermissions ? (
+							<span className="text-success">All granted</span>
+						) : (
+							<span className="text-destructive">Some missing</span>
+						)}
+					</GuildDetail>
+				)}
+				{"description" in guild && (
+					<GuildDetail label="Description">
+						{guild.description === undefined ? "Unavailable" : (guild.description ?? "None")}
+					</GuildDetail>
+				)}
+			</dl>
+		</Card>
+	);
+}
+
+function GuildDateDetail({ label, timestamp }: { label: string; timestamp: number | null | undefined }) {
+	return (
+		<GuildDetail label={label}>
+			{timestamp == null ? (
+				"Unavailable"
+			) : (
+				<>
+					<span className="block">{DateHandler.getDateTime(timestamp)}</span>
+					<span className="text-sm text-muted-foreground">{DateHandler.getRelativeTime(timestamp)}</span>
+				</>
+			)}
+		</GuildDetail>
+	);
+}
+
 export function BotPermissionsPanel({ permissions }: { permissions?: string[] }) {
 	return (
 		<Card id="bot-permissions" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
@@ -104,10 +222,7 @@ export function BotPermissionsPanel({ permissions }: { permissions?: string[] })
 			) : (
 				<ul className="mt-3 flex flex-wrap gap-2">
 					{permissions.map((permission) => (
-						<li
-							key={permission}
-							className="rounded-md border border-border bg-muted px-3 py-1 text-sm"
-						>
+						<li key={permission} className="rounded-md border border-border bg-muted px-3 py-1 text-sm">
 							{permission}
 						</li>
 					))}
@@ -135,8 +250,8 @@ export function CommandPermissionsPanel({ permissions }: { permissions?: string[
 				Command permissions <GuildSectionLink id="command-permissions" label="command permissions" />
 			</h2>
 			<p className="mt-1 text-sm text-muted-foreground">
-				Declared bot permissions at guild level. Channel overrides and other requirements can affect
-				whether a command works.
+				Declared bot permissions at guild level. Channel overrides and other requirements can affect whether a
+				command works.
 			</p>
 			{permissions === undefined ? (
 				<p className="mt-3 text-muted-foreground">Unavailable</p>
