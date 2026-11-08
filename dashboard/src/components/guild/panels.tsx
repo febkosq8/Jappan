@@ -112,26 +112,16 @@ export function GuildOverview({ guild }: { guild: AdminGuildDetails | UserGuildD
 				</div>
 			</div>
 			<dl className="mt-5 grid gap-3 sm:grid-cols-2">
-				{"isActiveMember" in guild && (
-					<GuildDetail label="Bot membership">{guild.isActiveMember ? "Active" : "Inactive"}</GuildDetail>
-				)}
-				{"guildCommandDeploymentState" in guild && (
-					<GuildDetail label="Guild commands">
-						<GuildCommandDeployment deployment={guild.guildCommandDeploymentState} />
+				{"hasRequiredPermissions" in guild && (
+					<GuildDetail label="Required permissions">
+						{guild.hasRequiredPermissions === undefined ? (
+							"Unavailable"
+						) : guild.hasRequiredPermissions ? (
+							<span className="text-success">All granted</span>
+						) : (
+							<span className="text-destructive">Some missing</span>
+						)}
 					</GuildDetail>
-				)}
-				{"memberCount" in guild && (
-					<GuildDetail label="Members">{guild.memberCount?.toLocaleString() ?? "Unavailable"}</GuildDetail>
-				)}
-				{"channelCount" in guild && (
-					<GuildDetail label="Channels">{guild.channelCount?.toLocaleString() ?? "Unavailable"}</GuildDetail>
-				)}
-				{"createdTimestampMs" in guild && (
-					<GuildDateDetail label="Created" timestamp={guild.createdTimestampMs} />
-				)}
-				{"joinedTimestampMs" in guild && <GuildDateDetail label="Joined" timestamp={guild.joinedTimestampMs} />}
-				{"discoveredTimestampMs" in guild && (
-					<GuildDateDetail label="Discovered" timestamp={guild.discoveredTimestampMs} />
 				)}
 				{"owner" in guild && (
 					<GuildDetail label="Owner">
@@ -155,6 +145,32 @@ export function GuildOverview({ guild }: { guild: AdminGuildDetails | UserGuildD
 							"Unavailable"
 						)}
 					</GuildDetail>
+				)}{" "}
+				{"isActiveMember" in guild && (
+					<GuildDetail label="Bot membership">{guild.isActiveMember ? "Active" : "Inactive"}</GuildDetail>
+				)}
+				{"description" in guild && (
+					<GuildDetail label="Description">
+						{guild.description === undefined ? "Unavailable" : (guild.description ?? "None")}
+					</GuildDetail>
+				)}
+				{"memberCount" in guild && (
+					<GuildDetail label="Members">{guild.memberCount?.toLocaleString() ?? "Unavailable"}</GuildDetail>
+				)}
+				{"channelCount" in guild && (
+					<GuildDetail label="Channels">{guild.channelCount?.toLocaleString() ?? "Unavailable"}</GuildDetail>
+				)}
+				{"createdTimestampMs" in guild && (
+					<GuildDateDetail label="Created" timestamp={guild.createdTimestampMs} />
+				)}
+				{"joinedTimestampMs" in guild && <GuildDateDetail label="Joined" timestamp={guild.joinedTimestampMs} />}
+				{"discoveredTimestampMs" in guild && (
+					<GuildDateDetail label="Discovered" timestamp={guild.discoveredTimestampMs} />
+				)}
+				{"guildCommandDeploymentState" in guild && (
+					<GuildDetail label="Guild commands">
+						<GuildCommandDeployment deployment={guild.guildCommandDeploymentState} />
+					</GuildDetail>
 				)}
 				{"systemChannel" in guild && (
 					<GuildDetail label="System channel">
@@ -173,22 +189,6 @@ export function GuildOverview({ guild }: { guild: AdminGuildDetails | UserGuildD
 								</span>
 							</>
 						)}
-					</GuildDetail>
-				)}
-				{"hasRequiredPermissions" in guild && (
-					<GuildDetail label="Required permissions">
-						{guild.hasRequiredPermissions === undefined ? (
-							"Unavailable"
-						) : guild.hasRequiredPermissions ? (
-							<span className="text-success">All granted</span>
-						) : (
-							<span className="text-destructive">Some missing</span>
-						)}
-					</GuildDetail>
-				)}
-				{"description" in guild && (
-					<GuildDetail label="Description">
-						{guild.description === undefined ? "Unavailable" : (guild.description ?? "None")}
 					</GuildDetail>
 				)}
 			</dl>

@@ -8,7 +8,7 @@ const guildBaseSchema = z.object({
 	memberCount: z.number().int().optional(),
 	channelCount: z.number().int().nonnegative().optional(),
 	createdTimestampMs: z.number().int().optional(),
-	description: z.string().nullable().optional(),
+	description: z.string().optional(),
 	joinedTimestampMs: z.number().int().optional(),
 	systemChannel: z.object({ id: z.string(), name: z.string() }).nullable().optional(),
 	permissions: z.array(z.string()).optional(),

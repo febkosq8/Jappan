@@ -67,7 +67,7 @@ interface AdminGuildBase {
 	memberCount?: number;
 	channelCount?: number;
 	createdTimestampMs?: number;
-	description?: string | null;
+	description?: string;
 	joinedTimestampMs?: number;
 	systemChannel?: { id: string; name: string } | null;
 	permissions?: string[];

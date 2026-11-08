@@ -130,7 +130,7 @@ export interface GuildState {
 	memberCount?: Guild["memberCount"];
 	channelCount?: number;
 	createdTimestampMs?: Guild["createdTimestamp"];
-	description?: Guild["description"];
+	description?: string;
 	joinedTimestampMs?: Guild["joinedTimestamp"];
 	systemChannel?: { id: string; name: string } | null;
 	permissions?: ReturnType<PermissionsBitField["toArray"]>;
@@ -231,7 +231,7 @@ export async function getGuildState(
 		returnData.owner = { userId: owner.id, avatarUrl: owner.displayAvatarURL(), username: owner.username };
 	}
 	if (keys.includes("createdTimestampMs")) returnData.createdTimestampMs = guild.createdTimestamp;
-	if (keys.includes("description")) returnData.description = guild.description;
+	if (keys.includes("description") && guild.description) returnData.description = guild.description;
 	if (keys.includes("joinedTimestampMs")) returnData.joinedTimestampMs = guild.joinedTimestamp;
 	if (keys.includes("systemChannel") && guild.systemChannel) {
 		returnData.systemChannel = { id: guild.systemChannel.id, name: guild.systemChannel.name };
