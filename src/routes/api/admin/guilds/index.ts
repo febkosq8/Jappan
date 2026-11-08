@@ -2,13 +2,12 @@ import { z } from "zod";
 import { DiscordAPIError, PermissionFlagsBits } from "discord.js";
 import type { Request, Response } from "express";
 
-import { getClient } from "../../../../bot.js";
 import { requireAdmin, requireSession } from "../../../../handlers/auth.js";
 import { requireDatabase, requireDiscord } from "../../../../handlers/availability.js";
 import { defineRouter, errorResponseSchema } from "../../../../helpers/route.js";
 import { getGuildInvite, kickGuild, sendGuildAdminMessage } from "../../../../helpers/adminGuild.js";
-import { canSendMessage, getAdminGuildForAction } from "../../../../helpers/guild.js";
-import { adminGuildListKeys, getAdminGuild, listGuilds } from "../../../../services/adminGuild.js";
+import { allGuildKeys, canSendMessage, extendedGuildKeys, getAdminGuildForAction } from "../../../../helpers/guild.js";
+import { getGuildDetails, listGuilds } from "../../../../services/adminGuild.js";
 import { setGuildCommands } from "../../../../services/adminDeployment.js";
 import type { AuthSession } from "../../../../services/auth.js";
 import { getConfig } from "../../../../services/config.js";
@@ -413,7 +412,15 @@ export default defineRouter("/guilds", [
 		},
 		middleware: [requireDatabase, requireDiscord, requireSession, requireAdmin],
 		handler: async (_request, response) => {
-			const guilds = await listGuilds({ keys: adminGuildListKeys });
+			const guilds = await listGuilds({
+				keys: [
+					...extendedGuildKeys,
+					"isActiveMember",
+					"memberCount",
+					"joinedTimestamp",
+					"guildCommandDeploymentState",
+				],
+			});
 			return response.status(200).json(guilds);
 		},
 	},
@@ -448,7 +455,7 @@ export default defineRouter("/guilds", [
 			if (typeof guildId !== "string" || !/^\d{17,20}$/u.test(guildId)) {
 				return response.status(400).json({ error: "Invalid guild ID" });
 			}
-			const guild = await getAdminGuild({ guildId, includeGuildCommandsState: true });
+			const guild = await getGuildDetails({ guildId, keys: allGuildKeys });
 			if (!guild) {
 				return response.status(404).json({ error: "Guild not found" });
 			}

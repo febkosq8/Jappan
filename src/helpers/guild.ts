@@ -65,16 +65,33 @@ export interface GuildState {
 	guildCommandDeploymentState?: { deployed: number; total: number };
 }
 
+export const baseGuildKeys = ["id", "name", "icon"] as const;
+
+export const extendedGuildKeys = [...baseGuildKeys, "hasRequiredPermissions", "owner"] as const;
+
+export const allGuildKeys = [
+	...extendedGuildKeys,
+	"isActiveMember",
+	"memberCount",
+	"channelCount",
+	"createdAt",
+	"description",
+	"joinedTimestamp",
+	"systemChannel",
+	"permissions",
+	"guildCommandDeploymentState",
+] as const satisfies readonly (keyof GuildState)[];
+
 export async function computeGuildState({
 	guildId,
 	guildName,
 	requiredPermissions,
-	keys,
+	keys = allGuildKeys,
 }: {
 	guildId: string;
 	guildName: string;
 	requiredPermissions: PermissionsBitField | undefined;
-	keys: readonly (keyof GuildState)[];
+	keys?: readonly (keyof GuildState)[];
 }): Promise<Pick<GuildState, "id" | "name"> & Partial<GuildState>> {
 	const includeGuildCommandsState = keys.includes("guildCommandDeploymentState");
 	const guild = getClientGuild(guildId);

@@ -3,11 +3,13 @@ import { DiscordAPIError, RESTJSONErrorCodes } from "discord.js";
 
 import { formatUser } from "../helpers/discord.js";
 import {
+	baseGuildKeys,
 	computeGuildState,
 	getClientGuild,
 	getClientGuilds,
 	getGuildData,
 	getGuildDataList,
+	type GuildState,
 } from "../helpers/guild.js";
 import type { Guild as StoredGuild } from "../models/guild.js";
 import { getRequiredGlobalBotPermissions } from "./commandLoader.js";
@@ -134,13 +136,7 @@ async function resolveGuildPreferences(guild: Guild | undefined, storedGuild: St
 	};
 }
 
-export async function getAdminGuild({
-	guildId,
-	includeGuildCommandsState,
-}: {
-	guildId: string;
-	includeGuildCommandsState: boolean;
-}) {
+export async function getGuildDetails({ guildId, keys }: { guildId: string; keys: readonly (keyof GuildState)[] }) {
 	const storedGuild = await getGuildData(guildId);
 	if (!storedGuild) {
 		return null;
@@ -149,9 +145,7 @@ export async function getAdminGuild({
 		guildId: storedGuild.guildId,
 		guildName: storedGuild.guildName,
 		requiredPermissions: getRequiredGlobalBotPermissions(),
-		keys: includeGuildCommandsState
-			? adminGuildListKeys
-			: adminGuildListKeys.filter((key) => key !== "guildCommandDeploymentState"),
+		keys,
 	});
 	const guild = getClientGuild(guildId);
 	return {
@@ -164,31 +158,6 @@ export async function getAdminGuild({
 type GuildListDetails = Awaited<ReturnType<typeof computeGuildState>>;
 type GuildListItem = Required<Pick<GuildListDetails, "id" | "name" | "isActiveMember">> &
 	Omit<GuildListDetails, "id" | "name" | "isActiveMember">;
-export const baseGuildKeys = ["id", "name"];
-export const extendedGuildKeys = [
-	...baseGuildKeys,
-	"icon",
-	"hasRequiredPermissions",
-	"owner",
-	"isActiveMember",
-	"memberCount",
-	"channelCount",
-	"createdAt",
-	"description",
-	"joinedTimestamp",
-	"systemChannel",
-	"permissions",
-	"guildCommandDeploymentState",
-];
-export const guildListKeys = [...baseGuildKeys, "icon", "hasRequiredPermissions", "owner"] as const;
-
-export const adminGuildListKeys = [
-	...guildListKeys,
-	"isActiveMember",
-	"memberCount",
-	"joinedTimestamp",
-	"guildCommandDeploymentState",
-] as const;
 
 export interface GuildUserFilter {
 	userId: string;

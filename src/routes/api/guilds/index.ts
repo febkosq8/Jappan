@@ -14,8 +14,8 @@ import {
 import { requireDatabase, requireDiscord } from "../../../handlers/availability.js";
 import { defineRouter, errorResponseSchema } from "../../../helpers/route.js";
 import { listAdminGuildChannels, listAdminGuildRoles } from "../../../helpers/adminGuild.js";
-import { getAdminGuildForAction } from "../../../helpers/guild.js";
-import { getAdminGuild, guildListKeys, listGuilds } from "../../../services/adminGuild.js";
+import { baseGuildKeys, extendedGuildKeys, getAdminGuildForAction } from "../../../helpers/guild.js";
+import { getGuildDetails, listGuilds } from "../../../services/adminGuild.js";
 import type { AuthSession } from "../../../services/auth.js";
 import AuthUserModel from "../../../models/authUser.js";
 import {
@@ -109,7 +109,7 @@ export default defineRouter("/guilds", [
 			return response.status(200).json(
 				await listGuilds({
 					userFilter: { userId: user.discordAccountId, permissions: [PermissionFlagsBits.ManageGuild] },
-					keys: guildListKeys,
+					keys: extendedGuildKeys,
 				}),
 			);
 		},
@@ -377,10 +377,7 @@ export default defineRouter("/guilds", [
 			if (typeof guildId !== "string" || !guildIdPattern.test(guildId)) {
 				return response.status(400).json({ error: "Invalid guild ID" });
 			}
-			const guild = await getAdminGuild({
-				guildId,
-				includeGuildCommandsState: false,
-			});
+			const guild = await getGuildDetails({ guildId, keys: baseGuildKeys });
 			if (!guild) {
 				return response.status(404).json({ error: "Guild not found" });
 			}

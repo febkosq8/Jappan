@@ -57,16 +57,14 @@ export const guildPreferencesSchema = z.object({
 	}),
 });
 
-export const guildDetailsSchema = guildBaseSchema.extend({
+const guildDetailsFields = {
 	discoveredAt: z.number().int().nullable(),
 	preferences: guildPreferencesSchema,
-});
+};
 
-export const adminGuildDetailsSchema = guildDetailsSchema.extend({
-	guildCommandDeploymentState: z
-		.object({ deployed: z.number().int().nonnegative(), total: z.number().int().nonnegative() })
-		.optional(),
-});
+export const guildDetailsSchema = guildSchema.extend(guildDetailsFields);
+
+export const adminGuildDetailsSchema = adminGuildSchema.extend(guildDetailsFields);
 
 const snowflake = (label: string) => z.string().regex(/^\d{17,20}$/u, `Invalid ${label} ID`);
 const threshold = z.number().int().min(1).max(1000);
