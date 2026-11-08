@@ -8,12 +8,11 @@ import {
 } from "discord.js";
 
 import { formatUserMention } from "../helpers/discord.js";
-import { isActiveGuild, sendGuildMessage } from "../helpers/guild.js";
+import { getOrCreateGuildData, isActiveGuild, sendGuildMessage } from "../helpers/guild.js";
 import type { GuildDocument } from "../models/guild.js";
 import GuildMemberStateModel, { type GuildMemberStateDocument } from "../models/guildMemberState.js";
 import { getCommandId } from "./commandLoader.js";
 import type { Config } from "./config.js";
-import { getGuildSettings } from "./guild.js";
 import { incrementGuildMemberLevelingPoints } from "./guildMemberState.js";
 import { logger } from "./logger.js";
 
@@ -44,7 +43,7 @@ export async function setLeveling({
 	threshold,
 	roleId,
 }: SetLevelingOptions): Promise<GuildDocument> {
-	const storedGuildData = await getGuildSettings({ guildId, guildName });
+	const storedGuildData = await getOrCreateGuildData({ guildId, guildName });
 	storedGuildData.leveling.enabled = enabled;
 	storedGuildData.leveling.threshold = enabled ? threshold : null;
 	storedGuildData.leveling.roleId = enabled ? roleId : null;
@@ -52,7 +51,7 @@ export async function setLeveling({
 }
 
 export async function getLevelingStatus(guild: Guild): Promise<LevelingStatus> {
-	const storedGuildData = await getGuildSettings({ guild });
+	const storedGuildData = await getOrCreateGuildData({ guild });
 	return {
 		guildId: storedGuildData.guildId,
 		guildName: storedGuildData.guildName,
@@ -62,7 +61,7 @@ export async function getLevelingStatus(guild: Guild): Promise<LevelingStatus> {
 
 async function getEnabledLevelingSettings(guild: Guild): Promise<GuildDocument | null> {
 	if (!isActiveGuild(guild)) return null;
-	const storedGuildData = await getGuildSettings({ guild });
+	const storedGuildData = await getOrCreateGuildData({ guild });
 	return isActiveGuild(guild) && storedGuildData.leveling.enabled ? storedGuildData : null;
 }
 
@@ -204,7 +203,7 @@ async function awardLevelingPoints({
 	storedGuildData,
 }: AwardLevelingPointsOptions): Promise<void> {
 	if (!isActiveGuild(guild)) return;
-	const resolvedGuildData = storedGuildData ?? (await getGuildSettings({ guild }));
+	const resolvedGuildData = storedGuildData ?? (await getOrCreateGuildData({ guild }));
 	if (!isActiveGuild(guild) || !resolvedGuildData.leveling.enabled) {
 		return;
 	}
@@ -325,7 +324,7 @@ interface DisableLevelingRewardOptions {
 async function disableLevelingReward({ guild, roleId, reason }: DisableLevelingRewardOptions): Promise<void> {
 	try {
 		if (!isActiveGuild(guild)) return;
-		const storedGuildData = await getGuildSettings({ guild });
+		const storedGuildData = await getOrCreateGuildData({ guild });
 		if (!isActiveGuild(guild) || storedGuildData.leveling.roleId !== roleId) {
 			return;
 		}

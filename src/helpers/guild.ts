@@ -6,8 +6,34 @@ import GuildModel, { type Guild as StoredGuild, type GuildDocument } from "../mo
 import { logger } from "../services/logger.js";
 import type { LogDetails } from "./logger.js";
 
+export interface GuildDataOptions {
+	guildId?: string;
+	guildName?: string;
+	guild?: Guild;
+}
+
 export function getGuildData(guildId: string): Promise<GuildDocument | null> {
 	return GuildModel.findOne({ guildId }).exec();
+}
+
+export async function getOrCreateGuildData({ guildId, guildName, guild }: GuildDataOptions): Promise<GuildDocument> {
+	const resolvedGuildId = guild?.id ?? guildId;
+	const resolvedGuildName = guild?.name ?? guildName;
+	if (!resolvedGuildId || !resolvedGuildName) {
+		throw new Error("Guild ID and guild name are required when guild is not provided");
+	}
+
+	let storedGuildData = await getGuildData(resolvedGuildId);
+	if (!storedGuildData) {
+		storedGuildData = await GuildModel.create({ guildId: resolvedGuildId, guildName: resolvedGuildName });
+	}
+
+	if (storedGuildData.guildName !== resolvedGuildName) {
+		storedGuildData.guildName = resolvedGuildName;
+		await storedGuildData.save();
+	}
+
+	return storedGuildData;
 }
 
 export function getClientGuild(guildId: string): Guild | undefined {

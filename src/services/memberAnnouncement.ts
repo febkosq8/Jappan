@@ -2,11 +2,10 @@ import type { Guild, GuildBasedChannel, GuildMember, PartialGuildMember } from "
 import { EmbedBuilder, channelMention, chatInputApplicationCommandMention, userMention } from "discord.js";
 
 import { formatUserMention } from "../helpers/discord.js";
-import { isActiveGuild, sendGuildMessage } from "../helpers/guild.js";
+import { getOrCreateGuildData, isActiveGuild, sendGuildMessage } from "../helpers/guild.js";
 import type { GuildDocument } from "../models/guild.js";
 import { getCommandId } from "./commandLoader.js";
 import { getConfig } from "./config.js";
-import { getGuildSettings } from "./guild.js";
 import { logger } from "./logger.js";
 
 export type MemberAnnouncementEvent = "join" | "leave" | "both";
@@ -24,7 +23,7 @@ export async function setMemberAnnouncement({
 	enabled: boolean;
 	channelId?: string;
 }): Promise<GuildDocument> {
-	const storedGuildData = await getGuildSettings({ guildId, guildName });
+	const storedGuildData = await getOrCreateGuildData({ guildId, guildName });
 	if (event === "join" || event === "both") {
 		storedGuildData.memberAnnouncements.joinEnabled = enabled;
 		storedGuildData.memberAnnouncements.joinChannelId = enabled ? (channelId ?? null) : null;
@@ -38,7 +37,7 @@ export async function setMemberAnnouncement({
 }
 
 export async function getMemberAnnouncementStatus(guild: Guild): Promise<GuildDocument["memberAnnouncements"]> {
-	const storedGuildSettingsData = await getGuildSettings({ guild });
+	const storedGuildSettingsData = await getOrCreateGuildData({ guild });
 
 	for (const announcement of [
 		{ enabled: "joinEnabled", channel: "joinChannelId" },
@@ -91,7 +90,7 @@ async function disableAnnouncement({
 	channelId: string;
 }): Promise<boolean> {
 	if (!isActiveGuild(guild)) return false;
-	const storedGuildSettingsData = await getGuildSettings({ guild });
+	const storedGuildSettingsData = await getOrCreateGuildData({ guild });
 	if (!isActiveGuild(guild)) return false;
 	if (event === "join") {
 		storedGuildSettingsData.memberAnnouncements.joinEnabled = false;

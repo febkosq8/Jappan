@@ -51,12 +51,17 @@ import {
 	isOwnBot,
 } from "../helpers/auditLog.js";
 import { formatChannelMention, formatRoleMention, formatUserMention } from "../helpers/discord.js";
-import { getClientGuild, getClientGuilds, isActiveGuild, sendGuildMessage } from "../helpers/guild.js";
+import {
+	getClientGuild,
+	getClientGuilds,
+	getOrCreateGuildData,
+	isActiveGuild,
+	sendGuildMessage,
+} from "../helpers/guild.js";
 import { sendResponse } from "../helpers/response.js";
 import { splitString, trimString } from "../helpers/string.js";
 import type { GuildDocument } from "../models/guild.js";
 import { getCommandId } from "./commandLoader.js";
-import { getGuildSettings } from "./guild.js";
 import { logger } from "./logger.js";
 
 export interface AuditLogStatus {
@@ -78,7 +83,7 @@ export async function setAuditLog({
 	channelId: string | null;
 	fullVerbosity: boolean;
 }): Promise<AuditLogStatus> {
-	const storedGuildData = await getGuildSettings({ guildId, guildName });
+	const storedGuildData = await getOrCreateGuildData({ guildId, guildName });
 	storedGuildData.auditLog.enabled = enabled;
 	storedGuildData.auditLog.channelId = channelId;
 	storedGuildData.auditLog.fullVerbosity = enabled && fullVerbosity;
@@ -91,7 +96,7 @@ export async function setAuditLog({
 }
 
 export async function getAuditLogStatus(guildId: string, guildName: string): Promise<AuditLogStatus> {
-	const storedGuildData = await getGuildSettings({ guildId, guildName });
+	const storedGuildData = await getOrCreateGuildData({ guildId, guildName });
 	return {
 		guildId: storedGuildData.guildId,
 		guildName: storedGuildData.guildName,
@@ -101,7 +106,7 @@ export async function getAuditLogStatus(guildId: string, guildName: string): Pro
 
 async function postAuditEvent(guild: Guild, content: MessageCreateOptions): Promise<Message | null> {
 	if (!isActiveGuild(guild)) return null;
-	const storedGuildData = await getGuildSettings({ guild });
+	const storedGuildData = await getOrCreateGuildData({ guild });
 	if (!isActiveGuild(guild) || !storedGuildData.auditLog.enabled || !storedGuildData.auditLog.channelId) {
 		return null;
 	}
@@ -527,7 +532,7 @@ export async function handleAuditLogEntryCreate(auditEntry: GuildAuditLogsEntry,
 
 async function disableAuditLog(guild: Guild, channelId: string): Promise<void> {
 	if (!isActiveGuild(guild)) return;
-	const storedGuildData = await getGuildSettings({ guild });
+	const storedGuildData = await getOrCreateGuildData({ guild });
 	if (!isActiveGuild(guild)) return;
 	storedGuildData.auditLog.enabled = false;
 	storedGuildData.auditLog.channelId = null;
