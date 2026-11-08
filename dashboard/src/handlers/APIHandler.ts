@@ -30,7 +30,7 @@ export interface AdminBotPlayerSession {
 	playerState: "Playing" | "Paused";
 }
 
-export interface AdminBotStatus {
+export interface BotStatus {
 	botName: string;
 	botAvatarUrl: string;
 	botId: string | null;
@@ -215,8 +215,8 @@ class APIHandler {
 		return data;
 	}
 
-	static async getAdminBotStatus(): Promise<AdminBotStatus> {
-		const { data } = await apiClient.get<AdminBotStatus>("/api/v1/admin/bot", { withCredentials: true });
+	static async getBotStatus(): Promise<BotStatus> {
+		const { data } = await apiClient.get<BotStatus>("/api/v1/public/bot");
 		return data;
 	}
 

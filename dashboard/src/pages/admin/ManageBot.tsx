@@ -137,10 +137,10 @@ export default function ManageBot() {
 	const [selfKickMessage, setSelfKickMessage] = useState("");
 	const [shutdownScheduled, setShutdownScheduled] = useState(false);
 	const statusQuery = useQuery({
-		queryKey: ["admin", "bot", "status"],
+		queryKey: ["bot-status"],
 		queryFn: async () => {
 			const startedAt = performance.now();
-			const status = await APIHandler.getAdminBotStatus();
+			const status = await APIHandler.getBotStatus();
 			return { ...status, apiLatencyMs: Math.round(performance.now() - startedAt) };
 		},
 		refetchInterval: shutdownScheduled ? false : 30_000,

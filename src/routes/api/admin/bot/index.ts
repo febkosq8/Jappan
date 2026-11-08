@@ -6,7 +6,6 @@ import { requireAdmin, requireSession } from "../../../../handlers/auth.js";
 import { requireDiscord } from "../../../../handlers/availability.js";
 import { DISCORD_INTERACTION_TIME_LIMIT_MS } from "../../../../helpers/interaction.js";
 import { defineRouter, errorResponseSchema } from "../../../../helpers/route.js";
-import { getBotVersion } from "../../../../helpers/utils.js";
 import { undeployGuildCommandsGlobally } from "../../../../services/adminDeployment.js";
 import { selfKickGuilds } from "../../../../services/adminGuild.js";
 import type { AuthSession } from "../../../../services/auth.js";
@@ -28,17 +27,6 @@ const activePlayerSessionSchema = z.object({
 		})
 		.nullable(),
 	playerState: z.enum(["Playing", "Paused"]),
-});
-
-const adminBotStatusSchema = z.object({
-	botName: z.string(),
-	botAvatarUrl: z.string().url(),
-	botId: z.string().nullable(),
-	version: z.string(),
-	bootedAtMs: z.number(),
-	guildCount: z.number().int().nonnegative(),
-	memberCount: z.number().int().nonnegative().nullable(),
-	gatewayLatencyMs: z.number().nonnegative().nullable(),
 });
 
 const stopBotRequestSchema = z.object({ confirm: z.literal(true) });
@@ -74,47 +62,6 @@ function getAdminSession(response: Response): AuthSession | undefined {
 }
 
 export default defineRouter("/bot", [
-	{
-		method: "get",
-		path: "/",
-		tags: ["Admin Bot"],
-		summary: "View bot details",
-		errorMessage: "Failed to get admin bot status",
-		security: [{ sessionCookie: [] }],
-		responses: {
-			200: {
-				description: "Bot details",
-				schema: adminBotStatusSchema,
-			},
-			401: { description: "Authentication required", schema: errorResponseSchema },
-			403: { description: "Admin access required", schema: errorResponseSchema },
-			503: { description: "Discord bot is unavailable", schema: errorResponseSchema },
-			500: { description: "Failed to get admin bot status", schema: errorResponseSchema },
-		},
-		middleware: [requireDiscord, requireSession, requireAdmin],
-		handler: (_request, response) => {
-			const client = getClient();
-			const botUser = client.user;
-			if (!botUser) {
-				return response.status(503).json({ error: "Discord is unavailable" });
-			}
-			const guilds = [...client.guilds.cache.values()];
-			const gatewayLatency = client.ws.ping;
-			const returnData = {
-				botName: botUser.username,
-				botAvatarUrl: botUser.displayAvatarURL(),
-				botId: botUser.id,
-				version: getBotVersion(),
-				bootedAtMs: Date.now() - Math.floor(process.uptime() * 1000),
-				guildCount: guilds.length,
-				memberCount: guilds.every((guild) => guild.available && Number.isFinite(guild.memberCount))
-					? guilds.reduce((total, guild) => total + guild.memberCount, 0)
-					: null,
-				gatewayLatencyMs: Number.isFinite(gatewayLatency) && gatewayLatency >= 0 ? gatewayLatency : null,
-			};
-			return response.status(200).json(returnData);
-		},
-	},
 	{
 		method: "get",
 		path: "/player-sessions",
