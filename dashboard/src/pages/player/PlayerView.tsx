@@ -448,7 +448,8 @@ export default function PlayerView() {
 					</Card.Content>
 				</Card>
 			)}
-			{sessionQuery.isError && (
+			{/* When the connection card is up it already says the data is stale */}
+			{sessionQuery.isError && websocket.status !== "disconnected" && (
 				<Card hoverable={false} className="mb-4 rounded-md border-warning">
 					<Card.Content
 						role="status"
