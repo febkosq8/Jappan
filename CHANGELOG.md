@@ -5,31 +5,32 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.8] - Unreleased
+## [2.1.0] - 2026-11-09
 
 ### Added
 
-- Expanded API documentation to support request details, response formats, and authentication requirements.
-- Added an on-demand admin guild channel list endpoint and dashboard card with channel-specific details.
-- Added guild command deployment status to the admin guild API and dashboard.
-- Added `PATCH /api/v1/guilds/{guildId}/audit-log`, `/leveling`, `/member-announcements`, and `/warnings` to update service preferences, and a `GET /api/v1/guilds/{guildId}/roles` role list.
-- Added `GET /api/v1/guilds` to list registered guilds the signed-in user is a member of and can manage (Manage Server).
-- Added editable service preferences to the dashboard guild view.
-- Allowed users with Manage Server to use the guild preference and detail endpoints; admins can also use the preference endpoints.
+- Added Discord sign-in with server-side sessions. It requires the new `AUTH_SECRET`, `AUTH_DISCORD_CLIENT_ID`, and `AUTH_DISCORD_CLIENT_SECRET` environment values.
+- Added an authenticated HTTP API with OpenAPI documentation covering request details, response formats, and authentication requirements.
+- Added dashboard pages for signed-in users with Manage Server to view their guilds and edit service preferences (audit log, leveling, member announcements, warnings).
+- Added dashboard admin pages to list guilds, inspect channels and command deployment status, deploy or undeploy guild commands, send messages, create invites, and remove the bot from a guild.
+- Added a dashboard Manage Bot page with player sessions, gateway and API latency, player health checks, and a bot stop control.
+- Added a web player with live, websocket-based now-playing status, playback controls, and queue updates.
+- Added queue size limits and clearer notices when a player action is rejected, such as a full queue or a locked session.
+- Added a commands page on the website.
+- Added `/admin list-admins` to list the configured bot administrators.
 
 ### Changed
 
-- Moved `GET /api/v1/admin/guilds/{guildId}/channels` to `/api/v1/guilds/{guildId}/channels`.
-- Separated admin and manager guild list and detail endpoints; command deployment state is returned only by the admin endpoints.
+- `/help` now links to the commands page on the website instead of showing category buttons.
+- Updated the default `BOT_PFP` and `ALLOWED_ORIGINS` values.
 
 ### Removed
 
-- Removed `/admin-guild list`; administrators can use the dashboard guild list instead.
-- Removed `/admin-guild channel`; administrators can inspect channels in the dashboard guild view.
+- Removed `/admin-bot`, `/admin-deploy`, and `/admin-guild`; their functions are now available in the dashboard.
 
 ### Fixed
 
-- Corrected the response to unhandled HTTP errors.
+- Handled orphaned voice connections with clearer disconnect messaging in the player.
 
 ## [2.0.7] - 2026-11-04
 

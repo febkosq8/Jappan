@@ -90,7 +90,7 @@ const CONTROL_TOAST_MESSAGES: Record<PlayerControlAction["path"], { loading: str
 	"queue/add": { loading: "Adding to the queue…", success: "Added to the queue." },
 };
 
-export default function PlayerView() {
+export default function WebPlayer() {
 	const { sessionId = "" } = useParams();
 	const queryClient = useQueryClient();
 	const queryKey = ["player-session", sessionId];

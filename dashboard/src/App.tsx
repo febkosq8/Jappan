@@ -8,7 +8,7 @@ import AdminViewGuild from "@jappan/pages/admin/AdminViewGuild";
 import ManageBot from "@jappan/pages/admin/ManageBot";
 import UserListGuilds from "@jappan/pages/guilds/UserListGuilds";
 import UserViewGuild from "@jappan/pages/guilds/UserViewGuild";
-import PlayerView from "@jappan/pages/player/PlayerView";
+import WebPlayer from "@jappan/pages/player/WebPlayer";
 import WrongPage from "@jappan/pages/WrongPage";
 import { SIGN_OUT_FLASH_KEY } from "@jappan/handlers/auth";
 import { updateHashOnScroll } from "@febkosq8/arc";
@@ -61,7 +61,7 @@ function App() {
 				<Route element={<AuthRoute />}>
 					<Route path="/guilds" element={<UserListGuilds />} />
 					<Route path="/guild/:guildId?" element={<UserViewGuild />} />
-					<Route path="/player/:sessionId" element={<PlayerView />} />
+					<Route path="/player/:sessionId" element={<WebPlayer />} />
 				</Route>
 				<Route path="*" element={<WrongPage />} />
 			</Routes>
