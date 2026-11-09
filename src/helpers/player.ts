@@ -108,8 +108,21 @@ export function closeDisconnectedQueue(queue: PlayerQueue): void {
 		return;
 	}
 	logger.info("PLAYER", "Closing a session whose voice connection ended", { guild: formatGuild(queue.guild) });
-	void updatePlayerQueueMessage({ queue, content: "👋 Playback disconnected.", controls: false });
+	markPlayerStatusMessageDisconnected(queue);
 	queue.delete();
+}
+
+/** Replaces the status message, which would otherwise keep showing the last track as if it were still playing. */
+export function markPlayerStatusMessageDisconnected(queue: Pick<PlayerQueue, "metadata">): void {
+	const { statusMessage, owner } = queue.metadata;
+	if (statusMessage) {
+		void markPlayerStatusMessageStopped({
+			message: statusMessage,
+			owner,
+			title: "👋 Playback disconnected",
+			description: "The bot was disconnected from the voice channel.",
+		});
+	}
 }
 export function getNextRepeatMode(repeatMode: QueueRepeatMode): QueueRepeatMode {
 	return (repeatMode === 3 ? 0 : repeatMode + 1) as QueueRepeatMode;
@@ -509,16 +522,20 @@ export async function markPlayerStatusMessageReplaced({
 export async function markPlayerStatusMessageStopped({
 	message,
 	owner,
+	title = "⏹️ Player stopped",
+	description = "Playback has been stopped.",
 }: {
 	message: Message;
 	owner?: PlayerOwner | undefined;
+	title?: string;
+	description?: string;
 }): Promise<void> {
 	await message
 		.edit({
 			embeds: [
 				createPlayerEmbed({
-					title: "⏹️ Player stopped",
-					description: "Playback has been stopped.",
+					title,
+					description,
 					color: "Blue",
 					...(owner ? { requestedBy: formatUser(owner) } : {}),
 				}),

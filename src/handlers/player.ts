@@ -4,6 +4,7 @@ import { formatGuild } from "../helpers/discord.js";
 import {
 	closeDisconnectedQueue,
 	isQueueDisconnected,
+	markPlayerStatusMessageDisconnected,
 	updatePlayerQueueMessage,
 	type PlayerQueue,
 } from "../helpers/player.js";
@@ -68,7 +69,7 @@ function registerPlayerStatusHandlers(player: Player): void {
 		updatePlayerQueueMessage({ queue, content: "🔇 No one is in the voice channel. Leaving soon." });
 	});
 	events.on("disconnect", (queue) => {
-		updatePlayerQueueMessage({ queue, content: "👋 Playback disconnected.", controls: false });
+		markPlayerStatusMessageDisconnected(queue);
 	});
 }
 
