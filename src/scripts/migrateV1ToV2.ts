@@ -294,7 +294,17 @@ async function migrate(): Promise<void> {
 			clearInterval(elapsedTimer);
 		}
 		logger.info("DATABASE", "Closing migration database connections");
-		await Promise.all([v1Connection?.close(), newConnection?.close()]);
+		const closeErrors: unknown[] = [];
+		for (const connection of [v1Connection, newConnection]) {
+			try {
+				await connection?.close();
+			} catch (error: unknown) {
+				closeErrors.push(error);
+			}
+		}
+		if (closeErrors.length === 1) throw closeErrors[0];
+		if (closeErrors.length > 1)
+			throw new AggregateError(closeErrors, "Failed to close migration database connections");
 		logger.info("DATABASE", "Migration database connections closed");
 	}
 }

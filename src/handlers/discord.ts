@@ -4,6 +4,7 @@ import type { Client } from "discord.js";
 
 import { getClient } from "../bot.js";
 import { formatInteractionLogDetails, formatUser } from "../helpers/discord.js";
+import { isActiveGuild } from "../helpers/guild.js";
 import { getPrefixCommand, handlePrefixMessage } from "../services/adminDeployment.js";
 import { validateAdminUsers } from "../services/adminGuild.js";
 import {
@@ -70,6 +71,15 @@ export function registerDiscordHandlers(): void {
 	const config = getConfig();
 
 	client.once(Events.ClientReady, async (readyClient) => {
+		if (readyClient.user.id !== config.AUTH_DISCORD_CLIENT_ID) {
+			logger.error("DISCORD", "Bot account does not match AUTH_DISCORD_CLIENT_ID", {
+				botUserId: readyClient.user.id,
+				authDiscordClientId: config.AUTH_DISCORD_CLIENT_ID,
+			});
+			await handleShutdown("DISCORD_CLIENT_ID_MISMATCH", 1);
+			return;
+		}
+
 		config.BOT_NAME = readyClient.user.username;
 		config.BOT_PFP = readyClient.user.displayAvatarURL({ size: 256 });
 		logger.success("DISCORD", "Client ready", {
@@ -130,6 +140,7 @@ export function registerDiscordHandlers(): void {
 	});
 
 	client.on(Events.InteractionCreate, (interaction: Interaction) => {
+		if (interaction.guild && !isActiveGuild(interaction.guild)) return;
 		logger.info("DISCORD", "Interaction received", formatInteractionLogDetails(interaction));
 
 		if (interaction.isAutocomplete()) {

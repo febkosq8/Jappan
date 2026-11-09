@@ -9,6 +9,9 @@ export interface Config {
 	readonly BACKEND_URL: string;
 	readonly ALLOWED_ORIGINS: readonly string[];
 	readonly DB_URL: string;
+	readonly AUTH_SECRET: string;
+	readonly AUTH_DISCORD_CLIENT_ID: string;
+	readonly AUTH_DISCORD_CLIENT_SECRET: string;
 	readonly ADMIN_USER_IDS: readonly string[];
 	readonly LOG_TIMESTAMP: boolean;
 	readonly PLAYER_DEBUG: boolean;
@@ -81,6 +84,28 @@ export function loadConfig(): Config {
 		.map((origin) => origin.trim().replace(/\/+$/, ""))
 		.filter(Boolean);
 	const DB_URL = readConfigValue("DB_URL", true);
+	const AUTH_SECRET = readConfigValue("AUTH_SECRET", true);
+	const AUTH_DISCORD_CLIENT_ID = readConfigValue("AUTH_DISCORD_CLIENT_ID", true);
+	const AUTH_DISCORD_CLIENT_SECRET = readConfigValue("AUTH_DISCORD_CLIENT_SECRET", true);
+	if (AUTH_SECRET.length < 32) {
+		throw new Error("AUTH_SECRET must contain at least 32 characters");
+	}
+	let backendUrl: URL;
+	try {
+		backendUrl = new URL(BACKEND_URL);
+	} catch {
+		throw new Error("BACKEND_URL must be a valid HTTP or HTTPS origin");
+	}
+	if (!["http:", "https:"].includes(backendUrl.protocol) || backendUrl.origin !== BACKEND_URL) {
+		throw new Error("BACKEND_URL must be a valid HTTP or HTTPS origin without a path");
+	}
+	if (
+		backendUrl.protocol !== "https:" &&
+		backendUrl.hostname !== "localhost" &&
+		backendUrl.hostname !== "127.0.0.1"
+	) {
+		throw new Error("BACKEND_URL must use HTTPS except on localhost");
+	}
 	const adminUserIdsValue = readConfigValue("ADMIN_USER_IDS");
 	const ADMIN_USER_IDS = adminUserIdsValue
 		.split(";")
@@ -146,6 +171,9 @@ export function loadConfig(): Config {
 		BACKEND_URL,
 		ALLOWED_ORIGINS,
 		DB_URL,
+		AUTH_SECRET,
+		AUTH_DISCORD_CLIENT_ID,
+		AUTH_DISCORD_CLIENT_SECRET,
 		ADMIN_USER_IDS,
 		LOG_TIMESTAMP,
 		PLAYER_DEBUG,

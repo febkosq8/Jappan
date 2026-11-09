@@ -1,10 +1,21 @@
 import mongoose from "mongoose";
 
+import AuthAccountModel from "../models/authAccount.js";
+import AuthSessionModel from "../models/authSession.js";
+import AuthUserModel from "../models/authUser.js";
+import AuthVerificationModel from "../models/authVerification.js";
 import "../models/guild.js";
 import "../models/guildMemberState.js";
 import "../models/userPlaylist.js";
 import { getConfig } from "./config.js";
 import { logger } from "./logger.js";
+
+const authModelNames = new Set([
+	AuthAccountModel.modelName,
+	AuthSessionModel.modelName,
+	AuthUserModel.modelName,
+	AuthVerificationModel.modelName,
+]);
 
 export interface DatabaseInitOptions {
 	successCallback?: () => void | Promise<void>;
@@ -46,12 +57,19 @@ class DatabaseManager {
 	private static async syncIndexes(): Promise<void> {
 		for (const modelName of mongoose.modelNames()) {
 			try {
-				await mongoose.model(modelName).syncIndexes();
-				logger.info("DATABASE", "MongoDB indexes synchronized", {
+				const model = mongoose.model(modelName);
+				if (authModelNames.has(modelName)) {
+					await model.createIndexes();
+				} else {
+					await model.syncIndexes();
+				}
+				const entries = await model.countDocuments();
+				logger.info("DATABASE", "MongoDB indexes initialized", {
 					model: modelName,
+					entries,
 				});
 			} catch (error: unknown) {
-				logger.error("DATABASE", "MongoDB index synchronization failed", {
+				logger.error("DATABASE", "MongoDB model initialization failed", {
 					model: modelName,
 					error,
 				});

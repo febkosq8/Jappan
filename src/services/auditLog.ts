@@ -51,12 +51,17 @@ import {
 	isOwnBot,
 } from "../helpers/auditLog.js";
 import { formatChannelMention, formatRoleMention, formatUserMention } from "../helpers/discord.js";
-import { sendGuildMessage } from "../helpers/guildHelper.js";
+import {
+	getClientGuild,
+	getClientGuilds,
+	getOrCreateGuildData,
+	isActiveGuild,
+	sendGuildMessage,
+} from "../helpers/guild.js";
 import { sendResponse } from "../helpers/response.js";
 import { splitString, trimString } from "../helpers/string.js";
 import type { GuildDocument } from "../models/guild.js";
 import { getCommandId } from "./commandLoader.js";
-import { getGuildSettings } from "./guild.js";
 import { logger } from "./logger.js";
 
 export interface AuditLogStatus {
@@ -78,7 +83,7 @@ export async function setAuditLog({
 	channelId: string | null;
 	fullVerbosity: boolean;
 }): Promise<AuditLogStatus> {
-	const storedGuildData = await getGuildSettings({ guildId, guildName });
+	const storedGuildData = await getOrCreateGuildData({ guildId, guildName });
 	storedGuildData.auditLog.enabled = enabled;
 	storedGuildData.auditLog.channelId = channelId;
 	storedGuildData.auditLog.fullVerbosity = enabled && fullVerbosity;
@@ -91,7 +96,7 @@ export async function setAuditLog({
 }
 
 export async function getAuditLogStatus(guildId: string, guildName: string): Promise<AuditLogStatus> {
-	const storedGuildData = await getGuildSettings({ guildId, guildName });
+	const storedGuildData = await getOrCreateGuildData({ guildId, guildName });
 	return {
 		guildId: storedGuildData.guildId,
 		guildName: storedGuildData.guildName,
@@ -100,14 +105,16 @@ export async function getAuditLogStatus(guildId: string, guildName: string): Pro
 }
 
 async function postAuditEvent(guild: Guild, content: MessageCreateOptions): Promise<Message | null> {
-	const storedGuildData = await getGuildSettings({ guild });
-	if (!storedGuildData.auditLog.enabled || !storedGuildData.auditLog.channelId) {
+	if (!isActiveGuild(guild)) return null;
+	const storedGuildData = await getOrCreateGuildData({ guild });
+	if (!isActiveGuild(guild) || !storedGuildData.auditLog.enabled || !storedGuildData.auditLog.channelId) {
 		return null;
 	}
 
 	const channelId = storedGuildData.auditLog.channelId;
 	const channel = await guild.channels.fetch(channelId).catch(() => null);
 	const botMember = await guild.members.fetchMe().catch(() => null);
+	if (!isActiveGuild(guild)) return null;
 	if (
 		!channel?.isTextBased() ||
 		!channel.isSendable() ||
@@ -138,8 +145,9 @@ async function postAuditEvent(guild: Guild, content: MessageCreateOptions): Prom
 }
 
 async function isAuditLogEnabled(guild: Guild): Promise<boolean> {
+	if (!isActiveGuild(guild)) return false;
 	const status = await getAuditLogStatus(guild.id, guild.name);
-	return status.auditLog.enabled && Boolean(status.auditLog.channelId);
+	return isActiveGuild(guild) && status.auditLog.enabled && Boolean(status.auditLog.channelId);
 }
 
 async function handleAuditBan(ban: GuildBan, action: "Banned" | "Unbanned"): Promise<void> {
@@ -523,7 +531,9 @@ export async function handleAuditLogEntryCreate(auditEntry: GuildAuditLogsEntry,
 }
 
 async function disableAuditLog(guild: Guild, channelId: string): Promise<void> {
-	const storedGuildData = await getGuildSettings({ guild });
+	if (!isActiveGuild(guild)) return;
+	const storedGuildData = await getOrCreateGuildData({ guild });
+	if (!isActiveGuild(guild)) return;
 	storedGuildData.auditLog.enabled = false;
 	storedGuildData.auditLog.channelId = null;
 	storedGuildData.auditLog.fullVerbosity = false;
@@ -698,7 +708,7 @@ export async function handleAuditMemberUpdate(
 }
 
 export async function handleAuditInviteCreate(invite: Invite): Promise<void> {
-	const guild = invite.guild ? invite.client.guilds.cache.get(invite.guild.id) : undefined;
+	const guild = invite.guild ? getClientGuild(invite.guild.id) : undefined;
 	if (!guild || !invite.inviterId || isOwnBot(guild, invite.inviterId)) {
 		return;
 	}
@@ -734,7 +744,7 @@ export async function handleAuditInviteCreate(invite: Invite): Promise<void> {
 }
 
 export async function handleAuditInviteDelete(invite: Invite): Promise<void> {
-	const guild = invite.guild ? invite.client.guilds.cache.get(invite.guild.id) : undefined;
+	const guild = invite.guild ? getClientGuild(invite.guild.id) : undefined;
 	if (!guild) {
 		return;
 	}
@@ -764,14 +774,15 @@ export async function handleAuditUserUpdate(oldUser: PartialUser | User, newUser
 		return;
 	}
 
-	await Promise.all(
-		newUser.client.guilds.cache.map(async (guild) => {
-			if (isOwnBot(guild, newUser.id)) {
-				return;
+	const errors: unknown[] = [];
+	for (const guild of getClientGuilds()) {
+		try {
+			if (!isActiveGuild(guild) || isOwnBot(guild, newUser.id)) {
+				continue;
 			}
 			const member = await guild.members.fetch(newUser.id).catch(() => null);
 			if (!member || !(await isAuditLogEnabled(guild))) {
-				return;
+				continue;
 			}
 
 			const auditEventId = createAuditEventId();
@@ -806,8 +817,12 @@ export async function handleAuditUserUpdate(oldUser: PartialUser | User, newUser
 				});
 			}
 			await postAuditEvent(guild, { embeds: [embed], allowedMentions: { parse: [] } });
-		}),
-	);
+		} catch (error: unknown) {
+			errors.push(error);
+		}
+	}
+	if (errors.length === 1) throw errors[0];
+	if (errors.length > 1) throw new AggregateError(errors, "Failed to post user update audit events");
 }
 
 export async function handleAuditMessageUpdate(
@@ -982,11 +997,11 @@ export async function handleAuditMessageUpdate(
 }
 
 export async function handleAuditMessageDelete(message: Message | PartialMessage): Promise<void> {
-	if (!message.guild || isOwnBot(message.guild, message.author?.id ?? "")) {
+	if (!message.guild || !isActiveGuild(message.guild) || isOwnBot(message.guild, message.author?.id ?? "")) {
 		return;
 	}
 	const auditStatus = await getAuditLogStatus(message.guild.id, message.guild.name);
-	if (!auditStatus.auditLog.enabled || !auditStatus.auditLog.channelId) {
+	if (!isActiveGuild(message.guild) || !auditStatus.auditLog.enabled || !auditStatus.auditLog.channelId) {
 		return;
 	}
 	if (message.partial && !auditStatus.auditLog.fullVerbosity) {

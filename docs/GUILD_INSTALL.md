@@ -19,4 +19,6 @@ The invite requests the permissions below to support Jappan's current features. 
 
 Some permissions are only used by optional features. Channel-specific permission overrides can further restrict what the bot can do.
 
+When guild commands are deployed to a server, members with **Manage Server** can use `/admin list` to view the bot administrators configured by `ADMIN_USER_IDS`. The response is private and does not notify the listed users.
+
 The bot also requests the privileged **Server Members**, **Server Presences**, and **Message Content** intents. Enable these separately in the Discord Developer Portal; they are not invite permissions.

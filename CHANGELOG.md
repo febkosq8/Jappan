@@ -5,6 +5,33 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-11-09
+
+### Added
+
+- Added Discord sign-in with server-side sessions. It requires the new `AUTH_SECRET`, `AUTH_DISCORD_CLIENT_ID`, and `AUTH_DISCORD_CLIENT_SECRET` environment values.
+- Added an authenticated HTTP API with OpenAPI documentation covering request details, response formats, and authentication requirements.
+- Added dashboard pages for signed-in users with Manage Server to view their guilds and edit service preferences (audit log, leveling, member announcements, warnings).
+- Added dashboard admin pages to list guilds, inspect channels and command deployment status, deploy or undeploy guild commands, send messages, create invites, and remove the bot from a guild.
+- Added a dashboard Manage Bot page with player sessions, gateway and API latency, player health checks, and a bot stop control.
+- Added a web player with live, websocket-based now-playing status, playback controls, and queue updates.
+- Added queue size limits and clearer notices when a player action is rejected, such as a full queue or a locked session.
+- Added a commands page on the website.
+- Added `/admin list-admins` to list the configured bot administrators.
+
+### Changed
+
+- `/help` now links to the commands page on the website instead of showing category buttons.
+- Updated the default `BOT_PFP` and `ALLOWED_ORIGINS` values.
+
+### Removed
+
+- Removed `/admin-bot`, `/admin-deploy`, and `/admin-guild`; their functions are now available in the dashboard.
+
+### Fixed
+
+- Handled orphaned voice connections with clearer disconnect messaging in the player.
+
 ## [2.0.7] - 2026-11-04
 
 ### Changed

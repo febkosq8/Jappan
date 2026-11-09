@@ -309,11 +309,12 @@ export async function getRecentAuditEntryByTargetId({
 	types: AuditLogEvent | readonly AuditLogEvent[];
 }): Promise<GuildAuditLogsEntry | undefined> {
 	const auditTypes = Array.isArray(types) ? types : [types];
-	const auditLogs = await Promise.all(
-		auditTypes.map((type) => guild.fetchAuditLogs({ limit: 10, type }).catch(() => null)),
-	);
-	return auditLogs
-		.flatMap((auditLog) => (auditLog ? [...auditLog.entries.values()] : []))
+	const entries: GuildAuditLogsEntry[] = [];
+	for (const type of auditTypes) {
+		const auditLog = await guild.fetchAuditLogs({ limit: 10, type }).catch(() => null);
+		if (auditLog) entries.push(...auditLog.entries.values());
+	}
+	return entries
 		.filter(
 			(candidateAuditEntry) =>
 				candidateAuditEntry.target &&
@@ -340,8 +341,14 @@ export function getAuditEntryTargetLabel(auditEntry: GuildAuditLogsEntry): strin
 	if ("permissions" in target && "name" in target) {
 		return formatRoleMention(target as Role);
 	}
-	if ("isThread" in target && "name" in target) {
-		return formatChannelMention(target as GuildChannel | ThreadChannel);
+	if (
+		"isThread" in target &&
+		"name" in target &&
+		typeof target.name === "string" &&
+		"id" in target &&
+		typeof target.id === "string"
+	) {
+		return formatChannelMention({ id: target.id, name: target.name });
 	}
 	if ("id" in target) {
 		return formatAuditValue(target.id);

@@ -4,15 +4,13 @@ import type { Server } from "node:http";
 import { registerHttpHandlers } from "./handlers/http.js";
 import { getConfig } from "./services/config.js";
 import { logger } from "./services/logger.js";
+import { startWebsocket, stopWebsocket } from "./services/websocket.js";
 
 const app = express();
 let server: Server | undefined;
 
 app.disable("x-powered-by");
 app.disable("etag");
-app.use(express.json({ limit: "25mb" }));
-app.use(express.urlencoded({ limit: "25mb", extended: false }));
-
 export function startApp(): Promise<void> {
 	if (server) {
 		return Promise.resolve();
@@ -23,6 +21,7 @@ export function startApp(): Promise<void> {
 	return new Promise((resolve, reject) => {
 		const httpServer = app.listen(port, () => {
 			server = httpServer;
+			startWebsocket(httpServer);
 			logger.info("HTTP", "HTTP server listening", { port });
 			resolve();
 		});
@@ -33,6 +32,7 @@ export function startApp(): Promise<void> {
 export function stopApp(): Promise<void> {
 	const httpServer = server;
 	server = undefined;
+	stopWebsocket();
 	if (!httpServer) {
 		return Promise.resolve();
 	}

@@ -8,7 +8,7 @@ import {
 	userMention,
 } from "discord.js";
 
-import { sendGuildMessage } from "../helpers/guildHelper.js";
+import { isActiveGuild, sendGuildMessage } from "../helpers/guild.js";
 import type { GuildMemberStateDocument } from "../models/guildMemberState.js";
 import GuildMemberStateModel from "../models/guildMemberState.js";
 import { getCommandId } from "./commandLoader.js";
@@ -66,7 +66,7 @@ export async function addVoiceRegionLock({
 
 export async function removeVoiceRegionLock(guild: Guild, userId: string): Promise<boolean> {
 	const storedMemberState = await getGuildMemberState(guild.id, userId);
-	if (!storedMemberState?.voiceRegionLock) {
+	if (!isActiveGuild(guild) || !storedMemberState?.voiceRegionLock) {
 		return false;
 	}
 
@@ -127,6 +127,7 @@ async function handleVoiceRegionLockDisable({
 	channelId: string;
 	reason: string;
 }): Promise<void> {
+	if (!isActiveGuild(guild)) return;
 	logger.warn("DISCORD", "Removed voice region lock because it cannot be processed", {
 		guildId: guild.id,
 		userId,
@@ -151,12 +152,13 @@ async function handleVoiceRegionLockDisable({
 
 export async function handleVoiceRegionState(oldState: VoiceState, newState: VoiceState): Promise<void> {
 	const member = newState.member ?? oldState.member;
-	if (!member || member.user.bot) {
+	if (!member || member.user.bot || !isActiveGuild(newState.guild)) {
 		return;
 	}
 
 	try {
 		const storedMemberState = await getGuildMemberState(newState.guild.id, member.id);
+		if (!isActiveGuild(newState.guild)) return;
 		const lock = storedMemberState?.voiceRegionLock;
 		if (!lock) {
 			return;
@@ -191,6 +193,7 @@ export async function handleVoiceRegionState(oldState: VoiceState, newState: Voi
 		}
 
 		const locks = await getVoiceRegionLocks(newState.guild);
+		if (!isActiveGuild(newState.guild)) return;
 
 		if (joinedLockedChannel) {
 			if (
@@ -203,6 +206,7 @@ export async function handleVoiceRegionState(oldState: VoiceState, newState: Voi
 			const previousRegion = channel.rtcRegion ?? "automatic";
 			lock.fallbackRegion = channel.rtcRegion;
 			await channel.setRTCRegion(lock.region);
+			if (!isActiveGuild(newState.guild)) return;
 			await storedMemberState.save();
 			logger.info("DISCORD", "Voice channel region locked", {
 				guildId: newState.guild.id,
@@ -222,6 +226,7 @@ export async function handleVoiceRegionState(oldState: VoiceState, newState: Voi
 			const fallbackState = (await getVoiceRegionLockStates(newState.guild.id, channel.id)).find(
 				(state) => state.voiceRegionLock?.fallbackRegion,
 			);
+			if (!isActiveGuild(newState.guild)) return;
 			if (!fallbackState?.voiceRegionLock?.fallbackRegion) {
 				return;
 			}
@@ -229,6 +234,7 @@ export async function handleVoiceRegionState(oldState: VoiceState, newState: Voi
 			const fallbackRegion = fallbackState.voiceRegionLock.fallbackRegion;
 			const previousRegion = channel.rtcRegion ?? "automatic";
 			await channel.setRTCRegion(fallbackRegion);
+			if (!isActiveGuild(newState.guild)) return;
 			fallbackState.voiceRegionLock.fallbackRegion = null;
 			await fallbackState.save();
 			logger.info("DISCORD", "Voice channel region restored", {

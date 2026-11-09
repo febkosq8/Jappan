@@ -12,3 +12,9 @@ pnpm run format:check  # Check TypeScript formatting
 ```
 
 There is no automated test script yet. Validate changes with `pnpm run typecheck`, `pnpm run build`, and focused manual checks.
+
+See [HTTP routes and OpenAPI](./HTTP_ROUTES.md) for route registration, Swagger documentation, and compatibility notes.
+
+## Guild Data Access
+
+Use names that make the source clear: `getClientGuild` and `getClientGuilds` read from the Discord client; `getGuildData` and `getGuildDataList` read persisted guild data from MongoDB. Keep guild fetching in `src/helpers/guild.ts` and use `hasGuildData` when only checking whether a database record exists.

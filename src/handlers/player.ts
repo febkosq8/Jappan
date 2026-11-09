@@ -1,13 +1,23 @@
 import { Player } from "discord-player";
 
 import { formatGuild } from "../helpers/discord.js";
-import { updatePlayerQueueMessage } from "../helpers/player.js";
+import {
+	closeDisconnectedQueue,
+	isQueueDisconnected,
+	updatePlayerQueueMessage,
+	type PlayerQueue,
+} from "../helpers/player.js";
+import { enrichTracksMetadata } from "../helpers/trackMetadata.js";
 import { getConfig } from "../services/config.js";
 import { logger } from "../services/logger.js";
+import { endPlayerSession, notifyPlayerChanged } from "../services/playerWebsocket.js";
 
+/** How long a destroyed voice connection gets to be handled normally before the session is closed. */
+const CONNECTION_LOST_GRACE_MS = 5000;
 export function registerPlayerHandlers(player: Player): void {
 	registerPlayerErrorHandlers(player);
 	registerPlayerStatusHandlers(player);
+	registerPlayerWebsocketHandlers(player);
 	if (getConfig("PLAYER_DEBUG")) {
 		registerPlayerDebugHandlers(player);
 	}
@@ -37,15 +47,18 @@ function registerPlayerStatusHandlers(player: Player): void {
 	const events = player.events;
 
 	events.on("playerStart", (queue, track) => {
+		void enrichTracksMetadata([track, ...queue.tracks.toArray()]);
 		updatePlayerQueueMessage({ queue, content: `▶️ Started playing: **${track.title}**` });
 	});
 	events.on("playerSkip", (queue, track, reason, description) => {
 		updatePlayerQueueMessage({ queue, content: `⚠️ Skipping: **${track.title}** (${description || reason})` });
 	});
 	events.on("audioTrackAdd", (queue, track) => {
+		void enrichTracksMetadata([track]);
 		updatePlayerQueueMessage({ queue, content: `🎵 Track queued: **${track.title}**` });
 	});
 	events.on("audioTracksAdd", (queue, tracks) => {
+		void enrichTracksMetadata(tracks);
 		updatePlayerQueueMessage({ queue, content: `🎶 ${tracks.length} tracks queued.` });
 	});
 	events.on("emptyQueue", (queue) => {
@@ -59,6 +72,42 @@ function registerPlayerStatusHandlers(player: Player): void {
 	});
 }
 
+/** Pushes every change a web player can show to the people watching the session. */
+function registerPlayerWebsocketHandlers(player: Player): void {
+	const events = player.events;
+	// Repeat, shuffle, seek and lock raise no queue event; the shared player actions notify for those
+	const changeEvents = [
+		"playerStart",
+		"playerFinish",
+		"playerSkip",
+		"playerPause",
+		"playerResume",
+		"volumeChange",
+		"audioTrackAdd",
+		"audioTracksAdd",
+		"audioTrackRemove",
+		"audioTracksRemove",
+		"emptyQueue",
+		"emptyChannel",
+		"channelPopulate",
+		"voiceStateUpdate",
+		"connection",
+		"disconnect",
+	] as const;
+	for (const eventName of changeEvents) {
+		events.on(eventName, (queue: PlayerQueue) => notifyPlayerChanged(queue));
+	}
+	events.on("queueDelete", (queue) => endPlayerSession(queue));
+	events.on("connectionDestroyed", (queue: PlayerQueue) => {
+		// Discord normally reports the bot leaving a moment later and the queue is deleted. If that never happens
+		// the session would stay open with nobody playing, so it is closed once the connection is still gone.
+		setTimeout(() => {
+			if (!queue.deleted && isQueueDisconnected(queue)) {
+				closeDisconnectedQueue(queue);
+			}
+		}, CONNECTION_LOST_GRACE_MS).unref();
+	});
+}
 function registerPlayerDebugHandlers(player: Player): void {
 	const events = player.events;
 

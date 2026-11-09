@@ -1,12 +1,13 @@
 import type { ApplicationCommand } from "discord.js";
-import { Collection } from "discord.js";
+import { Collection, PermissionsBitField } from "discord.js";
 
-import type { BotCommand } from "../helpers/command.js";
+import type { BotCommand, BotCommandData } from "../helpers/command.js";
 import { isBotCommand } from "../helpers/command.js";
 import about from "../commands/about.js";
 import auditlog from "../commands/auditlog.js";
 import clear from "../commands/clear.js";
 import doppelganger from "../commands/doppelganger.js";
+import admin from "../commands/guildCommands/admin.js";
 import help from "../commands/help.js";
 import leaderboard from "../commands/leaderboard.js";
 import level from "../commands/level.js";
@@ -17,9 +18,6 @@ import play from "../commands/play.js";
 import playlist from "../commands/playlist.js";
 import soundboard from "../commands/soundboard.js";
 import warn from "../commands/warn.js";
-import adminBot from "../commands/guildCommands/adminBot.js";
-import adminDeploy from "../commands/guildCommands/adminDeploy.js";
-import adminGuild from "../commands/guildCommands/adminGuild.js";
 export type { BotCommand, BotCommandContext, BotCommandData, CommandCategory } from "../helpers/command.js";
 
 const globalCommandModules: readonly unknown[] = [
@@ -38,7 +36,7 @@ const globalCommandModules: readonly unknown[] = [
 	soundboard,
 	warn,
 ];
-const guildCommandModules: readonly unknown[] = [adminBot, adminDeploy, adminGuild];
+const guildCommandModules: readonly unknown[] = [admin];
 
 let loadedCommands: Collection<string, BotCommand> | undefined;
 let loadedGlobalCommands: Collection<string, BotCommand> | undefined;
@@ -88,6 +86,20 @@ export function getGlobalCommands(): Collection<string, BotCommand> {
 	}
 
 	return loadedGlobalCommands;
+}
+
+export function getRequiredGlobalBotPermissions(): PermissionsBitField {
+	const permissions = new PermissionsBitField();
+	const addCommandPermissions = (command: BotCommandData): void => {
+		permissions.add(...(command.requiredBotPermissions ?? []));
+		for (const subcommand of command.subCommands ?? []) {
+			addCommandPermissions(subcommand);
+		}
+	};
+	for (const command of getGlobalCommands().values()) {
+		addCommandPermissions(command.commandData);
+	}
+	return permissions;
 }
 
 export function getGuildCommands(): Collection<string, BotCommand> {

@@ -30,7 +30,7 @@ const userPlaylistSchema = new Schema(
 		},
 	},
 	{
-		collection: "userplaylists",
+		collection: "userPlaylists",
 		timestamps: true,
 		strict: "throw",
 	},

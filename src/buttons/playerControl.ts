@@ -1,15 +1,27 @@
 import { MessageFlags } from "discord.js";
-import type { QueueRepeatMode } from "discord-player";
 
 import { parseButtonCustomId } from "../helpers/button.js";
+import { formatUser } from "../helpers/discord.js";
 import {
 	createPlayerControls,
 	createPlayerEmbed,
-	getNextRepeatMode,
-	updatePlayerQueueMessage,
+	getPlayerStatusDetails,
+	type PlayerQueueMetadata,
 } from "../helpers/player.js";
+import {
+	pausePlayer,
+	playPreviousTrack,
+	resumePlayer,
+	setRepeat,
+	setSessionLocked,
+	setShuffle,
+	skipTrack,
+	stopPlayer,
+	type PlayerActionResult,
+} from "../helpers/playerActions.js";
 import { splitString } from "../helpers/string.js";
 import { getPlayer } from "../services/player.js";
+import type { PlayerActor } from "../services/playerAccess.js";
 import type { ButtonModule } from "../services/buttonLoader.js";
 
 const button: ButtonModule = {
@@ -36,74 +48,61 @@ const button: ButtonModule = {
 		}
 
 		const action = parseButtonCustomId(interaction.customId).get("ACTION");
-		const queue = getPlayer().queues.get(interaction.guildId);
+		const queue = getPlayer().nodes.get<PlayerQueueMetadata>(interaction.guildId);
 		if (!queue) {
 			await interaction.reply({ content: "⛔ There is no active player queue.", flags: MessageFlags.Ephemeral });
 			return;
 		}
 
+		const actor: PlayerActor = {
+			userId: interaction.user.id,
+			username: interaction.user.username,
+			source: "discord",
+			isAdmin: false,
+			inVoiceChannel: true,
+		};
+		const context = { queue, actor };
+		const reportRefusal = async (result: PlayerActionResult): Promise<void> => {
+			if (!result.success) {
+				await interaction.followUp({ content: `⛔ ${result.error}.`, flags: MessageFlags.Ephemeral });
+			}
+		};
 		if (action === "pause") {
 			await interaction.deferUpdate();
-			if (!queue.currentTrack) {
-				return;
-			}
-			queue.node.setPaused(!queue.node.isPaused());
-			updatePlayerQueueMessage({ queue, content: "" });
+			await reportRefusal(queue.node.isPaused() ? resumePlayer(context) : pausePlayer(context));
 			return;
 		}
-
 		if (action === "previous") {
 			await interaction.deferUpdate();
-			if (queue.node.isPaused() || !queue.history.previousTrack) {
-				return;
-			}
-			await queue.history.previous();
-			updatePlayerQueueMessage({ queue, content: "" });
+			await reportRefusal(await playPreviousTrack(context));
 			return;
 		}
-
 		if (action === "skip") {
 			await interaction.deferUpdate();
-			if (queue.node.isPaused()) {
-				return;
-			}
-			queue.node.skip();
-			await updatePlayerQueueMessage({ queue, content: "" });
+			await reportRefusal(skipTrack(context));
 			return;
 		}
-
 		if (action === "repeat") {
 			await interaction.deferUpdate();
-			const nextRepeatMode = getNextRepeatMode(queue.repeatMode as QueueRepeatMode);
-			queue.setRepeatMode(nextRepeatMode);
-			updatePlayerQueueMessage({ queue, content: "" });
+			await reportRefusal(setRepeat(context));
 			return;
 		}
-
 		if (action === "shuffle") {
 			await interaction.deferUpdate();
-			queue.toggleShuffle();
-			queue.metadata.shuffle = queue.isShuffling;
-			updatePlayerQueueMessage({ queue, content: "" });
+			await reportRefusal(setShuffle(context));
 			return;
 		}
-
+		if (action === "lock") {
+			await interaction.deferUpdate();
+			await reportRefusal(setSessionLocked({ ...context, locked: !queue.metadata.locked }));
+			return;
+		}
 		if (action === "stop") {
-			queue.delete();
-			await interaction.update({
-				embeds: [
-					createPlayerEmbed({
-						title: "⏹️ Player stopped",
-						description: "Playback has been stopped.",
-						color: "Blue",
-						requestedBy: queue.metadata.requestedByDisplay,
-					}),
-				],
-				components: [],
-			});
+			// Stopping replaces this message with the "Player stopped" embed
+			await interaction.deferUpdate();
+			await reportRefusal(await stopPlayer(context));
 			return;
 		}
-
 		const renderQueuePage = async (requestedPage: number): Promise<void> => {
 			const tracks = queue.tracks.toArray();
 			const queueBody = tracks.length
@@ -118,16 +117,19 @@ const button: ButtonModule = {
 			await interaction.update({
 				embeds: [
 					createPlayerEmbed({
+						...getPlayerStatusDetails(queue),
 						title: `🎵 Current queue (${page + 1}/${queuePages.length})`,
 						description: `▶️ Now playing: **${queue.currentTrack?.title ?? "Nothing"}**\n\n${queuePages[page] ?? "No tracks are waiting in the queue."}`,
 						color: "Blue",
-						requestedBy: queue.metadata.requestedByDisplay,
+						requestedBy: formatUser(queue.metadata.owner),
 						footerText: `Page ${page + 1}/${queuePages.length}`,
 						...(queue.currentTrack?.thumbnail ? { thumbnail: queue.currentTrack.thumbnail } : {}),
 					}),
 				],
 				components: [
 					...createPlayerControls({
+						sessionId: queue.metadata.sessionId,
+						locked: Boolean(queue.metadata.locked),
 						queueView: true,
 						queueSize: queue.tracks.size,
 						queuePage: page,
@@ -150,6 +152,7 @@ const button: ButtonModule = {
 				await interaction.update({
 					embeds: [
 						createPlayerEmbed({
+							...getPlayerStatusDetails(queue),
 							title: "🎵 Now playing",
 							description: currentTrack
 								? queue.node.isPaused()
@@ -157,7 +160,7 @@ const button: ButtonModule = {
 									: "Currently playing."
 								: "No track is currently playing.",
 							color: "Blue",
-							requestedBy: queue.metadata.requestedByDisplay,
+							requestedBy: formatUser(queue.metadata.owner),
 							...(currentTrack?.thumbnail ? { thumbnail: currentTrack.thumbnail } : {}),
 							...(currentTrack?.source ? { source: currentTrack.source } : {}),
 							queueSize: queue.tracks.size,
@@ -171,6 +174,8 @@ const button: ButtonModule = {
 					],
 					components: [
 						...createPlayerControls({
+							sessionId: queue.metadata.sessionId,
+							locked: Boolean(queue.metadata.locked),
 							queueSize: queue.tracks.size,
 							paused: queue.node.isPaused(),
 							hasCurrentTrack: Boolean(queue.currentTrack),

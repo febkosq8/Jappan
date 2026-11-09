@@ -2,6 +2,7 @@ import "dotenv/config";
 import { startApp } from "./app.js";
 import { startBot as startDiscordBot } from "./bot.js";
 import { getBotVersion } from "./helpers/utils.js";
+import { initializeAuth } from "./services/auth.js";
 import { getConfig, loadConfig } from "./services/config.js";
 import { connectDatabase } from "./services/database.js";
 import { logger } from "./services/logger.js";
@@ -36,6 +37,7 @@ export async function startBot(): Promise<void> {
 	});
 	await startApp();
 	await connectDatabase();
+	await initializeAuth();
 	await startDiscordBot();
 }
 

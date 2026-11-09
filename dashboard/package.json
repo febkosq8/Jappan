@@ -1,7 +1,7 @@
 {
 	"name": "jappan-dashboard",
 	"private": false,
-	"version": "2.0.7",
+	"version": "2.1.0",
 	"description": "Jappan - Dashboard",
 	"type": "module",
 	"author": {
@@ -24,13 +24,17 @@
 		"build": "vite build"
 	},
 	"dependencies": {
-		"@febkosq8/arc": "0.8.3",
+		"@febkosq8/arc": "0.8.7",
+		"@tanstack/react-form": "1.33.5",
 		"@tanstack/react-query": "5.105.3",
 		"axios": "1.21.0",
+		"better-auth": "1.7.18",
 		"react": "19.3.1",
 		"react-dom": "19.3.1",
 		"react-icons": "5.7.0",
-		"react-router-dom": "7.18.5"
+		"react-router-dom": "7.18.5",
+		"socket.io-client": "4.8.4",
+		"sonner": "2.0.8"
 	},
 	"devDependencies": {
 		"@tailwindcss/vite": "4.3.4",

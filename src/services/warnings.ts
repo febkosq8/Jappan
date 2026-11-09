@@ -1,6 +1,6 @@
 import type { GuildDocument } from "../models/guild.js";
 import GuildMemberStateModel, { type GuildMemberStateDocument } from "../models/guildMemberState.js";
-import { getGuildSettings } from "./guild.js";
+import { getOrCreateGuildData } from "../helpers/guild.js";
 import { getGuildMemberState, getOrCreateGuildMemberState } from "./guildMemberState.js";
 
 export interface WarningSettings {
@@ -28,7 +28,7 @@ export async function setWarningSettings({
 		throw new Error("Ban threshold must be greater than the timeout threshold");
 	}
 
-	const storedGuildData = await getGuildSettings({ guildId, guildName });
+	const storedGuildData = await getOrCreateGuildData({ guildId, guildName });
 	storedGuildData.warnings.timeoutThreshold = timeoutThreshold;
 	storedGuildData.warnings.timeoutDurationHours = timeoutDurationHours;
 	storedGuildData.warnings.banThreshold = banThreshold;
@@ -42,7 +42,7 @@ export async function setWarningSettings({
 }
 
 export async function getWarningSettings(guildId: string, guildName: string): Promise<WarningSettings> {
-	const storedGuildData = await getGuildSettings({ guildId, guildName });
+	const storedGuildData = await getOrCreateGuildData({ guildId, guildName });
 	return {
 		guildId: storedGuildData.guildId,
 		guildName: storedGuildData.guildName,
