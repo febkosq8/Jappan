@@ -32,6 +32,7 @@ import APIHandler, { type PlayerControlAction, type PlayerSession } from "@jappa
 import { sessionQueryKey } from "@jappan/handlers/auth";
 import usePlayerWebsocket from "@jappan/handlers/usePlayerWebsocket";
 import { WebsocketRequestError } from "@jappan/handlers/websocket";
+import useDocumentTitle, { formatTitle } from "@jappan/helpers/useDocumentTitle";
 
 // How often the player state is refreshed over HTTP while the WebSocket is not connected, in milliseconds
 const POLL_INTERVAL_MS = 5000;
@@ -119,6 +120,9 @@ export default function PlayerView() {
 		refetchInterval: (query) =>
 			query.state.error ? false : socketConnected ? KEEPALIVE_INTERVAL_MS : POLL_INTERVAL_MS,
 	});
+
+	// The session ID joins the title once the session has loaded
+	useDocumentTitle(formatTitle(sessionQuery.data ? `Web Player: ${sessionId}` : "Web Player"));
 
 	const endSession = () => {
 		setEnded(true);
@@ -261,8 +265,8 @@ export default function PlayerView() {
 					<Card.Content className="relative flex h-full flex-col justify-center p-4!">
 						<RefreshIndicator active={refreshing} className="absolute right-4 top-4" />
 						<p className="text-sm font-semibold text-muted-foreground">Voice channel</p>
-						<h2 className="flex items-center gap-2 text-xl font-bold tracking-tight">
-							<FiVolume2 className="size-5 shrink-0 text-primary" aria-hidden="true" />
+						<h2 className="flex items-start gap-2 text-xl font-bold tracking-tight">
+							<FiVolume2 className="mt-1.25 size-5 shrink-0 text-primary" aria-hidden="true" />
 							<span className="wrap-break-word">
 								{session.channel ? (
 									<ExternalTextLink

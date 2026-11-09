@@ -5,6 +5,7 @@ import axios from "axios";
 import APIHandler, { type UserGuild } from "@jappan/handlers/APIHandler";
 import { AccessRedirect } from "@jappan/components/AdminRoute";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
+import useDocumentTitle, { formatTitle } from "@jappan/helpers/useDocumentTitle";
 
 function Unavailable() {
 	return <span className="text-muted-foreground">Unavailable</span>;
@@ -91,7 +92,7 @@ const columns: TableColumnDef<UserGuild>[] = [
 ];
 
 export default function UserListGuilds() {
-	document.title = "My Guilds";
+	useDocumentTitle(formatTitle("My Guilds"));
 	const guildsQuery = useQuery({
 		queryKey: ["user", "list-guilds"],
 		queryFn: APIHandler.getUserGuilds,

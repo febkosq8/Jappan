@@ -17,6 +17,7 @@ import {
 	BotPermissionsPanel,
 	CommandPermissionsPanel,
 } from "@jappan/components/guild/panels";
+import useDocumentTitle, { formatTitle } from "@jappan/helpers/useDocumentTitle";
 
 const guildSections = [
 	{ id: "guild-overview", label: "Overview" },
@@ -78,7 +79,6 @@ function GuildDetails({ guild }: { guild: UserGuildDetails }) {
 
 export default function UserViewGuild() {
 	const { guildId = "" } = useParams();
-	document.title = guildId ? `View Guild : ${guildId}` : "View Guild";
 	const navigate = useNavigate();
 	const validGuildId = guildIdPattern.test(guildId);
 	const guildQuery = useQuery({
@@ -86,6 +86,8 @@ export default function UserViewGuild() {
 		queryFn: () => APIHandler.getUserGuild(guildId),
 		enabled: validGuildId,
 	});
+	// The ID joins the title once the guild has loaded
+	useDocumentTitle(formatTitle(guildQuery.isSuccess ? `View Guild: ${guildId}` : "View Guild"));
 
 	const guildNotFound =
 		guildQuery.isError && axios.isAxiosError(guildQuery.error) && guildQuery.error.response?.status === 404;

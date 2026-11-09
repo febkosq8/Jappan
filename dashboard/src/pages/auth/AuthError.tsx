@@ -4,6 +4,7 @@ import { safeCallbackPath } from "@jappan/handlers/authRedirect";
 import { useEffect, useRef, useState } from "react";
 import { FiAlertTriangle, FiArrowLeft, FiLogIn } from "react-icons/fi";
 import { Navigate, useLocation, useSearchParams } from "react-router-dom";
+import useDocumentTitle, { formatTitle } from "@jappan/helpers/useDocumentTitle";
 
 const authErrorMessages: Record<string, string> = {
 	USER_BLOCKED: "This account is blocked from signing in.\nContact support if you believe this is a mistake.",
@@ -52,7 +53,7 @@ export default function AuthError() {
 	const title = special?.title ?? "We couldn't sign you in";
 	const message =
 		special?.message ?? (authErrorMessages[errorCode] ?? "Discord sign-in couldn't be completed. Please try again later.");
-	document.title = `${title} - Jappan`;
+	useDocumentTitle(formatTitle(title));
 
 	const willRedirect =
 		(unauthenticated || sessionUnavailable) &&

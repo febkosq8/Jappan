@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import APIHandler, { type AdminGuild } from "@jappan/handlers/APIHandler";
 import { AccessRedirect, accessErrorStatus } from "@jappan/components/AdminRoute";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
+import useDocumentTitle, { formatTitle } from "@jappan/helpers/useDocumentTitle";
 
 function Unavailable() {
 	return <span className="text-muted-foreground">Unavailable</span>;
@@ -154,7 +155,7 @@ const columns: TableColumnDef<AdminGuild>[] = [
 ];
 
 export default function AdminListGuilds() {
-	document.title = "Admin - List Guilds";
+	useDocumentTitle(formatTitle("All Guilds", "Admin"));
 	const guildsQuery = useQuery({
 		queryKey: ["admin", "list-guilds"],
 		queryFn: APIHandler.getAdminGuilds,

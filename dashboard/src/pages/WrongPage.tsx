@@ -1,6 +1,8 @@
 import { PillLink } from "@febkosq8/arc";
+import useDocumentTitle, { formatTitle } from "@jappan/helpers/useDocumentTitle";
 
 export default function WrongPage() {
+	useDocumentTitle(formatTitle("Page Not Found"));
 	return (
 		<main className="flex min-h-[calc(100dvh-4rem)] flex-col items-center justify-center px-4 text-center">
 			<p className="text-7xl font-bold tracking-tight text-primary">404</p>

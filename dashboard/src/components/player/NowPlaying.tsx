@@ -94,7 +94,7 @@ export default function NowPlaying({
 							<Tag variant={paused ? "warning" : "success"} size="sm">
 								{session.playerState}
 							</Tag>
-							<h2 className="mt-2 text-2xl leading-tight font-semibold wrap-break-words">
+							<h2 className="mt-2 text-xl leading-tight font-semibold wrap-break-words">
 								<TrackTitle track={track} />
 							</h2>
 							{track.author && (

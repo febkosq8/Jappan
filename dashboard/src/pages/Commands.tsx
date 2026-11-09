@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import APIHandler, { type GlobalCommand } from "@jappan/handlers/APIHandler";
+import useDocumentTitle, { formatTitle } from "@jappan/helpers/useDocumentTitle";
 
 function CopyCommandButton({ command }: { command: GlobalCommand }) {
 	const copyCommand = async () => {
@@ -173,7 +174,7 @@ function groupCommands(commands: GlobalCommand[]) {
 }
 
 export default function Commands() {
-	document.title = "Commands - Jappan";
+	useDocumentTitle(formatTitle("Commands"));
 	const [searchParams, setSearchParams] = useSearchParams();
 	const category = searchParams.get("category") || "all";
 	const commandsQuery = useQuery({ queryKey: ["public", "commands"], queryFn: APIHandler.getGlobalCommands });

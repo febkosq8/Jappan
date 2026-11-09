@@ -9,6 +9,7 @@ import { AccessRedirect, accessErrorStatus } from "@jappan/components/AdminRoute
 import ExternalTextLink from "@jappan/components/ExternalTextLink";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import APIHandler, { type AdminBotPlayerSession } from "@jappan/handlers/APIHandler";
+import useDocumentTitle, { formatTitle } from "@jappan/helpers/useDocumentTitle";
 
 function HealthCard({ label, healthy }: { label: string; healthy: boolean | undefined }) {
 	return (
@@ -134,7 +135,7 @@ function PlayerSession({ session }: { session: AdminBotPlayerSession }) {
 }
 
 export default function ManageBot() {
-	document.title = "Admin - Manage Bot";
+	useDocumentTitle(formatTitle("Manage Bot", "Admin"));
 	const queryClient = useQueryClient();
 	const [confirmStop, setConfirmStop] = useState(false);
 	const [confirmUndeploy, setConfirmUndeploy] = useState(false);
