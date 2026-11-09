@@ -12,6 +12,8 @@ import { resolvePlayerQuery } from "../services/playerSearch.js";
 import { formatGuild } from "./discord.js";
 import {
 	getNextRepeatMode,
+	closeDisconnectedQueue,
+	isQueueDisconnected,
 	markPlayerStatusMessageStopped,
 	shuffleQueueIfEnabled,
 	updatePlayerQueueMessage,
@@ -41,6 +43,11 @@ export function refuse(status: 403 | 409 | 422 | 423 | 503, error: string): Play
 /** A session can only be changed while it exists, from its voice channel, and unless locked by someone else. */
 function getChangeRefusal({ queue, actor }: PlayerActionContext): PlayerActionResult | undefined {
 	if (queue.deleted) {
+		return refuse(409, "This session has ended");
+	}
+	// The bot left voice but the queue is still around; end it so every viewer is told
+	if (isQueueDisconnected(queue)) {
+		closeDisconnectedQueue(queue);
 		return refuse(409, "This session has ended");
 	}
 	if (!actor.inVoiceChannel) {

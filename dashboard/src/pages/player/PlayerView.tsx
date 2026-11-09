@@ -420,19 +420,31 @@ export default function PlayerView() {
 				</Card>
 			)}
 			{websocket.status === "disconnected" && (
-				<Card hoverable={false} className="mb-4 rounded-md border-warning">
+				<Card
+					hoverable={false}
+					className={`mb-4 rounded-md ${connectionState === "disconnected" ? "border-destructive" : "border-warning"}`}
+				>
 					<Card.Content
 						role="status"
 						className="flex items-center justify-start gap-3 p-4! text-left text-sm"
 					>
-						<FiWifiOff className="size-5 shrink-0 text-warning" aria-hidden="true" />
-						<span>
-							Live connection lost. Reconnecting…
-							<br />
-							{sessionQuery.isError
-								? "Controls are paused until it is back. Showing the last loaded data."
-								: "Controls are paused until it is back. The player still refreshes every few seconds."}
-						</span>
+						<FiWifiOff
+							className={`size-5 shrink-0 ${connectionState === "disconnected" ? "text-destructive" : "text-warning"}`}
+							aria-hidden="true"
+						/>
+						{connectionState === "disconnected" ? (
+							<span>
+								Disconnected from the player.
+								<br />
+								Controls are paused. Showing the last loaded data.
+							</span>
+						) : (
+							<span>
+								Live connection lost. Reconnecting…
+								<br />
+								Controls are paused until it is back. The player still refreshes every few seconds.
+							</span>
+						)}
 					</Card.Content>
 				</Card>
 			)}

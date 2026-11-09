@@ -92,6 +92,25 @@ export function shuffleQueueIfEnabled(queue: {
 		queue.tracks.shuffle();
 	}
 }
+/**
+ * True when the bot is no longer connected to voice. discord-player normally deletes the queue then, but only if
+ * Discord's voice-state event reaches it in the right state, so a queue can outlive its connection.
+ */
+export function isQueueDisconnected(queue: { dispatcher: { isDestroyed(): boolean } | null }): boolean {
+	return queue.dispatcher === null || queue.dispatcher.isDestroyed();
+}
+/**
+ * Ends a session whose bot already left voice but whose queue was never deleted. Deleting the queue makes the web
+ * player hear that the session ended, and the Discord message is updated the way a normal disconnect does.
+ */
+export function closeDisconnectedQueue(queue: PlayerQueue): void {
+	if (queue.deleted) {
+		return;
+	}
+	logger.info("PLAYER", "Closing a session whose voice connection ended", { guild: formatGuild(queue.guild) });
+	void updatePlayerQueueMessage({ queue, content: "👋 Playback disconnected.", controls: false });
+	queue.delete();
+}
 export function getNextRepeatMode(repeatMode: QueueRepeatMode): QueueRepeatMode {
 	return (repeatMode === 3 ? 0 : repeatMode + 1) as QueueRepeatMode;
 }

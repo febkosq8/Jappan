@@ -1,12 +1,19 @@
 import { Player } from "discord-player";
 
 import { formatGuild } from "../helpers/discord.js";
-import { updatePlayerQueueMessage, type PlayerQueue } from "../helpers/player.js";
+import {
+	closeDisconnectedQueue,
+	isQueueDisconnected,
+	updatePlayerQueueMessage,
+	type PlayerQueue,
+} from "../helpers/player.js";
 import { enrichTracksMetadata } from "../helpers/trackMetadata.js";
 import { getConfig } from "../services/config.js";
 import { logger } from "../services/logger.js";
 import { endPlayerSession, notifyPlayerChanged } from "../services/playerWebsocket.js";
 
+/** How long a destroyed voice connection gets to be handled normally before the session is closed. */
+const CONNECTION_LOST_GRACE_MS = 5000;
 export function registerPlayerHandlers(player: Player): void {
 	registerPlayerErrorHandlers(player);
 	registerPlayerStatusHandlers(player);
@@ -91,6 +98,15 @@ function registerPlayerWebsocketHandlers(player: Player): void {
 		events.on(eventName, (queue: PlayerQueue) => notifyPlayerChanged(queue));
 	}
 	events.on("queueDelete", (queue) => endPlayerSession(queue));
+	events.on("connectionDestroyed", (queue: PlayerQueue) => {
+		// Discord normally reports the bot leaving a moment later and the queue is deleted. If that never happens
+		// the session would stay open with nobody playing, so it is closed once the connection is still gone.
+		setTimeout(() => {
+			if (!queue.deleted && isQueueDisconnected(queue)) {
+				closeDisconnectedQueue(queue);
+			}
+		}, CONNECTION_LOST_GRACE_MS).unref();
+	});
 }
 function registerPlayerDebugHandlers(player: Player): void {
 	const events = player.events;

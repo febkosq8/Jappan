@@ -1,5 +1,5 @@
 import { formatGuild } from "../helpers/discord.js";
-import type { PlayerQueue } from "../helpers/player.js";
+import { closeDisconnectedQueue, isQueueDisconnected, type PlayerQueue } from "../helpers/player.js";
 import { getPlayerSessionState, type PlayerSessionState } from "../helpers/playerSessionState.js";
 import type { WebsocketResult, WebsocketServer, WebsocketSocket } from "../helpers/websocket.js";
 import { logger } from "./logger.js";
@@ -168,6 +168,10 @@ export async function unsubscribeFromPlayerSession({
 }
 
 async function refreshPlayerRoom({ sessionId, queue }: { sessionId: string; queue: PlayerQueue }): Promise<void> {
+	// A missed disconnect event must not leave the session open for ever
+	if (!queue.deleted && isQueueDisconnected(queue)) {
+		closeDisconnectedQueue(queue);
+	}
 	if (queue.deleted) {
 		endPlayerSession(queue);
 		return;
