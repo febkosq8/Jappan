@@ -1,5 +1,6 @@
 import type { Server, Socket } from "socket.io";
 import type { AuthSession } from "../services/auth.js";
+import type { PlayerWebUser } from "../services/playerAccess.js";
 import type { PlayerSessionState } from "./playerSessionState.js";
 
 /** Path the Socket.IO server is mounted on, under the same API prefix as the HTTP routes. */
@@ -50,8 +51,8 @@ export interface ServerToClientEvents {
 
 export interface WebsocketSocketData {
 	authSession: AuthSession;
-	/** Discord account linked to the signed-in user, if any. */
-	discordAccountId: string | null;
+	/** The signed-in user; refreshed whenever the session is revalidated. */
+	user: PlayerWebUser;
 	/** Start of the current rate-limit window, in epoch milliseconds. */
 	rateWindowStartMs: number;
 	/** Events received in the current rate-limit window. */

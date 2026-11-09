@@ -11,6 +11,7 @@ import {
 } from "discord.js";
 
 import type { BotCommand, BotCommandData } from "../services/commandLoader.js";
+import { formatUser } from "../helpers/discord.js";
 import { logger } from "../services/logger.js";
 
 const commandData = {
@@ -96,7 +97,7 @@ const command: BotCommand = {
 
 		await targetUser.send({ embeds: [notification], components: [deleteButton] }).catch((error: unknown) => {
 			logger.warn("DOPPELGANGER", "Could not notify target user", {
-				user: targetUser.tag,
+				user: formatUser(targetUser),
 				userId: targetUser.id,
 				message: error instanceof Error ? error.message : String(error),
 			});

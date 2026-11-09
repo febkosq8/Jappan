@@ -1,6 +1,6 @@
 import type { Client, Guild, Message } from "discord.js";
 
-import { formatGuild } from "../helpers/discord.js";
+import { formatGuild, formatUser } from "../helpers/discord.js";
 import { getClientGuilds } from "../helpers/guild.js";
 import { getGuildCommands } from "./commandLoader.js";
 import type { Config } from "./config.js";
@@ -94,7 +94,7 @@ export async function handlePrefixMessage({
 }): Promise<void> {
 	logger.info("ADMIN", "Prefix message received", {
 		command,
-		user: `${message.author.tag} <${message.author.id}>`,
+		user: formatUser(message.author),
 		guild: message.guild ? formatGuild(message.guild) : undefined,
 		channel: message.channelId,
 	});

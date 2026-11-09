@@ -9,7 +9,7 @@ import {
 } from "../services/playerAccess.js";
 import { notifyPlayerChanged } from "../services/playerWebsocket.js";
 import { resolvePlayerQuery } from "../services/playerSearch.js";
-import { formatGuild } from "./discord.js";
+import { formatGuild, formatUser } from "./discord.js";
 import {
 	getNextRepeatMode,
 	closeDisconnectedQueue,
@@ -70,7 +70,7 @@ function logPlayerAction({ queue, actor, action }: PlayerActionContext & { actio
 		guild: formatGuild(queue.guild),
 		action,
 		source: actor.source,
-		user: actor.userId ?? actor.username,
+		user: formatUser(actor),
 	});
 }
 
@@ -299,7 +299,7 @@ export async function addTracksToQueue({
 	if (refusal) {
 		return refusal;
 	}
-	const resolvedQuery = await resolvePlayerQuery({ query, userId: actor.userId });
+	const resolvedQuery = await resolvePlayerQuery({ query, userId: actor.id });
 	if (!resolvedQuery.success) {
 		return refuse(503, "The music player is unavailable");
 	}

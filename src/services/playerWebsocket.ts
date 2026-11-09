@@ -1,4 +1,4 @@
-import { formatGuild } from "../helpers/discord.js";
+import { formatGuild, formatUser } from "../helpers/discord.js";
 import { closeDisconnectedQueue, isQueueDisconnected, type PlayerQueue } from "../helpers/player.js";
 import { getPlayerSessionState, type PlayerSessionState } from "../helpers/playerSessionState.js";
 import type { WebsocketResult, WebsocketServer, WebsocketSocket } from "../helpers/websocket.js";
@@ -7,7 +7,6 @@ import {
 	isUserInPlayerVoiceChannel,
 	playerGuildMemberRequired,
 	resolvePlayerActor,
-	toPlayerWebUser,
 	type PlayerActor,
 	type PlayerWebUser,
 } from "./playerAccess.js";
@@ -42,13 +41,6 @@ export function isSubscribedToPlayerSession({
 	return socket.rooms.has(getPlayerRoom(sessionId));
 }
 
-export function getSocketPlayerUser(socket: WebsocketSocket): PlayerWebUser {
-	return toPlayerWebUser({
-		session: socket.data.authSession,
-		discordAccountId: socket.data.discordAccountId,
-	});
-}
-
 function getRoomSockets(sessionId: string): WebsocketSocket[] {
 	const server = websocketServer;
 	const socketIds = server?.sockets.adapter.rooms.get(getPlayerRoom(sessionId));
@@ -71,16 +63,16 @@ function getRoomSockets(sessionId: string): WebsocketSocket[] {
  */
 function getCachedViewer({ queue, user }: { queue: PlayerQueue; user: PlayerWebUser }): PlayerActor {
 	return {
-		userId: user.discordAccountId,
+		id: user.id,
 		username: user.username,
 		source: "web",
 		isAdmin: user.isAdmin,
-		inVoiceChannel: user.isAdmin || isUserInPlayerVoiceChannel(queue, user.discordAccountId),
+		inVoiceChannel: user.isAdmin || isUserInPlayerVoiceChannel(queue, user.id),
 	};
 }
 
 function sendPlayerState({ queue, socket }: { queue: PlayerQueue; socket: WebsocketSocket }): void {
-	const viewer = getCachedViewer({ queue, user: getSocketPlayerUser(socket) });
+	const viewer = getCachedViewer({ queue, user: socket.data.user });
 	socket.emit("player:state", getPlayerSessionState(queue, viewer));
 }
 
@@ -140,7 +132,7 @@ export async function subscribeToPlayerSession({
 	if (!socket.rooms.has(room) && subscriptionCount >= MAX_SUBSCRIPTIONS_PER_SOCKET) {
 		return { ok: false, status: 422, error: "Too many player sessions are open on this connection" };
 	}
-	const result = await resolvePlayerActor({ queue, user: getSocketPlayerUser(socket) });
+	const result = await resolvePlayerActor({ queue, user: socket.data.user });
 	if (!result.success) {
 		return { ok: false, status: result.status, error: result.error };
 	}
@@ -150,9 +142,11 @@ export async function subscribeToPlayerSession({
 	}
 	subscribedQueues.set(sessionId, queue);
 	await socket.join(room);
-	logger.debug("WEBSOCKET", "Subscribed to player session", {
+	logger.info("WEBSOCKET", "Client subscribed to player session", {
+		socket: socket.id,
+		session: sessionId,
 		guild: formatGuild(queue.guild),
-		user: result.actor.userId ?? result.actor.username,
+		user: formatUser(result.actor),
 	});
 	return { ok: true, state: getPlayerSessionState(queue, result.actor) };
 }
@@ -182,7 +176,7 @@ async function refreshPlayerRoom({ sessionId, queue }: { sessionId: string; queu
 		return;
 	}
 	for (const socket of sockets) {
-		const result = await resolvePlayerActor({ queue, user: getSocketPlayerUser(socket) });
+		const result = await resolvePlayerActor({ queue, user: socket.data.user });
 		if (!result.success && result.status === 403) {
 			await unsubscribeFromPlayerSession({ socket, sessionId });
 			socket.emit("player:revoked", { sessionId, status: 403, error: playerGuildMemberRequired });

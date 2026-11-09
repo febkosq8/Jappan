@@ -3,12 +3,14 @@ import { fromNodeHeaders } from "better-auth/node";
 import { Server } from "socket.io";
 import { isBotConnected } from "../bot.js";
 import { registerWebsocketHandlers } from "../handlers/websocket.js";
+import { formatUser } from "../helpers/discord.js";
 import { WEBSOCKET_PATH, type WebsocketServer, type WebsocketSocket } from "../helpers/websocket.js";
 import AuthUserModel from "../models/authUser.js";
 import { getAuth, onAuthSessionEnded, type AuthSession } from "./auth.js";
 import { getConfig } from "./config.js";
 import { isDatabaseConnected } from "./database.js";
 import { logger } from "./logger.js";
+import { toPlayerWebUser } from "./playerAccess.js";
 import { stopPlayerWebsocket } from "./playerWebsocket.js";
 
 /** How often connected sessions are checked again, so signing out or suspending an account ends open sockets. */
@@ -56,8 +58,12 @@ async function authenticateSocket(socket: WebsocketSocket, next: (error?: Error)
 			return;
 		}
 		const user = await AuthUserModel.findById(session.user.id).select({ discordAccountId: 1 }).exec();
+		if (!user?.discordAccountId) {
+			next(connectError(403, "Login required"));
+			return;
+		}
 		socket.data.authSession = session;
-		socket.data.discordAccountId = user?.discordAccountId ?? null;
+		socket.data.user = toPlayerWebUser({ session, id: user.discordAccountId });
 		socket.data.rateWindowStartMs = Date.now();
 		socket.data.rateWindowCount = 0;
 		next();
@@ -82,7 +88,9 @@ function disconnectUserSockets({
 	for (const socket of server.sockets.sockets.values()) {
 		const { user, session } = socket.data.authSession;
 		if (user.id === userId && session.id !== exceptSessionId) {
-			logger.debug("WEBSOCKET", "Disconnecting socket after its session ended", { user: userId });
+			logger.debug("WEBSOCKET", "Disconnecting socket after its session ended", {
+				user: formatUser(socket.data.user),
+			});
 			socket.disconnect(true);
 		}
 	}
@@ -104,6 +112,7 @@ async function revalidateSockets(server: WebsocketServer): Promise<void> {
 					continue;
 				}
 				socket.data.authSession = session;
+				socket.data.user = toPlayerWebUser({ session, id: socket.data.user.id });
 			} catch (error: unknown) {
 				// A temporary failure must not drop everyone; the next round tries again
 				logger.warn("WEBSOCKET", "Socket session revalidation failed", {

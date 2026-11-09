@@ -7,4 +7,4 @@
 export const MAX_PLAY_QUERY_LENGTH = 200;
 
 /** Most upcoming tracks a player queue can hold. Adding more than fits is refused. */
-export const MAX_QUEUE_SIZE = 300;
+export const MAX_QUEUE_SIZE = 500;

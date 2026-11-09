@@ -107,7 +107,7 @@ function getLastChangeInfo(queue: PlayerQueue): PlayerSessionState["lastChangedB
 	if (!change) {
 		return null;
 	}
-	const changer = change.userId ? queue.guild.client.users.cache.get(change.userId) : undefined;
+	const changer = queue.guild.client.users.cache.get(change.id);
 	return {
 		username: change.username,
 		avatarUrl: changer?.displayAvatarURL() ?? null,

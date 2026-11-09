@@ -5,6 +5,7 @@ import { getClient } from "../../../../bot.js";
 import { requireAdmin, requireSession } from "../../../../handlers/auth.js";
 import { requireDiscord } from "../../../../handlers/availability.js";
 import { DISCORD_INTERACTION_TIME_LIMIT_MS } from "../../../../helpers/interaction.js";
+import { formatUser } from "../../../../helpers/discord.js";
 import { defineRouter, errorResponseSchema } from "../../../../helpers/route.js";
 import { undeployGuildCommandsGlobally } from "../../../../services/adminDeployment.js";
 import { selfKickGuilds } from "../../../../helpers/adminGuild.js";
@@ -120,7 +121,7 @@ export default defineRouter("/bot", [
 
 			guildUndeploymentInProgress = true;
 			logger.info("ADMIN", "Global guild command undeployment requested via dashboard", {
-				user: `${session.user.name} <${session.user.id}>`,
+				user: formatUser({ id: session.user.id, username: session.user.username ?? session.user.name }),
 			});
 			try {
 				const result = await undeployGuildCommandsGlobally({
@@ -133,7 +134,7 @@ export default defineRouter("/bot", [
 					timeLimitReached: result.timeLimitReached,
 				};
 				logger.info("ADMIN", "Global guild command undeployment completed via dashboard", {
-					user: `${session.user.name} <${session.user.id}>`,
+					user: formatUser({ id: session.user.id, username: session.user.username ?? session.user.name }),
 					undeployedGuildCount: responseData.undeployedGuilds.length,
 					failedGuildCount: responseData.failedGuilds.length,
 					timeLimitReached: responseData.timeLimitReached,
@@ -183,7 +184,7 @@ export default defineRouter("/bot", [
 				const invoker = { userName: session.user.name, userId: session.user.id };
 				const message = body.data.message?.trim();
 				logger.warn("ADMIN", "Self-kick requested via dashboard", {
-					user: `${invoker.userName} <${invoker.userId}>`,
+					user: formatUser({ id: invoker.userId, username: invoker.userName }),
 				});
 				const result = await selfKickGuilds({
 					config: getConfig(),
@@ -192,7 +193,7 @@ export default defineRouter("/bot", [
 					...(message ? { additionalMessage: message } : {}),
 				});
 				logger.info("ADMIN", "Dashboard self-kick completed", {
-					user: `${invoker.userName} <${invoker.userId}>`,
+					user: formatUser({ id: invoker.userId, username: invoker.userName }),
 					leftGuildCount: result.leftGuilds.length,
 					failedGuildCount: result.failedGuilds.length,
 					timeLimitReached: result.timeLimitReached,
@@ -225,7 +226,7 @@ export default defineRouter("/bot", [
 			if (!session) return response.status(401).json({ error: "Authentication required" });
 
 			logger.info("PLAYER", "Starting player health check via dashboard invocation", {
-				user: `${session.user.name} <${session.user.id}>`,
+				user: formatUser({ id: session.user.id, username: session.user.username ?? session.user.name }),
 			});
 			const healthy = await runPlayerHealthCheck();
 			return response.status(200).json({ healthy });
@@ -267,7 +268,7 @@ export default defineRouter("/bot", [
 
 			shutdownScheduled = true;
 			logger.warn("ADMIN", "Bot stop requested via dashboard", {
-				user: `${session.user.name} <${session.user.id}>`,
+				user: formatUser({ id: session.user.id, username: session.user.username ?? session.user.name }),
 			});
 			setTimeout(() => {
 				void handleShutdown("ADMIN_STOP_BOT").catch((error: unknown) => {

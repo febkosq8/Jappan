@@ -55,7 +55,7 @@ const button: ButtonModule = {
 		}
 
 		const actor: PlayerActor = {
-			userId: interaction.user.id,
+			id: interaction.user.id,
 			username: interaction.user.username,
 			source: "discord",
 			isAdmin: false,

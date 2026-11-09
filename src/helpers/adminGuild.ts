@@ -1,7 +1,7 @@
 import type { Guild, GuildMember, Invite, Role } from "discord.js";
 import { ChannelType, EmbedBuilder, PermissionFlagsBits, blockQuote } from "discord.js";
 
-import { formatChannel, formatGuild } from "./discord.js";
+import { formatChannel, formatGuild, formatUser } from "./discord.js";
 import type { SentGuildMessage } from "./guild.js";
 import {
 	beginGuildDeparture,
@@ -140,7 +140,7 @@ export async function sendGuildAdminMessage({
 		...(channelId ? { channelId } : {}),
 		details: {
 			guild: formatGuild(guild),
-			...(invoker ? { user: `${invoker.userName} <${invoker.userId}>` } : {}),
+			...(invoker ? { user: formatUser({ id: invoker.userId, username: invoker.userName }) } : {}),
 		},
 	});
 	if (!sentMessage) {
@@ -195,18 +195,17 @@ export async function kickGuild({
 	} catch (error: unknown) {
 		cancelGuildDeparture(guild);
 		logger.error("ADMIN", "Failed to leave guild", {
-			user: invoker ? `${invoker.userName} <${invoker.userId}>` : undefined,
+			user: invoker ? formatUser({ id: invoker.userId, username: invoker.userName }) : undefined,
 			guild: formatGuild(guild),
 			error,
 		});
 		return { success: false, departureMessage };
 	}
 	logger.info("ADMIN", "Bot left guild", {
-		user: invoker ? `${invoker.userName} <${invoker.userId}>` : undefined,
+		user: invoker ? formatUser({ id: invoker.userId, username: invoker.userName }) : undefined,
 		guild: formatGuild(guild),
 		messageChannelId: departureMessage?.channelId,
 		messageChannelName: departureMessage?.channelName,
-		...(invoker ?? {}),
 	});
 	return { success: true, departureMessage };
 }
@@ -251,7 +250,7 @@ export async function selfKickGuilds({
 			(result.success ? leftGuilds : failedGuilds).push(entry);
 		} catch (error: unknown) {
 			logger.error("ADMIN", "Failed to process guild during dashboard self-kick", {
-				user: `${invoker.userName} <${invoker.userId}>`,
+				user: formatUser({ id: invoker.userId, username: invoker.userName }),
 				guild: formatGuild(guild),
 				error,
 			});

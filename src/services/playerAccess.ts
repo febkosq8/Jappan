@@ -8,8 +8,7 @@ const playerAccessValidationFailed = "Player access validation failed";
 
 /** The user performing an action, from Discord or from the logged-in web user. */
 export interface PlayerActor {
-	/** Discord user ID; null only for an admin web user without a linked Discord account. */
-	readonly userId: string | null;
+	readonly id: string;
 	readonly username: string;
 	readonly source: PlayerChangeSource;
 	/** Bot admins can use any session and bypass the lock. */
@@ -19,8 +18,8 @@ export interface PlayerActor {
 }
 
 /** The session owner is the user who started it. */
-export function isPlayerSessionOwner(queue: PlayerQueue, actor: Pick<PlayerActor, "userId">): boolean {
-	return actor.userId !== null && actor.userId === queue.metadata.owner.id;
+export function isPlayerSessionOwner(queue: PlayerQueue, actor: Pick<PlayerActor, "id">): boolean {
+	return actor.id === queue.metadata.owner.id;
 }
 
 /** Changing a session needs the voice channel, and while locked only the owner and bot admins may change it. */
@@ -34,10 +33,10 @@ export function canControlPlayerSession(queue: PlayerQueue, actor: PlayerActor):
 /** Records who last changed the session, so the embed and the web player can show it. */
 export function recordPlayerChange(
 	queue: { metadata: PlayerQueueMetadata },
-	actor: Pick<PlayerActor, "userId" | "username" | "source">,
+	actor: Pick<PlayerActor, "id" | "username" | "source">,
 ): void {
 	const change: PlayerChange = {
-		userId: actor.userId,
+		id: actor.id,
 		username: actor.username,
 		source: actor.source,
 		timestampMs: Date.now(),
@@ -47,35 +46,32 @@ export function recordPlayerChange(
 
 /** The signed-in dashboard user behind a web player action. */
 export interface PlayerWebUser {
+	/** Linked Discord account ID; every dashboard account signs in with Discord, so it always has one. */
+	readonly id: string;
 	readonly username: string;
 	readonly isAdmin: boolean;
-	/** Linked Discord account; null when the account has none. */
-	readonly discordAccountId: string | null;
 }
 export type PlayerActorResult =
 	| { readonly success: true; readonly actor: PlayerActor }
 	| { readonly success: false; readonly status: 403 | 500; readonly error: string };
-export function toPlayerWebUser({
-	session,
-	discordAccountId,
-}: {
-	session: AuthSession;
-	discordAccountId: string | null;
-}): PlayerWebUser {
+export function toPlayerWebUser({ session, id }: { session: AuthSession; id: string }): PlayerWebUser {
 	return {
+		id,
 		username: session.user.username ?? session.user.name,
 		isAdmin: session.user.role === "admin",
-		discordAccountId,
 	};
 }
 export async function getPlayerWebUser(session: AuthSession): Promise<PlayerWebUser> {
 	const user = await AuthUserModel.findById(session.user.id).select({ discordAccountId: 1 }).exec();
-	return toPlayerWebUser({ session, discordAccountId: user?.discordAccountId ?? null });
+	if (!user?.discordAccountId) {
+		throw new Error("Signed-in user has no linked Discord account");
+	}
+	return toPlayerWebUser({ session, id: user.discordAccountId });
 }
 /** Whether the Discord user is connected to the session's voice channel, from the gateway cache only. */
-export function isUserInPlayerVoiceChannel(queue: PlayerQueue, userId: string | null): boolean {
+export function isUserInPlayerVoiceChannel(queue: PlayerQueue, userId: string): boolean {
 	const channel = queue.channel;
-	return userId !== null && channel !== null && "members" in channel && channel.members.has(userId);
+	return channel !== null && "members" in channel && channel.members.has(userId);
 }
 /**
  * Turns a signed-in user into the actor for a player session and requires them to be a member of the
@@ -90,7 +86,7 @@ export async function resolvePlayerActor({
 	user: PlayerWebUser;
 }): Promise<PlayerActorResult> {
 	const actor: PlayerActor = {
-		userId: user.discordAccountId,
+		id: user.id,
 		username: user.username,
 		source: "web",
 		isAdmin: user.isAdmin,
@@ -99,12 +95,12 @@ export async function resolvePlayerActor({
 	if (user.isAdmin) {
 		return { success: true, actor };
 	}
-	if (!actor.userId || !queue.guild.available) {
+	if (!queue.guild.available) {
 		return { success: false, status: 403, error: playerGuildMemberRequired };
 	}
 	try {
 		// Cache-first: discord.js only calls the API when the member is not already cached
-		const member = await queue.guild.members.fetch(actor.userId);
+		const member = await queue.guild.members.fetch(actor.id);
 		return {
 			success: true,
 			actor: {

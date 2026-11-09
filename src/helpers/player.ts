@@ -25,7 +25,7 @@ import { wait } from "./utils.js";
 export type PlayerChangeSource = "discord" | "web";
 /** Who last successfully changed a player session, stored in queue metadata. */
 export interface PlayerChange {
-	readonly userId: string | null;
+	readonly id: string;
 	readonly username: string;
 	readonly source: PlayerChangeSource;
 	readonly timestampMs: number;
@@ -60,7 +60,7 @@ export function getPlayerStatusDetails(queue: { metadata: { locked?: boolean; la
 		locked: Boolean(queue.metadata.locked),
 		...(change
 			? {
-					lastChangedBy: `${change.userId ? formatUserMention({ id: change.userId, username: change.username }) : change.username} via ${playerChangeSourceLabels[change.source]}`,
+					lastChangedBy: `${formatUserMention(change)} via ${playerChangeSourceLabels[change.source]}`,
 				}
 			: {}),
 	};

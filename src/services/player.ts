@@ -275,7 +275,7 @@ export async function playSearchResult({
 	if (
 		existingQueue &&
 		existingQueue.metadata.locked &&
-		!isPlayerSessionOwner(existingQueue, { userId: member.user.id })
+		!isPlayerSessionOwner(existingQueue, { id: member.user.id })
 	) {
 		return { success: false, error_code: "PLAYER_LOCKED" };
 	}
@@ -327,7 +327,7 @@ export async function playSearchResult({
 	}
 	// An existing session with shuffle on keeps its queue shuffled when more is added
 	shuffleQueueIfEnabled(queue);
-	recordPlayerChange(queue, { userId: member.user.id, username: member.user.username, source: "discord" });
+	recordPlayerChange(queue, { id: member.user.id, username: member.user.username, source: "discord" });
 	queue.metadata.statusMessage = statusMessage;
 	notifyPlayerChanged(queue);
 	await updatePlayerQueueMessage({ queue, content: "" });

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { formatUser } from "../helpers/discord.js";
 import type { PlayerQueue } from "../helpers/player.js";
 import { runPlayerControl, playerControlSchema } from "../helpers/playerControl.js";
 import {
@@ -11,7 +12,6 @@ import { logger } from "../services/logger.js";
 import { getQueueBySessionId, isPlayerAvailable } from "../services/player.js";
 import { resolvePlayerActor } from "../services/playerAccess.js";
 import {
-	getSocketPlayerUser,
 	isSubscribedToPlayerSession,
 	subscribeToPlayerSession,
 	unsubscribeFromPlayerSession,
@@ -81,7 +81,7 @@ async function respond<Data extends object>({
 		} catch (error: unknown) {
 			logger.error("WEBSOCKET", "Player socket event failed", {
 				event,
-				user: socket.data.discordAccountId ?? socket.data.authSession.user.id,
+				user: formatUser(socket.data.user),
 				error: error instanceof Error ? error.message : String(error),
 			});
 			result = { ok: false, status: 500, error: "The player request failed" };
@@ -142,7 +142,7 @@ export function registerPlayerSocketHandlers(socket: WebsocketSocket): void {
 					return queue;
 				}
 				// Resolved again for every command: the user may have left the voice channel or the server since subscribing
-				const actorResult = await resolvePlayerActor({ queue, user: getSocketPlayerUser(socket) });
+				const actorResult = await resolvePlayerActor({ queue, user: socket.data.user });
 				if (!actorResult.success) {
 					return { ok: false, status: actorResult.status, error: actorResult.error };
 				}
@@ -172,14 +172,14 @@ export function registerPlayerSocketHandlers(socket: WebsocketSocket): void {
 				if (isFailure(queue)) {
 					return queue;
 				}
-				const actorResult = await resolvePlayerActor({ queue, user: getSocketPlayerUser(socket) });
+				const actorResult = await resolvePlayerActor({ queue, user: socket.data.user });
 				if (!actorResult.success) {
 					return { ok: false, status: actorResult.status, error: actorResult.error };
 				}
 				if (!actorResult.actor.inVoiceChannel) {
 					return voiceChannelRequired;
 				}
-				const suggestions = await getPlayerSuggestions({ query, userId: actorResult.actor.userId });
+				const suggestions = await getPlayerSuggestions({ query, userId: actorResult.actor.id });
 				return { ok: true, suggestions };
 			},
 		});
