@@ -18,9 +18,10 @@ export interface HealthResponse {
 }
 
 export interface AdminBotPlayerSession {
+	sessionId: string;
 	guild: { id: string; name: string; icon: string | null };
 	channel: { id: string; name: string } | null;
-	user: { id: string; username: string; avatarUrl: string | null } | null;
+	owner: { id: string; username: string; avatarUrl: string | null };
 	queueSize: number;
 	nowPlaying: {
 		name: string;
@@ -220,6 +221,68 @@ export interface GlobalCommand {
 	requiredUserPermissions: string[];
 }
 
+export interface PlayerTrack {
+	id: string;
+	title: string;
+	author: string;
+	url: string | null;
+	thumbnailUrl: string | null;
+	source: string;
+	duration: string;
+	durationMs: number;
+	requestedBy: string | null;
+}
+export interface PlayerSession {
+	sessionId: string;
+	guild: { name: string; iconUrl: string | null };
+	channel: { name: string; listenerCount: number } | null;
+	owner: { username: string; avatarUrl: string | null };
+	locked: boolean;
+	lastChangedBy: {
+		username: string;
+		avatarUrl: string | null;
+		source: "discord" | "web";
+		timestampMs: number;
+	} | null;
+	viewer: {
+		isOwner: boolean;
+		isAdmin: boolean;
+		inVoiceChannel: boolean;
+		canControl: boolean;
+		canToggleLock: boolean;
+	};
+	playerState: "Playing" | "Paused" | "Idle";
+	volume: number;
+	shuffle: boolean;
+	repeatMode: { value: 0 | 1 | 2 | 3; label: "off" | "track" | "queue" | "autoplay" };
+	nowPlaying: (PlayerTrack & { positionMs: number }) | null;
+	previousTrack: PlayerTrack | null;
+	queue: { size: number; totalDurationMs: number; tracks: (PlayerTrack & { index: number })[] };
+	historySize: number;
+	capabilities: {
+		canPause: boolean;
+		canResume: boolean;
+		canSkip: boolean;
+		canPrevious: boolean;
+		canSeek: boolean;
+		canShuffle: boolean;
+		canClear: boolean;
+	};
+	serverTimestampMs: number;
+}
+export interface PlayerSuggestion {
+	kind: "track" | "playlist" | "savedPlaylist";
+	title: string;
+	value: string;
+}
+export type PlayerControlAction =
+	| { path: "pause" | "resume" | "next" | "previous" | "stop" | "queue/clear" | "lock" | "unlock" }
+	| { path: "shuffle"; body: { enabled?: boolean } }
+	| { path: "repeat"; body: { mode?: 0 | 1 | 2 | 3 } }
+	| { path: "volume"; body: { volume: number } }
+	| { path: "seek"; body: { positionMs: number } }
+	| { path: "queue/remove" | "queue/skip-to"; body: { index: number } }
+	| { path: "queue/add"; body: { query: string } };
 class APIHandler {
 	static async getHealth(): Promise<HealthResponse> {
 		const { data } = await apiClient.get<HealthResponse>("/api/v1/public/health/");
@@ -231,6 +294,26 @@ class APIHandler {
 		return data;
 	}
 
+	static async getPlayerSession(sessionId: string): Promise<PlayerSession> {
+		const { data } = await apiClient.get<PlayerSession>(`/api/v1/player/${encodeURIComponent(sessionId)}`, {
+			withCredentials: true,
+		});
+		return data;
+	}
+	static async getPlayerSuggestions(sessionId: string, query: string): Promise<PlayerSuggestion[]> {
+		const { data } = await apiClient.get<{ suggestions: PlayerSuggestion[] }>(
+			`/api/v1/player/${encodeURIComponent(sessionId)}/suggestions`,
+			{ params: { q: query }, withCredentials: true },
+		);
+		return data.suggestions;
+	}
+	static async controlPlayerSession(sessionId: string, action: PlayerControlAction): Promise<void> {
+		await apiClient.post<void>(
+			`/api/v1/player/${encodeURIComponent(sessionId)}/controls/${action.path}`,
+			"body" in action ? action.body : {},
+			{ withCredentials: true },
+		);
+	}
 	static async getAdminGuilds(): Promise<AdminGuild[]> {
 		const { data } = await apiClient.get<AdminGuild[]>("/api/v1/admin/guilds", { withCredentials: true });
 		return data;

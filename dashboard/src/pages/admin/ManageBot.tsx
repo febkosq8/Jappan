@@ -77,29 +77,34 @@ function PlayerSession({ session }: { session: AdminBotPlayerSession }) {
 						</dd>
 					</Card>
 					<Card hoverable={false} className="min-w-0 rounded-md border-border p-3">
-						<dt className="text-muted-foreground">Requested by</dt>
+						<dt className="text-muted-foreground">Owner</dt>
 						<dd className="mt-1 wrap-break-words font-medium">
-							{session.user ? (
-								<span className="flex min-w-0 items-center gap-2">
-									<Avatar
-										name={session.user.username}
-										image={session.user.avatarUrl}
-										size="sm"
-										aria-hidden="true"
+							<span className="flex min-w-0 items-center gap-2">
+								<Avatar
+									name={session.owner.username}
+									image={session.owner.avatarUrl}
+									size="sm"
+									aria-hidden="true"
+								/>
+								<span className="min-w-0">
+									<ExternalTextLink
+										href={`https://discord.com/users/${encodeURIComponent(session.owner.id)}`}
+										text={session.owner.username}
 									/>
-									<span className="min-w-0">
-										<ExternalTextLink
-											href={`https://discord.com/users/${encodeURIComponent(session.user.id)}`}
-											text={session.user.username}
-										/>
-										<span className="block break-all text-xs text-muted-foreground">
-											{session.user.id}
-										</span>
+									<span className="block break-all text-xs text-muted-foreground">
+										{session.owner.id}
 									</span>
 								</span>
-							) : (
-								"Unavailable"
-							)}
+							</span>
+						</dd>
+					</Card>
+					<Card hoverable={false} className="min-w-0 rounded-md border-border p-3 sm:col-span-2">
+						<dt className="text-muted-foreground">Player session ID</dt>
+						<dd className="mt-1 break-all font-medium">
+							<ExternalTextLink
+								href={`/player/${encodeURIComponent(session.sessionId)}`}
+								text={session.sessionId}
+							/>
 						</dd>
 					</Card>
 					<Card hoverable={false} className="min-w-0 rounded-md border-border p-3">

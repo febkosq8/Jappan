@@ -148,5 +148,8 @@ export const isGuildManager: AuthorizationCheck = authorizationCheck(
 	},
 );
 
+export const isActiveUser: AuthorizationCheck = authorizationCheck("Login required", () => "allowed");
+/** Any logged-in user whose account is active (suspended accounts are rejected with 403). */
+export const requireActiveUser: RequestHandler = requireAnyAuthorization([isActiveUser]);
 export const requireAdmin: RequestHandler = requireAnyAuthorization([isBotAdmin]);
 export const requireGuildManager: RequestHandler = requireAnyAuthorization([isGuildManager]);

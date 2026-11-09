@@ -15,9 +15,10 @@ import { getActivePlayerSessions, runPlayerHealthCheck } from "../../../../servi
 import { handleShutdown } from "../../../../services/shutdown.js";
 
 const activePlayerSessionSchema = z.object({
+	sessionId: z.string(),
 	guild: z.object({ id: z.string(), name: z.string(), icon: z.string().url().nullable() }),
 	channel: z.object({ id: z.string(), name: z.string() }).nullable(),
-	user: z.object({ id: z.string(), username: z.string(), avatarUrl: z.string().url().nullable() }).nullable(),
+	owner: z.object({ id: z.string(), username: z.string(), avatarUrl: z.string().url().nullable() }),
 	queueSize: z.number(),
 	nowPlaying: z
 		.object({

@@ -104,7 +104,7 @@ const command: BotCommand = {
 				}),
 			],
 		});
-		await playSearchResult({
+		const playResponse = await playSearchResult({
 			channel: voiceChannel.id,
 			member,
 			searchResult: soundResult,
@@ -113,6 +113,24 @@ const command: BotCommand = {
 				leaveOnEndCooldown: 1000,
 			},
 		});
+		if (!playResponse.success) {
+			await interaction.editReply({
+				embeds: [
+					createPlayerEmbed(
+						playResponse.error_code === "PLAYER_LOCKED"
+							? {
+									title: "🔒 Session locked",
+									description:
+										"The owner of this player session locked it.\nOnly they can add tracks or change playback until it is unlocked.",
+								}
+							: {
+									title: "🤖 Player not ready",
+									description: "The bot's music player is not ready yet. Please try again shortly.",
+								},
+					),
+				],
+			});
+		}
 	},
 };
 

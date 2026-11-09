@@ -1,4 +1,5 @@
-import { Player, type QueueRepeatMode, type SearchResult } from "discord-player";
+import { randomUUID } from "node:crypto";
+import { Player, type GuildQueue, type QueueRepeatMode, type SearchResult } from "discord-player";
 import {
 	ActionRowBuilder,
 	ButtonBuilder,
@@ -16,10 +17,54 @@ import {
 
 import { getConfig } from "../services/config.js";
 import { logger } from "../services/logger.js";
-import { formatChannel, formatGuild, formatUser } from "./discord.js";
+import { formatChannel, formatGuild, formatUser, formatUserMention } from "./discord.js";
 import { getClientGuild } from "./guild.js";
 import { trimString } from "./string.js";
 import { wait } from "./utils.js";
+
+export type PlayerChangeSource = "discord" | "web";
+/** Who last successfully changed a player session, stored in queue metadata. */
+export interface PlayerChange {
+	readonly userId: string | null;
+	readonly username: string;
+	readonly source: PlayerChangeSource;
+	readonly timestampMs: number;
+}
+export interface PlayerOwner {
+	readonly id: string;
+	readonly username: string;
+}
+/** Everything the bot stores in a player queue's metadata. */
+export interface PlayerQueueMetadata {
+	/** Unguessable ID used by the web player; never derived from the guild ID. */
+	sessionId: string;
+	/** Whoever started the session; they alone (plus admins) can lock or unlock it. */
+	owner: PlayerOwner;
+	locked: boolean;
+	shuffle: boolean;
+	/** The Discord message that shows this player; absent for the health-check queue. */
+	statusMessage?: Message;
+	lastChangedBy?: PlayerChange;
+	/** Set only on the player health-check queue, which is never exposed through the API. */
+	healthCheck?: boolean;
+}
+export type PlayerQueue = GuildQueue<PlayerQueueMetadata>;
+const playerChangeSourceLabels: Record<PlayerChangeSource, string> = { discord: "Discord", web: "Web Player" };
+/** Lock and last-change details shown in the player embed, ready to spread into createPlayerEmbed. */
+export function getPlayerStatusDetails(queue: { metadata: { locked?: boolean; lastChangedBy?: PlayerChange } }): {
+	locked: boolean;
+	lastChangedBy?: string;
+} {
+	const change = queue.metadata.lastChangedBy;
+	return {
+		locked: Boolean(queue.metadata.locked),
+		...(change
+			? {
+					lastChangedBy: `${change.userId ? formatUserMention({ id: change.userId, username: change.username }) : change.username} via ${playerChangeSourceLabels[change.source]}`,
+				}
+			: {}),
+	};
+}
 
 export interface PlayerHealthCheckResult {
 	readonly tracks: number;
@@ -64,6 +109,8 @@ export function createPlayerControls({
 	hasNext = false,
 	queuePage = 0,
 	queuePageCount = 1,
+	sessionId,
+	locked = false,
 }: {
 	queueView?: boolean;
 	paused?: boolean;
@@ -75,6 +122,8 @@ export function createPlayerControls({
 	hasNext?: boolean;
 	queuePage?: number;
 	queuePageCount?: number;
+	sessionId?: string;
+	locked?: boolean;
 } = {}): ActionRowBuilder<ButtonBuilder>[] {
 	const controls: ButtonBuilder[] = [];
 	const viewControls: ButtonBuilder[] = [];
@@ -140,6 +189,18 @@ export function createPlayerControls({
 				.setStyle(ButtonStyle.Secondary),
 		);
 	}
+	if (sessionId) {
+		controls.push(
+			new ButtonBuilder()
+				.setCustomId("PlayerControl|ACTION#lock")
+				.setLabel(locked ? "🔓 Unlock" : "🔒 Lock")
+				.setStyle(ButtonStyle.Secondary),
+			new ButtonBuilder()
+				.setURL(new URL(`/player/${encodeURIComponent(sessionId)}`, getConfig("BOT_WEBSITE")).href)
+				.setLabel("🌐 Web Player")
+				.setStyle(ButtonStyle.Link),
+		);
+	}
 	controls.push(
 		new ButtonBuilder().setCustomId("PlayerControl|ACTION#stop").setLabel("⏹️ Stop").setStyle(ButtonStyle.Danger),
 	);
@@ -167,6 +228,8 @@ export function createPlayerEmbed({
 	repeatMode,
 	shuffle,
 	footerText,
+	locked,
+	lastChangedBy,
 }: {
 	title: string;
 	description: string;
@@ -180,6 +243,8 @@ export function createPlayerEmbed({
 	repeatMode?: QueueRepeatMode;
 	shuffle?: boolean;
 	footerText?: string;
+	locked?: boolean;
+	lastChangedBy?: string;
 }): EmbedBuilder {
 	const config = getConfig();
 	const embed = new EmbedBuilder()
@@ -232,6 +297,20 @@ export function createPlayerEmbed({
 			name: "Shuffle",
 			value: shuffle ? "🔀 Enabled" : "🚫 Disabled",
 			inline: true,
+		});
+	}
+	if (locked) {
+		embed.addFields({
+			name: "Lock",
+			value: "🔒 Locked by the owner",
+			inline: true,
+		});
+	}
+	if (lastChangedBy) {
+		embed.addFields({
+			name: "Last change",
+			value: trimString(lastChangedBy, 1024),
+			inline: false,
 		});
 	}
 	return embed;
@@ -304,7 +383,7 @@ export function updatePlayerQueueMessage({
 	controls = true,
 }: {
 	queue: {
-		metadata: { statusMessage?: Message; requestedByDisplay?: string; shuffle?: boolean };
+		metadata: PlayerQueueMetadata;
 		guild: Parameters<typeof formatGuild>[0];
 		channel: Parameters<typeof formatChannel>[0] | null;
 		currentTrack?: { title?: string; thumbnail?: string; durationMS?: number; source?: string } | null;
@@ -325,7 +404,7 @@ export function updatePlayerQueueMessage({
 	return editPlayerStatusMessage({
 		guild: queue.guild,
 		channel: queue.channel,
-		user: queue.metadata.requestedByDisplay,
+		user: formatUser(queue.metadata.owner),
 		message: statusMessage,
 		options: {
 			embeds: [
@@ -343,7 +422,7 @@ export function updatePlayerQueueMessage({
 							? "⏳ Waiting for the next track"
 							: "Choose a track to start playback.",
 					color: "Blue",
-					...(queue.metadata.requestedByDisplay ? { requestedBy: queue.metadata.requestedByDisplay } : {}),
+					requestedBy: formatUser(queue.metadata.owner),
 					...(queue.currentTrack?.thumbnail ? { thumbnail: queue.currentTrack.thumbnail } : {}),
 					...(queue.currentTrack?.source ? { source: queue.currentTrack.source } : {}),
 					...(queue.tracks ? { queueSize: queue.tracks.size } : {}),
@@ -351,11 +430,14 @@ export function updatePlayerQueueMessage({
 					...(queue.currentTrack?.durationMS ? { durationMs: queue.currentTrack.durationMS } : {}),
 					...(queue.repeatMode !== undefined ? { repeatMode: queue.repeatMode } : {}),
 					...(queue.metadata.shuffle !== undefined ? { shuffle: queue.metadata.shuffle } : {}),
+					...getPlayerStatusDetails(queue),
 				}),
 			],
 			components: controls
 				? [
 						...createPlayerControls({
+							sessionId: queue.metadata.sessionId,
+							locked: Boolean(queue.metadata.locked),
 							paused: queue.node?.isPaused() ?? false,
 							hasCurrentTrack: Boolean(queue.currentTrack),
 							shuffle: queue.metadata.shuffle ?? false,
@@ -393,6 +475,31 @@ export async function markPlayerStatusMessageReplaced({
 	});
 }
 
+export async function markPlayerStatusMessageStopped({
+	message,
+	owner,
+}: {
+	message: Message;
+	owner?: PlayerOwner | undefined;
+}): Promise<void> {
+	await message
+		.edit({
+			embeds: [
+				createPlayerEmbed({
+					title: "⏹️ Player stopped",
+					description: "Playback has been stopped.",
+					color: "Blue",
+					...(owner ? { requestedBy: formatUser(owner) } : {}),
+				}),
+			],
+			components: [],
+		})
+		.catch((error: unknown) => {
+			logger.warn("PLAYER", "Failed to mark player status message as stopped", {
+				error: error instanceof Error ? error.message : String(error),
+			});
+		});
+}
 export async function markPlayerStatusMessageShutdown(message: Message): Promise<void> {
 	await message.edit({
 		embeds: [
@@ -517,7 +624,13 @@ export async function checkPlayerHealth(initializedPlayer: Player): Promise<Play
 
 		const { queue } = await initializedPlayer.play(channel.id, healthCheckTrack, {
 			nodeOptions: {
-				metadata: { healthCheck: true, requestedBy: botUser.id, requestedByDisplay: formatUser(botUser) },
+				metadata: {
+					sessionId: randomUUID(),
+					healthCheck: true,
+					owner: { id: botUser.id, username: botUser.username },
+					locked: false,
+					shuffle: false,
+				},
 				leaveOnEnd: true,
 				leaveOnEmpty: true,
 			},

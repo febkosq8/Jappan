@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { DefaultExtractors } from "@discord-player/extractor";
 import { load as loadExtractors } from "@extractorpack/extractorpack";
 import { Player, type PlayerNodeInitializerOptions, type SearchOptions, type SearchResult } from "discord-player";
@@ -6,13 +7,15 @@ import type { APIInteractionGuildMember, Client, GuildMember, Message } from "di
 import { registerPlayerHandlers } from "../handlers/player.js";
 import {
 	checkPlayerHealth,
+	type PlayerQueue,
+	type PlayerQueueMetadata,
 	markPlayerStatusMessageReplaced,
 	markPlayerStatusMessageShutdown,
 	updatePlayerQueueMessage,
 } from "../helpers/player.js";
-import { formatUser } from "../helpers/discord.js";
 import { getConfig } from "./config.js";
 import { logger } from "./logger.js";
+import { isPlayerSessionOwner, recordPlayerChange } from "./playerAccess.js";
 
 let player: Player | undefined;
 let playerDown = false;
@@ -26,14 +29,15 @@ export class PlayerNotInitializedError extends Error {
 
 export type PlayerErrorCode = "PLAYER_NOT_INITIALIZED" | "PLAYER_DOWN";
 
-export type PlayerResult<Result> =
-	| { readonly success: true; readonly data: Result }
-	| { readonly success: false; readonly error_code: PlayerErrorCode };
+export type PlayerPlayErrorCode = PlayerErrorCode | "PLAYER_LOCKED";
+export type PlayerResult<Result, ErrorCode extends string = PlayerErrorCode> =
+	{ readonly success: true; readonly data: Result } | { readonly success: false; readonly error_code: ErrorCode };
 
 export interface ActivePlayerSession {
+	readonly sessionId: string;
 	readonly guild: { readonly id: string; readonly name: string; readonly icon: string | null };
 	readonly channel: { readonly id: string; readonly name: string } | null;
-	readonly user: { readonly id: string; readonly username: string; readonly avatarUrl: string | null } | null;
+	readonly owner: { readonly id: string; readonly username: string; readonly avatarUrl: string | null };
 	readonly queueSize: number;
 	readonly nowPlaying: {
 		readonly name: string;
@@ -136,18 +140,25 @@ export function getPlayer(): Player {
 	return player;
 }
 
+/**
+ * Finds the active queue for an unguessable player session ID stored in queue metadata.
+ * The session ID is not the guild ID, so it cannot be derived from public information.
+ */
+export function getQueueBySessionId(sessionId: string): PlayerQueue | undefined {
+	return listPlayerQueues().find((queue) => !queue.metadata.healthCheck && queue.metadata.sessionId === sessionId);
+}
+/** Every active queue, including the health-check queue while its probe is running. */
+function listPlayerQueues(): PlayerQueue[] {
+	return player ? [...player.nodes.cache.values()] : [];
+}
 export function isPlayerAvailable(): boolean {
 	return player !== undefined && !playerDown;
 }
 
 export function getActivePlayerSessions(): ActivePlayerSession[] {
-	if (!player) {
-		return [];
-	}
-
-	return [...player.nodes.cache.values()].map((queue) => {
-		const userId = queue.metadata.requestedBy ?? null;
-		const user = userId ? queue.guild.client.users.cache.get(userId) : undefined;
+	return listPlayerQueues().map((queue) => {
+		const { owner } = queue.metadata;
+		const ownerUser = queue.guild.client.users.cache.get(owner.id);
 		const track = queue.currentTrack;
 		const timestamp = track ? queue.node.getTimestamp(true) : null;
 		const trackUrl = track?.url;
@@ -156,15 +167,14 @@ export function getActivePlayerSessions(): ActivePlayerSession[] {
 				? trackUrl
 				: null;
 		return {
+			sessionId: queue.metadata.sessionId,
 			guild: { id: queue.guild.id, name: queue.guild.name, icon: queue.guild.iconURL() },
 			channel: queue.channel ? { id: queue.channel.id, name: queue.channel.name } : null,
-			user: userId
-				? {
-						id: userId,
-						username: user?.username ?? queue.metadata.requestedByDisplay ?? userId,
-						avatarUrl: user?.displayAvatarURL() ?? null,
-					}
-				: null,
+			owner: {
+				id: owner.id,
+				username: ownerUser?.username ?? owner.username,
+				avatarUrl: ownerUser?.displayAvatarURL() ?? null,
+			},
 			queueSize: queue.tracks.size,
 			nowPlaying: track
 				? {
@@ -249,21 +259,34 @@ export async function playSearchResult({
 	previousStatusMessage?: Message;
 	shuffle?: boolean;
 	repeatMode?: 0 | 1 | 2 | 3;
-	playNodeOptions?: PlayerNodeInitializerOptions<Record<string, unknown>>["nodeOptions"];
-}): Promise<PlayerResult<void>> {
+	playNodeOptions?: Omit<NonNullable<PlayerNodeInitializerOptions<PlayerQueueMetadata>["nodeOptions"]>, "metadata">;
+}): Promise<PlayerResult<void, PlayerPlayErrorCode>> {
 	const errorCode = getPlayerErrorCode();
 	if (errorCode) {
 		return { success: false, error_code: errorCode };
 	}
+	// Adding tracks changes the queue, so a locked session only accepts the owner
+	const existingQueue = listPlayerQueues().find(
+		(candidate) => candidate.channel?.id === channel && !candidate.metadata.healthCheck,
+	);
+	if (
+		existingQueue &&
+		existingQueue.metadata.locked &&
+		!isPlayerSessionOwner(existingQueue, { userId: member.user.id })
+	) {
+		return { success: false, error_code: "PLAYER_LOCKED" };
+	}
 
-	const { queue } = await getPlayer().play(channel, searchResult, {
+	// Only used when this call creates the queue; an existing queue keeps its own metadata
+	const metadata: PlayerQueueMetadata = {
+		sessionId: randomUUID(),
+		owner: { id: member.user.id, username: member.user.username },
+		locked: false,
+		shuffle,
+		statusMessage,
+	};
+	const { queue } = await getPlayer().play<PlayerQueueMetadata>(channel, searchResult, {
 		nodeOptions: {
-			metadata: {
-				requestedBy: member.user.id,
-				requestedByDisplay: formatUser(member.user),
-				statusMessage,
-				shuffle,
-			},
 			repeatMode,
 			bufferingTimeout: 15000,
 			leaveOnStop: true,
@@ -273,6 +296,7 @@ export async function playSearchResult({
 			leaveOnEmpty: true,
 			leaveOnEmptyCooldown: 300000,
 			...playNodeOptions,
+			metadata,
 		},
 		requestedBy: member.user.id,
 	});
@@ -282,6 +306,7 @@ export async function playSearchResult({
 			requestedById: member.user.id,
 		});
 	}
+	recordPlayerChange(queue, { userId: member.user.id, username: member.user.username, source: "discord" });
 	queue.metadata.statusMessage = statusMessage;
 	await updatePlayerQueueMessage({ queue, content: "" });
 	return { success: true, data: undefined };
