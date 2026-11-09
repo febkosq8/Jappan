@@ -16,6 +16,7 @@ import RefreshIndicator from "@jappan/components/player/RefreshIndicator";
 import TrackThumbnail from "@jappan/components/player/TrackThumbnail";
 import TrackTitle from "@jappan/components/player/TrackTitle";
 import type { PlayerControlAction, PlayerSession } from "@jappan/handlers/APIHandler";
+import { CONFIRM_CLICK_MS } from "@jappan/helpers/confirmClick";
 
 const repeatLabels: Record<PlayerSession["repeatMode"]["label"], string> = {
 	off: "Repeat off",
@@ -181,6 +182,7 @@ export default function NowPlaying({
 						<FiSkipForward aria-hidden="true" />
 					</Button>
 					<DoubleClickButton
+						doubleClickMsDuration={CONFIRM_CLICK_MS}
 						variant="destructive"
 						size="icon-md"
 						aria-label="Stop playback"

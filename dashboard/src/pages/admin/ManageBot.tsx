@@ -10,6 +10,7 @@ import ExternalTextLink from "@jappan/components/ExternalTextLink";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import APIHandler, { type AdminBotPlayerSession } from "@jappan/handlers/APIHandler";
 import useDocumentTitle, { formatTitle } from "@jappan/helpers/useDocumentTitle";
+import { CONFIRM_CLICK_MS } from "@jappan/helpers/confirmClick";
 
 function HealthCard({ label, healthy }: { label: string; healthy: boolean | undefined }) {
 	return (
@@ -521,6 +522,7 @@ export default function ManageBot() {
 									</p>
 								</div>
 								<DoubleClickButton
+									doubleClickMsDuration={CONFIRM_CLICK_MS}
 									size="sm"
 									variant="outline-destructive"
 									feedbackVariant="destructive"
@@ -596,6 +598,7 @@ export default function ManageBot() {
 									</p>
 								</div>
 								<DoubleClickButton
+									doubleClickMsDuration={CONFIRM_CLICK_MS}
 									size="sm"
 									variant="outline-destructive"
 									feedbackVariant="destructive"
@@ -699,6 +702,7 @@ export default function ManageBot() {
 									</p>
 								</div>
 								<DoubleClickButton
+									doubleClickMsDuration={CONFIRM_CLICK_MS}
 									size="sm"
 									variant="outline-destructive"
 									feedbackVariant="destructive"

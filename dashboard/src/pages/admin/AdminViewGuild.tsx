@@ -39,6 +39,7 @@ import {
 	CommandPermissionsPanel,
 } from "@jappan/components/guild/panels";
 import useDocumentTitle, { formatTitle } from "@jappan/helpers/useDocumentTitle";
+import { CONFIRM_CLICK_MS } from "@jappan/helpers/confirmClick";
 
 const guildSections = [
 	{ id: "guild-overview", label: "Overview" },
@@ -454,6 +455,7 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 									: "Deploy commands"}
 							</Button>
 							<DoubleClickButton
+								doubleClickMsDuration={CONFIRM_CLICK_MS}
 								type="button"
 								size="sm"
 								variant="outline-destructive"
@@ -750,6 +752,7 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 								/>
 							</div>
 							<DoubleClickButton
+								doubleClickMsDuration={CONFIRM_CLICK_MS}
 								type="button"
 								size="sm"
 								variant="outline-destructive"

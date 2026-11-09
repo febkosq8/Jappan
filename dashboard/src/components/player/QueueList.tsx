@@ -5,6 +5,7 @@ import RefreshIndicator from "@jappan/components/player/RefreshIndicator";
 import TrackThumbnail from "@jappan/components/player/TrackThumbnail";
 import TrackTitle from "@jappan/components/player/TrackTitle";
 import type { PlayerControlAction, PlayerSession } from "@jappan/handlers/APIHandler";
+import { CONFIRM_CLICK_MS } from "@jappan/helpers/confirmClick";
 
 export default function QueueList({
 	session,
@@ -31,6 +32,7 @@ export default function QueueList({
 						</span>
 					</h2>
 					<DoubleClickButton
+						doubleClickMsDuration={CONFIRM_CLICK_MS}
 						variant="outline-destructive"
 						size="sm"
 						disabled={!session.capabilities.canClear || busy}
