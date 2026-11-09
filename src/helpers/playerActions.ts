@@ -167,7 +167,10 @@ export async function seekTrack({
 	if (positionMs >= durationMs) {
 		return refuse(422, "Position is beyond the end of the track");
 	}
-	await queue.node.seek(positionMs);
+	const seeked = await queue.node.seek(positionMs);
+	if (!seeked) {
+		return refuse(409, "Could not seek to that position");
+	}
 	return completeChange({ queue, actor, action: "seek" });
 }
 

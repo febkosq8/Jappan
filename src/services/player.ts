@@ -290,6 +290,9 @@ export async function playSearchResult({
 		nodeOptions: {
 			repeatMode,
 			bufferingTimeout: 15000,
+			// Lets a forward seek skip audio inside the running stream instead of restarting it, which is slow.
+			// It is off by default in discord-player; a backward seek still restarts the stream.
+			disableSeeker: false,
 			leaveOnStop: true,
 			leaveOnStopCooldown: 5000,
 			leaveOnEnd: true,

@@ -89,18 +89,16 @@ export default function NowPlaying({
 				</div>
 				<div className="flex items-center gap-4">
 					<TrackThumbnail track={track} className="size-24 sm:size-32" />
-					<div className="min-w-0 flex-1 md:grid md:grid-cols-[minmax(0,1fr)_minmax(10rem,auto)] md:items-center md:gap-4">
-						<div className="min-w-0">
-							<Tag variant={paused ? "warning" : "success"} size="sm">
-								{session.playerState}
-							</Tag>
-							<h2 className="mt-2 text-xl leading-tight font-semibold wrap-break-words">
-								<TrackTitle track={track} />
-							</h2>
-							{track.author && (
-								<p className="mt-1 text-base text-muted-foreground wrap-break-words">{track.author}</p>
-							)}
-						</div>
+					<div className="min-w-0 flex-1">
+						<Tag variant={paused ? "warning" : "success"} size="sm">
+							{session.playerState}
+						</Tag>
+						<h2 className="mt-2 text-xl leading-tight font-semibold wrap-break-word">
+							<TrackTitle track={track} />
+						</h2>
+						{track.author && (
+							<p className="mt-1 text-base text-muted-foreground wrap-break-word">{track.author}</p>
+						)}
 					</div>
 				</div>
 
