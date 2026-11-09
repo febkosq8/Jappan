@@ -392,7 +392,7 @@ export default function PlayerView() {
 				<Card hoverable={false} className="mb-4 rounded-md border-border">
 					<Card.Content
 						role="status"
-						className="flex items-center justify-start gap-3 p-4! text-left text-sm"
+						className="flex items-center justify-start gap-3 p-0! text-left text-sm"
 					>
 						<FiInfo className="size-5 shrink-0 text-primary" aria-hidden="true" />
 						<span>
@@ -408,7 +408,7 @@ export default function PlayerView() {
 				<Card hoverable={false} className="mb-4 rounded-md border-warning">
 					<Card.Content
 						role="status"
-						className="flex items-center justify-start gap-3 p-4! text-left text-sm"
+						className="flex items-center justify-start gap-3 p-0! text-left text-sm"
 					>
 						<FiLock className="size-5 shrink-0 text-warning" aria-hidden="true" />
 						<span>
@@ -426,7 +426,7 @@ export default function PlayerView() {
 				>
 					<Card.Content
 						role="status"
-						className="flex items-center justify-start gap-3 p-4! text-left text-sm"
+						className="flex items-center justify-start gap-3 p-0! text-left text-sm"
 					>
 						<FiWifiOff
 							className={`size-5 shrink-0 ${connectionState === "disconnected" ? "text-destructive" : "text-warning"}`}
@@ -453,7 +453,7 @@ export default function PlayerView() {
 				<Card hoverable={false} className="mb-4 rounded-md border-warning">
 					<Card.Content
 						role="status"
-						className="flex items-center justify-start gap-3 p-4! text-left text-sm text-warning"
+						className="flex items-center justify-start gap-3 p-0! text-left text-sm text-warning"
 					>
 						<FiAlertTriangle className="size-5 shrink-0" aria-hidden="true" />
 						<span>Could not refresh the player. Showing the last loaded data.</span>
