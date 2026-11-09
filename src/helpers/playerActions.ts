@@ -88,7 +88,9 @@ export function pausePlayer({ queue, actor }: PlayerActionContext): PlayerAction
 	if (refusal) {
 		return refusal;
 	}
-	queue.node.setPaused(true);
+	if (!queue.node.setPaused(true)) {
+		return refuse(409, "Could not pause playback");
+	}
 	return completeChange({ queue, actor, action: "pause" });
 }
 
@@ -97,7 +99,10 @@ export function resumePlayer({ queue, actor }: PlayerActionContext): PlayerActio
 	if (refusal) {
 		return refusal;
 	}
-	queue.node.setPaused(false);
+	// Fails when the audio player is paused by Discord rather than by a user, for example after the bot was moved or disconnected from voice
+	if (!queue.node.setPaused(false)) {
+		return refuse(409, "Could not resume playback. Check that the bot is connected to the voice channel.");
+	}
 	return completeChange({ queue, actor, action: "resume" });
 }
 
@@ -107,7 +112,9 @@ export function skipTrack({ queue, actor }: PlayerActionContext): PlayerActionRe
 	if (refusal) {
 		return refusal;
 	}
-	queue.node.skip();
+	if (!queue.node.skip()) {
+		return refuse(409, "Could not skip the track");
+	}
 	return completeChange({ queue, actor, action: "skip" });
 }
 
@@ -119,7 +126,15 @@ export async function playPreviousTrack({ queue, actor }: PlayerActionContext): 
 	if (!queue.history.previousTrack) {
 		return refuse(409, "There is no previous track");
 	}
-	await queue.history.previous();
+	try {
+		await queue.history.previous();
+	} catch (error: unknown) {
+		logger.warn("PLAYER", "Could not play the previous track", {
+			guild: formatGuild(queue.guild),
+			error: error instanceof Error ? error.message : String(error),
+		});
+		return refuse(409, "Could not play the previous track");
+	}
 	return completeChange({ queue, actor, action: "previous" });
 }
 
@@ -153,7 +168,11 @@ export function setRepeat({
 	if (refusal) {
 		return refusal;
 	}
-	queue.setRepeatMode(mode ?? getNextRepeatMode(queue.repeatMode as QueueRepeatMode));
+	const nextMode = mode ?? getNextRepeatMode(queue.repeatMode as QueueRepeatMode);
+	queue.setRepeatMode(nextMode);
+	if (queue.repeatMode !== nextMode) {
+		return refuse(409, "Could not change the repeat mode");
+	}
 	return completeChange({ queue, actor, action: "repeat" });
 }
 
@@ -162,7 +181,9 @@ export function setVolume({ queue, actor, volume }: PlayerActionContext & { volu
 	if (refusal) {
 		return refusal;
 	}
-	queue.node.setVolume(volume);
+	if (!queue.node.setVolume(volume)) {
+		return refuse(409, "Could not change the volume");
+	}
 	return completeChange({ queue, actor, action: "volume" });
 }
 
@@ -201,7 +222,9 @@ export function removeQueuedTrack({
 	if (index >= queue.tracks.size) {
 		return refuse(422, "Queue index is out of range");
 	}
-	queue.removeTrack(index);
+	if (!queue.removeTrack(index)) {
+		return refuse(409, "Could not remove that track");
+	}
 	return completeChange({ queue, actor, action: "removeTrack" });
 }
 
@@ -219,7 +242,9 @@ export function skipToQueuedTrack({
 	if (index >= queue.tracks.size) {
 		return refuse(422, "Queue index is out of range");
 	}
-	queue.node.skipTo(index);
+	if (!queue.node.skipTo(index)) {
+		return refuse(409, "Could not skip to that track");
+	}
 	return completeChange({ queue, actor, action: "skipTo" });
 }
 
