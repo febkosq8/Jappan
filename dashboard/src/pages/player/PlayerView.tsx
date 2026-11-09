@@ -293,10 +293,6 @@ export default function PlayerView() {
 						<div className="flex flex-wrap items-center justify-between gap-3">
 							<p className="text-sm font-semibold text-muted-foreground">Session</p>
 							<div className="flex items-center gap-2">
-								<Tag variant={connection.variant} size="xs" title={connection.description}>
-									<connection.Icon className="mr-1 size-3" aria-hidden="true" />
-									{connection.label}
-								</Tag>
 								<RefreshIndicator active={refreshing} />
 								{session.viewer.canToggleLock && (
 									<Button
@@ -317,7 +313,7 @@ export default function PlayerView() {
 								)}
 							</div>
 						</div>
-						<div className="grid gap-x-8 gap-y-4 sm:grid-cols-[auto_minmax(0,1fr)_auto]">
+						<div className="grid gap-x-8 gap-y-4 sm:grid-cols-[auto_minmax(0,1fr)_auto_auto]">
 							<div className="min-w-0">
 								<p className="text-sm font-semibold text-muted-foreground">Owner</p>
 								<div className="flex min-w-0 items-center gap-2">
@@ -372,6 +368,15 @@ export default function PlayerView() {
 											<FiUnlock className="mr-1 size-3" aria-hidden="true" />
 										)}
 										{session.locked ? "Locked" : "Unlocked"}
+									</Tag>
+								</div>
+							</div>
+							<div className="min-w-0">
+								<p className="text-sm font-semibold text-muted-foreground">Web player connection</p>
+								<div className="flex h-10 items-center">
+									<Tag variant={connection.variant} size="xs" title={connection.description}>
+										<connection.Icon className="mr-1 size-3" aria-hidden="true" />
+										{connection.label}
 									</Tag>
 								</div>
 							</div>
