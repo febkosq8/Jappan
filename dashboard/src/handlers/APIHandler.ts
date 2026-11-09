@@ -3,9 +3,11 @@ import axios from "axios";
 export const apiBaseURL =
 	import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "https://api-jappan.febkosq8.me" : "http://localhost:8875");
 
+const HEALTH_TIMEOUT_MS = 10_000;
+
 const apiClient = axios.create({
 	baseURL: apiBaseURL,
-	timeout: 10000,
+	timeout: 0,
 });
 
 export interface HealthResponse {
@@ -228,9 +230,8 @@ export interface PlayerTrack {
 	url: string | null;
 	thumbnailUrl: string | null;
 	source: string;
-	duration: string;
 	durationMs: number;
-	requestedBy: string | null;
+	requestedBy: { username: string; avatarUrl: string | null } | null;
 }
 export interface PlayerSession {
 	sessionId: string;
@@ -285,7 +286,7 @@ export type PlayerControlAction =
 	| { path: "queue/add"; body: { query: string } };
 class APIHandler {
 	static async getHealth(): Promise<HealthResponse> {
-		const { data } = await apiClient.get<HealthResponse>("/api/v1/public/health/");
+		const { data } = await apiClient.get<HealthResponse>("/api/v1/public/health/", { timeout: HEALTH_TIMEOUT_MS });
 		return data;
 	}
 
@@ -346,6 +347,7 @@ class APIHandler {
 	static async refreshAdminBotPlayerHealth(): Promise<{ healthy: boolean }> {
 		const { data } = await apiClient.put<{ healthy: boolean }>("/api/v1/admin/bot/player-health-check", undefined, {
 			withCredentials: true,
+			timeout: HEALTH_TIMEOUT_MS,
 		});
 		return data;
 	}
@@ -362,7 +364,6 @@ class APIHandler {
 		const { data } = await apiClient.delete<AdminBotGuildUndeploymentResult>("/api/v1/admin/bot/undeploy-guilds", {
 			data: { confirm: true },
 			withCredentials: true,
-			timeout: 13 * 60 * 1000 + 10_000,
 		});
 		return data;
 	}
@@ -371,7 +372,6 @@ class APIHandler {
 		const { data } = await apiClient.delete<AdminBotSelfKickResult>("/api/v1/admin/bot/self-kick", {
 			data: { confirm: true, message },
 			withCredentials: true,
-			timeout: 13 * 60 * 1000 + 10_000,
 		});
 		return data;
 	}
@@ -452,7 +452,6 @@ class APIHandler {
 			{
 				data: { confirm: true, message, channelId },
 				withCredentials: true,
-				timeout: 120000,
 			},
 		);
 		return data;

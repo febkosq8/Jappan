@@ -2,6 +2,7 @@ import { Player } from "discord-player";
 
 import { formatGuild } from "../helpers/discord.js";
 import { updatePlayerQueueMessage } from "../helpers/player.js";
+import { enrichTracksMetadata } from "../helpers/trackMetadata.js";
 import { getConfig } from "../services/config.js";
 import { logger } from "../services/logger.js";
 
@@ -37,15 +38,18 @@ function registerPlayerStatusHandlers(player: Player): void {
 	const events = player.events;
 
 	events.on("playerStart", (queue, track) => {
+		void enrichTracksMetadata([track, ...queue.tracks.toArray()]);
 		updatePlayerQueueMessage({ queue, content: `▶️ Started playing: **${track.title}**` });
 	});
 	events.on("playerSkip", (queue, track, reason, description) => {
 		updatePlayerQueueMessage({ queue, content: `⚠️ Skipping: **${track.title}** (${description || reason})` });
 	});
 	events.on("audioTrackAdd", (queue, track) => {
+		void enrichTracksMetadata([track]);
 		updatePlayerQueueMessage({ queue, content: `🎵 Track queued: **${track.title}**` });
 	});
 	events.on("audioTracksAdd", (queue, tracks) => {
+		void enrichTracksMetadata(tracks);
 		updatePlayerQueueMessage({ queue, content: `🎶 ${tracks.length} tracks queued.` });
 	});
 	events.on("emptyQueue", (queue) => {

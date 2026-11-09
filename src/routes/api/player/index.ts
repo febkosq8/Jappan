@@ -67,9 +67,8 @@ const trackSchema = z.object({
 	url: z.string().nullable(),
 	thumbnailUrl: z.string().nullable(),
 	source: z.string(),
-	duration: z.string(),
 	durationMs: z.number().int().nonnegative(),
-	requestedBy: z.string().nullable(),
+	requestedBy: z.object({ username: z.string(), avatarUrl: z.string().nullable() }).nullable(),
 });
 const playerSessionSchema = z.object({
 	sessionId: z.string(),

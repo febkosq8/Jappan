@@ -3,6 +3,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useEffect, useId, useState, type ChangeEvent, type KeyboardEvent } from "react";
 import { FiPlus } from "react-icons/fi";
 import APIHandler, { type PlayerSuggestion } from "@jappan/handlers/APIHandler";
+import RefreshIndicator from "@jappan/components/player/RefreshIndicator";
 
 // How long to wait after typing before asking for suggestions, in milliseconds
 const SUGGESTION_DEBOUNCE_MS = 400;
@@ -18,11 +19,13 @@ export default function AddToQueue({
 	sessionId,
 	disabled,
 	adding,
+	refreshing,
 	onAdd,
 }: {
 	sessionId: string;
 	disabled: boolean;
 	adding: boolean;
+	refreshing: boolean;
 	onAdd: (query: string) => void;
 }) {
 	const listboxId = useId();
@@ -74,9 +77,11 @@ export default function AddToQueue({
 	const activeSuggestion = suggestions[activeIndex];
 	return (
 		<Card hoverable={false} className="overflow-visible rounded-md border-border">
-			<Card.Content className="p-4!">
+			<Card.Content className="relative p-4!">
+				<RefreshIndicator active={refreshing} className="absolute right-4 top-4" />
+				<h2 className="mb-3 text-sm font-semibold text-muted-foreground">Add to queue</h2>
 				<form
-					className="relative flex flex-col gap-2 sm:flex-row"
+					className="relative flex flex-col gap-2 sm:flex-row sm:items-center"
 					onSubmit={(event) => {
 						event.preventDefault();
 						submit(activeSuggestion?.value ?? text);
@@ -88,6 +93,7 @@ export default function AddToQueue({
 					<div className="relative min-w-0 flex-1">
 						<Input
 							id={`${listboxId}-input`}
+							className="w-full"
 							value={text}
 							maxLength={MAX_QUERY_LENGTH}
 							autoComplete="off"

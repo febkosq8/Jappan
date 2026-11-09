@@ -12,9 +12,8 @@ export interface PlayerSessionTrack {
 	readonly url: string | null;
 	readonly thumbnailUrl: string | null;
 	readonly source: string;
-	readonly duration: string;
 	readonly durationMs: number;
-	readonly requestedBy: string | null;
+	readonly requestedBy: { readonly username: string; readonly avatarUrl: string | null } | null;
 }
 
 export interface PlayerSessionState {
@@ -65,6 +64,11 @@ function toHttpUrl(value: string | undefined): string | null {
 	return value && URL.canParse(value) && ["http:", "https:"].includes(new URL(value).protocol) ? value : null;
 }
 
+// Extractors can report a missing duration as NaN, which `??` does not catch and JSON turns into null
+function finiteDurationMs(track: Track): number {
+	return Number.isFinite(track.durationMS) ? track.durationMS : 0;
+}
+
 function serializeTrack(track: Track): PlayerSessionTrack {
 	return {
 		id: track.id,
@@ -73,9 +77,13 @@ function serializeTrack(track: Track): PlayerSessionTrack {
 		url: toHttpUrl(track.url),
 		thumbnailUrl: toHttpUrl(track.thumbnail),
 		source: track.source,
-		duration: track.duration,
-		durationMs: track.durationMS ?? 0,
-		requestedBy: track.requestedBy?.username ?? null,
+		durationMs: finiteDurationMs(track),
+		requestedBy: track.requestedBy
+			? {
+					username: track.requestedBy.username,
+					avatarUrl: toHttpUrl(track.requestedBy.displayAvatarURL()),
+				}
+			: null,
 	};
 }
 
@@ -144,11 +152,11 @@ export function getPlayerSessionState(queue: PlayerQueue, viewer: PlayerActor): 
 		volume: queue.node.volume,
 		shuffle: queue.isShuffling,
 		repeatMode: { value: repeatValue, label: REPEAT_MODE_LABELS[repeatValue] ?? "off" },
-		nowPlaying: currentTrack ? { ...serializeTrack(currentTrack), positionMs: queue.node.streamTime } : null,
+		nowPlaying: currentTrack ? { ...serializeTrack(currentTrack), positionMs: queue.node.playbackTime } : null,
 		previousTrack: previousTrack ? serializeTrack(previousTrack) : null,
 		queue: {
 			size: tracks.length,
-			totalDurationMs: tracks.reduce((total, track) => total + (track.durationMS ?? 0), 0),
+			totalDurationMs: tracks.reduce((total, track) => total + finiteDurationMs(track), 0),
 			tracks: tracks.map((track, index) => ({ ...serializeTrack(track), index })),
 		},
 		historySize: queue.history.tracks.size,
