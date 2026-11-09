@@ -719,12 +719,14 @@ export default function ManageBot() {
 										});
 									}}
 								>
-									<FiPower className="mr-2 size-4" aria-hidden="true" />
-									{stopBotMutation.isPending
-										? "Scheduling..."
-										: shutdownScheduled
-											? "Shutdown scheduled"
-											: "Stop bot"}
+									<span className="inline-flex items-center">
+										<FiPower className="mr-2 size-4" aria-hidden="true" />
+										{stopBotMutation.isPending
+											? "Scheduling..."
+											: shutdownScheduled
+												? "Shutdown scheduled"
+												: "Stop bot"}
+									</span>
 								</DoubleClickButton>
 							</div>
 							{shutdownScheduled && (

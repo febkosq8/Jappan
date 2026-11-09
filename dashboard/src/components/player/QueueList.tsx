@@ -38,8 +38,10 @@ export default function QueueList({
 						feedbackContent="Click again to clear"
 						onDoubleClick={() => onControl({ path: "queue/clear" })}
 					>
-						<FiTrash2 className="mr-1" aria-hidden="true" />
-						Clear queue
+						<span className="inline-flex items-center">
+							<FiTrash2 className="mr-1" aria-hidden="true" />
+							Clear queue
+						</span>
 					</DoubleClickButton>
 				</div>
 				{tracks.length === 0 ? (
