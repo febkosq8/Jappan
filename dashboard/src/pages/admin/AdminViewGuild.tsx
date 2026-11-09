@@ -459,7 +459,6 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 								type="button"
 								size="sm"
 								variant="outline-destructive"
-								feedbackVariant="destructive"
 								feedbackContent="Click again to undeploy"
 								disabled={
 									commandDeploymentMutation.isPending ||
@@ -756,7 +755,6 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 								type="button"
 								size="sm"
 								variant="outline-destructive"
-								feedbackVariant="destructive"
 								feedbackContent="Click again to remove"
 								title={`Remove the bot from ${guild.name} (click twice)`}
 								disabled={kickMutation.isPending}

@@ -36,7 +36,6 @@ export default function QueueList({
 						variant="outline-destructive"
 						size="sm"
 						disabled={!session.capabilities.canClear || busy}
-						feedbackVariant="destructive"
 						feedbackContent="Click again to clear"
 						onDoubleClick={() => onControl({ path: "queue/clear" })}
 					>

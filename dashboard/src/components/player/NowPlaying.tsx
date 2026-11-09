@@ -188,7 +188,6 @@ export default function NowPlaying({
 						aria-label="Stop playback"
 						title="Stop playback and end this session (click twice)"
 						disabled={busy}
-						feedbackVariant="destructive"
 						feedbackContent={<FiCheck aria-hidden="true" />}
 						onDoubleClick={() => onControl({ path: "stop" })}
 					>

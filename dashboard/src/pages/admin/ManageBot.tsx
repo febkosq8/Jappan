@@ -525,7 +525,6 @@ export default function ManageBot() {
 									doubleClickMsDuration={CONFIRM_CLICK_MS}
 									size="sm"
 									variant="outline-destructive"
-									feedbackVariant="destructive"
 									feedbackContent="Click again to undeploy"
 									disabled={
 										shutdownScheduled ||
@@ -601,7 +600,6 @@ export default function ManageBot() {
 									doubleClickMsDuration={CONFIRM_CLICK_MS}
 									size="sm"
 									variant="outline-destructive"
-									feedbackVariant="destructive"
 									feedbackContent="Click again to leave"
 									disabled={
 										shutdownScheduled ||
@@ -705,7 +703,6 @@ export default function ManageBot() {
 									doubleClickMsDuration={CONFIRM_CLICK_MS}
 									size="sm"
 									variant="outline-destructive"
-									feedbackVariant="destructive"
 									feedbackContent="Click again to stop"
 									disabled={
 										isFetchingStatus ||
