@@ -2,6 +2,7 @@ import {
 	Button,
 	Card,
 	DateHandler,
+	DoubleClickButton,
 	Input,
 	LabelField,
 	PillLink,
@@ -291,7 +292,6 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 	const [channelId, setChannelId] = useState("");
 	const [message, setMessage] = useState("");
 	const [kickMessage, setKickMessage] = useState("");
-	const [kickConfirmed, setKickConfirmed] = useState(false);
 	const [kickChannelId, setKickChannelId] = useState("");
 	const channelsQuery = useQuery({
 		queryKey: ["user", "guild", guild.id, "channels"],
@@ -453,22 +453,24 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 									? "Deploying…"
 									: "Deploy commands"}
 							</Button>
-							<Button
+							<DoubleClickButton
 								type="button"
 								size="sm"
 								variant="outline-destructive"
+								feedbackVariant="destructive"
+								feedbackContent="Click again to undeploy"
 								disabled={
 									commandDeploymentMutation.isPending ||
 									!guild.guildCommandDeploymentState ||
 									guild.guildCommandDeploymentState.deployed === 0
 								}
-								onClick={() => commandDeploymentMutation.mutate("undeploy")}
+								onDoubleClick={() => commandDeploymentMutation.mutate("undeploy")}
 							>
 								{commandDeploymentMutation.isPending &&
 								commandDeploymentMutation.variables === "undeploy"
 									? "Removing…"
 									: "Undeploy commands"}
-							</Button>
+							</DoubleClickButton>
 						</div>
 						{commandDeploymentMutation.isError && !accessErrorStatus(commandDeploymentMutation.error) && (
 							<p role="alert" className="mt-3 text-sm text-destructive">
@@ -696,12 +698,8 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 						<form
 							className="mt-4 space-y-3"
 							onSubmit={(event) => {
+								// Removing the bot is confirmed by the button's second click, never by submitting the form
 								event.preventDefault();
-								if (!kickConfirmed) {
-									toast.error("Confirm removal before continuing.");
-									return;
-								}
-								kickMutation.mutate(selectedKickChannelId || null);
 							}}
 						>
 							{channelsQuery.data && !channelsQuery.isError && (
@@ -751,24 +749,18 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 									className="min-h-20 w-full"
 								/>
 							</div>
-							<label className="flex items-start gap-2 text-sm">
-								<input
-									type="checkbox"
-									checked={kickConfirmed}
-									onChange={(event) => setKickConfirmed(event.target.checked)}
-									disabled={kickMutation.isPending}
-									className="mt-1"
-								/>
-								<span>I confirm the bot should leave {guild.name}.</span>
-							</label>
-							<Button
-								type="submit"
+							<DoubleClickButton
+								type="button"
 								size="sm"
 								variant="outline-destructive"
-								disabled={!kickConfirmed || kickMutation.isPending}
+								feedbackVariant="destructive"
+								feedbackContent="Click again to remove"
+								title={`Remove the bot from ${guild.name} (click twice)`}
+								disabled={kickMutation.isPending}
+								onDoubleClick={() => kickMutation.mutate(selectedKickChannelId || null)}
 							>
 								{kickMutation.isPending ? "Removing bot…" : "Remove bot from guild"}
-							</Button>
+							</DoubleClickButton>
 						</form>
 					</section>
 				</div>

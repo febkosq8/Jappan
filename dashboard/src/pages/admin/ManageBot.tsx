@@ -1,8 +1,8 @@
-import { Avatar, Button, Card, DateHandler, Input, LabelField, Tag, TextLink } from "@febkosq8/arc";
+import { Avatar, Button, Card, DateHandler, DoubleClickButton, Input, LabelField, Tag, TextLink } from "@febkosq8/arc";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { useState } from "react";
-import { FiAlertTriangle, FiCheckCircle, FiMusic, FiPower, FiRefreshCw, FiXCircle } from "react-icons/fi";
+import { FiCheckCircle, FiMusic, FiPower, FiRefreshCw, FiXCircle } from "react-icons/fi";
 import { toast } from "sonner";
 
 import { AccessRedirect, accessErrorStatus } from "@jappan/components/AdminRoute";
@@ -137,9 +137,6 @@ function PlayerSession({ session }: { session: AdminBotPlayerSession }) {
 export default function ManageBot() {
 	useDocumentTitle(formatTitle("Manage Bot", "Admin"));
 	const queryClient = useQueryClient();
-	const [confirmStop, setConfirmStop] = useState(false);
-	const [confirmUndeploy, setConfirmUndeploy] = useState(false);
-	const [confirmSelfKick, setConfirmSelfKick] = useState(false);
 	const [selfKickMessage, setSelfKickMessage] = useState("");
 	const [shutdownScheduled, setShutdownScheduled] = useState(false);
 	const statusQuery = useQuery({
@@ -174,15 +171,11 @@ export default function ManageBot() {
 		mutationFn: APIHandler.stopAdminBot,
 		onSuccess: () => {
 			setShutdownScheduled(true);
-			setConfirmStop(false);
 		},
 	});
 
 	const undeployMutation = useMutation({
 		mutationFn: APIHandler.undeployAdminBotGuildCommands,
-		onSuccess: () => {
-			setConfirmUndeploy(false);
-		},
 		onSettled: () => {
 			void queryClient.invalidateQueries({ queryKey: ["admin", "guild"] });
 			void queryClient.invalidateQueries({ queryKey: ["admin", "list-guilds"] });
@@ -192,7 +185,7 @@ export default function ManageBot() {
 	const selfKickMutation = useMutation({
 		mutationFn: APIHandler.selfKickAdminBot,
 		onSuccess: () => {
-			setConfirmSelfKick(false);
+			setSelfKickMessage("");
 		},
 		onSettled: () => {
 			void queryClient.invalidateQueries({ queryKey: ["admin", "guild"] });
@@ -523,62 +516,26 @@ export default function ManageBot() {
 								<div>
 									<h3 className="font-semibold">Undeploy guild commands</h3>
 									<p className="text-sm text-muted-foreground">
-										Remove guild commands from every installed guild.
+										Remove guild commands from every installed guild. Global commands are
+										unaffected.
 									</p>
 								</div>
-								{!confirmUndeploy && (
-									<Button
-										size="sm"
-										variant="outline-destructive"
-										disabled={
-											shutdownScheduled ||
-											stopBotMutation.isPending ||
-											undeployMutation.isPending ||
-											selfKickMutation.isPending
-										}
-										onClick={() => setConfirmUndeploy(true)}
-									>
-										Undeploy guild commands
-									</Button>
-								)}
+								<DoubleClickButton
+									size="sm"
+									variant="outline-destructive"
+									feedbackVariant="destructive"
+									feedbackContent="Click again to undeploy"
+									disabled={
+										shutdownScheduled ||
+										stopBotMutation.isPending ||
+										undeployMutation.isPending ||
+										selfKickMutation.isPending
+									}
+									onDoubleClick={() => undeployMutation.mutate()}
+								>
+									{undeployMutation.isPending ? "Undeploying..." : "Undeploy guild commands"}
+								</DoubleClickButton>
 							</div>
-							{confirmUndeploy && (
-								<div role="alert" className="mt-4 rounded-md border border-warning p-3">
-									<div className="flex items-start gap-2">
-										<FiAlertTriangle
-											className="mt-0.5 size-4 shrink-0 text-warning"
-											aria-hidden="true"
-										/>
-										<p className="text-sm">
-											This removes all guild commands from every installed guild. Global commands
-											are unaffected.
-										</p>
-									</div>
-									<div className="mt-3 flex justify-end gap-2">
-										<Button
-											size="sm"
-											variant="outline-secondary"
-											disabled={undeployMutation.isPending}
-											onClick={() => setConfirmUndeploy(false)}
-										>
-											Cancel
-										</Button>
-										<Button
-											size="sm"
-											variant="destructive"
-											disabled={
-												undeployMutation.isPending ||
-												stopBotMutation.isPending ||
-												selfKickMutation.isPending ||
-												shutdownScheduled
-											}
-											onClick={() => undeployMutation.mutate()}
-										>
-											{undeployMutation.isPending ? "Undeploying..." : "Confirm undeploy"}
-										</Button>
-									</div>
-								</div>
-							)}
 							{undeployMutation.isPending && (
 								<p role="status" className="mt-3 text-sm text-muted-foreground">
 									Removing guild commands. This may take several minutes.
@@ -633,85 +590,45 @@ export default function ManageBot() {
 								<div>
 									<h3 className="font-semibold">Leave guilds</h3>
 									<p className="text-sm text-muted-foreground">
-										Leave every installed guild except the configured player health-check guild, if
-										present.
+										Leave every installed guild except the configured player health-check guild. If
+										that guild is not installed or configured, the bot leaves every guild. It still
+										leaves if a departure message cannot be sent.
 									</p>
 								</div>
-								{!confirmSelfKick && (
-									<Button
-										size="sm"
-										variant="outline-destructive"
-										disabled={
-											shutdownScheduled ||
-											stopBotMutation.isPending ||
-											undeployMutation.isPending ||
-											selfKickMutation.isPending
-										}
-										onClick={() => {
-											selfKickMutation.reset();
-											setConfirmSelfKick(true);
-										}}
-									>
-										Leave guilds
-									</Button>
-								)}
+								<DoubleClickButton
+									size="sm"
+									variant="outline-destructive"
+									feedbackVariant="destructive"
+									feedbackContent="Click again to leave"
+									disabled={
+										shutdownScheduled ||
+										stopBotMutation.isPending ||
+										undeployMutation.isPending ||
+										selfKickMutation.isPending
+									}
+									onDoubleClick={() => selfKickMutation.mutate(selfKickMessage)}
+								>
+									{selfKickMutation.isPending ? "Leaving guilds..." : "Leave guilds"}
+								</DoubleClickButton>
 							</div>
-							{confirmSelfKick && (
-								<div role="alert" className="mt-4 rounded-md border border-warning p-3">
-									<div className="flex items-start gap-2">
-										<FiAlertTriangle
-											className="mt-0.5 size-4 shrink-0 text-warning"
-											aria-hidden="true"
-										/>
-										<p className="text-sm">
-											The bot will leave all guilds except the configured player health-check
-											guild. If that guild is not installed or configured, it will leave every
-											guild. It will still leave if a departure message cannot be sent.
-										</p>
-									</div>
-									<div className="mt-3">
-										<LabelField
-											id="bot-self-kick-message"
-											label="Additional departure message (optional)"
-											className="mb-1"
-										/>
-										<Input
-											as="textarea"
-											id="bot-self-kick-message"
-											value={selfKickMessage}
-											onChange={(event) => setSelfKickMessage(event.target.value)}
-											maxLength={1000}
-											rows={3}
-											placeholder="Write the message to send"
-											disabled={selfKickMutation.isPending}
-											className="min-h-20 w-full"
-										/>
-									</div>
-									<div className="mt-3 flex justify-end gap-2">
-										<Button
-											size="sm"
-											variant="outline-secondary"
-											disabled={selfKickMutation.isPending}
-											onClick={() => setConfirmSelfKick(false)}
-										>
-											Cancel
-										</Button>
-										<Button
-											size="sm"
-											variant="destructive"
-											disabled={
-												selfKickMutation.isPending ||
-												undeployMutation.isPending ||
-												stopBotMutation.isPending ||
-												shutdownScheduled
-											}
-											onClick={() => selfKickMutation.mutate(selfKickMessage)}
-										>
-											{selfKickMutation.isPending ? "Leaving guilds..." : "Confirm leave guilds"}
-										</Button>
-									</div>
-								</div>
-							)}
+							<div className="mt-3">
+								<LabelField
+									id="bot-self-kick-message"
+									label="Additional departure message (optional)"
+									className="mb-1"
+								/>
+								<Input
+									as="textarea"
+									id="bot-self-kick-message"
+									value={selfKickMessage}
+									onChange={(event) => setSelfKickMessage(event.target.value)}
+									maxLength={1000}
+									rows={3}
+									placeholder="Write the message to send"
+									disabled={selfKickMutation.isPending}
+									className="min-h-20 w-full"
+								/>
+							</div>
 							{selfKickMutation.isPending && (
 								<p role="status" className="mt-3 text-sm text-muted-foreground">
 									Leaving guilds. This may take several minutes.
@@ -778,69 +695,38 @@ export default function ManageBot() {
 								<div>
 									<h3 className="font-semibold">Stop bot</h3>
 									<p className="text-sm text-muted-foreground">
-										Shuts down the bot process after a 5-second delay.
+										Shuts down the bot process for everyone after a 5-second delay.
 									</p>
 								</div>
-								{!confirmStop && (
-									<Button
-										size="sm"
-										variant="outline-destructive"
-										disabled={
-											isFetchingStatus ||
-											shutdownScheduled ||
-											undeployMutation.isPending ||
-											selfKickMutation.isPending
-										}
-										onClick={() => setConfirmStop(true)}
-									>
-										<FiPower className="mr-2 size-4" aria-hidden="true" />
-										{shutdownScheduled ? "Shutdown scheduled" : "Stop bot"}
-									</Button>
-								)}
+								<DoubleClickButton
+									size="sm"
+									variant="outline-destructive"
+									feedbackVariant="destructive"
+									feedbackContent="Click again to stop"
+									disabled={
+										isFetchingStatus ||
+										shutdownScheduled ||
+										stopBotMutation.isPending ||
+										undeployMutation.isPending ||
+										selfKickMutation.isPending
+									}
+									onDoubleClick={() => {
+										void toast.promise(stopBotMutation.mutateAsync(), {
+											loading: "Scheduling bot shutdown...",
+											success: ({ delayMilliseconds }) =>
+												`Bot shutdown scheduled in ${Math.ceil(delayMilliseconds / 1000)} seconds.`,
+											error: "Could not schedule bot shutdown.",
+										});
+									}}
+								>
+									<FiPower className="mr-2 size-4" aria-hidden="true" />
+									{stopBotMutation.isPending
+										? "Scheduling..."
+										: shutdownScheduled
+											? "Shutdown scheduled"
+											: "Stop bot"}
+								</DoubleClickButton>
 							</div>
-							{confirmStop && (
-								<div role="alert" className="mt-4 rounded-md border border-warning p-3">
-									<div className="flex items-start gap-2">
-										<FiAlertTriangle
-											className="mt-0.5 size-4 shrink-0 text-warning"
-											aria-hidden="true"
-										/>
-										<p className="text-sm">
-											This will stop the bot process for everyone. Confirm to schedule shutdown.
-										</p>
-									</div>
-									<div className="mt-3 flex justify-end gap-2">
-										<Button
-											size="sm"
-											variant="outline-secondary"
-											disabled={stopBotMutation.isPending}
-											onClick={() => setConfirmStop(false)}
-										>
-											Cancel
-										</Button>
-										<Button
-											size="sm"
-											variant="destructive"
-											disabled={
-												isFetchingStatus ||
-												stopBotMutation.isPending ||
-												undeployMutation.isPending ||
-												selfKickMutation.isPending
-											}
-											onClick={() => {
-												void toast.promise(stopBotMutation.mutateAsync(), {
-													loading: "Scheduling bot shutdown...",
-													success: ({ delayMilliseconds }) =>
-														`Bot shutdown scheduled in ${Math.ceil(delayMilliseconds / 1000)} seconds.`,
-													error: "Could not schedule bot shutdown.",
-												});
-											}}
-										>
-											{stopBotMutation.isPending ? "Scheduling..." : "Confirm stop"}
-										</Button>
-									</div>
-								</div>
-							)}
 							{shutdownScheduled && (
 								<p role="status" className="mt-3 text-sm text-warning">
 									Bot shutdown is scheduled. This page will become unavailable shortly.

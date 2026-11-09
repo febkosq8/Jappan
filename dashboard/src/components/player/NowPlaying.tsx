@@ -1,6 +1,16 @@
-import { Button, Card, Tag } from "@febkosq8/arc";
+import { Button, Card, DoubleClickButton, Tag } from "@febkosq8/arc";
 import { useEffect, useState } from "react";
-import { FiPause, FiPlay, FiRepeat, FiShuffle, FiSkipBack, FiSkipForward, FiSquare, FiVolume2 } from "react-icons/fi";
+import {
+	FiCheck,
+	FiPause,
+	FiPlay,
+	FiRepeat,
+	FiShuffle,
+	FiSkipBack,
+	FiSkipForward,
+	FiSquare,
+	FiVolume2,
+} from "react-icons/fi";
 import formatDuration from "@jappan/helpers/formatDuration";
 import RefreshIndicator from "@jappan/components/player/RefreshIndicator";
 import TrackThumbnail from "@jappan/components/player/TrackThumbnail";
@@ -170,20 +180,18 @@ export default function NowPlaying({
 					>
 						<FiSkipForward aria-hidden="true" />
 					</Button>
-					<Button
+					<DoubleClickButton
 						variant="destructive"
 						size="icon-md"
 						aria-label="Stop playback"
-						title="Stop playback"
+						title="Stop playback and end this session (click twice)"
 						disabled={busy}
-						onClick={() => {
-							if (window.confirm("Stop playback and end this player session?")) {
-								onControl({ path: "stop" });
-							}
-						}}
+						feedbackVariant="destructive"
+						feedbackContent={<FiCheck aria-hidden="true" />}
+						onDoubleClick={() => onControl({ path: "stop" })}
 					>
 						<FiSquare aria-hidden="true" />
-					</Button>
+					</DoubleClickButton>
 				</div>
 
 				<div className="flex flex-wrap items-center justify-center gap-3">

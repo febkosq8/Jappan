@@ -1,4 +1,4 @@
-import { Avatar, Button, Card } from "@febkosq8/arc";
+import { Avatar, Button, Card, DoubleClickButton } from "@febkosq8/arc";
 import { FiPlay, FiTrash2 } from "react-icons/fi";
 import formatDuration from "@jappan/helpers/formatDuration";
 import RefreshIndicator from "@jappan/components/player/RefreshIndicator";
@@ -30,19 +30,17 @@ export default function QueueList({
 							{totalDurationMs ? ` · ${formatDuration(totalDurationMs)}` : ""}
 						</span>
 					</h2>
-					<Button
+					<DoubleClickButton
 						variant="outline-destructive"
 						size="sm"
 						disabled={!session.capabilities.canClear || busy}
-						onClick={() => {
-							if (window.confirm("Remove every track from the queue?")) {
-								onControl({ path: "queue/clear" });
-							}
-						}}
+						feedbackVariant="destructive"
+						feedbackContent="Click again to clear"
+						onDoubleClick={() => onControl({ path: "queue/clear" })}
 					>
 						<FiTrash2 className="mr-1" aria-hidden="true" />
 						Clear queue
-					</Button>
+					</DoubleClickButton>
 				</div>
 				{tracks.length === 0 ? (
 					<p className="mt-4 text-sm text-muted-foreground">No tracks are waiting in the queue.</p>
