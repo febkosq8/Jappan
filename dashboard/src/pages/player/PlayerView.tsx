@@ -461,6 +461,7 @@ export default function PlayerView() {
 						busy={controlMutation.isPending || !connected || !session.viewer.canControl}
 						onControl={(action) => controlMutation.mutate(action)}
 						receivedAt={sessionQuery.dataUpdatedAt}
+						live={connectionState !== "disconnected"}
 					/>
 				</TabsPanel>
 				<TabsPanel value="queue" keepMounted className="flex flex-col gap-4">

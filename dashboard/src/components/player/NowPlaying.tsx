@@ -20,12 +20,15 @@ export default function NowPlaying({
 	refreshing,
 	onControl,
 	receivedAt,
+	live,
 }: {
 	session: PlayerSession;
 	busy: boolean;
 	refreshing: boolean;
 	onControl: (action: PlayerControlAction) => void;
 	receivedAt: number;
+	/** False when the player cannot be reached at all; the position then stops instead of guessing. */
+	live: boolean;
 }) {
 	const track = session.nowPlaying;
 	const [now, setNow] = useState(() => Date.now());
@@ -46,12 +49,13 @@ export default function NowPlaying({
 	};
 	const [volumeDraft, setVolumeDraft] = useState<number | null>(null);
 	useEffect(() => {
-		if (session.playerState !== "Playing") {
+		// Without the clock ticking, `now` stays where it was, so the bar stops where it is instead of jumping back
+		if (session.playerState !== "Playing" || !live) {
 			return;
 		}
 		const timer = window.setInterval(() => setNow(Date.now()), 500);
 		return () => window.clearInterval(timer);
-	}, [session.playerState]);
+	}, [session.playerState, live]);
 
 	if (!track) {
 		return (
