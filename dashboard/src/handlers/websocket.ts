@@ -20,7 +20,10 @@ interface ServerToClientEvents {
 interface ClientToServerEvents {
 	"player:subscribe": (payload: { sessionId: string }, ack: Ack<{ state: PlayerSession }>) => void;
 	"player:unsubscribe": (payload: { sessionId: string }, ack: Ack) => void;
-	"player:control": (payload: { sessionId: string; control: PlayerControlAction }, ack: Ack) => void;
+	"player:control": (
+		payload: { sessionId: string; control: PlayerControlAction },
+		ack: Ack<{ notice?: string }>,
+	) => void;
 	"player:suggestions": (
 		payload: { sessionId: string; query: string },
 		ack: Ack<{ suggestions: PlayerSuggestion[] }>,
@@ -119,12 +122,13 @@ export async function controlPlayer({
 	socket: WebsocketClient;
 	sessionId: string;
 	control: PlayerControlAction;
-}): Promise<void> {
-	await request({
+}): Promise<string | undefined> {
+	const { notice } = await request({
 		socket,
 		event: "player:control",
 		run: () => socket.timeout(REQUEST_TIMEOUT_MS).emitWithAck("player:control", { sessionId, control }),
 	});
+	return notice;
 }
 
 export async function fetchPlayerSuggestions({

@@ -142,13 +142,14 @@ export default function PlayerView() {
 		setSocketConnected(connected);
 	}
 
-	const controlMutation = useMutation<void, unknown, PlayerControlAction>({
+	const controlMutation = useMutation<string | undefined, unknown, PlayerControlAction>({
 		mutationFn: (action) => {
 			const request = websocket.control(action);
 			const messages = CONTROL_TOAST_MESSAGES[action.path];
 			toast.promise(request, {
 				loading: messages.loading,
-				success: messages.success,
+				// A notice means the change worked but only in part, for example a playlist that did not fully fit
+				success: (notice) => notice ?? messages.success,
 				error: (error: unknown) => getErrorMessage(error, "The player action failed."),
 			});
 			return request;

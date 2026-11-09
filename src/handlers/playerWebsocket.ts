@@ -16,7 +16,8 @@ import {
 	subscribeToPlayerSession,
 	unsubscribeFromPlayerSession,
 } from "../services/playerWebsocket.js";
-import { getPlayerSuggestions, MAX_PLAY_QUERY_LENGTH } from "../services/playerSearch.js";
+import { MAX_PLAY_QUERY_LENGTH } from "../helpers/playerLimits.js";
+import { getPlayerSuggestions } from "../services/playerSearch.js";
 import { playerSessionIdPattern } from "./playerSession.js";
 
 type Failure = Extract<WebsocketResult, { ok: false }>;
@@ -146,7 +147,10 @@ export function registerPlayerSocketHandlers(socket: WebsocketSocket): void {
 					return { ok: false, status: actorResult.status, error: actorResult.error };
 				}
 				const result = await runPlayerControl({ queue, actor: actorResult.actor, control });
-				return result.success ? { ok: true } : { ok: false, status: result.status, error: result.error };
+				if (!result.success) {
+					return { ok: false, status: result.status, error: result.error };
+				}
+				return result.notice ? { ok: true, notice: result.notice } : { ok: true };
 			},
 		});
 	});

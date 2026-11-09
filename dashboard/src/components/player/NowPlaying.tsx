@@ -191,6 +191,11 @@ export default function NowPlaying({
 						variant={session.shuffle ? "primary" : "outline-secondary"}
 						size="sm"
 						aria-pressed={session.shuffle}
+						title={
+							session.shuffle
+								? "Stop mixing in new tracks. The queue keeps its current order."
+								: "Shuffle the queue now and mix in tracks added later."
+						}
 						disabled={!capabilities.canShuffle || busy}
 						onClick={() => onControl({ path: "shuffle", body: { enabled: !session.shuffle } })}
 					>

@@ -125,7 +125,7 @@ function getCapabilities(queue: PlayerQueue): PlayerSessionState["capabilities"]
 		canSkip: Boolean(currentTrack) && !paused,
 		canPrevious: Boolean(queue.history.previousTrack) && !paused,
 		canSeek: Boolean(currentTrack) && (currentTrack?.durationMS ?? 0) > 0,
-		canShuffle: queue.tracks.size > 1,
+		canShuffle: queue.tracks.size > 1 || queue.metadata.shuffle,
 		canClear: queue.tracks.size > 0,
 	};
 }
@@ -156,7 +156,7 @@ export function getPlayerSessionState(queue: PlayerQueue, viewer: PlayerActor): 
 		},
 		playerState: !currentTrack ? "Idle" : queue.node.isPaused() ? "Paused" : "Playing",
 		volume: queue.node.volume,
-		shuffle: queue.isShuffling,
+		shuffle: queue.metadata.shuffle,
 		repeatMode: { value: repeatValue, label: REPEAT_MODE_LABELS[repeatValue] ?? "off" },
 		nowPlaying: currentTrack ? { ...serializeTrack(currentTrack), positionMs: queue.node.playbackTime } : null,
 		previousTrack: previousTrack ? serializeTrack(previousTrack) : null,

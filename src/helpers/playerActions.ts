@@ -13,6 +13,7 @@ import { formatGuild } from "./discord.js";
 import {
 	getNextRepeatMode,
 	markPlayerStatusMessageStopped,
+	shuffleQueueIfEnabled,
 	updatePlayerQueueMessage,
 	type PlayerQueue,
 } from "./player.js";
@@ -24,7 +25,11 @@ export interface PlayerActionContext {
 }
 
 export type PlayerActionResult =
-	| { readonly success: true }
+	| {
+			readonly success: true;
+			/** Something the user should know about a change that still worked. */ readonly notice?:
+				string | undefined;
+	  }
 	| { readonly success: false; readonly status: 403 | 409 | 422 | 423 | 503; readonly error: string };
 
 const succeeded: PlayerActionResult = { success: true };
@@ -111,7 +116,10 @@ export async function playPreviousTrack({ queue, actor }: PlayerActionContext): 
 	return completeChange({ queue, actor, action: "previous" });
 }
 
-/** Turns shuffle on or off; toggles it when `enabled` is omitted. */
+/**
+ * Turns shuffle on or off; toggles it when `enabled` is omitted. Turning it on reorders the queue right away and
+ * keeps mixing in tracks added later. Turning it off cannot restore the old order, it only stops the mixing.
+ */
 export function setShuffle({
 	queue,
 	actor,
@@ -121,13 +129,13 @@ export function setShuffle({
 	if (refusal) {
 		return refusal;
 	}
-	if ((enabled ?? !queue.isShuffling) !== queue.isShuffling) {
-		queue.toggleShuffle();
-	}
-	queue.metadata.shuffle = queue.isShuffling;
+	// discord-player's dynamic shuffle picks a random track when one ends and leaves the list in its old order,
+	// so the list would not match what plays. It stays off.
+	queue.disableShuffle();
+	queue.metadata.shuffle = enabled ?? !queue.metadata.shuffle;
+	shuffleQueueIfEnabled(queue);
 	return completeChange({ queue, actor, action: "shuffle" });
 }
-
 /** Sets the repeat mode; advances to the next mode when `mode` is omitted. */
 export function setRepeat({
 	queue,
@@ -241,18 +249,30 @@ export async function addResolvedTracksToQueue({
 		if (!queue.channel) {
 			return refuse(409, "The bot is not connected to a voice channel");
 		}
-		// Like /play: a playlist adds all its tracks (shuffled for a shuffling saved playlist), anything else only the first result
-		if (!searchResult.playlist) {
-			queue.addTrack(searchResult.tracks.slice(0, 1));
-		} else if (savedPlaylist?.shuffle) {
-			queue.addTrack([...searchResult.tracks].sort(() => Math.random() - 0.5));
-		} else {
-			queue.addTrack(searchResult.tracks);
+		const room = queue.getCapacity();
+		if (room === 0) {
+			return refuse(422, `The queue is full (${queue.maxSize} tracks)`);
 		}
+		// Like /play: a playlist adds all its tracks (shuffled for a shuffling saved playlist), anything else only the
+		// first result. As many as fit in the queue are added.
+		const candidates = !searchResult.playlist
+			? searchResult.tracks.slice(0, 1)
+			: savedPlaylist?.shuffle
+				? [...searchResult.tracks].sort(() => Math.random() - 0.5)
+				: searchResult.tracks;
+		const tracks = candidates.slice(0, room);
+		queue.addTrack(tracks);
+		shuffleQueueIfEnabled(queue);
 		if (!queue.isPlaying()) {
 			await queue.node.play(null);
 		}
-		return completeChange({ queue, actor, action: "addTracks" });
+		const result = completeChange({ queue, actor, action: "addTracks" });
+		return tracks.length < candidates.length
+			? {
+					success: true,
+					notice: `Added ${tracks.length} of ${candidates.length} tracks. The queue is limited to ${queue.maxSize}.`,
+				}
+			: result;
 	} finally {
 		queue.tasksQueue.release();
 	}

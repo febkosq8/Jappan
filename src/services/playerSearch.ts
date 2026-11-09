@@ -1,12 +1,11 @@
 import type { SearchResult } from "discord-player";
 import type { PlaylistEntry } from "../models/userPlaylist.js";
+import { MAX_PLAY_QUERY_LENGTH } from "../helpers/playerLimits.js";
 import { isDatabaseConnected } from "./database.js";
 import { logger } from "./logger.js";
 import { searchPlayer, type PlayerErrorCode } from "./player.js";
 import { findUserPlaylist, listUserPlaylists } from "./userPlaylist.js";
 
-/** Longest play query the web player accepts. */
-export const MAX_PLAY_QUERY_LENGTH = 200;
 const MAX_SUGGESTIONS = 25;
 const MAX_TRACK_SUGGESTIONS = 6;
 

@@ -28,7 +28,7 @@ export interface PlayerSuggestionPayload {
 export interface ClientToServerEvents {
 	"player:subscribe": (payload: unknown, ack?: WebsocketAck<{ state: PlayerSessionState }>) => void;
 	"player:unsubscribe": (payload: unknown, ack?: WebsocketAck) => void;
-	"player:control": (payload: unknown, ack?: WebsocketAck) => void;
+	"player:control": (payload: unknown, ack?: WebsocketAck<{ readonly notice?: string }>) => void;
 	"player:suggestions": (
 		payload: unknown,
 		ack?: WebsocketAck<{ suggestions: readonly PlayerSuggestionPayload[] }>,

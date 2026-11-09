@@ -136,12 +136,12 @@ export default function usePlayerWebsocket({
 	}, [sessionId, enabled]);
 
 	const control = useCallback(
-		async (action: PlayerControlAction): Promise<void> => {
+		async (action: PlayerControlAction): Promise<string | undefined> => {
 			const socket = getWebsocket();
 			if (!socket) {
 				throw new WebsocketRequestError(503, "Not connected to the player. Reconnecting…");
 			}
-			await controlPlayer({ socket, sessionId, control: action });
+			return controlPlayer({ socket, sessionId, control: action });
 		},
 		[sessionId],
 	);

@@ -80,6 +80,18 @@ export type PlayerVoiceChannelResult =
 	  }
 	| { readonly success: false; readonly embed: EmbedBuilder };
 
+/**
+ * Reorders the upcoming tracks at random when the session has shuffle on. Shuffle is applied to the queue itself,
+ * never through discord-player's dynamic shuffle, so the queue list is always the real play order.
+ */
+export function shuffleQueueIfEnabled(queue: {
+	metadata: PlayerQueueMetadata;
+	tracks: { size: number; shuffle(): void };
+}): void {
+	if (queue.metadata.shuffle && queue.tracks.size > 1) {
+		queue.tracks.shuffle();
+	}
+}
 export function getNextRepeatMode(repeatMode: QueueRepeatMode): QueueRepeatMode {
 	return (repeatMode === 3 ? 0 : repeatMode + 1) as QueueRepeatMode;
 }

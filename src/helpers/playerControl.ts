@@ -1,6 +1,6 @@
 import type { QueueRepeatMode } from "discord-player";
 import { z } from "zod";
-import { MAX_PLAY_QUERY_LENGTH } from "../services/playerSearch.js";
+import { MAX_PLAY_QUERY_LENGTH } from "./playerLimits.js";
 import {
 	addTracksToQueue,
 	clearQueue,

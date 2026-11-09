@@ -1,10 +1,11 @@
-import { InteractionContextType, PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
+import { InteractionContextType, MessageFlags, PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
 
 import { formatGuild, formatUser } from "../helpers/discord.js";
 import { createPlayerEmbed, getValidatedPlayerVoiceChannel } from "../helpers/player.js";
 import type { QueueRepeatMode } from "discord-player";
 import type { BotCommand, BotCommandData } from "../services/commandLoader.js";
 import { logger } from "../services/logger.js";
+import { MAX_QUEUE_SIZE } from "../helpers/playerLimits.js";
 import { getPlayer, playSearchResult } from "../services/player.js";
 import { getPlayerSuggestions, resolvePlayerQuery, type PlayerSuggestionKind } from "../services/playerSearch.js";
 
@@ -127,25 +128,36 @@ const command: BotCommand = {
 				shuffle: shouldShuffle,
 				repeatMode: shouldLoop ? 2 : 0,
 			});
+			if (playResponse.success && playResponse.data.skippedTracks > 0) {
+				await interaction.followUp({
+					content: `⚠ The queue is limited to ${MAX_QUEUE_SIZE} tracks, so ${playResponse.data.skippedTracks} ${playResponse.data.skippedTracks === 1 ? "track was" : "tracks were"} left out.`,
+					flags: MessageFlags.Ephemeral,
+				});
+			}
 			if (!playResponse.success) {
 				const playFailure =
-					playResponse.error_code === "PLAYER_LOCKED"
+					playResponse.error_code === "PLAYER_QUEUE_FULL"
 						? {
-								title: "🔒 Session locked",
-								description:
-									"The owner of this player session locked it.\nOnly they can add tracks or change playback until it is unlocked.",
+								title: "📚 Queue is full",
+								description: `The queue can hold up to ${MAX_QUEUE_SIZE} tracks and there is not enough room for this.\nRemove some tracks or add fewer.`,
 							}
-						: playResponse.error_code === "PLAYER_DOWN"
+						: playResponse.error_code === "PLAYER_LOCKED"
 							? {
-									title: "🤖 Player out of service",
+									title: "🔒 Session locked",
 									description:
-										"🤖 The bot's music player is currently out of service.\nPlease check back later.",
+										"The owner of this player session locked it.\nOnly they can add tracks or change playback until it is unlocked.",
 								}
-							: {
-									title: "🤖 Player not ready",
-									description:
-										"🤖 The bot's music player is not ready yet.\nPlease try again shortly.",
-								};
+							: playResponse.error_code === "PLAYER_DOWN"
+								? {
+										title: "🤖 Player out of service",
+										description:
+											"🤖 The bot's music player is currently out of service.\nPlease check back later.",
+									}
+								: {
+										title: "🤖 Player not ready",
+										description:
+											"🤖 The bot's music player is not ready yet.\nPlease try again shortly.",
+									};
 				await interaction.editReply({ embeds: [createPlayerEmbed(playFailure)] });
 			}
 		} catch (error: unknown) {

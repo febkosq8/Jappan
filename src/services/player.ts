@@ -5,12 +5,14 @@ import { Player, type PlayerNodeInitializerOptions, type SearchOptions, type Sea
 import type { APIInteractionGuildMember, Client, GuildMember, Message } from "discord.js";
 
 import { registerPlayerHandlers } from "../handlers/player.js";
+import { MAX_QUEUE_SIZE } from "../helpers/playerLimits.js";
 import {
 	checkPlayerHealth,
 	type PlayerQueue,
 	type PlayerQueueMetadata,
 	markPlayerStatusMessageReplaced,
 	markPlayerStatusMessageShutdown,
+	shuffleQueueIfEnabled,
 	updatePlayerQueueMessage,
 } from "../helpers/player.js";
 import { getConfig } from "./config.js";
@@ -30,7 +32,7 @@ export class PlayerNotInitializedError extends Error {
 
 export type PlayerErrorCode = "PLAYER_NOT_INITIALIZED" | "PLAYER_DOWN";
 
-export type PlayerPlayErrorCode = PlayerErrorCode | "PLAYER_LOCKED";
+export type PlayerPlayErrorCode = PlayerErrorCode | "PLAYER_LOCKED" | "PLAYER_QUEUE_FULL";
 export type PlayerResult<Result, ErrorCode extends string = PlayerErrorCode> =
 	{ readonly success: true; readonly data: Result } | { readonly success: false; readonly error_code: ErrorCode };
 
@@ -261,7 +263,7 @@ export async function playSearchResult({
 	shuffle?: boolean;
 	repeatMode?: 0 | 1 | 2 | 3;
 	playNodeOptions?: Omit<NonNullable<PlayerNodeInitializerOptions<PlayerQueueMetadata>["nodeOptions"]>, "metadata">;
-}): Promise<PlayerResult<void, PlayerPlayErrorCode>> {
+}): Promise<PlayerResult<{ readonly skippedTracks: number }, PlayerPlayErrorCode>> {
 	const errorCode = getPlayerErrorCode();
 	if (errorCode) {
 		return { success: false, error_code: errorCode };
@@ -278,6 +280,18 @@ export async function playSearchResult({
 		return { success: false, error_code: "PLAYER_LOCKED" };
 	}
 
+	// A playlist adds every track and anything else only its first result, the same as discord-player's play().
+	// As many as fit in the queue are added; the rest are dropped.
+	const queueRoom = existingQueue ? existingQueue.getCapacity() : MAX_QUEUE_SIZE;
+	if (queueRoom === 0) {
+		return { success: false, error_code: "PLAYER_QUEUE_FULL" };
+	}
+	const { playlist } = searchResult;
+	const skippedTracks = playlist ? Math.max(0, playlist.tracks.length - queueRoom) : 0;
+	if (playlist && skippedTracks > 0) {
+		playlist.tracks = playlist.tracks.slice(0, queueRoom);
+		searchResult.setTracks(searchResult.tracks.slice(0, queueRoom));
+	}
 	// Only used when this call creates the queue; an existing queue keeps its own metadata
 	const metadata: PlayerQueueMetadata = {
 		sessionId: randomUUID(),
@@ -289,6 +303,7 @@ export async function playSearchResult({
 	const { queue } = await getPlayer().play<PlayerQueueMetadata>(channel, searchResult, {
 		nodeOptions: {
 			repeatMode,
+			maxSize: MAX_QUEUE_SIZE,
 			bufferingTimeout: 15000,
 			// Lets a forward seek skip audio inside the running stream instead of restarting it, which is slow.
 			// It is off by default in discord-player; a backward seek still restarts the stream.
@@ -310,9 +325,11 @@ export async function playSearchResult({
 			requestedById: member.user.id,
 		});
 	}
+	// An existing session with shuffle on keeps its queue shuffled when more is added
+	shuffleQueueIfEnabled(queue);
 	recordPlayerChange(queue, { userId: member.user.id, username: member.user.username, source: "discord" });
 	queue.metadata.statusMessage = statusMessage;
 	notifyPlayerChanged(queue);
 	await updatePlayerQueueMessage({ queue, content: "" });
-	return { success: true, data: undefined };
+	return { success: true, data: { skippedTracks } };
 }

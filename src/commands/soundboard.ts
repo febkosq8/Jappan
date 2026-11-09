@@ -3,6 +3,7 @@ import { InteractionContextType, PermissionFlagsBits, SlashCommandBuilder } from
 import { formatUser } from "../helpers/discord.js";
 import { createPlayerEmbed, getValidatedPlayerVoiceChannel } from "../helpers/player.js";
 import type { BotCommand, BotCommandData } from "../services/commandLoader.js";
+import { MAX_QUEUE_SIZE } from "../helpers/playerLimits.js";
 import { getPlayer, playSearchResult, searchPlayer } from "../services/player.js";
 
 const voiceClips = {
@@ -117,16 +118,22 @@ const command: BotCommand = {
 			await interaction.editReply({
 				embeds: [
 					createPlayerEmbed(
-						playResponse.error_code === "PLAYER_LOCKED"
+						playResponse.error_code === "PLAYER_QUEUE_FULL"
 							? {
-									title: "🔒 Session locked",
-									description:
-										"The owner of this player session locked it.\nOnly they can add tracks or change playback until it is unlocked.",
+									title: "📚 Queue is full",
+									description: `The queue can hold up to ${MAX_QUEUE_SIZE} tracks and there is not enough room for this.`,
 								}
-							: {
-									title: "🤖 Player not ready",
-									description: "The bot's music player is not ready yet. Please try again shortly.",
-								},
+							: playResponse.error_code === "PLAYER_LOCKED"
+								? {
+										title: "🔒 Session locked",
+										description:
+											"The owner of this player session locked it.\nOnly they can add tracks or change playback until it is unlocked.",
+									}
+								: {
+										title: "🤖 Player not ready",
+										description:
+											"The bot's music player is not ready yet. Please try again shortly.",
+									},
 					),
 				],
 			});
