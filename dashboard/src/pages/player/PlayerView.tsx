@@ -241,8 +241,7 @@ export default function PlayerView() {
 		<main className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6">
 			<div className="mb-4 grid gap-4 sm:grid-cols-2">
 				<Card hoverable={false} className="rounded-md border-border">
-					<Card.Content className="relative flex items-center justify-start gap-3 p-4!">
-						<RefreshIndicator active={refreshing} className="absolute right-4 top-4" />
+					<Card.Content className="flex items-center justify-start gap-3 p-4!">
 						<Avatar
 							name={session.guild.name}
 							image={session.guild.iconUrl}
@@ -455,7 +454,7 @@ export default function PlayerView() {
 						</TabsTab>
 					))}
 				</TabsList>
-				<TabsPanel value="now-playing" keepMounted className="flex flex-col gap-4">
+				<TabsPanel value="now-playing" keepMounted>
 					<NowPlaying
 						refreshing={refreshing}
 						session={session}
@@ -463,9 +462,10 @@ export default function PlayerView() {
 						onControl={(action) => controlMutation.mutate(action)}
 						receivedAt={sessionQuery.dataUpdatedAt}
 					/>
+				</TabsPanel>
+				<TabsPanel value="queue" keepMounted className="flex flex-col gap-4">
 					{session.viewer.canControl && (
 						<AddToQueue
-							refreshing={refreshing}
 							sessionId={sessionId}
 							disabled={controlMutation.isPending || !connected}
 							adding={controlMutation.isPending && controlMutation.variables?.path === "queue/add"}
@@ -473,8 +473,6 @@ export default function PlayerView() {
 							loadSuggestions={websocket.suggestions}
 						/>
 					)}
-				</TabsPanel>
-				<TabsPanel value="queue" keepMounted>
 					<QueueList
 						refreshing={refreshing}
 						session={session}
