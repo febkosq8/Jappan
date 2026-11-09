@@ -11,6 +11,26 @@ import { getConfig } from "./config.js";
 import DatabaseManager from "./database.js";
 import { logger } from "./logger.js";
 
+/** `exceptSessionId` is the session that stays valid, such as the one just created by a sign-in. */
+interface AuthSessionEndedEvent {
+	readonly userId: string;
+	readonly exceptSessionId?: string | undefined;
+}
+type AuthSessionEndedListener = (event: AuthSessionEndedEvent) => void;
+const sessionEndedListeners = new Set<AuthSessionEndedListener>();
+/**
+ * Calls `listener` when a user's sessions end: on sign-out, and on sign-in, which replaces every older session.
+ * Returns a function that removes it.
+ */
+export function onAuthSessionEnded(listener: AuthSessionEndedListener): () => void {
+	sessionEndedListeners.add(listener);
+	return () => sessionEndedListeners.delete(listener);
+}
+function notifySessionsEnded(event: AuthSessionEndedEvent): void {
+	for (const listener of sessionEndedListeners) {
+		listener(event);
+	}
+}
 function createAuth() {
 	const config = getConfig();
 	return betterAuth({
@@ -107,11 +127,17 @@ function createAuth() {
 								throw new Error("User was not found while synchronizing role");
 							}
 						}
+						// A direct delete, so Better Auth's delete hook does not run for these sessions
 						await AuthSessionModel.deleteMany({ userId });
+					},
+					after: async (session) => {
+						// Every older session was deleted before this one was created
+						notifySessionsEnded({ userId: session.userId, exceptSessionId: session.id });
 					},
 				},
 				delete: {
 					after: async (session, context) => {
+						notifySessionsEnded({ userId: session.userId });
 						if (context?.path !== "/sign-out") return;
 						await AuthSessionModel.deleteMany({ userId: new mongoose.Types.ObjectId(session.userId) });
 					},

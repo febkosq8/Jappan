@@ -1,14 +1,16 @@
 import { Player } from "discord-player";
 
 import { formatGuild } from "../helpers/discord.js";
-import { updatePlayerQueueMessage } from "../helpers/player.js";
+import { updatePlayerQueueMessage, type PlayerQueue } from "../helpers/player.js";
 import { enrichTracksMetadata } from "../helpers/trackMetadata.js";
 import { getConfig } from "../services/config.js";
 import { logger } from "../services/logger.js";
+import { endPlayerSession, notifyPlayerChanged } from "../services/playerWebsocket.js";
 
 export function registerPlayerHandlers(player: Player): void {
 	registerPlayerErrorHandlers(player);
 	registerPlayerStatusHandlers(player);
+	registerPlayerWebsocketHandlers(player);
 	if (getConfig("PLAYER_DEBUG")) {
 		registerPlayerDebugHandlers(player);
 	}
@@ -63,6 +65,33 @@ function registerPlayerStatusHandlers(player: Player): void {
 	});
 }
 
+/** Pushes every change a web player can show to the people watching the session. */
+function registerPlayerWebsocketHandlers(player: Player): void {
+	const events = player.events;
+	// Repeat, shuffle, seek and lock raise no queue event; the shared player actions notify for those
+	const changeEvents = [
+		"playerStart",
+		"playerFinish",
+		"playerSkip",
+		"playerPause",
+		"playerResume",
+		"volumeChange",
+		"audioTrackAdd",
+		"audioTracksAdd",
+		"audioTrackRemove",
+		"audioTracksRemove",
+		"emptyQueue",
+		"emptyChannel",
+		"channelPopulate",
+		"voiceStateUpdate",
+		"connection",
+		"disconnect",
+	] as const;
+	for (const eventName of changeEvents) {
+		events.on(eventName, (queue: PlayerQueue) => notifyPlayerChanged(queue));
+	}
+	events.on("queueDelete", (queue) => endPlayerSession(queue));
+}
 function registerPlayerDebugHandlers(player: Player): void {
 	const events = player.events;
 

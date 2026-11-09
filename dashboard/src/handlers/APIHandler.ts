@@ -301,20 +301,6 @@ class APIHandler {
 		});
 		return data;
 	}
-	static async getPlayerSuggestions(sessionId: string, query: string): Promise<PlayerSuggestion[]> {
-		const { data } = await apiClient.get<{ suggestions: PlayerSuggestion[] }>(
-			`/api/v1/player/${encodeURIComponent(sessionId)}/suggestions`,
-			{ params: { q: query }, withCredentials: true },
-		);
-		return data.suggestions;
-	}
-	static async controlPlayerSession(sessionId: string, action: PlayerControlAction): Promise<void> {
-		await apiClient.post<void>(
-			`/api/v1/player/${encodeURIComponent(sessionId)}/controls/${action.path}`,
-			"body" in action ? action.body : {},
-			{ withCredentials: true },
-		);
-	}
 	static async getAdminGuilds(): Promise<AdminGuild[]> {
 		const { data } = await apiClient.get<AdminGuild[]>("/api/v1/admin/guilds", { withCredentials: true });
 		return data;

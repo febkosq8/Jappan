@@ -104,6 +104,32 @@ This document records design decisions and behavior that is easy to miss.
 - Guild-config event processing is skipped while the bot is leaving or has left
   a guild, preventing departure-related events from disabling saved settings.
 
+## Player WebSocket
+
+`GET /api/v1/player/:sessionId` returns the current state of a player session
+and is the only player HTTP route. Live updates and every control use a
+Socket.IO WebSocket server on the same port, mounted at `/api/v1/websocket`.
+It accepts the WebSocket transport only.
+
+- The handshake needs the same signed-in, active session cookie as the HTTP
+  routes, and an `Origin` from `ALLOWED_ORIGINS`. Open sessions are checked
+  again every minute and disconnected when the session ends.
+- Each player session is a room named `player:<sessionId>`. A client joins it
+  with `player:subscribe` and receives `player:state` pushes, sent per viewer
+  because what a user can control differs. Changes within 75 ms are combined
+  and every subscriber also gets a fresh state every 30 seconds.
+- Client events, all answered through an acknowledgement of
+  `{ ok: true, ... }` or `{ ok: false, status, error }`, where `status`
+  follows the HTTP status codes: `player:subscribe`, `player:unsubscribe`,
+  `player:control` (`{ sessionId, control: { path, body? } }`, with the same
+  paths and bodies as the former control routes) and `player:suggestions`.
+- Server events: `player:state`, `player:ended` when the session ends, and
+  `player:revoked` when the user can no longer view it.
+- Controls re-check guild membership, voice channel and the session lock on
+  every call. A connection is limited to 40 events per 10 seconds.
+- The server is a single instance. Rooms live in memory, like the player
+  queues themselves. A reverse proxy must pass WebSocket upgrades through.
+
 ## FebGoServe compatibility
 
 The route contract does not automatically reproduce FebGoServe's middleware or

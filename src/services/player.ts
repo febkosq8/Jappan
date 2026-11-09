@@ -16,6 +16,7 @@ import {
 import { getConfig } from "./config.js";
 import { logger } from "./logger.js";
 import { isPlayerSessionOwner, recordPlayerChange } from "./playerAccess.js";
+import { notifyPlayerChanged } from "./playerWebsocket.js";
 
 let player: Player | undefined;
 let playerDown = false;
@@ -308,6 +309,7 @@ export async function playSearchResult({
 	}
 	recordPlayerChange(queue, { userId: member.user.id, username: member.user.username, source: "discord" });
 	queue.metadata.statusMessage = statusMessage;
+	notifyPlayerChanged(queue);
 	await updatePlayerQueueMessage({ queue, content: "" });
 	return { success: true, data: undefined };
 }

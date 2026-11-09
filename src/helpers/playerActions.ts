@@ -7,6 +7,7 @@ import {
 	recordPlayerChange,
 	type PlayerActor,
 } from "../services/playerAccess.js";
+import { notifyPlayerChanged } from "../services/playerWebsocket.js";
 import { resolvePlayerQuery } from "../services/playerSearch.js";
 import { formatGuild } from "./discord.js";
 import {
@@ -61,11 +62,12 @@ function logPlayerAction({ queue, actor, action }: PlayerActionContext & { actio
 	});
 }
 
-/** Ends a successful change: remembers who made it and refreshes the Discord player message. */
+/** Ends a successful change: remembers who made it, refreshes the Discord player message and the web players. */
 function completeChange({ queue, actor, action }: PlayerActionContext & { action: string }): PlayerActionResult {
 	logPlayerAction({ queue, actor, action });
 	recordPlayerChange(queue, actor);
 	void updatePlayerQueueMessage({ queue, content: "" });
+	notifyPlayerChanged(queue);
 	return succeeded;
 }
 
@@ -308,5 +310,6 @@ export function setSessionLocked({
 	queue.metadata.locked = locked;
 	logPlayerAction({ queue, actor, action: locked ? "lock" : "unlock" });
 	void updatePlayerQueueMessage({ queue, content: "" });
+	notifyPlayerChanged(queue);
 	return succeeded;
 }

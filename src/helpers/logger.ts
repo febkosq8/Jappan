@@ -14,6 +14,7 @@ export type LogCategory =
 	| "DOPPELGANGER"
 	| "HTTP"
 	| "PLAYER"
+	| "WEBSOCKET"
 	| "SLASH_COMMANDS";
 
 const levelColors: Record<LogLevel, (value: string) => string> = {
@@ -35,6 +36,7 @@ const categoryColors: Record<LogCategory, (value: string) => string> = {
 	DOPPELGANGER: red,
 	HTTP: cyan,
 	PLAYER: cyan,
+	WEBSOCKET: cyan,
 	SLASH_COMMANDS: yellow,
 };
 

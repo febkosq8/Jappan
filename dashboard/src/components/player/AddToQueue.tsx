@@ -2,7 +2,7 @@ import { Button, Card, Input, Tag } from "@febkosq8/arc";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useEffect, useId, useState, type ChangeEvent, type KeyboardEvent } from "react";
 import { FiPlus } from "react-icons/fi";
-import APIHandler, { type PlayerSuggestion } from "@jappan/handlers/APIHandler";
+import { type PlayerSuggestion } from "@jappan/handlers/APIHandler";
 import RefreshIndicator from "@jappan/components/player/RefreshIndicator";
 
 // How long to wait after typing before asking for suggestions, in milliseconds
@@ -21,12 +21,14 @@ export default function AddToQueue({
 	adding,
 	refreshing,
 	onAdd,
+	loadSuggestions,
 }: {
 	sessionId: string;
 	disabled: boolean;
 	adding: boolean;
 	refreshing: boolean;
 	onAdd: (query: string) => void;
+	loadSuggestions: (query: string) => Promise<PlayerSuggestion[]>;
 }) {
 	const listboxId = useId();
 	const [text, setText] = useState("");
@@ -41,9 +43,11 @@ export default function AddToQueue({
 
 	const suggestionsQuery = useQuery({
 		queryKey: ["player-suggestions", sessionId, debouncedText],
-		queryFn: () => APIHandler.getPlayerSuggestions(sessionId, debouncedText),
+		queryFn: () => loadSuggestions(debouncedText),
 		enabled: open && !disabled,
 		staleTime: 30_000,
+		// The server rate-limits each connection, so a failed lookup is not repeated on its own
+		retry: false,
 		placeholderData: keepPreviousData,
 	});
 	const suggestions = open ? (suggestionsQuery.data ?? []) : [];
