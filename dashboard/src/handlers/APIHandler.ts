@@ -235,8 +235,8 @@ export interface PlayerTrack {
 }
 export interface PlayerSession {
 	sessionId: string;
-	guild: { name: string; iconUrl: string | null };
-	channel: { name: string; listenerCount: number } | null;
+	guild: { id: string; name: string; iconUrl: string | null };
+	channel: { id: string; name: string; listenerCount: number; region: string | null } | null;
 	owner: { username: string; avatarUrl: string | null };
 	locked: boolean;
 	lastChangedBy: {

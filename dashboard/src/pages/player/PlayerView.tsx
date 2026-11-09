@@ -2,10 +2,11 @@ import { Avatar, Button, Card, DateHandler, PillLink, Tabs, TabsList, TabsPanel,
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { useEffect, useState } from "react";
-import { FiAlertTriangle, FiArrowLeft, FiInfo, FiLock, FiUnlock, FiVolume2 } from "react-icons/fi";
+import { FiAlertTriangle, FiArrowLeft, FiGlobe, FiInfo, FiLock, FiUnlock, FiUsers, FiVolume2 } from "react-icons/fi";
 import { useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { AccessRedirect, accessErrorStatus } from "@jappan/components/AdminRoute";
+import ExternalTextLink from "@jappan/components/ExternalTextLink";
 import AddToQueue from "@jappan/components/player/AddToQueue";
 import NowPlaying from "@jappan/components/player/NowPlaying";
 import PlayerLoading from "@jappan/components/player/PlayerLoading";
@@ -156,18 +157,23 @@ export default function PlayerView() {
 		<main className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6">
 			<div className="mb-4 grid gap-4 sm:grid-cols-2">
 				<Card hoverable={false} className="rounded-md border-border">
-					<Card.Content className="relative flex items-center justify-start gap-4 p-4!">
+					<Card.Content className="relative flex items-center justify-start gap-3 p-4!">
 						<RefreshIndicator active={refreshing} className="absolute right-4 top-4" />
 						<Avatar
 							name={session.guild.name}
 							image={session.guild.iconUrl}
 							size="xl"
-							className="size-16 text-2xl"
+							className="size-12 text-xl"
 							aria-hidden="true"
 						/>
 						<div className="min-w-0">
 							<p className="text-sm font-semibold text-muted-foreground">Server</p>
-							<h1 className="truncate text-xl font-bold tracking-tight">{session.guild.name}</h1>
+							<h1 className="wrap-break-word text-lg font-bold tracking-tight">
+								<ExternalTextLink
+									href={`https://discord.com/channels/${encodeURIComponent(session.guild.id)}`}
+									text={session.guild.name}
+								/>
+							</h1>
 						</div>
 					</Card.Content>
 				</Card>
@@ -177,10 +183,28 @@ export default function PlayerView() {
 						<p className="text-sm font-semibold text-muted-foreground">Voice channel</p>
 						<h2 className="flex items-center gap-2 text-xl font-bold tracking-tight">
 							<FiVolume2 className="size-5 shrink-0 text-primary" aria-hidden="true" />
-							<span className="truncate">{session.channel ? session.channel.name : "Not connected"}</span>
+							<span className="wrap-break-word">
+								{session.channel ? (
+									<ExternalTextLink
+										href={`https://discord.com/channels/${encodeURIComponent(session.guild.id)}/${encodeURIComponent(session.channel.id)}`}
+										text={session.channel.name}
+									/>
+								) : (
+									"Not connected"
+								)}
+							</span>
 						</h2>
 						{session.channel && (
-							<p className="text-sm text-muted-foreground">{session.channel.listenerCount} listening</p>
+							<div className="flex flex-wrap items-center gap-x-3 text-sm text-muted-foreground">
+								<p className="flex items-center gap-1.5">
+									<FiUsers className="size-4 shrink-0" aria-hidden="true" />
+									{session.channel.listenerCount} listening
+								</p>
+								<p className="flex items-center gap-1.5 capitalize">
+									<FiGlobe className="size-4 shrink-0" aria-hidden="true" />
+									{session.channel.region?.replace(/-/g, " ") ?? "Automatic"}
+								</p>
+							</div>
 						)}
 					</Card.Content>
 				</Card>
@@ -242,8 +266,11 @@ export default function PlayerView() {
 											</p>
 											<p className="text-xs text-muted-foreground">
 												via {session.lastChangedBy.source === "web" ? "Web Player" : "Discord"}{" "}
-												at {DateHandler.getDateTime(session.lastChangedBy.timestampMs)} (
-												{DateHandler.getRelativeTime(session.lastChangedBy.timestampMs)})
+												at{" "}
+												{DateHandler.getDateTime(
+													session.lastChangedBy.timestampMs,
+													"hh:mm:ss a",
+												)}
 											</p>
 										</div>
 									</div>
@@ -270,7 +297,10 @@ export default function PlayerView() {
 			</div>
 			{!session.viewer.inVoiceChannel && (
 				<Card hoverable={false} className="mb-4 rounded-md border-border">
-					<Card.Content role="status" className="flex items-center justify-start gap-3 p-4! text-left text-sm">
+					<Card.Content
+						role="status"
+						className="flex items-center justify-start gap-3 p-4! text-left text-sm"
+					>
 						<FiInfo className="size-5 shrink-0 text-primary" aria-hidden="true" />
 						<span>
 							Join the player's voice channel in Discord to control playback.
@@ -283,7 +313,10 @@ export default function PlayerView() {
 			)}
 			{session.locked && session.viewer.inVoiceChannel && !session.viewer.canControl && (
 				<Card hoverable={false} className="mb-4 rounded-md border-warning">
-					<Card.Content role="status" className="flex items-center justify-start gap-3 p-4! text-left text-sm">
+					<Card.Content
+						role="status"
+						className="flex items-center justify-start gap-3 p-4! text-left text-sm"
+					>
 						<FiLock className="size-5 shrink-0 text-warning" aria-hidden="true" />
 						<span>
 							The session owner locked this player.
@@ -295,7 +328,10 @@ export default function PlayerView() {
 			)}
 			{sessionQuery.isError && (
 				<Card hoverable={false} className="mb-4 rounded-md border-warning">
-					<Card.Content role="status" className="flex items-center justify-start gap-3 p-4! text-left text-sm text-warning">
+					<Card.Content
+						role="status"
+						className="flex items-center justify-start gap-3 p-4! text-left text-sm text-warning"
+					>
 						<FiAlertTriangle className="size-5 shrink-0" aria-hidden="true" />
 						<span>Could not refresh the player. Showing the last loaded data.</span>
 					</Card.Content>

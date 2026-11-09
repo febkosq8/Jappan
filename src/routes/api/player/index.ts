@@ -72,8 +72,15 @@ const trackSchema = z.object({
 });
 const playerSessionSchema = z.object({
 	sessionId: z.string(),
-	guild: z.object({ name: z.string(), iconUrl: z.string().nullable() }),
-	channel: z.object({ name: z.string(), listenerCount: z.number().int().nonnegative() }).nullable(),
+	guild: z.object({ id: z.string(), name: z.string(), iconUrl: z.string().nullable() }),
+	channel: z
+		.object({
+			id: z.string(),
+			name: z.string(),
+			listenerCount: z.number().int().nonnegative(),
+			region: z.string().nullable(),
+		})
+		.nullable(),
 	owner: z.object({ username: z.string(), avatarUrl: z.string().nullable() }),
 	locked: z.boolean(),
 	lastChangedBy: z

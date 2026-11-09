@@ -18,8 +18,13 @@ export interface PlayerSessionTrack {
 
 export interface PlayerSessionState {
 	readonly sessionId: string;
-	readonly guild: { readonly name: string; readonly iconUrl: string | null };
-	readonly channel: { readonly name: string; readonly listenerCount: number } | null;
+	readonly guild: { readonly id: string; readonly name: string; readonly iconUrl: string | null };
+	readonly channel: {
+		readonly id: string;
+		readonly name: string;
+		readonly listenerCount: number;
+		readonly region: string | null;
+	} | null;
 	readonly owner: { readonly username: string; readonly avatarUrl: string | null };
 	readonly locked: boolean;
 	readonly lastChangedBy: {
@@ -93,7 +98,8 @@ function getChannelInfo(queue: PlayerQueue): PlayerSessionState["channel"] {
 		return null;
 	}
 	const listenerCount = "members" in channel ? channel.members.filter((member) => !member.user.bot).size : 0;
-	return { name: channel.name, listenerCount };
+	const rtcRegion = "rtcRegion" in channel ? channel.rtcRegion : null;
+	return { id: channel.id, name: channel.name, listenerCount, region: rtcRegion };
 }
 
 function getLastChangeInfo(queue: PlayerQueue): PlayerSessionState["lastChangedBy"] {
@@ -136,7 +142,7 @@ export function getPlayerSessionState(queue: PlayerQueue, viewer: PlayerActor): 
 	const repeatValue = queue.repeatMode as QueueRepeatMode;
 	return {
 		sessionId: queue.metadata.sessionId,
-		guild: { name: queue.guild.name, iconUrl: queue.guild.iconURL() },
+		guild: { id: queue.guild.id, name: queue.guild.name, iconUrl: queue.guild.iconURL() },
 		channel: getChannelInfo(queue),
 		owner: { username: ownerUser?.username ?? owner.username, avatarUrl: ownerUser?.displayAvatarURL() ?? null },
 		locked: queue.metadata.locked,
