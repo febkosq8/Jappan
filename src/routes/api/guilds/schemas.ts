@@ -58,6 +58,7 @@ export const servicePreferencesSchema = z.object({
 });
 
 export const guildDetailsSchema = guildSchema.extend({
+	isActiveMember: z.boolean(),
 	servicePreferences: servicePreferencesSchema,
 	createdTimestampMs: z.number().int().optional(),
 	joinedTimestampMs: z.number().int().optional(),
@@ -124,4 +125,41 @@ export const warningsPreferenceSchema = z.object({
 		.nullable(),
 	banThreshold: threshold.nullable(),
 	auditChannelId: snowflake("channel").nullable(),
+});
+
+export const warningMemberSearchSchema = z.string().trim().min(2).max(32).optional();
+
+export const warningMemberSchema = z.object({
+	id: snowflake("user"),
+	username: z.string(),
+	displayName: z.string(),
+	avatarUrl: z.string().url().nullable(),
+});
+
+export const warningMemberDetailsSchema = warningMemberSchema.extend({
+	warningCount: z.number().int().nonnegative(),
+});
+
+export const warningCountSchema = z.object({
+	warningCount: z.number().int().nonnegative(),
+});
+
+export const warnedMemberSchema = z.object({
+	userId: snowflake("user"),
+	username: z.string(),
+	avatarUrl: z.string().url().nullable(),
+	warningCount: z.number().int().min(1),
+});
+
+export const warningIssueSchema = z.object({
+	reason: z.string().trim().max(512).optional(),
+});
+
+export const warningCountOverrideSchema = z.object({
+	count: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
+});
+
+export const warningActionResultSchema = z.object({
+	warningCount: z.number().int().nonnegative(),
+	action: z.enum(["none", "banned", "timed_out", "ban_failed", "timeout_failed"]),
 });
