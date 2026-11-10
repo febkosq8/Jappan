@@ -30,7 +30,7 @@ function readSectionFromHash() {
 
 function leaderboardErrorMessage(status: number | undefined) {
 	if (status === 404) return "Guild not found.";
-	if (status === 403) return "You need Manage Server permission in this guild to view its leaderboard.";
+	if (status === 403) return "You need to be a member of this guild to view its leaderboard.";
 	return "Could not load the leaderboard. Check your access and try again.";
 }
 
@@ -53,8 +53,8 @@ export default function GuildLeaderboard() {
 	const admin = isAdminSession(session);
 	const validGuildId = guildIdPattern.test(guildId);
 	const guildsQuery = useQuery({
-		queryKey: [admin ? "admin" : "user", "list-guilds"],
-		queryFn: () => (admin ? APIHandler.getAdminGuilds() : APIHandler.getUserGuilds()),
+		queryKey: ["user", "member-guilds"],
+		queryFn: APIHandler.getUserMemberGuilds,
 		enabled: !guildId,
 	});
 	const overviewQuery = useQuery({
@@ -133,7 +133,7 @@ export default function GuildLeaderboard() {
 					</div>
 				);
 			}
-			const guilds = guildsQuery.data.filter((item) => !("isActiveMember" in item) || item.isActiveMember);
+			const guilds = guildsQuery.data;
 			if (guilds.length === 0) {
 				return <p className="text-muted-foreground">No guilds available to view.</p>;
 			}

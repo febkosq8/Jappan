@@ -148,6 +148,26 @@ export const isGuildManager: AuthorizationCheck = authorizationCheck(
 	},
 );
 
+export const isGuildMember: AuthorizationCheck = authorizationCheck(
+	"Guild membership required",
+	async (request, session) => {
+		const { guildId } = request.params;
+		if (!isValidGuildId(guildId)) return "invalidGuildId";
+
+		const user = await AuthUserModel.findById(session.user.id).select({ discordAccountId: 1 }).exec();
+		const guild = getClientGuild(guildId);
+		if (!user?.discordAccountId || !guild?.available) return "denied";
+
+		try {
+			await guild.members.fetch(user.discordAccountId);
+			return "allowed";
+		} catch (error: unknown) {
+			if (error instanceof DiscordAPIError && error.code === RESTJSONErrorCodes.UnknownMember) return "denied";
+			throw error;
+		}
+	},
+);
+
 export const isActiveUser: AuthorizationCheck = authorizationCheck("Login required", () => "allowed");
 /** Any logged-in user whose account is active (suspended accounts are rejected with 403). */
 export const requireActiveUser: RequestHandler = requireAnyAuthorization([isActiveUser]);

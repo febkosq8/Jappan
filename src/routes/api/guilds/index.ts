@@ -6,6 +6,7 @@ import { getClient } from "../../../bot.js";
 import {
 	isBotAdmin,
 	isGuildManager,
+	isGuildMember,
 	requireAnyAuthorization,
 	requireGuildManager,
 	requireSession,
@@ -50,6 +51,13 @@ const middleware = [
 	requireValidGuildId,
 	requireAnyAuthorization([isGuildManager, isBotAdmin]),
 ];
+const leaderboardMiddleware = [
+	requireDatabase,
+	requireDiscord,
+	requireSession,
+	requireValidGuildId,
+	requireAnyAuthorization([isGuildMember, isBotAdmin], "Guild membership required"),
+];
 const guildIdPattern = /^\d{17,20}$/u;
 const leaderboardPageSchema = z.coerce.number().int().min(1).max(Number.MAX_SAFE_INTEGER);
 const parameters = [
@@ -88,10 +96,23 @@ async function resolveGuild(guildId: unknown, response: Response): Promise<Guild
 	}
 }
 
+async function getLinkedDiscordAccountId(session: AuthSession, response: Response): Promise<string | null> {
+	if (session.user.status !== "active" && session.user.status !== undefined) {
+		response.status(403).json({ error: "Active account required" });
+		return null;
+	}
+	const user = await AuthUserModel.findById(session.user.id).select({ discordAccountId: 1 }).exec();
+	if (!user?.discordAccountId) {
+		response.status(403).json({ error: "Linked Discord account required" });
+		return null;
+	}
+	return user.discordAccountId;
+}
+
 export default defineRouter("/guilds", [
 	{
 		method: "get",
-		path: "/",
+		path: "/manager",
 		tags,
 		summary: "List guilds the user can manage",
 		errorMessage: "Failed to list guilds",
@@ -108,19 +129,39 @@ export default defineRouter("/guilds", [
 		middleware: [requireDatabase, requireDiscord, requireSession],
 		handler: async (_request, response) => {
 			const session: AuthSession = response.locals.authSession;
-			if (session.user.status !== "active" && session.user.status !== undefined) {
-				return response.status(403).json({ error: "Active account required" });
-			}
-			const user = await AuthUserModel.findById(session.user.id).select({ discordAccountId: 1 }).exec();
-			if (!user?.discordAccountId) {
-				return response.status(403).json({ error: "Linked Discord account required" });
-			}
+			const discordAccountId = await getLinkedDiscordAccountId(session, response);
+			if (!discordAccountId) return;
 			return response.status(200).json(
 				await listGuilds({
-					userFilter: { userId: user.discordAccountId, permissions: [PermissionFlagsBits.ManageGuild] },
+					userFilter: { userId: discordAccountId, permissions: [PermissionFlagsBits.ManageGuild] },
 					keys: extendedGuildKeys,
 				}),
 			);
+		},
+	},
+	{
+		method: "get",
+		path: "/member",
+		tags,
+		summary: "List bot guilds the user is a member of",
+		errorMessage: "Failed to list guild memberships",
+		security,
+		responses: {
+			200: { description: "Bot guilds where the current user is a member", schema: z.array(guildSchema) },
+			401: { description: "Authentication required", schema: errorResponseSchema },
+			403: { description: "Active account and linked Discord account required", schema: errorResponseSchema },
+			500: { description: "Failed to list guild memberships", schema: errorResponseSchema },
+		},
+		middleware: [requireDatabase, requireDiscord, requireSession],
+		handler: async (_request, response) => {
+			const session: AuthSession = response.locals.authSession;
+			const discordAccountId = await getLinkedDiscordAccountId(session, response);
+			if (!discordAccountId) return;
+			const guilds = await listGuilds({
+				userFilter: { userId: discordAccountId },
+				keys: baseGuildKeys,
+			});
+			return response.status(200).json(guilds);
 		},
 	},
 	{
@@ -383,12 +424,13 @@ export default defineRouter("/guilds", [
 		responses: {
 			200: { description: "Guild leaderboard and leveling reward", schema: guildLeaderboardSchema },
 			...accessResponses,
+			403: { description: "Guild membership required", schema: errorResponseSchema },
 			404: { description: "Guild not found", schema: errorResponseSchema },
 			409: { description: "Bot is not a guild member", schema: errorResponseSchema },
 			503: { description: "Guild is unavailable", schema: errorResponseSchema },
 			500: { description: "Failed to get guild leaderboard", schema: errorResponseSchema },
 		},
-		middleware,
+		middleware: leaderboardMiddleware,
 		handler: async (request, response) => {
 			const guild = await resolveGuild(request.params.guildId, response);
 			if (!guild) return;

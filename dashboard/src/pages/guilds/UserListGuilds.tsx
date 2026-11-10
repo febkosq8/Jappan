@@ -87,8 +87,8 @@ const columns: TableColumnDef<UserGuild>[] = [
 export default function UserListGuilds() {
 	useDocumentTitle(formatTitle("My Guilds"));
 	const guildsQuery = useQuery({
-		queryKey: ["user", "list-guilds"],
-		queryFn: APIHandler.getUserGuilds,
+		queryKey: ["user", "managed-guilds"],
+		queryFn: APIHandler.getManagedGuilds,
 	});
 
 	const isUnauthorized = axios.isAxiosError(guildsQuery.error) && guildsQuery.error.response?.status === 401;

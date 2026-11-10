@@ -317,8 +317,13 @@ class APIHandler {
 		return data;
 	}
 
-	static async getUserGuilds(): Promise<UserGuild[]> {
-		const { data } = await apiClient.get<UserGuild[]>("/api/v1/guilds/", { withCredentials: true });
+	static async getManagedGuilds(): Promise<UserGuild[]> {
+		const { data } = await apiClient.get<UserGuild[]>("/api/v1/guilds/manager", { withCredentials: true });
+		return data;
+	}
+
+	static async getUserMemberGuilds(): Promise<UserGuild[]> {
+		const { data } = await apiClient.get<UserGuild[]>("/api/v1/guilds/member", { withCredentials: true });
 		return data;
 	}
 
