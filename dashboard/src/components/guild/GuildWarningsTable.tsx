@@ -69,26 +69,18 @@ export default function GuildWarningsTable({
 			<p className="mt-1 text-sm text-muted-foreground">
 				Only users with at least one warning are shown, ordered by warning count.
 			</p>
-			<Button
-				type="button"
-				size="sm"
-				variant="outline-primary"
-				className="mt-3"
-				disabled={!active || !isActiveMember || warningsQuery.isFetching}
-				onClick={() => {
-					if (loadRequested) {
-						void warningsQuery.refetch();
-					} else {
-						setLoadedGuildId(guildId);
-					}
-				}}
-			>
-				{warningsQuery.isFetching
-					? "Loading warnings..."
-					: loadRequested
-						? "Refresh warnings"
-						: "Load warnings"}
-			</Button>
+			{!loadRequested && (
+				<Button
+					type="button"
+					size="sm"
+					variant="outline-primary"
+					className="mt-3"
+					disabled={!active || !isActiveMember}
+					onClick={() => setLoadedGuildId(guildId)}
+				>
+					Load warnings
+				</Button>
+			)}
 			<div className="mt-4">
 				{!isActiveMember ? (
 					<p className="text-sm text-muted-foreground">The bot must be a guild member to load warnings.</p>
