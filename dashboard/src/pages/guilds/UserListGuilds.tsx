@@ -4,6 +4,7 @@ import axios from "axios";
 
 import APIHandler, { type UserGuild } from "@jappan/handlers/APIHandler";
 import { AccessRedirect } from "@jappan/components/AdminRoute";
+import UserDisplay from "@jappan/components/display/UserDisplay";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import useDocumentTitle, { formatTitle } from "@jappan/helpers/useDocumentTitle";
 
@@ -58,15 +59,7 @@ const columns: TableColumnDef<UserGuild>[] = [
 		cell: ({ row }) => {
 			const owner = row.original.owner;
 			return owner ? (
-				<div className="flex items-center gap-2">
-					<Avatar name={owner.username} image={owner.avatarUrl} size="sm" aria-hidden="true" />
-					<span className="min-w-0">
-						<span className="block truncate" title={owner.username}>
-							{owner.username}
-						</span>
-						<span className="block text-xs text-muted-foreground">{owner.userId}</span>
-					</span>
-				</div>
+				<UserDisplay id={owner.userId} name={owner.username} avatarUrl={owner.avatarUrl} />
 			) : (
 				<Unavailable />
 			);

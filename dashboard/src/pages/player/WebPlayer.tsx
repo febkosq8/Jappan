@@ -22,6 +22,8 @@ import { RiSignalWifiErrorLine } from "react-icons/ri";
 import { useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { AccessRedirect, accessErrorStatus } from "@jappan/components/AdminRoute";
+import ChannelDisplay from "@jappan/components/display/ChannelDisplay";
+import UserDisplay from "@jappan/components/display/UserDisplay";
 import ExternalTextLink from "@jappan/components/ExternalTextLink";
 import AddToQueue from "@jappan/components/player/AddToQueue";
 import NowPlaying from "@jappan/components/player/NowPlaying";
@@ -328,10 +330,7 @@ export default function WebPlayer() {
 							<FiVolume2 className="mt-1.25 size-5 shrink-0 text-primary" aria-hidden="true" />
 							<span className="wrap-break-word">
 								{session.channel ? (
-									<ExternalTextLink
-										href={`https://discord.com/channels/${encodeURIComponent(session.guild.id)}/${encodeURIComponent(session.channel.id)}`}
-										text={session.channel.name}
-									/>
+									<ChannelDisplay guildId={session.guild.id} {...session.channel} showId={false} />
 								) : (
 									"Not connected"
 								)}
@@ -388,34 +387,24 @@ export default function WebPlayer() {
 						<div className="grid gap-x-8 gap-y-4 sm:grid-cols-[auto_minmax(0,1fr)_auto_auto]">
 							<div className="min-w-0">
 								<p className="text-sm font-semibold text-muted-foreground">Owner</p>
-								<div className="flex min-w-0 items-center gap-2">
-									<Avatar
-										name={session.owner.username}
-										image={session.owner.avatarUrl}
-										size="md"
-										className="size-10 shrink-0"
-										aria-hidden="true"
-									/>
-									<p className="truncate text-sm font-medium text-foreground">
-										{session.owner.username}
-									</p>
-								</div>
+								<UserDisplay
+									name={session.owner.username}
+									avatarUrl={session.owner.avatarUrl}
+									size="md"
+									showId={false}
+								/>
 							</div>
 							<div className="min-w-0">
 								<p className="text-sm font-semibold text-muted-foreground">Last change</p>
 								{session.lastChangedBy ? (
-									<div className="flex min-w-0 items-center gap-2">
-										<Avatar
+									<div className="min-w-0">
+										<UserDisplay
 											name={session.lastChangedBy.username}
-											image={session.lastChangedBy.avatarUrl}
+											avatarUrl={session.lastChangedBy.avatarUrl}
 											size="md"
-											className="size-10 shrink-0"
-											aria-hidden="true"
+											showId={false}
 										/>
-										<div className="min-w-0">
-											<p className="truncate text-sm font-medium text-foreground">
-												{session.lastChangedBy.username}
-											</p>
+										<div className="ml-12">
 											<p className="text-xs text-muted-foreground">
 												via {session.lastChangedBy.source === "web" ? "Web Player" : "Discord"}{" "}
 												at{" "}

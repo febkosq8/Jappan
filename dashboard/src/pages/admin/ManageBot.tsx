@@ -6,6 +6,8 @@ import { FiCheckCircle, FiMusic, FiPower, FiRefreshCw, FiXCircle } from "react-i
 import { toast } from "sonner";
 
 import { AccessRedirect, accessErrorStatus } from "@jappan/components/AdminRoute";
+import ChannelDisplay from "@jappan/components/display/ChannelDisplay";
+import UserDisplay from "@jappan/components/display/UserDisplay";
 import ExternalTextLink from "@jappan/components/ExternalTextLink";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import APIHandler, { type AdminBotPlayerSession } from "@jappan/handlers/APIHandler";
@@ -64,15 +66,7 @@ function PlayerSession({ session }: { session: AdminBotPlayerSession }) {
 						<dt className="text-muted-foreground">Voice channel</dt>
 						<dd className="mt-1 wrap-break-words font-medium">
 							{session.channel ? (
-								<>
-									<ExternalTextLink
-										href={`https://discord.com/channels/${encodeURIComponent(session.guild.id)}/${encodeURIComponent(session.channel.id)}`}
-										text={session.channel.name}
-									/>
-									<span className="block break-all text-xs text-muted-foreground">
-										{session.channel.id}
-									</span>
-								</>
+								<ChannelDisplay guildId={session.guild.id} {...session.channel} />
 							) : (
 								"Not connected"
 							)}
@@ -81,23 +75,11 @@ function PlayerSession({ session }: { session: AdminBotPlayerSession }) {
 					<Card hoverable={false} className="min-w-0 rounded-md border-border p-3">
 						<dt className="text-muted-foreground">Owner</dt>
 						<dd className="mt-1 wrap-break-words font-medium">
-							<span className="flex min-w-0 items-center gap-2">
-								<Avatar
-									name={session.owner.username}
-									image={session.owner.avatarUrl}
-									size="sm"
-									aria-hidden="true"
-								/>
-								<span className="min-w-0">
-									<ExternalTextLink
-										href={`https://discord.com/users/${encodeURIComponent(session.owner.id)}`}
-										text={session.owner.username}
-									/>
-									<span className="block break-all text-xs text-muted-foreground">
-										{session.owner.id}
-									</span>
-								</span>
-							</span>
+							<UserDisplay
+								id={session.owner.id}
+								name={session.owner.username}
+								avatarUrl={session.owner.avatarUrl}
+							/>
 						</dd>
 					</Card>
 					<Card hoverable={false} className="min-w-0 rounded-md border-border p-3 sm:col-span-2">

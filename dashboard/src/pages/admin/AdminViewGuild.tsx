@@ -27,6 +27,7 @@ import APIHandler, {
 	type AdminGuildMessageResult,
 } from "@jappan/handlers/APIHandler";
 import { AccessRedirect, accessErrorStatus } from "@jappan/components/AdminRoute";
+import ChannelDisplay from "@jappan/components/display/ChannelDisplay";
 import ExternalTextLink from "@jappan/components/ExternalTextLink";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import ServicePreferencesEditor from "@jappan/components/guild/ServicePreferencesEditor";
@@ -139,10 +140,7 @@ function ChannelGroupList({ guildId, channels }: { guildId: string; channels: Ad
 									<Card hoverable={false} className="h-full min-w-0 rounded-md border-border p-3">
 										<div className="flex flex-wrap items-start justify-between gap-2">
 											<div className="min-w-0 wrap-break-word">
-												<ExternalTextLink
-													href={`https://discord.com/channels/${encodeURIComponent(guildId)}/${encodeURIComponent(channel.id)}`}
-													text={channel.name}
-												/>
+												<ChannelDisplay guildId={guildId} id={channel.id} name={channel.name} />
 											</div>
 											{(channel.nsfw ||
 												(channel.rateLimitPerUser != null && channel.rateLimitPerUser > 0) ||

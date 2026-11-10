@@ -64,6 +64,29 @@ export const guildDetailsSchema = guildSchema.extend({
 	permissions: z.array(z.string()).optional(),
 });
 
+export const guildLeaderboardSchema = z.object({
+	guildName: z.string(),
+	guildIcon: z.string().url().nullable(),
+	enabled: z.boolean(),
+	reward: z
+		.object({
+			threshold: z.number().int().positive(),
+			role: z.object({ id: z.string(), name: z.string().nullable() }),
+		})
+		.nullable(),
+	entries: z.array(
+		z.object({
+			rank: z.number().int().positive(),
+			userId: z.string(),
+			username: z.string(),
+			avatarUrl: z.string().url().nullable(),
+			points: z.number().int().nonnegative(),
+		}),
+	),
+	page: z.number().int().positive(),
+	pageCount: z.number().int().positive(),
+});
+
 export const adminGuildDetailsSchema = adminGuildSchema.extend({
 	servicePreferences: servicePreferencesSchema,
 	discoveredTimestampMs: z.number().int().nullable(),

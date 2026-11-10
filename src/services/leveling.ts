@@ -22,6 +22,8 @@ export interface LeaderboardPage {
 	readonly pageCount: number;
 }
 
+export const LEADERBOARD_PAGE_SIZE = 20;
+
 export interface LevelingStatus {
 	readonly guildId: GuildDocument["guildId"];
 	readonly guildName: GuildDocument["guildName"];
@@ -365,7 +367,11 @@ interface GetLeaderboardOptions {
 	pageSize?: number;
 }
 
-export async function getLeaderboard({ guildId, page, pageSize = 20 }: GetLeaderboardOptions): Promise<{
+export async function getLeaderboard({
+	guildId,
+	page,
+	pageSize = LEADERBOARD_PAGE_SIZE,
+}: GetLeaderboardOptions): Promise<{
 	entries: GuildMemberStateDocument[];
 	page: number;
 	pageCount: number;
@@ -377,6 +383,7 @@ export async function getLeaderboard({ guildId, page, pageSize = 20 }: GetLeader
 		.sort({ "leveling.points": -1, userId: 1 })
 		.skip((currentPage - 1) * pageSize)
 		.limit(pageSize)
+		.select({ userId: 1, username: 1, "leveling.points": 1 })
 		.exec();
 
 	return { entries, page: currentPage, pageCount };
@@ -397,7 +404,7 @@ export function createLeaderboardEmbed({
 		? leaderboard.entries
 				.map(
 					(entry, index) =>
-						`${(leaderboard.page - 1) * 20 + index + 1}. <@${entry.userId}> - ${entry.leveling.points} points`,
+						`${(leaderboard.page - 1) * LEADERBOARD_PAGE_SIZE + index + 1}. <@${entry.userId}> - ${entry.leveling.points} points`,
 				)
 				.join("\n")
 		: "No member stats were found.";

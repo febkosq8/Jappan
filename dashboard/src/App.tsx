@@ -8,6 +8,7 @@ import AdminViewGuild from "@jappan/pages/admin/AdminViewGuild";
 import ManageBot from "@jappan/pages/admin/ManageBot";
 import UserListGuilds from "@jappan/pages/guilds/UserListGuilds";
 import UserViewGuild from "@jappan/pages/guilds/UserViewGuild";
+import GuildLeaderboard from "@jappan/pages/guilds/GuildLeaderboard";
 import WebPlayer from "@jappan/pages/player/WebPlayer";
 import WrongPage from "@jappan/pages/WrongPage";
 import { SIGN_OUT_FLASH_KEY } from "@jappan/handlers/auth";
@@ -56,12 +57,18 @@ function App() {
 				<Route element={<AdminRoute />}>
 					<Route path="/admin/guilds" element={<AdminListGuilds />} />
 					<Route path="/admin/guild/:guildId?" element={<AdminViewGuild />} />
+					<Route path="/admin/leaderboard" element={<GuildLeaderboard admin />} />
 					<Route path="/admin/bot" element={<ManageBot />} />
 				</Route>
 				<Route element={<AuthRoute />}>
 					<Route path="/guilds" element={<UserListGuilds />} />
 					<Route path="/guild/:guildId?" element={<UserViewGuild />} />
+					<Route path="/leaderboard" element={<GuildLeaderboard admin={false} />} />
+					<Route path="/leaderboard/:guildId" element={<GuildLeaderboard admin={false} />} />
 					<Route path="/player/:sessionId" element={<WebPlayer />} />
+				</Route>
+				<Route element={<AdminRoute />}>
+					<Route path="/admin/leaderboard/:guildId" element={<GuildLeaderboard admin />} />
 				</Route>
 				<Route path="*" element={<WrongPage />} />
 			</Routes>

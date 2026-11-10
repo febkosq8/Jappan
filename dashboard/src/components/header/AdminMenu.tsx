@@ -9,6 +9,7 @@ export default function AdminMenu({ asSubmenu = false }: AdminMenuProps) {
 	const { pathname } = useLocation();
 	const isViewGuildPage = pathname === "/admin/guild" || pathname.startsWith("/admin/guild/");
 	const isListGuildsPage = pathname === "/admin/guilds";
+	const isLeaderboardPage = pathname.startsWith("/admin/leaderboard");
 	const isViewBotPage = pathname === "/admin/bot";
 
 	const items = (
@@ -22,6 +23,11 @@ export default function AdminMenu({ asSubmenu = false }: AdminMenuProps) {
 				<Menu.Item asChild nativeButton={false} active={isViewGuildPage}>
 					<Link to="/admin/guild" aria-current={isViewGuildPage ? "page" : undefined}>
 						View Guild
+					</Link>
+				</Menu.Item>
+				<Menu.Item asChild nativeButton={false} active={isLeaderboardPage}>
+					<Link to="/admin/leaderboard" aria-current={isLeaderboardPage ? "page" : undefined}>
+						Leaderboard
 					</Link>
 				</Menu.Item>
 			</Menu.Sub>

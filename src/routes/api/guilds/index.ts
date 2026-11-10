@@ -14,10 +14,17 @@ import {
 import { requireDatabase, requireDiscord } from "../../../handlers/availability.js";
 import { defineRouter, errorResponseSchema } from "../../../helpers/route.js";
 import { listAdminGuildChannels, listAdminGuildRoles } from "../../../helpers/adminGuild.js";
-import { baseGuildKeys, getGuildState, extendedGuildKeys, getAdminGuildForAction } from "../../../helpers/guild.js";
+import {
+	baseGuildKeys,
+	getGuildState,
+	extendedGuildKeys,
+	getAdminGuildForAction,
+	getOrCreateGuildData,
+} from "../../../helpers/guild.js";
 import { listGuilds } from "../../../services/adminGuild.js";
 import type { AuthSession } from "../../../services/auth.js";
 import AuthUserModel from "../../../models/authUser.js";
+import { getLeaderboard, LEADERBOARD_PAGE_SIZE } from "../../../services/leveling.js";
 import {
 	updateAuditLogPreference,
 	updateLevelingPreference,
@@ -27,6 +34,7 @@ import {
 import {
 	auditLogPreferenceSchema,
 	guildDetailsSchema,
+	guildLeaderboardSchema,
 	guildSchema,
 	levelingPreferenceSchema,
 	memberAnnouncementsPreferenceSchema,
@@ -43,6 +51,7 @@ const middleware = [
 	requireAnyAuthorization([isGuildManager, isBotAdmin]),
 ];
 const guildIdPattern = /^\d{17,20}$/u;
+const leaderboardPageSchema = z.coerce.number().int().min(1).max(Number.MAX_SAFE_INTEGER);
 const parameters = [
 	{
 		name: "guildId",
@@ -352,6 +361,79 @@ export default defineRouter("/guilds", [
 				return response.status(400).json({ error: result.error });
 			}
 			return response.status(204).end();
+		},
+	},
+	{
+		method: "get",
+		path: "/:guildId/leaderboard",
+		tags,
+		summary: "Get a guild's leveling leaderboard",
+		errorMessage: "Failed to get guild leaderboard",
+		security,
+		parameters: [
+			...parameters,
+			{
+				name: "page",
+				in: "query",
+				required: false,
+				description: "Leaderboard page number (20 entries per page)",
+				schema: z.number().int().min(1),
+			},
+		],
+		responses: {
+			200: { description: "Guild leaderboard and leveling reward", schema: guildLeaderboardSchema },
+			...accessResponses,
+			404: { description: "Guild not found", schema: errorResponseSchema },
+			409: { description: "Bot is not a guild member", schema: errorResponseSchema },
+			503: { description: "Guild is unavailable", schema: errorResponseSchema },
+			500: { description: "Failed to get guild leaderboard", schema: errorResponseSchema },
+		},
+		middleware,
+		handler: async (request, response) => {
+			const guild = await resolveGuild(request.params.guildId, response);
+			if (!guild) return;
+			const pageResult = leaderboardPageSchema.safeParse(request.query.page ?? 1);
+			if (!pageResult.success) {
+				return response.status(400).json({ error: "Invalid leaderboard page" });
+			}
+
+			const guildData = await getOrCreateGuildData({ guild });
+			const guildState = await getGuildState({ guildData, keys: ["servicePreferences"] });
+			if (!guildState.servicePreferences) {
+				throw new Error(`Service preferences are unavailable for guild ${guild.id}`);
+			}
+			const { leveling } = guildState.servicePreferences;
+			const leaderboard = leveling.enabled
+				? await getLeaderboard({ guildId: guild.id, page: pageResult.data, pageSize: LEADERBOARD_PAGE_SIZE })
+				: { entries: [], page: 1, pageCount: 1 };
+			const uncachedMemberIds = leaderboard.entries
+				.filter((entry) => !guild.members.cache.has(entry.userId))
+				.map((entry) => entry.userId);
+			if (uncachedMemberIds.length > 0) {
+				await guild.members.fetch({ user: uncachedMemberIds });
+			}
+
+			return response.status(200).json({
+				guildName: guild.name,
+				guildIcon: guild.iconURL(),
+				enabled: leveling.enabled,
+				reward:
+					leveling.threshold !== null && leveling.role
+						? { threshold: leveling.threshold, role: leveling.role }
+						: null,
+				entries: leaderboard.entries.map((entry, index) => ({
+					rank: (leaderboard.page - 1) * LEADERBOARD_PAGE_SIZE + index + 1,
+					userId: entry.userId,
+					username: entry.username,
+					avatarUrl:
+						guild.members.cache.get(entry.userId)?.displayAvatarURL({ size: 64 }) ??
+						guild.client.users.cache.get(entry.userId)?.displayAvatarURL({ size: 64 }) ??
+						null,
+					points: entry.leveling.points,
+				})),
+				page: leaderboard.page,
+				pageCount: leaderboard.pageCount,
+			});
 		},
 	},
 	{

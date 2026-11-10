@@ -9,7 +9,8 @@ export default function GuildMenu({ asSubmenu = false }: GuildMenuProps) {
 	const { pathname } = useLocation();
 	const isListPage = pathname === "/guilds";
 	const isViewPage = pathname === "/guild" || pathname.startsWith("/guild/");
-	const isGuildPage = pathname.startsWith("/guild");
+	const isLeaderboardPage = pathname.startsWith("/leaderboard");
+	const isGuildPage = pathname.startsWith("/guild") || isLeaderboardPage;
 
 	const items = (
 		<>
@@ -21,6 +22,11 @@ export default function GuildMenu({ asSubmenu = false }: GuildMenuProps) {
 			<Menu.Item asChild nativeButton={false} active={isViewPage}>
 				<Link to="/guild" aria-current={isViewPage ? "page" : undefined}>
 					View Guild
+				</Link>
+			</Menu.Item>
+			<Menu.Item asChild nativeButton={false} active={isLeaderboardPage}>
+				<Link to="/leaderboard" aria-current={isLeaderboardPage ? "page" : undefined}>
+					Leaderboard
 				</Link>
 			</Menu.Item>
 		</>

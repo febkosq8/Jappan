@@ -173,6 +173,16 @@ export interface UserGuildDetails extends UserGuild {
 	permissions?: string[];
 }
 
+export interface GuildLeaderboard {
+	guildName: string;
+	guildIcon: string | null;
+	enabled: boolean;
+	reward: { threshold: number; role: PreferenceEntity } | null;
+	entries: { rank: number; userId: string; username: string; avatarUrl: string | null; points: number }[];
+	page: number;
+	pageCount: number;
+}
+
 export interface ServicePreferencesEditorGuild {
 	id: string;
 	isActiveMember: boolean;
@@ -316,6 +326,14 @@ class APIHandler {
 		const { data } = await apiClient.get<UserGuildDetails>(`/api/v1/guilds/${encodeURIComponent(guildId)}`, {
 			withCredentials: true,
 		});
+		return data;
+	}
+
+	static async getGuildLeaderboard(guildId: string, page: number): Promise<GuildLeaderboard> {
+		const { data } = await apiClient.get<GuildLeaderboard>(
+			`/api/v1/guilds/${encodeURIComponent(guildId)}/leaderboard`,
+			{ params: { page }, withCredentials: true },
+		);
 		return data;
 	}
 
