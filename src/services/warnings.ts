@@ -1,3 +1,5 @@
+import { EmbedBuilder, type GuildMember } from "discord.js";
+
 import type { GuildDocument } from "../models/guild.js";
 import GuildMemberStateModel, { type GuildMemberStateDocument } from "../models/guildMemberState.js";
 import { getOrCreateGuildData } from "../helpers/guild.js";
@@ -7,6 +9,11 @@ export interface WarningSettings {
 	readonly guildId: GuildDocument["guildId"];
 	readonly guildName: GuildDocument["guildName"];
 	readonly warnings: GuildDocument["warnings"];
+}
+
+export interface WarningIssueResult {
+	readonly warningCount: number;
+	readonly action: "none" | "banned" | "timed_out" | "ban_failed" | "timeout_failed";
 }
 
 export async function setWarningSettings({
@@ -55,6 +62,14 @@ export async function getWarningCount(guildId: string, userId: string): Promise<
 	return storedMemberStateData?.warnings.count ?? 0;
 }
 
+export async function getWarnedMembers(guildId: string) {
+	return GuildMemberStateModel.find({ guildId, "warnings.count": { $gte: 1 } })
+		.select({ _id: 0, userId: 1, username: 1, "warnings.count": 1 })
+		.sort({ "warnings.count": -1, userId: 1 })
+		.lean()
+		.exec();
+}
+
 export async function issueWarning({
 	guildId,
 	userId,
@@ -79,6 +94,67 @@ export async function issueWarning({
 	}
 
 	return storedMemberStateData;
+}
+
+export async function issueWarningForMember({
+	guild,
+	member,
+	issuerId,
+	reason,
+}: {
+	guild: GuildMember["guild"];
+	member: GuildMember;
+	issuerId: string;
+	reason: string;
+}): Promise<WarningIssueResult> {
+	const storedMemberStateData = await issueWarning({
+		guildId: guild.id,
+		userId: member.id,
+		username: member.user.username,
+	});
+	const storedGuildData = await getWarningSettings(guild.id, guild.name);
+	const warningCount = storedMemberStateData.warnings.count;
+
+	if (storedGuildData.warnings.auditChannelId) {
+		const auditChannel = await guild.channels.fetch(storedGuildData.warnings.auditChannelId);
+		if (auditChannel?.isTextBased()) {
+			await auditChannel.send({
+				embeds: [
+					new EmbedBuilder()
+						.setColor("DarkButNotBlack")
+						.setTitle("Warning Issued")
+						.setAuthor({ name: "Warning Audit" })
+						.addFields(
+							{ name: "User", value: `<@${member.id}>`, inline: true },
+							{ name: "Total Warnings", value: `${warningCount}`, inline: true },
+							{ name: "Reason", value: reason },
+							{ name: "Issued By", value: `<@${issuerId}>` },
+						)
+						.setTimestamp(),
+				],
+			});
+		}
+	}
+
+	const thresholdReason = `Warning threshold reached: ${reason}`.slice(0, 500);
+
+	if (storedGuildData.warnings.banThreshold && warningCount >= storedGuildData.warnings.banThreshold) {
+		if (!member.bannable) return { warningCount, action: "ban_failed" };
+		await member.ban({ reason: thresholdReason });
+		return { warningCount, action: "banned" };
+	}
+
+	if (
+		storedGuildData.warnings.timeoutThreshold &&
+		storedGuildData.warnings.timeoutDurationHours &&
+		warningCount >= storedGuildData.warnings.timeoutThreshold
+	) {
+		if (!member.moderatable) return { warningCount, action: "timeout_failed" };
+		await member.timeout(storedGuildData.warnings.timeoutDurationHours * 60 * 60 * 1000, thresholdReason);
+		return { warningCount, action: "timed_out" };
+	}
+
+	return { warningCount, action: "none" };
 }
 
 export async function overrideWarningCount({

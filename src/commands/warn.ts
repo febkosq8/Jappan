@@ -13,7 +13,7 @@ import type { Config } from "../services/config.js";
 import {
 	getWarningCount,
 	getWarningSettings,
-	issueWarning,
+	issueWarningForMember,
 	overrideWarningCount,
 	setWarningSettings,
 } from "../services/warnings.js";
@@ -217,75 +217,37 @@ const command: BotCommand = {
 			const user = interaction.options.getUser("user", true);
 			const member = await interaction.guild.members.fetch(user.id);
 			const reason = interaction.options.getString("reason") ?? "No reason provided";
-			const storedMemberStateData = await issueWarning({
-				guildId: interaction.guild.id,
-				userId: user.id,
-				username: user.username,
+			const result = await issueWarningForMember({
+				guild: interaction.guild,
+				member,
+				issuerId: interaction.user.id,
+				reason,
 			});
-			const storedGuildData = await getWarningSettings(interaction.guild.id, interaction.guild.name);
-			if (storedGuildData.warnings.auditChannelId) {
-				const auditChannel = await interaction.guild.channels.fetch(storedGuildData.warnings.auditChannelId);
-				if (auditChannel?.isTextBased()) {
-					await auditChannel.send({
-						embeds: [
-							new EmbedBuilder()
-								.setColor("DarkButNotBlack")
-								.setTitle("Warning Issued")
-								.addFields(
-									{ name: "User", value: `${user}`, inline: true },
-									{
-										name: "Total Warnings",
-										value: `${storedMemberStateData.warnings.count}`,
-										inline: true,
-									},
-									{ name: "Reason", value: reason },
-									{ name: "Issued By", value: `${interaction.user}` },
-								)
-								.setTimestamp(),
-						],
-					});
-				}
-			}
-			if (
-				storedGuildData.warnings.banThreshold &&
-				storedMemberStateData.warnings.count >= storedGuildData.warnings.banThreshold
-			) {
-				if (!member.bannable) {
+			switch (result.action) {
+				case "ban_failed":
 					await interaction.editReply(
-						`Warning issued to ${user}, but I could not ban them because their role is higher than mine or they are the server owner. Total warnings: ${storedMemberStateData.warnings.count}.`,
+						`Warning issued to ${user}, but I could not ban them because their role is higher than mine or they are the server owner. Total warnings: ${result.warningCount}.`,
 					);
 					return;
-				}
-				await member.ban({ reason: `Warning threshold reached: ${reason}` });
-				await interaction.editReply(
-					`${user} was warned and banned after reaching ${storedMemberStateData.warnings.count} warnings.`,
-				);
-				return;
-			}
-			if (
-				storedGuildData.warnings.timeoutThreshold &&
-				storedGuildData.warnings.timeoutDurationHours &&
-				storedMemberStateData.warnings.count >= storedGuildData.warnings.timeoutThreshold
-			) {
-				if (!member.moderatable) {
+				case "timeout_failed":
 					await interaction.editReply(
-						`Warning issued to ${user}, but I could not time them out because their role is higher than mine or they are the server owner. Total warnings: ${storedMemberStateData.warnings.count}.`,
+						`Warning issued to ${user}, but I could not time them out because their role is higher than mine or they are the server owner. Total warnings: ${result.warningCount}.`,
 					);
 					return;
-				}
-				await member.timeout(
-					storedGuildData.warnings.timeoutDurationHours * 60 * 60 * 1000,
-					`Warning threshold reached: ${reason}`,
-				);
-				await interaction.editReply(
-					`${user} was warned and timed out after reaching ${storedMemberStateData.warnings.count} warnings.`,
-				);
-				return;
+				case "banned":
+					await interaction.editReply(
+						`${user} was warned and banned after reaching ${result.warningCount} warnings.`,
+					);
+					return;
+				case "timed_out":
+					await interaction.editReply(
+						`${user} was warned and timed out after reaching ${result.warningCount} warnings.`,
+					);
+					return;
+				case "none":
+					await interaction.editReply(`Warning issued to ${user}. Total warnings: ${result.warningCount}.`);
+					return;
 			}
-			await interaction.editReply(
-				`Warning issued to ${user}. Total warnings: ${storedMemberStateData.warnings.count}.`,
-			);
-			return;
 		}
 
 		if (subcommand === "check") {

@@ -1,4 +1,4 @@
-import { PermissionFlagsBits, type Guild } from "discord.js";
+import { DiscordAPIError, PermissionFlagsBits, RESTJSONErrorCodes, type Guild } from "discord.js";
 import type { Response } from "express";
 import { z } from "zod";
 
@@ -27,6 +27,12 @@ import type { AuthSession } from "../../../services/auth.js";
 import AuthUserModel from "../../../models/authUser.js";
 import { getLeaderboard, LEADERBOARD_PAGE_SIZE } from "../../../services/leveling.js";
 import {
+	getWarnedMembers,
+	getWarningCount,
+	issueWarningForMember,
+	overrideWarningCount,
+} from "../../../services/warnings.js";
+import {
 	updateAuditLogPreference,
 	updateLevelingPreference,
 	updateMemberAnnouncementsPreference,
@@ -39,6 +45,14 @@ import {
 	guildSchema,
 	levelingPreferenceSchema,
 	memberAnnouncementsPreferenceSchema,
+	warnedMemberSchema,
+	warningActionResultSchema,
+	warningCountOverrideSchema,
+	warningCountSchema,
+	warningIssueSchema,
+	warningMemberDetailsSchema,
+	warningMemberSchema,
+	warningMemberSearchSchema,
 	warningsPreferenceSchema,
 } from "./schemas.js";
 
@@ -93,6 +107,22 @@ async function resolveGuild(guildId: unknown, response: Response): Promise<Guild
 			return null;
 		default:
 			return result.guild;
+	}
+}
+
+async function resolveGuildMember({ guild, userId, response }: { guild: Guild; userId: unknown; response: Response }) {
+	if (typeof userId !== "string" || !/^\d{17,20}$/u.test(userId)) {
+		response.status(400).json({ error: "Invalid user ID" });
+		return null;
+	}
+	try {
+		return await guild.members.fetch(userId);
+	} catch (error: unknown) {
+		if (error instanceof DiscordAPIError && error.code === RESTJSONErrorCodes.UnknownMember) {
+			response.status(404).json({ error: "Guild member not found" });
+			return null;
+		}
+		throw error;
 	}
 }
 
@@ -406,6 +436,231 @@ export default defineRouter("/guilds", [
 	},
 	{
 		method: "get",
+		path: "/:guildId/warnings",
+		tags,
+		summary: "List users with at least one warning in a guild",
+		errorMessage: "Failed to list warned users",
+		security,
+		parameters,
+		responses: {
+			200: {
+				description: "Users with positive warning counts, highest count first",
+				schema: z.array(warnedMemberSchema),
+			},
+			...accessResponses,
+			404: { description: "Guild not found", schema: errorResponseSchema },
+			409: { description: "Bot is not a guild member", schema: errorResponseSchema },
+			503: { description: "Guild or service unavailable", schema: errorResponseSchema },
+			500: { description: "Failed to list warned users", schema: errorResponseSchema },
+		},
+		middleware,
+		handler: async (request, response) => {
+			const guild = await resolveGuild(request.params.guildId, response);
+			if (!guild) return;
+			const members = await getWarnedMembers(guild.id);
+			return response.status(200).json(
+				members.map((member) => ({
+					userId: member.userId,
+					username: member.username,
+					warningCount: member.warnings.count,
+					avatarUrl:
+						guild.members.cache.get(member.userId)?.displayAvatarURL({ size: 64 }) ??
+						guild.client.users.cache.get(member.userId)?.displayAvatarURL({ size: 64 }) ??
+						null,
+				})),
+			);
+		},
+	},
+	{
+		method: "get",
+		path: "/:guildId/members",
+		tags,
+		summary: "List or search guild members",
+		errorMessage: "Failed to list or search guild members",
+		security,
+		parameters: [
+			...parameters,
+			{
+				name: "query",
+				in: "query",
+				required: false,
+				description: "Optional username or server nickname search (at least two characters)",
+				schema: warningMemberSearchSchema,
+			},
+		],
+		responses: {
+			200: { description: "Matching guild members", schema: z.array(warningMemberSchema) },
+			...accessResponses,
+			404: { description: "Guild not found", schema: errorResponseSchema },
+			409: { description: "Bot is not a guild member", schema: errorResponseSchema },
+			503: { description: "Guild or service unavailable", schema: errorResponseSchema },
+			500: { description: "Failed to list or search guild members", schema: errorResponseSchema },
+		},
+		middleware,
+		handler: async (request, response) => {
+			const guild = await resolveGuild(request.params.guildId, response);
+			if (!guild) return;
+			const query = warningMemberSearchSchema.safeParse(request.query.query);
+			if (!query.success) {
+				return response.status(400).json({ error: query.error.issues[0]?.message ?? "Invalid search query" });
+			}
+			const members = query.data
+				? await guild.members.search({ query: query.data, limit: 25 })
+				: await guild.members.list({ limit: 100 });
+			return response.status(200).json(
+				[...members.values()].map((member) => ({
+					id: member.id,
+					username: member.user.username,
+					displayName: member.displayName,
+					avatarUrl: member.displayAvatarURL({ size: 64 }),
+				})),
+			);
+		},
+	},
+	{
+		method: "get",
+		path: "/:guildId/users/:userId/warn",
+		tags,
+		summary: "Get a guild member's warning count",
+		errorMessage: "Failed to get member warning count",
+		security,
+		parameters: [
+			...parameters,
+			{
+				name: "userId",
+				in: "path",
+				required: true,
+				description: "Discord user ID",
+				schema: z.string().regex(/^\d{17,20}$/u),
+			},
+		],
+		responses: {
+			200: { description: "Guild member and current warning count", schema: warningMemberDetailsSchema },
+			...accessResponses,
+			404: { description: "Guild or member not found", schema: errorResponseSchema },
+			409: { description: "Bot is not a guild member", schema: errorResponseSchema },
+			503: { description: "Guild or service unavailable", schema: errorResponseSchema },
+			500: { description: "Failed to get member warning count", schema: errorResponseSchema },
+		},
+		middleware,
+		handler: async (request, response) => {
+			const guild = await resolveGuild(request.params.guildId, response);
+			if (!guild) return;
+			const member = await resolveGuildMember({ guild, userId: request.params.userId, response });
+			if (!member) return;
+			return response.status(200).json({
+				id: member.id,
+				username: member.user.username,
+				displayName: member.displayName,
+				avatarUrl: member.displayAvatarURL({ size: 64 }),
+				warningCount: await getWarningCount(guild.id, member.id),
+			});
+		},
+	},
+	{
+		method: "post",
+		path: "/:guildId/users/:userId/warn",
+		tags,
+		summary: "Issue a warning to a guild member",
+		errorMessage: "Failed to issue warning",
+		security,
+		parameters: [
+			...parameters,
+			{
+				name: "userId",
+				in: "path",
+				required: true,
+				description: "Discord user ID",
+				schema: z.string().regex(/^\d{17,20}$/u),
+			},
+		],
+		requestBody: {
+			required: true,
+			content: { "application/json": { schema: warningIssueSchema } },
+		},
+		responses: {
+			200: {
+				description: "Warning issued and configured threshold action applied",
+				schema: warningActionResultSchema,
+			},
+			...accessResponses,
+			404: { description: "Guild or member not found", schema: errorResponseSchema },
+			409: { description: "Bot is not a guild member", schema: errorResponseSchema },
+			503: { description: "Guild or service unavailable", schema: errorResponseSchema },
+			500: { description: "Failed to issue warning", schema: errorResponseSchema },
+		},
+		middleware,
+		handler: async (request, response) => {
+			const guild = await resolveGuild(request.params.guildId, response);
+			if (!guild) return;
+			const body = warningIssueSchema.safeParse(request.body);
+			if (!body.success) {
+				return response.status(400).json({ error: body.error.issues[0]?.message ?? "Invalid request body" });
+			}
+			const member = await resolveGuildMember({ guild, userId: request.params.userId, response });
+			if (!member) return;
+			const session: AuthSession = response.locals.authSession;
+			const issuerId = await getLinkedDiscordAccountId(session, response);
+			if (!issuerId) return;
+			const result = await issueWarningForMember({
+				guild,
+				member,
+				issuerId,
+				reason: body.data.reason || "No reason provided",
+			});
+			return response.status(200).json(result);
+		},
+	},
+	{
+		method: "patch",
+		path: "/:guildId/users/:userId/warn",
+		tags,
+		summary: "Override a guild member's warning count",
+		errorMessage: "Failed to override member warning count",
+		security,
+		parameters: [
+			...parameters,
+			{
+				name: "userId",
+				in: "path",
+				required: true,
+				description: "Discord user ID",
+				schema: z.string().regex(/^\d{17,20}$/u),
+			},
+		],
+		requestBody: {
+			required: true,
+			content: { "application/json": { schema: warningCountOverrideSchema } },
+		},
+		responses: {
+			200: { description: "Warning count updated", schema: warningCountSchema },
+			...accessResponses,
+			404: { description: "Guild or member not found", schema: errorResponseSchema },
+			409: { description: "Bot is not a guild member", schema: errorResponseSchema },
+			503: { description: "Guild or service unavailable", schema: errorResponseSchema },
+			500: { description: "Failed to override member warning count", schema: errorResponseSchema },
+		},
+		middleware,
+		handler: async (request, response) => {
+			const guild = await resolveGuild(request.params.guildId, response);
+			if (!guild) return;
+			const body = warningCountOverrideSchema.safeParse(request.body);
+			if (!body.success) {
+				return response.status(400).json({ error: body.error.issues[0]?.message ?? "Invalid request body" });
+			}
+			const member = await resolveGuildMember({ guild, userId: request.params.userId, response });
+			if (!member) return;
+			const updatedMember = await overrideWarningCount({
+				guildId: guild.id,
+				userId: member.id,
+				username: member.user.username,
+				count: body.data.count,
+			});
+			return response.status(200).json({ warningCount: updatedMember.warnings.count });
+		},
+	},
+	{
+		method: "get",
 		path: "/:guildId/leaderboard",
 		tags,
 		summary: "Get a guild's leveling leaderboard",
@@ -505,6 +760,7 @@ export default defineRouter("/guilds", [
 				guildId,
 				keys: [
 					...extendedGuildKeys,
+					"isActiveMember",
 					"joinedTimestampMs",
 					"createdTimestampMs",
 					"servicePreferences",

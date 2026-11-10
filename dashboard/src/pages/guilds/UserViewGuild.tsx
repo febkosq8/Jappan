@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useEffect, useState, type ReactNode } from "react";
 import { FaListCheck } from "react-icons/fa6";
-import { FiArrowLeft, FiHome, FiShield, FiSliders } from "react-icons/fi";
+import { FiAlertCircle, FiArrowLeft, FiHome, FiShield, FiSliders } from "react-icons/fi";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -12,6 +12,7 @@ import { AccessRedirect } from "@jappan/components/AdminRoute";
 import GuildPageHeader from "@jappan/components/display/GuildPageHeader";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import ServicePreferencesEditor from "@jappan/components/guild/ServicePreferencesEditor";
+import WarningManager from "@jappan/components/guild/WarningManager";
 import GuildOverview from "@jappan/components/panel/guild-overview";
 import BotPermissionsPanel from "@jappan/components/panel/bot-permissions-panel";
 import CommandPermissionsPanel from "@jappan/components/panel/command-permissions-panel";
@@ -21,6 +22,7 @@ import useDocumentTitle, { formatTitle } from "@jappan/helpers/useDocumentTitle"
 const guildSections = [
 	{ id: "guild-overview", label: "Overview", icon: FiHome },
 	{ id: "service-preferences", label: "Service Preferences", icon: FiSliders },
+	{ id: "warning-actions", label: "Warnings", icon: FiAlertCircle },
 	{ id: "bot-permissions", label: "Bot permissions", icon: FiShield },
 	{ id: "command-permissions", label: "Command permissions", icon: FaListCheck },
 ];
@@ -64,9 +66,13 @@ function GuildDetails({ guild }: { guild: UserGuildDetails }) {
 				<GuildOverview guild={guild} />
 			</TabsPanel>
 			<TabsPanel value="service-preferences" keepMounted>
-				<ServicePreferencesEditor
-					guild={{ ...guild, isActiveMember: true }}
-					active={section === "service-preferences"}
+				<ServicePreferencesEditor guild={guild} active={section === "service-preferences"} />
+			</TabsPanel>
+			<TabsPanel value="warning-actions" keepMounted>
+				<WarningManager
+					guildId={guild.id}
+					active={section === "warning-actions"}
+					isActiveMember={guild.isActiveMember}
 				/>
 			</TabsPanel>
 			<TabsPanel value="bot-permissions" keepMounted>

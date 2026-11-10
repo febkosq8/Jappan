@@ -29,7 +29,9 @@ export default function CommandPermissionsPanel({ permissions }: { permissions?:
 			{permissions === undefined ? (
 				<p className="mt-3 text-muted-foreground">Unavailable</p>
 			) : commandsQuery.isPending ? (
-				<LoadingIndicator label="Loading commands" />
+				<div className="mt-3">
+					<LoadingIndicator label="Loading commands" inline size={80} rows={1} columns={5} />
+				</div>
 			) : commandsQuery.isError ? (
 				<div role="alert" className="mt-3">
 					<p>Could not load command permissions. Please try again.</p>

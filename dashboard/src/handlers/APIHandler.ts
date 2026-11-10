@@ -167,6 +167,7 @@ export interface UserGuild {
 }
 
 export interface UserGuildDetails extends UserGuild {
+	isActiveMember: boolean;
 	createdTimestampMs?: number;
 	joinedTimestampMs?: number;
 	servicePreferences: ServicePreferences;
@@ -181,6 +182,29 @@ export interface GuildLeaderboard {
 	entries: { rank: number; userId: string; username: string; avatarUrl: string | null; points: number }[];
 	page: number;
 	pageCount: number;
+}
+
+export interface WarningMember {
+	id: string;
+	username: string;
+	displayName: string;
+	avatarUrl: string | null;
+}
+
+export interface WarningMemberDetails extends WarningMember {
+	warningCount: number;
+}
+
+export interface WarnedMember {
+	userId: string;
+	username: string;
+	avatarUrl: string | null;
+	warningCount: number;
+}
+
+export interface WarningIssueResult {
+	warningCount: number;
+	action: "none" | "banned" | "timed_out" | "ban_failed" | "timeout_failed";
 }
 
 export interface ServicePreferencesEditorGuild {
@@ -340,6 +364,47 @@ class APIHandler {
 			{ params: { page }, withCredentials: true },
 		);
 		return data;
+	}
+
+	static async searchGuildMembers(guildId: string, query?: string): Promise<WarningMember[]> {
+		const { data } = await apiClient.get<WarningMember[]>(`/api/v1/guilds/${encodeURIComponent(guildId)}/members`, {
+			...(query ? { params: { query } } : {}),
+			withCredentials: true,
+		});
+		return data;
+	}
+
+	static async getGuildWarnedMembers(guildId: string): Promise<WarnedMember[]> {
+		const { data } = await apiClient.get<WarnedMember[]>(`/api/v1/guilds/${encodeURIComponent(guildId)}/warnings`, {
+			withCredentials: true,
+		});
+		return data;
+	}
+
+	static async getGuildMemberWarnings(guildId: string, userId: string): Promise<WarningMemberDetails> {
+		const { data } = await apiClient.get<WarningMemberDetails>(
+			`/api/v1/guilds/${encodeURIComponent(guildId)}/users/${encodeURIComponent(userId)}/warn`,
+			{ withCredentials: true },
+		);
+		return data;
+	}
+
+	static async issueGuildMemberWarning(guildId: string, userId: string, reason: string): Promise<WarningIssueResult> {
+		const { data } = await apiClient.post<WarningIssueResult>(
+			`/api/v1/guilds/${encodeURIComponent(guildId)}/users/${encodeURIComponent(userId)}/warn`,
+			{ reason },
+			{ withCredentials: true },
+		);
+		return data;
+	}
+
+	static async overrideGuildMemberWarnings(guildId: string, userId: string, count: number): Promise<number> {
+		const { data } = await apiClient.patch<{ warningCount: number }>(
+			`/api/v1/guilds/${encodeURIComponent(guildId)}/users/${encodeURIComponent(userId)}/warn`,
+			{ count },
+			{ withCredentials: true },
+		);
+		return data.warningCount;
 	}
 
 	static async getBotStatus(): Promise<BotStatus> {
