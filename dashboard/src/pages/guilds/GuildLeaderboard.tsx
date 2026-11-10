@@ -99,7 +99,7 @@ export default function GuildLeaderboard() {
 		return () => window.removeEventListener("hashchange", handleHashChange);
 	}, []);
 
-	useDocumentTitle(formatTitle(guild ? `Leaderboard: ${guild.guildName}` : "Leaderboard"));
+	useDocumentTitle(formatTitle(guild ? `Leaderboard: ${guild.guildName}` : "Leaderboards"));
 
 	const guildQueryError = overviewQuery.error ?? leaderboardQuery.error;
 	const guildQueryErrorStatus = axios.isAxiosError(guildQueryError) ? guildQueryError.response?.status : undefined;
@@ -209,18 +209,13 @@ export default function GuildLeaderboard() {
 	return (
 		<main className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6">
 			{guildId && (
-				<PillLink
-					href={`${admin ? "/admin/guild" : "/guild"}/${encodeURIComponent(guildId)}`}
-					variant="outline-secondary"
-					size="sm"
-					className="mb-5 gap-2"
-				>
+				<PillLink href="/leaderboards" variant="outline-secondary" size="sm" className="mb-5 gap-2">
 					<FiArrowLeft aria-hidden="true" />
-					Back to guild
+					Back to leaderboards
 				</PillLink>
 			)}
 			<GuildPageHeader
-				title="Guild leaderboard"
+				title={guildId ? "Guild leaderboard" : "Leaderboards"}
 				guild={guild ? { id: guildId, name: guild.guildName, icon: guild.guildIcon } : undefined}
 			/>
 			{pageContent}

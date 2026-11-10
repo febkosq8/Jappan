@@ -9,6 +9,7 @@ import ManageBot from "@jappan/pages/admin/ManageBot";
 import UserListGuilds from "@jappan/pages/guilds/UserListGuilds";
 import UserViewGuild from "@jappan/pages/guilds/UserViewGuild";
 import GuildLeaderboard from "@jappan/pages/guilds/GuildLeaderboard";
+import PlayerLanding from "@jappan/pages/player/PlayerLanding";
 import WebPlayer from "@jappan/pages/player/WebPlayer";
 import WrongPage from "@jappan/pages/WrongPage";
 import { SIGN_OUT_FLASH_KEY } from "@jappan/handlers/auth";
@@ -21,7 +22,7 @@ const sectionIds = ["about", "features", "team"];
 
 function LeaderboardRedirect() {
 	const { guildId } = useParams();
-	return <Navigate to={guildId ? `/guild/${encodeURIComponent(guildId)}/leaderboard` : "/leaderboard"} replace />;
+	return <Navigate to={guildId ? `/guild/${encodeURIComponent(guildId)}/leaderboard` : "/leaderboards"} replace />;
 }
 
 function App() {
@@ -58,12 +59,13 @@ function App() {
 			<Routes>
 				<Route path="/" element={<Home />} />
 				<Route path="/commands" element={<Commands />} />
+				<Route path="/player" element={<PlayerLanding />} />
 				<Route path="/auth/error" element={<AuthError />} />
 				<Route element={<AdminRoute />}>
 					<Route path="/admin/guilds" element={<AdminListGuilds />} />
 					<Route path="/admin/guild" element={<Navigate to="/admin/guilds" replace />} />
 					<Route path="/admin/guild/:guildId" element={<AdminViewGuild />} />
-					<Route path="/admin/leaderboard" element={<Navigate to="/leaderboard" replace />} />
+					<Route path="/admin/leaderboard" element={<Navigate to="/leaderboards" replace />} />
 					<Route path="/admin/leaderboard/:guildId" element={<LeaderboardRedirect />} />
 					<Route path="/admin/bot" element={<ManageBot />} />
 				</Route>
@@ -71,7 +73,8 @@ function App() {
 					<Route path="/guilds" element={<UserListGuilds />} />
 					<Route path="/guild" element={<Navigate to="/guilds" replace />} />
 					<Route path="/guild/:guildId" element={<UserViewGuild />} />
-					<Route path="/leaderboard" element={<GuildLeaderboard />} />
+					<Route path="/leaderboard" element={<Navigate to="/leaderboards" replace />} />
+					<Route path="/leaderboards" element={<GuildLeaderboard />} />
 					<Route path="/guild/:guildId/leaderboard" element={<GuildLeaderboard />} />
 					<Route path="/leaderboard/:guildId" element={<LeaderboardRedirect />} />
 					<Route path="/player/:sessionId" element={<WebPlayer />} />

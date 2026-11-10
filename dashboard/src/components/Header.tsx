@@ -6,6 +6,35 @@ import AdminMenu from "./header/AdminMenu";
 import AuthHeaderControls from "./header/AuthMenu";
 import GuildMenu from "./header/GuildMenu";
 
+function getMobilePage({
+	currentPage,
+	isAdmin,
+	isAuthenticated,
+	isPlayerPage,
+	pathname,
+}: {
+	currentPage: string;
+	isAdmin: boolean;
+	isAuthenticated: boolean;
+	isPlayerPage: boolean;
+	pathname: string;
+}) {
+	const isLeaderboardsPage =
+		pathname === "/leaderboards" ||
+		/^\/guild\/[^/]+\/leaderboard(?:\/|$)/u.test(pathname) ||
+		(isAuthenticated && pathname.startsWith("/leaderboards"));
+	const isAdminGuildsPage = pathname === "/admin/guilds" || pathname.startsWith("/admin/guild/");
+	const isGuildsPage = pathname === "/guilds" || pathname.startsWith("/guild/");
+
+	if (isAuthenticated && isPlayerPage) return "Guilds";
+	if (isAdmin && pathname === "/admin/bot") return "Manage Bot";
+	if (isLeaderboardsPage) return "Leaderboards";
+	if (isAdmin && isAdminGuildsPage) return "Guilds";
+	if (isAuthenticated && isGuildsPage) return "Guilds";
+
+	return currentPage;
+}
+
 export default function Header() {
 	const { data: session, isError } = useSessionQuery();
 	const location = useLocation();
@@ -13,19 +42,15 @@ export default function Header() {
 	const isCommandsPage = location.pathname === "/commands";
 	const isAdmin = !isError && isAdminSession(session);
 	const isAuthenticated = !isError && !!session;
+	const isPlayerPage = location.pathname === "/player" || location.pathname.startsWith("/player/");
 	const currentPage = isHomePage ? "Home" : isCommandsPage ? "Commands" : "Pages";
-	const mobilePage =
-		isAdmin && location.pathname === "/admin/bot"
-			? "Manage Bot"
-			: location.pathname === "/leaderboard" || /^\/guild\/[^/]+\/leaderboard(?:\/|$)/u.test(location.pathname)
-				? "Leaderboard"
-				: isAdmin && (location.pathname === "/admin/guilds" || location.pathname.startsWith("/admin/guild/"))
-					? "Guilds"
-					: isAuthenticated && (location.pathname === "/guilds" || location.pathname.startsWith("/guild/"))
-						? "Guilds"
-						: isAuthenticated && location.pathname.startsWith("/leaderboard")
-							? "Leaderboard"
-							: currentPage;
+	const mobilePage = getMobilePage({
+		currentPage,
+		isAdmin,
+		isAuthenticated,
+		isPlayerPage,
+		pathname: location.pathname,
+	});
 	const homeItem = (
 		<Menu.Item asChild nativeButton={false} active={isHomePage}>
 			<Link to="/" aria-current={isHomePage ? "page" : undefined}>

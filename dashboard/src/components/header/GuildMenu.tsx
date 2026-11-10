@@ -8,8 +8,9 @@ interface GuildMenuProps {
 export default function GuildMenu({ asSubmenu = false }: GuildMenuProps) {
 	const { pathname } = useLocation();
 	const isGuildsPage = pathname === "/guilds" || /^\/guild\/[^/]+\/?$/u.test(pathname);
-	const isLeaderboardPage = pathname === "/leaderboard" || /^\/guild\/[^/]+\/leaderboard(?:\/|$)/u.test(pathname);
-	const isGuildPage = isGuildsPage || isLeaderboardPage;
+	const isLeaderboardPage = pathname === "/leaderboards" || /^\/guild\/[^/]+\/leaderboard(?:\/|$)/u.test(pathname);
+	const isPlayerPage = pathname === "/player" || pathname.startsWith("/player/");
+	const isGuildPage = isGuildsPage || isLeaderboardPage || isPlayerPage;
 
 	const items = (
 		<>
@@ -19,8 +20,13 @@ export default function GuildMenu({ asSubmenu = false }: GuildMenuProps) {
 				</Link>
 			</Menu.Item>
 			<Menu.Item asChild nativeButton={false} active={isLeaderboardPage}>
-				<Link to="/leaderboard" aria-current={isLeaderboardPage ? "page" : undefined}>
-					Leaderboard
+				<Link to="/leaderboards" aria-current={isLeaderboardPage ? "page" : undefined}>
+					Leaderboards
+				</Link>
+			</Menu.Item>
+			<Menu.Item asChild nativeButton={false} active={isPlayerPage}>
+				<Link to="/player" aria-current={isPlayerPage ? "page" : undefined}>
+					Player
 				</Link>
 			</Menu.Item>
 		</>
