@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useEffect, useState, type ReactNode } from "react";
 import { FaListCheck } from "react-icons/fa6";
-import { FiAlertCircle, FiArrowLeft, FiHome, FiShield, FiSliders } from "react-icons/fi";
+import { FiAlertCircle, FiArrowLeft, FiGlobe, FiHome, FiShield, FiSliders } from "react-icons/fi";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -12,6 +12,7 @@ import { AccessRedirect } from "@jappan/components/AdminRoute";
 import GuildPageHeader from "@jappan/components/display/GuildPageHeader";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import ServicePreferencesEditor from "@jappan/components/guild/ServicePreferencesEditor";
+import VoiceRegionLockManager from "@jappan/components/guild/VoiceRegionLockManager";
 import WarningManager from "@jappan/components/guild/WarningManager";
 import GuildOverview from "@jappan/components/panel/guild-overview";
 import BotPermissionsPanel from "@jappan/components/panel/bot-permissions-panel";
@@ -23,6 +24,7 @@ const guildSections = [
 	{ id: "guild-overview", label: "Overview", icon: FiHome },
 	{ id: "service-preferences", label: "Service Preferences", icon: FiSliders },
 	{ id: "warning-actions", label: "Warnings", icon: FiAlertCircle },
+	{ id: "voice-region-locks", label: "Voice region locks", icon: FiGlobe },
 	{ id: "bot-permissions", label: "Bot permissions", icon: FiShield },
 	{ id: "command-permissions", label: "Command permissions", icon: FaListCheck },
 ];
@@ -52,7 +54,7 @@ function GuildDetails({ guild }: { guild: UserGuildDetails }) {
 
 	return (
 		<Tabs value={section} onValueChange={changeSection} className="gap-5">
-			<TabsList aria-label="Guild sections">
+			<TabsList aria-label="Guild sections" className="flex-wrap overflow-visible">
 				{guildSections.map(({ id, label, icon: Icon }) => (
 					<TabsTab key={id} value={id} size="sm">
 						<span className="inline-flex items-center gap-2">
@@ -72,6 +74,13 @@ function GuildDetails({ guild }: { guild: UserGuildDetails }) {
 				<WarningManager
 					guildId={guild.id}
 					active={section === "warning-actions"}
+					isActiveMember={guild.isActiveMember}
+				/>
+			</TabsPanel>
+			<TabsPanel value="voice-region-locks" keepMounted>
+				<VoiceRegionLockManager
+					guildId={guild.id}
+					active={section === "voice-region-locks"}
 					isActiveMember={guild.isActiveMember}
 				/>
 			</TabsPanel>

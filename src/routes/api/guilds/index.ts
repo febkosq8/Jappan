@@ -33,6 +33,13 @@ import {
 	overrideWarningCount,
 } from "../../../services/warnings.js";
 import {
+	addVoiceRegionLock,
+	getVoiceRegionIds,
+	getVoiceRegionLocks,
+	removeVoiceRegionLock,
+	VoiceRegionLockValidationError,
+} from "../../../services/voiceRegion.js";
+import {
 	updateAuditLogPreference,
 	updateLevelingPreference,
 	updateMemberAnnouncementsPreference,
@@ -54,6 +61,9 @@ import {
 	warningMemberSchema,
 	warningMemberSearchSchema,
 	warningsPreferenceSchema,
+	voiceRegionLockInputSchema,
+	voiceRegionLockSchema,
+	voiceRegionLocksSchema,
 } from "./schemas.js";
 
 const tags = ["Guild"];
@@ -555,6 +565,133 @@ export default defineRouter("/guilds", [
 				avatarUrl: member.displayAvatarURL({ size: 64 }),
 				warningCount: await getWarningCount(guild.id, member.id),
 			});
+		},
+	},
+	{
+		method: "get",
+		path: "/:guildId/voice-region-locks",
+		tags,
+		summary: "List voice region locks and available regions",
+		errorMessage: "Failed to list voice region locks",
+		security,
+		parameters,
+		responses: {
+			200: {
+				description: "Voice region locks and available Discord voice regions",
+				schema: voiceRegionLocksSchema,
+			},
+			...accessResponses,
+			404: { description: "Guild not found", schema: errorResponseSchema },
+			409: { description: "Bot is not a guild member", schema: errorResponseSchema },
+			503: { description: "Guild or service unavailable", schema: errorResponseSchema },
+			500: { description: "Failed to list voice region locks", schema: errorResponseSchema },
+		},
+		middleware,
+		handler: async (request, response) => {
+			const guild = await resolveGuild(request.params.guildId, response);
+			if (!guild) return;
+			const [locks, regions] = await Promise.all([getVoiceRegionLocks(guild), getVoiceRegionIds(guild)]);
+			const displayLocks = await Promise.all(
+				locks.map(async (lock) => {
+					const member = guild.members.cache.get(lock.userId);
+					const user = member?.user ?? (await guild.client.users.fetch(lock.userId));
+					return {
+						...lock,
+						userName: user.username,
+						avatarUrl: member?.displayAvatarURL({ size: 64 }) ?? user.displayAvatarURL({ size: 64 }),
+						channelName: guild.channels.cache.get(lock.channelId)?.name ?? lock.channelName,
+					};
+				}),
+			);
+			return response.status(200).json({ locks: displayLocks, regions });
+		},
+	},
+	{
+		method: "post",
+		path: "/:guildId/voice-region-locks",
+		tags,
+		summary: "Create a voice region lock",
+		errorMessage: "Failed to create voice region lock",
+		security,
+		parameters,
+		requestBody: {
+			required: true,
+			content: { "application/json": { schema: voiceRegionLockInputSchema } },
+		},
+		responses: {
+			201: { description: "Voice region lock created", schema: voiceRegionLockSchema },
+			...accessResponses,
+			400: { description: "Invalid guild ID or voice region lock body", schema: errorResponseSchema },
+			404: { description: "Guild or member not found", schema: errorResponseSchema },
+			409: { description: "Bot is not a guild member", schema: errorResponseSchema },
+			503: { description: "Guild or service unavailable", schema: errorResponseSchema },
+			500: { description: "Failed to create voice region lock", schema: errorResponseSchema },
+		},
+		middleware,
+		handler: async (request, response) => {
+			const guild = await resolveGuild(request.params.guildId, response);
+			if (!guild) return;
+			const body = voiceRegionLockInputSchema.safeParse(request.body);
+			if (!body.success) {
+				return response.status(400).json({ error: body.error.issues[0]?.message ?? "Invalid request body" });
+			}
+			const member = await resolveGuildMember({ guild, userId: body.data.userId, response });
+			if (!member) return;
+			try {
+				const lock = await addVoiceRegionLock({
+					guild,
+					userId: member.id,
+					userName: member.user.username,
+					channelId: body.data.channelId,
+					region: body.data.region,
+				});
+				return response.status(201).json({ ...lock, avatarUrl: member.displayAvatarURL({ size: 64 }) });
+			} catch (error: unknown) {
+				if (error instanceof VoiceRegionLockValidationError) {
+					return response.status(400).json({ error: error.message });
+				}
+				throw error;
+			}
+		},
+	},
+	{
+		method: "delete",
+		path: "/:guildId/voice-region-locks/:userId",
+		tags,
+		summary: "Delete a user's voice region lock",
+		errorMessage: "Failed to delete voice region lock",
+		security,
+		parameters: [
+			...parameters,
+			{
+				name: "userId",
+				in: "path",
+				required: true,
+				description: "Discord user ID",
+				schema: z.string().regex(/^\d{17,20}$/u),
+			},
+		],
+		responses: {
+			204: { description: "Voice region lock removed" },
+			...accessResponses,
+			400: { description: "Invalid guild or user ID", schema: errorResponseSchema },
+			404: { description: "Guild or voice region lock not found", schema: errorResponseSchema },
+			409: { description: "Bot is not a guild member", schema: errorResponseSchema },
+			503: { description: "Guild or service unavailable", schema: errorResponseSchema },
+			500: { description: "Failed to delete voice region lock", schema: errorResponseSchema },
+		},
+		middleware,
+		handler: async (request, response) => {
+			const guild = await resolveGuild(request.params.guildId, response);
+			if (!guild) return;
+			const userId = request.params.userId;
+			if (typeof userId !== "string" || !/^\d{17,20}$/u.test(userId)) {
+				return response.status(400).json({ error: "Invalid user ID" });
+			}
+			if (!(await removeVoiceRegionLock(guild, userId))) {
+				return response.status(404).json({ error: "Voice region lock not found" });
+			}
+			return response.status(204).end();
 		},
 	},
 	{

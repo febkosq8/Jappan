@@ -163,3 +163,24 @@ export const warningActionResultSchema = z.object({
 	warningCount: z.number().int().nonnegative(),
 	action: z.enum(["none", "banned", "timed_out", "ban_failed", "timeout_failed"]),
 });
+
+export const voiceRegionLockSchema = z.object({
+	userId: snowflake("user"),
+	userName: z.string(),
+	avatarUrl: z.string().url().nullable(),
+	channelId: snowflake("channel"),
+	channelName: z.string(),
+	region: z.string(),
+	fallbackRegion: z.string().nullable(),
+});
+
+export const voiceRegionLocksSchema = z.object({
+	locks: z.array(voiceRegionLockSchema),
+	regions: z.array(z.string()),
+});
+
+export const voiceRegionLockInputSchema = z.object({
+	userId: snowflake("user"),
+	channelId: snowflake("channel"),
+	region: z.string().trim().min(1).max(100),
+});
