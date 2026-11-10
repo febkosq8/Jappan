@@ -18,6 +18,7 @@ export interface PlayerSessionTrack {
 
 export interface PlayerSessionState {
 	readonly sessionId: string;
+	readonly webPlayerCount: number;
 	readonly guild: { readonly id: string; readonly name: string; readonly iconUrl: string | null };
 	readonly channel: {
 		readonly id: string;
@@ -131,7 +132,11 @@ function getCapabilities(queue: PlayerQueue): PlayerSessionState["capabilities"]
 }
 
 /** Everything the web player shows about a session, from the point of view of `viewer`. */
-export function getPlayerSessionState(queue: PlayerQueue, viewer: PlayerActor): PlayerSessionState {
+export function getPlayerSessionState(
+	queue: PlayerQueue,
+	viewer: PlayerActor,
+	webPlayerCount: number,
+): PlayerSessionState {
 	const { owner } = queue.metadata;
 	// Prefer the live Discord user (current name and avatar) over the username stored when the session started
 	const ownerUser = queue.guild.client.users.cache.get(owner.id);
@@ -142,6 +147,7 @@ export function getPlayerSessionState(queue: PlayerQueue, viewer: PlayerActor): 
 	const repeatValue = queue.repeatMode as QueueRepeatMode;
 	return {
 		sessionId: queue.metadata.sessionId,
+		webPlayerCount,
 		guild: { id: queue.guild.id, name: queue.guild.name, iconUrl: queue.guild.iconURL() },
 		channel: getChannelInfo(queue),
 		owner: { username: ownerUser?.username ?? owner.username, avatarUrl: ownerUser?.displayAvatarURL() ?? null },

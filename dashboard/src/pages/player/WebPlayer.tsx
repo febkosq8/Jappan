@@ -24,6 +24,7 @@ import ExternalTextLink from "@jappan/components/ExternalTextLink";
 import AddToQueue from "@jappan/components/player/AddToQueue";
 import NowPlaying from "@jappan/components/player/NowPlaying";
 import PlayerLoading from "@jappan/components/player/PlayerLoading";
+import formatDuration from "@jappan/helpers/formatDuration";
 import getErrorMessage from "@jappan/helpers/getErrorMessage";
 import { playerSections, readSectionFromHash } from "@jappan/helpers/playerSections";
 import QueueList from "@jappan/components/player/QueueList";
@@ -72,23 +73,36 @@ const CONNECTION_DISPLAY: Record<
 	},
 };
 
-const CONTROL_TOAST_MESSAGES: Record<PlayerControlAction["path"], { loading: string; success: string }> = {
-	pause: { loading: "Pausing…", success: "Playback paused." },
-	resume: { loading: "Resuming…", success: "Playback resumed." },
-	next: { loading: "Skipping…", success: "Skipped to the next track." },
-	previous: { loading: "Going back…", success: "Playing the previous track." },
-	stop: { loading: "Stopping…", success: "Playback stopped." },
-	"queue/clear": { loading: "Clearing the queue…", success: "Queue cleared." },
-	lock: { loading: "Locking…", success: "Player locked." },
-	unlock: { loading: "Unlocking…", success: "Player unlocked." },
-	shuffle: { loading: "Updating shuffle…", success: "Shuffle updated." },
-	repeat: { loading: "Updating repeat…", success: "Repeat updated." },
-	volume: { loading: "Changing volume…", success: "Volume changed." },
-	seek: { loading: "Seeking…", success: "Seeked to the new position." },
-	"queue/remove": { loading: "Removing track…", success: "Track removed." },
-	"queue/skip-to": { loading: "Skipping to track…", success: "Skipped to the selected track." },
-	"queue/add": { loading: "Adding to the queue…", success: "Added to the queue." },
+type ControlToastMessages = { loading: string; success: string };
+type ControlToastMessageBuilder = (action: PlayerControlAction) => ControlToastMessages;
+
+const CONTROL_TOAST_MESSAGES: Record<PlayerControlAction["path"], ControlToastMessageBuilder> = {
+	pause: () => ({ loading: "Pausing…", success: "Playback paused." }),
+	resume: () => ({ loading: "Resuming…", success: "Playback resumed." }),
+	next: () => ({ loading: "Skipping…", success: "Skipped to the next track." }),
+	previous: () => ({ loading: "Going back…", success: "Playing the previous track." }),
+	stop: () => ({ loading: "Stopping…", success: "Playback stopped." }),
+	"queue/clear": () => ({ loading: "Clearing the queue…", success: "Queue cleared." }),
+	lock: () => ({ loading: "Locking…", success: "Player locked." }),
+	unlock: () => ({ loading: "Unlocking…", success: "Player unlocked." }),
+	shuffle: () => ({ loading: "Updating shuffle…", success: "Shuffle updated." }),
+	repeat: () => ({ loading: "Updating repeat…", success: "Repeat updated." }),
+	volume: () => ({ loading: "Changing volume…", success: "Volume changed." }),
+	seek: (action) => {
+		if (action.path !== "seek") {
+			throw new Error("Cannot build a seek toast for a non-seek action");
+		}
+		const position = formatDuration(action.body.positionMs);
+		return { loading: `Seeking to ${position}…`, success: `Seeked to ${position}.` };
+	},
+	"queue/remove": () => ({ loading: "Removing track…", success: "Track removed." }),
+	"queue/skip-to": () => ({ loading: "Skipping to track…", success: "Skipped to the selected track." }),
+	"queue/add": () => ({ loading: "Adding to the queue…", success: "Added to the queue." }),
 };
+
+function getControlToastMessages(action: PlayerControlAction): { loading: string; success: string } {
+	return CONTROL_TOAST_MESSAGES[action.path](action);
+}
 
 export default function WebPlayer() {
 	const { sessionId = "" } = useParams();
@@ -145,7 +159,7 @@ export default function WebPlayer() {
 	const controlMutation = useMutation<string | undefined, unknown, PlayerControlAction>({
 		mutationFn: (action) => {
 			const request = websocket.control(action);
-			const messages = CONTROL_TOAST_MESSAGES[action.path];
+			const messages = getControlToastMessages(action);
 			toast.promise(request, {
 				loading: messages.loading,
 				// A notice means the change worked but only in part, for example a playlist that did not fully fit
@@ -237,7 +251,27 @@ export default function WebPlayer() {
 				? "disconnected"
 				: "limited";
 	const connection = CONNECTION_DISPLAY[connectionState];
-	const refreshing = controlMutation.isPending || sessionQuery.isFetching || websocket.status === "connecting";
+	const refreshing = sessionQuery.isFetching || websocket.status === "connecting";
+	const pendingAction = controlMutation.isPending ? controlMutation.variables?.path : undefined;
+	const sessionRefreshing = refreshing || pendingAction === "lock" || pendingAction === "unlock";
+	const nowPlayingRefreshing =
+		refreshing ||
+		pendingAction === "pause" ||
+		pendingAction === "resume" ||
+		pendingAction === "next" ||
+		pendingAction === "previous" ||
+		pendingAction === "stop" ||
+		pendingAction === "shuffle" ||
+		pendingAction === "repeat" ||
+		pendingAction === "volume" ||
+		pendingAction === "seek" ||
+		pendingAction === "queue/skip-to";
+	const queueRefreshing =
+		refreshing ||
+		pendingAction === "queue/clear" ||
+		pendingAction === "queue/remove" ||
+		pendingAction === "queue/skip-to" ||
+		pendingAction === "queue/add";
 	return (
 		<main className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6">
 			<div className="mb-4 grid gap-4 sm:grid-cols-2">
@@ -297,7 +331,7 @@ export default function WebPlayer() {
 						<div className="flex flex-wrap items-center justify-between gap-3">
 							<p className="text-sm font-semibold text-muted-foreground">Session</p>
 							<div className="flex items-center gap-2">
-								<RefreshIndicator active={refreshing} />
+								<RefreshIndicator active={sessionRefreshing} />
 								{session.viewer.canToggleLock && (
 									<Button
 										variant="outline-secondary"
@@ -470,11 +504,12 @@ export default function WebPlayer() {
 				</TabsList>
 				<TabsPanel value="now-playing" keepMounted>
 					<NowPlaying
-						refreshing={refreshing}
+						refreshing={nowPlayingRefreshing}
 						session={session}
 						busy={controlMutation.isPending || !connected || !session.viewer.canControl}
 						onControl={(action) => controlMutation.mutate(action)}
 						receivedAt={sessionQuery.dataUpdatedAt}
+						seekPending={pendingAction === "seek"}
 						live={connectionState !== "disconnected"}
 					/>
 				</TabsPanel>
@@ -489,7 +524,7 @@ export default function WebPlayer() {
 						/>
 					)}
 					<QueueList
-						refreshing={refreshing}
+						refreshing={queueRefreshing}
 						session={session}
 						busy={controlMutation.isPending || !connected || !session.viewer.canControl}
 						onControl={(action) => controlMutation.mutate(action)}

@@ -31,6 +31,7 @@ export default function NowPlaying({
 	refreshing,
 	onControl,
 	receivedAt,
+	seekPending,
 	live,
 }: {
 	session: PlayerSession;
@@ -38,20 +39,21 @@ export default function NowPlaying({
 	refreshing: boolean;
 	onControl: (action: PlayerControlAction) => void;
 	receivedAt: number;
+	seekPending: boolean;
 	/** False when the player cannot be reached at all; the position then stops instead of guessing. */
 	live: boolean;
 }) {
 	const track = session.nowPlaying;
 	const [now, setNow] = useState(() => Date.now());
 	const [seekDraft, setSeekDraft] = useState<number | null>(null);
-	// receivedAt when the seek was sent; the draft is kept until fresher state arrives so the slider doesn't snap back
+	// Keep the submitted position until fresh state arrives and the seek request settles.
 	const [seekSentAt, setSeekSentAt] = useState<number | null>(null);
 	useEffect(() => {
-		if (seekSentAt !== null && receivedAt !== seekSentAt) {
+		if (seekSentAt !== null && receivedAt !== seekSentAt && !seekPending) {
 			setSeekDraft(null);
 			setSeekSentAt(null);
 		}
-	}, [receivedAt, seekSentAt]);
+	}, [receivedAt, seekPending, seekSentAt]);
 	const commitSeek = () => {
 		if (seekDraft !== null && seekSentAt === null) {
 			setSeekSentAt(receivedAt);
