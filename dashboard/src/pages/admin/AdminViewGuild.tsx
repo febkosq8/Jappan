@@ -58,7 +58,7 @@ const guildSections = [
 	{ id: "admin-actions", label: "Admin actions", icon: FiSettings },
 	{ id: "guild-channels", label: "Channels", icon: FiHash },
 	{ id: "service-preferences", label: "Service Preferences", icon: FiSliders },
-	{ id: "warning-actions", label: "Warnings", icon: FiAlertCircle },
+	{ id: "warnings", label: "Warnings", icon: FiAlertCircle },
 	{ id: "voice-region-locks", label: "Voice region locks", icon: FiGlobe },
 	{ id: "bot-permissions", label: "Bot permissions", icon: FiShield },
 	{ id: "command-permissions", label: "Command permissions", icon: FaListCheck },
@@ -837,15 +837,16 @@ function GuildDetails({ guild }: { guild: AdminGuildDetails }) {
 			<TabsPanel value="service-preferences" keepMounted>
 				<ServicePreferencesEditor guild={guild} active={section === "service-preferences"} />
 			</TabsPanel>
-			<TabsPanel value="warning-actions" keepMounted>
+			<TabsPanel value="warnings" keepMounted>
 				<WarningManager
 					guildId={guild.id}
-					active={section === "warning-actions"}
+					active={section === "warnings"}
 					isActiveMember={guild.isActiveMember}
 				/>
 			</TabsPanel>
 			<TabsPanel value="voice-region-locks" keepMounted>
 				<VoiceRegionLockManager
+					key={guild.id}
 					guildId={guild.id}
 					active={section === "voice-region-locks"}
 					isActiveMember={guild.isActiveMember}

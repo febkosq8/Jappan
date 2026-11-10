@@ -86,7 +86,7 @@ export default function WarningManager({
 
 	return (
 		<div className="space-y-5">
-			<Card id="warning-actions" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
+			<Card id="warnings" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
 				<h2 className="text-lg font-semibold">Manage warnings</h2>
 				<p className="mt-1 text-sm text-muted-foreground">
 					Select a member to review their warning count, issue a warning, or update the count. Thresholds and
