@@ -89,7 +89,13 @@ const CONTROL_TOAST_MESSAGES: Record<PlayerControlAction["path"], ControlToastMe
 	unlock: () => ({ loading: "Unlocking…", success: "Player unlocked." }),
 	shuffle: () => ({ loading: "Updating shuffle…", success: "Shuffle updated." }),
 	repeat: () => ({ loading: "Updating repeat…", success: "Repeat updated." }),
-	volume: () => ({ loading: "Changing volume…", success: "Volume changed." }),
+	volume: (action) => {
+		if (action.path !== "volume") {
+			throw new Error("Cannot build a volume toast for a non-volume action");
+		}
+		const volume = action.body.volume;
+		return { loading: `Changing volume to ${volume}%…`, success: `Volume changed to ${volume}%.` };
+	},
 	seek: (action) => {
 		if (action.path !== "seek") {
 			throw new Error("Cannot build a seek toast for a non-seek action");
@@ -292,7 +298,7 @@ export default function WebPlayer() {
 		pendingAction === "queue/skip-to" ||
 		pendingAction === "queue/add";
 	return (
-		<main className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6">
+		<main className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6 [&_button:enabled]:cursor-pointer">
 			<div className="mb-4 grid gap-4 sm:grid-cols-2">
 				<Card hoverable={false} className="rounded-md border-border">
 					<Card.Content className="flex items-center justify-start gap-3 p-4!">
