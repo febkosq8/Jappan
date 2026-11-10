@@ -47,6 +47,8 @@ export interface ServerToClientEvents {
 		readonly status: number;
 		readonly error: string;
 	}) => void;
+	/** Another tab for the same user took over this player session. */
+	"player:replaced": (payload: { readonly sessionId: string }) => void;
 }
 
 export interface WebsocketSocketData {

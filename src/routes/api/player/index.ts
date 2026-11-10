@@ -8,6 +8,7 @@ import { requireActiveUser, requireSession } from "../../../handlers/auth.js";
 import { requireDatabase, requireDiscord } from "../../../handlers/availability.js";
 import { defineRouter, errorResponseSchema, type RouteDefinition } from "../../../helpers/route.js";
 import { getPlayerSessionState } from "../../../helpers/playerSessionState.js";
+import { getPlayerSessionViewerCount } from "../../../services/playerWebsocket.js";
 const tags = ["Player"];
 const security = [{ sessionCookie: [] }];
 // Authenticate before resolving the session so unauthenticated callers cannot probe session IDs.
@@ -43,6 +44,7 @@ const trackSchema = z.object({
 });
 const playerSessionSchema = z.object({
 	sessionId: z.string(),
+	webPlayerCount: z.number().int().nonnegative(),
 	guild: z.object({ id: z.string(), name: z.string(), iconUrl: z.string().nullable() }),
 	channel: z
 		.object({
@@ -119,7 +121,13 @@ const playerRoutes: RouteDefinition[] = [
 		},
 		middleware: guildMemberMiddleware,
 		handler: (_request, response) =>
-			response.status(200).json(getPlayerSessionState(response.locals.playerQueue, response.locals.playerActor)),
+			response.status(200).json(
+				getPlayerSessionState({
+					queue: response.locals.playerQueue,
+					viewer: response.locals.playerActor,
+					webPlayerCount: getPlayerSessionViewerCount(response.locals.playerQueue.metadata.sessionId),
+				}),
+			),
 	},
 ];
 export default defineRouter("/player", playerRoutes);

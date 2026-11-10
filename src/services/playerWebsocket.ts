@@ -15,8 +15,6 @@ import {
 const BROADCAST_DELAY_MS = 75;
 /** Subscribers get a fresh state this often even when nothing changed, to correct drift and re-check access. */
 const STATE_REFRESH_INTERVAL_MS = 30_000;
-/** One browser tab needs one session; the cap only stops a client from joining rooms without bound. */
-const MAX_SUBSCRIPTIONS_PER_SOCKET = 3;
 
 const ROOM_PREFIX = "player:";
 
@@ -26,6 +24,27 @@ let refreshing = false;
 /** Queues that currently have a room, so a refresh can reach them without searching every Discord guild. */
 const subscribedQueues = new Map<string, PlayerQueue>();
 const pendingBroadcasts = new Map<string, NodeJS.Timeout>();
+const subscriptionLocks = new Map<string, Promise<void>>();
+
+async function withSubscriptionLock<Value>(key: string, work: () => Promise<Value>): Promise<Value> {
+	const previous = subscriptionLocks.get(key);
+	let release!: () => void;
+	const current = new Promise<void>((resolve) => {
+		release = resolve;
+	});
+	subscriptionLocks.set(key, current);
+	if (previous) {
+		await previous;
+	}
+	try {
+		return await work();
+	} finally {
+		release();
+		if (subscriptionLocks.get(key) === current) {
+			subscriptionLocks.delete(key);
+		}
+	}
+}
 
 function getPlayerRoom(sessionId: string): string {
 	return `${ROOM_PREFIX}${sessionId}`;
@@ -57,6 +76,10 @@ function getRoomSockets(sessionId: string): WebsocketSocket[] {
 	return sockets;
 }
 
+export function getPlayerSessionViewerCount(sessionId: string): number {
+	return getRoomSockets(sessionId).length;
+}
+
 /**
  * The viewer for a broadcast. It uses only cached data so a change never waits on Discord; the checks that
  * must be exact (commands, subscribing, the periodic refresh) go through `resolvePlayerActor` instead.
@@ -73,14 +96,24 @@ function getCachedViewer({ queue, user }: { queue: PlayerQueue; user: PlayerWebU
 
 function sendPlayerState({ queue, socket }: { queue: PlayerQueue; socket: WebsocketSocket }): void {
 	const viewer = getCachedViewer({ queue, user: socket.data.user });
-	socket.emit("player:state", getPlayerSessionState(queue, viewer));
+	socket.emit(
+		"player:state",
+		getPlayerSessionState({
+			queue,
+			viewer,
+			webPlayerCount: getPlayerSessionViewerCount(queue.metadata.sessionId),
+		}),
+	);
 }
 
-function broadcastPlayerState(queue: PlayerQueue): void {
+function broadcastPlayerState(queue: PlayerQueue, except?: WebsocketSocket): void {
 	if (queue.deleted) {
 		return;
 	}
 	for (const socket of getRoomSockets(queue.metadata.sessionId)) {
+		if (socket === except) {
+			continue;
+		}
 		try {
 			sendPlayerState({ queue, socket });
 		} catch (error: unknown) {
@@ -119,6 +152,25 @@ export function endPlayerSession(queue: PlayerQueue): void {
 	websocketServer?.in(room).socketsLeave(room);
 }
 
+export function handlePlayerSocketDisconnecting(socket: WebsocketSocket): void {
+	const sessionIds = [...socket.rooms]
+		.filter((room) => room.startsWith(ROOM_PREFIX))
+		.map((room) => room.slice(ROOM_PREFIX.length));
+	queueMicrotask(() => {
+		for (const sessionId of sessionIds) {
+			const queue = subscribedQueues.get(sessionId);
+			if (!queue) {
+				continue;
+			}
+			if (getPlayerSessionViewerCount(sessionId) === 0) {
+				subscribedQueues.delete(sessionId);
+			} else {
+				broadcastPlayerState(queue);
+			}
+		}
+	});
+}
+
 export async function subscribeToPlayerSession({
 	socket,
 	queue,
@@ -127,28 +179,41 @@ export async function subscribeToPlayerSession({
 	queue: PlayerQueue;
 }): Promise<WebsocketResult<{ state: PlayerSessionState }>> {
 	const { sessionId } = queue.metadata;
-	const room = getPlayerRoom(sessionId);
-	const subscriptionCount = [...socket.rooms].filter((joined) => joined.startsWith(ROOM_PREFIX)).length;
-	if (!socket.rooms.has(room) && subscriptionCount >= MAX_SUBSCRIPTIONS_PER_SOCKET) {
-		return { ok: false, status: 422, error: "Too many player sessions are open on this connection" };
-	}
-	const result = await resolvePlayerActor({ queue, user: socket.data.user });
-	if (!result.success) {
-		return { ok: false, status: result.status, error: result.error };
-	}
-	// The session may have ended while the membership was being checked
-	if (queue.deleted) {
-		return { ok: false, status: 404, error: "Player session not found or has ended" };
-	}
-	subscribedQueues.set(sessionId, queue);
-	await socket.join(room);
-	logger.info("WEBSOCKET", "Client subscribed to player session", {
-		socket: socket.id,
-		session: sessionId,
-		guild: formatGuild(queue.guild),
-		user: formatUser(result.actor),
+	return withSubscriptionLock(`${sessionId}:${socket.data.user.id}`, async () => {
+		const room = getPlayerRoom(sessionId);
+		const result = await resolvePlayerActor({ queue, user: socket.data.user });
+		if (!result.success) {
+			return { ok: false, status: result.status, error: result.error };
+		}
+		// The session may have ended while the membership was being checked
+		if (queue.deleted) {
+			return { ok: false, status: 404, error: "Player session not found or has ended" };
+		}
+		for (const previousSocket of getRoomSockets(sessionId)) {
+			if (previousSocket.id === socket.id || previousSocket.data.user.id !== socket.data.user.id) {
+				continue;
+			}
+			previousSocket.emit("player:replaced", { sessionId });
+			await previousSocket.leave(room);
+		}
+		subscribedQueues.set(sessionId, queue);
+		await socket.join(room);
+		logger.info("WEBSOCKET", "Client subscribed to player session", {
+			socket: socket.id,
+			session: sessionId,
+			guild: formatGuild(queue.guild),
+			user: formatUser(result.actor),
+		});
+		broadcastPlayerState(queue, socket);
+		return {
+			ok: true,
+			state: getPlayerSessionState({
+				queue,
+				viewer: result.actor,
+				webPlayerCount: getPlayerSessionViewerCount(sessionId),
+			}),
+		};
 	});
-	return { ok: true, state: getPlayerSessionState(queue, result.actor) };
 }
 
 export async function unsubscribeFromPlayerSession({
@@ -159,6 +224,15 @@ export async function unsubscribeFromPlayerSession({
 	sessionId: string;
 }): Promise<void> {
 	await socket.leave(getPlayerRoom(sessionId));
+	const queue = subscribedQueues.get(sessionId);
+	if (!queue) {
+		return;
+	}
+	if (getPlayerSessionViewerCount(sessionId) === 0) {
+		subscribedQueues.delete(sessionId);
+	} else {
+		broadcastPlayerState(queue);
+	}
 }
 
 async function refreshPlayerRoom({ sessionId, queue }: { sessionId: string; queue: PlayerQueue }): Promise<void> {
@@ -222,5 +296,6 @@ export function stopPlayerWebsocket(): void {
 	}
 	pendingBroadcasts.clear();
 	subscribedQueues.clear();
+	subscriptionLocks.clear();
 	websocketServer = undefined;
 }

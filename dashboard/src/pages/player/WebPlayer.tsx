@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import {
 	FiAlertTriangle,
 	FiArrowLeft,
+	FiCopy,
+	FiEye,
 	FiGlobe,
 	FiInfo,
 	FiLock,
@@ -109,6 +111,7 @@ export default function WebPlayer() {
 	const queryClient = useQueryClient();
 	const queryKey = ["player-session", sessionId];
 	const [ended, setEnded] = useState(false);
+	const [replaced, setReplaced] = useState(false);
 	const [section, setSection] = useState(readSectionFromHash);
 
 	useEffect(() => {
@@ -130,13 +133,12 @@ export default function WebPlayer() {
 	const sessionQuery = useQuery({
 		queryKey,
 		queryFn: () => APIHandler.getPlayerSession(sessionId),
-		enabled: sessionId !== "" && !ended,
+		enabled: sessionId !== "" && !ended && !replaced,
 		refetchInterval: (query) =>
 			query.state.error ? false : socketConnected ? KEEPALIVE_INTERVAL_MS : POLL_INTERVAL_MS,
 	});
 
-	// The session ID joins the title once the session has loaded
-	useDocumentTitle(formatTitle(sessionQuery.data ? `Web Player: ${sessionId}` : "Web Player"));
+	useDocumentTitle(formatTitle(!replaced && sessionQuery.data ? `Web Player: ${sessionId}` : "Web Player"));
 
 	const endSession = () => {
 		setEnded(true);
@@ -145,9 +147,10 @@ export default function WebPlayer() {
 	const websocket = usePlayerWebsocket({
 		sessionId,
 		// Loaded over HTTP first, which also reports access problems with the proper status
-		enabled: sessionQuery.data !== undefined && !ended,
+		enabled: sessionQuery.data !== undefined && !ended && !replaced,
 		onState: (state: PlayerSession) => queryClient.setQueryData(queryKey, state),
-		onEnded: endSession,
+		onUnavailable: endSession,
+		onReplaced: () => setReplaced(true),
 		// The HTTP endpoint explains why access was refused (sign in again, not a member, session gone)
 		onAccessProblem: () => void queryClient.invalidateQueries({ queryKey }),
 	});
@@ -185,12 +188,28 @@ export default function WebPlayer() {
 
 	const status = axios.isAxiosError(sessionQuery.error) ? sessionQuery.error.response?.status : undefined;
 	const accessStatus = accessErrorStatus(sessionQuery.error);
+	if (replaced) {
+		return (
+			<main className="flex min-h-[calc(100dvh-4.0625rem)] flex-col items-center justify-center px-4 text-center">
+				<FiCopy className="size-10 text-muted-foreground" aria-hidden="true" />
+				<h1 className="mt-4 text-3xl font-bold">This session is open in another tab</h1>
+				<p className="mt-2 max-w-md text-muted-foreground">
+					You opened this player session in another tab. Only the most recently opened tab can control it.
+				</p>
+				<p className="mt-2 max-w-md text-muted-foreground">Continue playback in that tab, or return home.</p>
+				<PillLink variant="outline-secondary" href="/" className="mt-6 gap-2">
+					<FiArrowLeft aria-hidden="true" />
+					Back home
+				</PillLink>
+			</main>
+		);
+	}
 	if (accessStatus === 401) {
 		return <AccessRedirect status={401} />;
 	}
 	if (accessStatus === 403) {
 		return (
-			<main className="flex min-h-[calc(100dvh-4rem)] flex-col items-center justify-center px-4 text-center">
+			<main className="flex min-h-[calc(100dvh-4.0625rem)] flex-col items-center justify-center px-4 text-center">
 				<h1 className="text-2xl font-bold">You can't view this player</h1>
 				<p className="mt-2 max-w-md text-muted-foreground">
 					{getErrorMessage(sessionQuery.error, "You don't have access to this player.")} Join the server in
@@ -205,7 +224,7 @@ export default function WebPlayer() {
 
 	if (ended || status === 404 || status === 400) {
 		return (
-			<main className="flex min-h-[calc(100dvh-4rem)] flex-col items-center justify-center px-4 text-center">
+			<main className="flex min-h-[calc(100dvh-4.0625rem)] flex-col items-center justify-center px-4 text-center">
 				<h1 className="text-3xl font-bold">No session found</h1>
 				<p className="mt-2 max-w-md text-muted-foreground">This can happen for a few reasons:</p>
 				<ul className="mt-3 max-w-md list-disc space-y-1 pl-5 text-left text-muted-foreground">
@@ -227,7 +246,7 @@ export default function WebPlayer() {
 	const session = sessionQuery.data;
 	if (!session) {
 		return sessionQuery.isError ? (
-			<main className="flex min-h-[calc(100dvh-4rem)] flex-col items-center justify-center px-4 text-center">
+			<main className="flex min-h-[calc(100dvh-4.0625rem)] flex-col items-center justify-center px-4 text-center">
 				<h1 className="text-2xl font-bold">Player unavailable</h1>
 				<p className="mt-2 text-muted-foreground">
 					{getErrorMessage(sessionQuery.error, "Could not reach the player.")}
@@ -332,6 +351,15 @@ export default function WebPlayer() {
 							<p className="text-sm font-semibold text-muted-foreground">Session</p>
 							<div className="flex items-center gap-2">
 								<RefreshIndicator active={sessionRefreshing} />
+								<Tag
+									variant="secondary"
+									size="xs"
+									title="Connected Web Player viewers"
+									aria-label={`${session.webPlayerCount} connected Web Player viewers`}
+								>
+									<FiEye className="mr-1 size-3" aria-hidden="true" />
+									{session.webPlayerCount} viewers
+								</Tag>
 								{session.viewer.canToggleLock && (
 									<Button
 										variant="outline-secondary"

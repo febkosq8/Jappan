@@ -24,7 +24,9 @@ interface PlayerWebsocketCallbacks {
 	/** A new state arrived, on subscribing and after every change. */
 	onState: (state: PlayerSession) => void;
 	/** The session no longer exists. */
-	onEnded: () => void;
+	onUnavailable: () => void;
+	/** This tab was replaced by another tab viewing the same session. */
+	onReplaced: () => void;
 	/** The server refused or dropped the connection for a reason the HTTP endpoint can explain better. */
 	onAccessProblem: () => void;
 }
@@ -51,18 +53,22 @@ export default function usePlayerWebsocket({
 		const client = acquireWebsocket();
 		let retryTimer: number | undefined;
 		let active = true;
+		let replaced = false;
 		setStatus("connecting");
 
 		const subscribe = () => {
+			if (!active || replaced) {
+				return;
+			}
 			subscribeToPlayer({ socket: client, sessionId })
 				.then((state) => {
-					if (active) {
+					if (active && !replaced) {
 						setStatus("connected");
 						callbacksRef.current.onState(state);
 					}
 				})
 				.catch((error: unknown) => {
-					if (!active) {
+					if (!active || replaced) {
 						return;
 					}
 					setStatus("disconnected");
@@ -73,6 +79,9 @@ export default function usePlayerWebsocket({
 				});
 		};
 		const handleDisconnect = (reason: string) => {
+			if (replaced) {
+				return;
+			}
 			setStatus("disconnected");
 			// The server ends a connection on purpose (for example when the session expired); reconnecting
 			// either works or fails the handshake, which then reports why
@@ -81,6 +90,9 @@ export default function usePlayerWebsocket({
 			}
 		};
 		const handleConnectError = (error: Error & { data?: { status?: number } }) => {
+			if (replaced) {
+				return;
+			}
 			setStatus("disconnected");
 			const refusal = error.data?.status;
 			if (refusal === 401 || refusal === 403) {
@@ -93,19 +105,26 @@ export default function usePlayerWebsocket({
 			}
 		};
 		const handleState = (state: PlayerSession) => {
-			if (state.sessionId === sessionId) {
+			if (!replaced && state.sessionId === sessionId) {
 				callbacksRef.current.onState(state);
 			}
 		};
 		const handleEnded = (payload: { sessionId: string }) => {
 			if (payload.sessionId === sessionId) {
-				callbacksRef.current.onEnded();
+				callbacksRef.current.onUnavailable();
 			}
 		};
 		const handleRevoked = (payload: { sessionId: string }) => {
-			if (payload.sessionId === sessionId) {
+			if (!replaced && payload.sessionId === sessionId) {
 				setStatus("disconnected");
 				callbacksRef.current.onAccessProblem();
+			}
+		};
+		const handleReplaced = (payload: { sessionId: string }) => {
+			if (payload.sessionId === sessionId) {
+				replaced = true;
+				setStatus("disconnected");
+				callbacksRef.current.onReplaced();
 			}
 		};
 
@@ -115,6 +134,7 @@ export default function usePlayerWebsocket({
 		client.on("player:state", handleState);
 		client.on("player:ended", handleEnded);
 		client.on("player:revoked", handleRevoked);
+		client.on("player:replaced", handleReplaced);
 		if (client.connected) {
 			subscribe();
 		}
@@ -128,6 +148,7 @@ export default function usePlayerWebsocket({
 			client.off("player:state", handleState);
 			client.off("player:ended", handleEnded);
 			client.off("player:revoked", handleRevoked);
+			client.off("player:replaced", handleReplaced);
 			if (client.connected) {
 				client.emit("player:unsubscribe", { sessionId }, () => undefined);
 			}

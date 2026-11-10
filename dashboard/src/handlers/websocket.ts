@@ -15,6 +15,7 @@ interface ServerToClientEvents {
 	"player:state": (state: PlayerSession) => void;
 	"player:ended": (payload: { sessionId: string }) => void;
 	"player:revoked": (payload: { sessionId: string; status: number; error: string }) => void;
+	"player:replaced": (payload: { sessionId: string }) => void;
 }
 
 interface ClientToServerEvents {
