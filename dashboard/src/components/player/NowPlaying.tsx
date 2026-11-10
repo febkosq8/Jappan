@@ -66,7 +66,7 @@ export default function NowPlaying({
 		if (session.playerState !== "Playing" || !live) {
 			return;
 		}
-		const timer = window.setInterval(() => setNow(Date.now()), 500);
+		const timer = window.setInterval(() => setNow(Date.now()), 50);
 		return () => window.clearInterval(timer);
 	}, [session.playerState, live]);
 

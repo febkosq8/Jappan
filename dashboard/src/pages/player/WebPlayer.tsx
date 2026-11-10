@@ -354,11 +354,11 @@ export default function WebPlayer() {
 								<Tag
 									variant="secondary"
 									size="xs"
-									title="Connected Web Player viewers"
-									aria-label={`${session.webPlayerCount} connected Web Player viewers`}
+									title="Connected Web Player users"
+									aria-label={`${session.webPlayerCount} connected Web Player users`}
 								>
 									<FiEye className="mr-1 size-3" aria-hidden="true" />
-									{session.webPlayerCount} viewers
+									{session.webPlayerCount} users
 								</Tag>
 								{session.viewer.canToggleLock && (
 									<Button
