@@ -132,7 +132,7 @@ const command: BotCommand = {
 		.setDescription(commandData.description)
 		.setContexts([InteractionContextType.Guild]),
 	execute: async ({ interaction, config }) => {
-		await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+		await interaction.deferReply();
 		if (!interaction.guild) {
 			await interaction.editReply("⛔ This command can only be used in a guild.");
 			return;
