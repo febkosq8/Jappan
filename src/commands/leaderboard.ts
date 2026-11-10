@@ -10,7 +10,13 @@ import {
 
 import type { BotCommand, BotCommandData } from "../helpers/command.js";
 import type { Config } from "../services/config.js";
-import { createLeaderboardEmbed, getLeaderboard, getLevelingStatus } from "../services/leveling.js";
+import {
+	createLeaderboardEmbed,
+	createLeaderboardPreviewEmbed,
+	getLeaderboard,
+	getLeaderboardPreview,
+	getLevelingStatus,
+} from "../services/leveling.js";
 
 const commandData = {
 	name: "leaderboard",
@@ -56,6 +62,20 @@ export function createLeaderboardComponents({
 	return buttons.components.length > 0 ? buttons : undefined;
 }
 
+interface CreateGuildLeaderboardButtonOptions {
+	guildId: string;
+	config: Config;
+}
+
+function createGuildLeaderboardButton({ guildId, config }: CreateGuildLeaderboardButtonOptions) {
+	return new ActionRowBuilder<ButtonBuilder>().addComponents(
+		new ButtonBuilder()
+			.setLabel("View full leaderboard")
+			.setStyle(ButtonStyle.Link)
+			.setURL(new URL(`/guild/${encodeURIComponent(guildId)}/leaderboard`, config.BOT_WEBSITE).href),
+	);
+}
+
 interface BuildLeaderboardReplyOptions {
 	guildId: string;
 	guildName: string;
@@ -82,6 +102,29 @@ export async function buildLeaderboardReply({
 	};
 }
 
+interface BuildLeaderboardPreviewReplyOptions {
+	guildId: string;
+	guildName: string;
+	userId: string;
+	config: Config;
+}
+
+export async function buildLeaderboardPreviewReply({
+	guildId,
+	guildName,
+	userId,
+	config,
+}: BuildLeaderboardPreviewReplyOptions): Promise<{
+	embeds: ReturnType<typeof createLeaderboardPreviewEmbed>[];
+	components: ActionRowBuilder<ButtonBuilder>[];
+}> {
+	const leaderboard = await getLeaderboardPreview({ guildId, userId });
+	return {
+		embeds: [createLeaderboardPreviewEmbed({ guildName, config, leaderboard })],
+		components: [createGuildLeaderboardButton({ guildId, config })],
+	};
+}
+
 const command: BotCommand = {
 	commandData,
 	data: new SlashCommandBuilder()
@@ -102,12 +145,11 @@ const command: BotCommand = {
 		}
 
 		await interaction.editReply(
-			await buildLeaderboardReply({
+			await buildLeaderboardPreviewReply({
 				guildId: interaction.guild.id,
 				guildName: interaction.guild.name,
 				userId: interaction.user.id,
 				config,
-				page: 1,
 			}),
 		);
 	},

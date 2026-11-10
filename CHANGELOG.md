@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Added a guild leaderboard API and dashboard with member rankings, avatars, and configured rewards.
+- Added a guild leaderboard API and dashboard with member rankings, avatars, and configured rewards; the `/leaderboard` command now previews the top three, your rank, and a link to the full leaderboard.
 
 ## [2.1.0] - 2026-11-09
 

@@ -22,6 +22,16 @@ export interface LeaderboardPage {
 	readonly pageCount: number;
 }
 
+export interface LeaderboardMemberPosition {
+	readonly entry: GuildMemberStateDocument;
+	readonly rank: number;
+}
+
+export interface LeaderboardPreview {
+	readonly entries: GuildMemberStateDocument[];
+	readonly member: LeaderboardMemberPosition | undefined;
+}
+
 export const LEADERBOARD_PAGE_SIZE = 20;
 
 export interface LevelingStatus {
@@ -389,6 +399,41 @@ export async function getLeaderboard({
 	return { entries, page: currentPage, pageCount };
 }
 
+interface GetLeaderboardPreviewOptions {
+	guildId: string;
+	userId: string;
+}
+
+export async function getLeaderboardPreview({
+	guildId,
+	userId,
+}: GetLeaderboardPreviewOptions): Promise<LeaderboardPreview> {
+	const [entries, member] = await Promise.all([
+		GuildMemberStateModel.find({ guildId })
+			.sort({ "leveling.points": -1, userId: 1 })
+			.limit(3)
+			.select({ userId: 1, username: 1, "leveling.points": 1 })
+			.exec(),
+		GuildMemberStateModel.findOne({ guildId, userId })
+			.select({ userId: 1, username: 1, "leveling.points": 1 })
+			.exec(),
+	]);
+
+	if (!member) {
+		return { entries, member: undefined };
+	}
+
+	const membersAhead = await GuildMemberStateModel.countDocuments({
+		guildId,
+		$or: [
+			{ "leveling.points": { $gt: member.leveling.points } },
+			{ "leveling.points": member.leveling.points, userId: { $lt: userId } },
+		],
+	}).exec();
+
+	return { entries, member: { entry: member, rank: membersAhead + 1 } };
+}
+
 interface CreateLeaderboardEmbedOptions {
 	guildName: string;
 	config: Config;
@@ -416,5 +461,35 @@ export function createLeaderboardEmbed({
 		.setDescription("Members ranked by activity points.")
 		.addFields({ name: "Member Stats", value })
 		.setFooter({ text: `Page ${leaderboard.page} of ${leaderboard.pageCount}` })
+		.setTimestamp();
+}
+
+interface CreateLeaderboardPreviewEmbedOptions {
+	guildName: string;
+	config: Config;
+	leaderboard: LeaderboardPreview;
+}
+
+export function createLeaderboardPreviewEmbed({
+	guildName,
+	config,
+	leaderboard,
+}: CreateLeaderboardPreviewEmbedOptions): EmbedBuilder {
+	const entries = leaderboard.entries.map(
+		(entry, index) => `${index + 1}. <@${entry.userId}> - ${entry.leveling.points} points`,
+	);
+	if (leaderboard.member && !leaderboard.entries.some((entry) => entry.userId === leaderboard.member?.entry.userId)) {
+		entries.push("...");
+		entries.push(
+			`${leaderboard.member.rank}. <@${leaderboard.member.entry.userId}> - ${leaderboard.member.entry.leveling.points} points`,
+		);
+	}
+
+	return new EmbedBuilder()
+		.setColor("Orange")
+		.setAuthor({ name: config.BOT_NAME, iconURL: config.BOT_PFP, url: config.BOT_WEBSITE })
+		.setTitle(`Leaderboard: ${guildName}`)
+		.setDescription("Members ranked by activity points.")
+		.addFields({ name: "Member Stats", value: entries.length ? entries.join("\n") : "No member stats were found." })
 		.setTimestamp();
 }
