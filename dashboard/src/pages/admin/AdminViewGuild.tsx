@@ -102,7 +102,6 @@ function ChannelGroupList({ guildId, channels }: { guildId: string; channels: Ad
 			channels: children,
 		})),
 	];
-
 	return (
 		<div className="mt-4 space-y-4">
 			{groups.map((group) => (
@@ -113,7 +112,12 @@ function ChannelGroupList({ guildId, channels }: { guildId: string; channels: Ad
 					aria-label={group.name}
 					className="min-w-0 rounded-md border-border p-3"
 				>
-					<h3 className="wrap-break-word font-semibold">{group.name}</h3>
+					<div className="flex items-center justify-between gap-2">
+						<h3 className="wrap-break-word font-semibold">{group.name}</h3>
+						<span className="shrink-0 rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">
+							{group.channels.length} {group.channels.length === 1 ? "channel" : "channels"}
+						</span>
+					</div>
 					{group.categoryId && (
 						<p className="break-all text-xs text-muted-foreground">
 							{group.unavailable ? "Category unavailable · " : ""}
@@ -222,6 +226,7 @@ function GuildChannels({ guild }: { guild: AdminGuildDetails }) {
 		enabled: false,
 		retry: false,
 	});
+	const totalChannelCount = channelsQuery.data?.filter((channel) => channel.type !== 4).length;
 	const accessStatus = accessErrorStatus(channelsQuery.error);
 	if (accessStatus) return <AccessRedirect status={accessStatus} />;
 
@@ -237,9 +242,16 @@ function GuildChannels({ guild }: { guild: AdminGuildDetails }) {
 
 	return (
 		<Card id="guild-channels" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
-			<h2 className="flex items-center gap-1 text-lg font-semibold">
-				Channels <GuildSectionLink id="guild-channels" label="channels" />
-			</h2>
+			<div className="flex items-center justify-between gap-3">
+				<h2 className="flex items-center gap-1 text-lg font-semibold">
+					Channels <GuildSectionLink id="guild-channels" label="channels" />
+				</h2>
+				{totalChannelCount !== undefined && (
+					<span className="shrink-0 rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">
+						Total: {totalChannelCount} {totalChannelCount === 1 ? "channel" : "channels"}
+					</span>
+				)}
+			</div>
 			<p className="mt-1 text-sm text-muted-foreground">
 				Load the current channels and categories from Discord. Threads are not included.
 			</p>

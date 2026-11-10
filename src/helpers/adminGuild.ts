@@ -32,33 +32,34 @@ export async function listAdminGuildChannels(guildId: string) {
 
 	const botMember = guild.members.me ?? (await guild.members.fetchMe());
 	const fetched = await guild.channels.fetch();
-	const channels = [...fetched.values()].map((channel) => {
-		if (!channel) throw new Error(`Discord returned an unsupported channel type in guild ${guildId}`);
-		const parent = channel.parentId ? fetched.get(channel.parentId) : null;
-		return {
-			id: channel.id,
-			name: channel.name,
-			type: channel.type,
-			typeName: ChannelType[channel.type] ?? `Unknown (${channel.type})`,
-			createdTimestampMs: channel.createdTimestamp,
-			parent: channel.parentId ? { id: channel.parentId, name: parent?.name ?? null } : null,
-			position: channel.rawPosition,
-			canSendMessage: canSendMessage({
-				channel,
-				botMember,
-				permissions: [
-					PermissionFlagsBits.ViewChannel,
-					PermissionFlagsBits.SendMessages,
-					PermissionFlagsBits.EmbedLinks,
-				],
-			}),
-			...("topic" in channel ? { topic: channel.topic } : {}),
-			...("nsfw" in channel ? { nsfw: channel.nsfw } : {}),
-			...("rateLimitPerUser" in channel ? { rateLimitPerUser: channel.rateLimitPerUser } : {}),
-			...("bitrate" in channel ? { bitrate: channel.bitrate } : {}),
-			...("userLimit" in channel ? { userLimit: channel.userLimit } : {}),
-		};
-	});
+	const channels = [...fetched.values()]
+		.filter((channel) => channel !== null)
+		.map((channel) => {
+			const parent = channel.parentId ? fetched.get(channel.parentId) : null;
+			return {
+				id: channel.id,
+				name: channel.name,
+				type: channel.type,
+				typeName: ChannelType[channel.type] ?? `Unknown (${channel.type})`,
+				createdTimestampMs: channel.createdTimestamp,
+				parent: channel.parentId ? { id: channel.parentId, name: parent?.name ?? null } : null,
+				position: channel.rawPosition,
+				canSendMessage: canSendMessage({
+					channel,
+					botMember,
+					permissions: [
+						PermissionFlagsBits.ViewChannel,
+						PermissionFlagsBits.SendMessages,
+						PermissionFlagsBits.EmbedLinks,
+					],
+				}),
+				...("topic" in channel ? { topic: channel.topic } : {}),
+				...("nsfw" in channel ? { nsfw: channel.nsfw } : {}),
+				...("rateLimitPerUser" in channel ? { rateLimitPerUser: channel.rateLimitPerUser } : {}),
+				...("bitrate" in channel ? { bitrate: channel.bitrate } : {}),
+				...("userLimit" in channel ? { userLimit: channel.userLimit } : {}),
+			};
+		});
 	const comparePosition = (first: (typeof channels)[number], second: (typeof channels)[number]) =>
 		first.position - second.position || first.id.localeCompare(second.id);
 	const categories = channels.filter((channel) => channel.type === ChannelType.GuildCategory).sort(comparePosition);
