@@ -152,7 +152,7 @@ export const warnedMemberSchema = z.object({
 });
 
 export const warningIssueSchema = z.object({
-	reason: z.string().trim().max(512).optional(),
+	reason: z.string().trim().max(500).optional(),
 });
 
 export const warningCountOverrideSchema = z.object({

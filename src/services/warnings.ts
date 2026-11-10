@@ -136,9 +136,11 @@ export async function issueWarningForMember({
 		}
 	}
 
+	const thresholdReason = `Warning threshold reached: ${reason}`.slice(0, 500);
+
 	if (storedGuildData.warnings.banThreshold && warningCount >= storedGuildData.warnings.banThreshold) {
 		if (!member.bannable) return { warningCount, action: "ban_failed" };
-		await member.ban({ reason: `Warning threshold reached: ${reason}` });
+		await member.ban({ reason: thresholdReason });
 		return { warningCount, action: "banned" };
 	}
 
@@ -148,10 +150,7 @@ export async function issueWarningForMember({
 		warningCount >= storedGuildData.warnings.timeoutThreshold
 	) {
 		if (!member.moderatable) return { warningCount, action: "timeout_failed" };
-		await member.timeout(
-			storedGuildData.warnings.timeoutDurationHours * 60 * 60 * 1000,
-			`Warning threshold reached: ${reason}`,
-		);
+		await member.timeout(storedGuildData.warnings.timeoutDurationHours * 60 * 60 * 1000, thresholdReason);
 		return { warningCount, action: "timed_out" };
 	}
 

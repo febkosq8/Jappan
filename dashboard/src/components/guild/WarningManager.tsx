@@ -319,12 +319,12 @@ export default function WarningManager({
 										</div>
 
 										<div className="grid gap-3 sm:grid-cols-2">
-											<div className="min-w-0 rounded-md border border-border p-3">
+											<div className="flex min-w-0 flex-col rounded-md border border-border p-3">
 												<h4 className="font-medium">Issue a warning</h4>
 												<p className="mt-1 text-sm text-muted-foreground">
 													Add a reason for the audit log.
 												</p>
-												<div className="mt-3">
+												<div className="my-3">
 													<label
 														htmlFor="warning-reason"
 														className="mb-1 block text-sm font-medium"
@@ -332,32 +332,34 @@ export default function WarningManager({
 														Reason
 													</label>
 													<Input
+														as="textarea"
 														id="warning-reason"
+														rows={4}
 														value={reason}
 														onChange={(event) => setReason(event.target.value)}
-														maxLength={512}
+														maxLength={500}
 														disabled={busy}
 														placeholder="No reason provided"
-														className="w-full"
+														className="min-h-24 w-full"
 													/>
 												</div>
 												<Button
 													type="button"
 													size="sm"
 													variant="outline-primary"
-													className="mt-3 w-full"
+													className="mt-auto w-full"
 													disabled={busy}
 													onClick={() => issueMutation.mutate()}
 												>
 													{issueMutation.isPending ? "Issuing..." : "Issue warning"}
 												</Button>
 											</div>
-											<div className="min-w-0 rounded-md border border-border p-3">
+											<div className="flex min-w-0 flex-col rounded-md border border-border p-3">
 												<h4 className="font-medium">Adjust warning count</h4>
 												<p className="mt-1 text-sm text-muted-foreground">
 													Set the member's current total.
 												</p>
-												<div className="mt-3">
+												<div className="my-3">
 													<label
 														htmlFor="warning-count-override"
 														className="mb-1 block text-sm font-medium"
@@ -380,7 +382,7 @@ export default function WarningManager({
 													type="button"
 													size="sm"
 													variant="outline-secondary"
-													className="mt-3 w-full"
+													className="mt-auto w-full"
 													disabled={busy || !canOverride}
 													onClick={() => overrideMutation.mutate()}
 												>
