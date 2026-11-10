@@ -268,7 +268,9 @@ function GuildChannels({ guild }: { guild: AdminGuildDetails }) {
 				<p className="mt-3 text-muted-foreground">The bot is not a member of this guild.</p>
 			)}
 			{channelsQuery.isFetching ? (
-				<LoadingIndicator label="Loading channels" />
+				<div className="mt-3">
+					<LoadingIndicator label="Loading channels" inline size={80} rows={1} columns={5} />
+				</div>
 			) : channelsQuery.isError ? (
 				<p role="alert" className="mt-3 text-destructive">
 					{errorMessage}

@@ -193,7 +193,13 @@ export default function WarningManager({
 								>
 									{membersQuery.isFetching && (
 										<li className="px-3 py-2" role="status">
-											<LoadingIndicator label="Searching guild members" inline size={16} />
+											<LoadingIndicator
+												label="Searching guild members"
+												inline
+												size={80}
+												rows={1}
+												columns={5}
+											/>
 										</li>
 									)}
 									{membersQuery.isError && (

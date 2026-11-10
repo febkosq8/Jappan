@@ -54,7 +54,7 @@ export default function AuthControls() {
 					children={
 						<>
 							<Avatar name={"User"} variant="default" size="lg" />
-							<LoadingIndicator label={"Loading session"} columns={5} rows={1} />
+							<LoadingIndicator label={"Loading session"} inline size={80} columns={5} rows={1} />
 							<span className="sr-only"> account menu</span>
 						</>
 					}

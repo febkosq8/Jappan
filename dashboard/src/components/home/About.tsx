@@ -174,7 +174,14 @@ export default function About() {
 									/>
 								) : (
 									<span className="mr-1 inline-flex items-center justify-center">
-										<LoadingIndicator label="Checking status" inline decorative size={16} />
+										<LoadingIndicator
+											label="Checking status"
+											inline
+											decorative
+											size={40}
+											rows={1}
+											columns={3}
+										/>
 									</span>
 								)}
 								{healthQuery.data
@@ -216,7 +223,9 @@ export default function About() {
 														label={`Checking ${label}`}
 														inline
 														decorative
-														size={16}
+														size={40}
+														rows={1}
+														columns={3}
 													/>
 												</span>
 											) : (

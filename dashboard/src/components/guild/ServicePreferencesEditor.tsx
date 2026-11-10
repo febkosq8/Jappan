@@ -84,7 +84,9 @@ function SelectField({
 		<div>
 			<div className="mb-1 flex items-center gap-2">
 				<LabelField id={id} label={label} />
-				{loading && <LoadingIndicator label={`Loading options for ${label}`} inline size={16} />}
+				{loading && (
+					<LoadingIndicator label={`Loading options for ${label}`} inline size={60} rows={1} columns={5} />
+				)}
 			</div>
 			<Select
 				id={id}
