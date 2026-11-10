@@ -390,7 +390,6 @@ export default function WebPlayer() {
 								<UserDisplay
 									name={session.owner.username}
 									avatarUrl={session.owner.avatarUrl}
-									size="md"
 									showId={false}
 								/>
 							</div>
@@ -401,7 +400,6 @@ export default function WebPlayer() {
 										<UserDisplay
 											name={session.lastChangedBy.username}
 											avatarUrl={session.lastChangedBy.avatarUrl}
-											size="md"
 											showId={false}
 										/>
 										<div className="ml-12">

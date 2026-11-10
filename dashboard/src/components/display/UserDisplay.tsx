@@ -10,7 +10,7 @@ interface UserDisplayProps {
 	showId?: boolean;
 }
 
-export default function UserDisplay({ id, name, avatarUrl, size = "sm", showId = true }: UserDisplayProps) {
+export default function UserDisplay({ id, name, avatarUrl, size = "lg", showId = true }: UserDisplayProps) {
 	return (
 		<div className="flex min-w-0 items-center gap-2">
 			<Avatar name={name} image={avatarUrl} size={size} aria-hidden="true" />

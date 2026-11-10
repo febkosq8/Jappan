@@ -15,7 +15,8 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { useEffect, useState, type ReactNode, type SubmitEvent } from "react";
-import { FiArrowLeft, FiCopy } from "react-icons/fi";
+import { FaListCheck } from "react-icons/fa6";
+import { FiArrowLeft, FiCopy, FiHash, FiHome, FiSettings, FiShield, FiSliders } from "react-icons/fi";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -41,12 +42,12 @@ import useDocumentTitle, { formatTitle } from "@jappan/helpers/useDocumentTitle"
 import { CONFIRM_CLICK_MS } from "@jappan/helpers/confirmClick";
 
 const guildSections = [
-	{ id: "guild-overview", label: "Overview" },
-	{ id: "admin-actions", label: "Admin actions" },
-	{ id: "guild-channels", label: "Channels" },
-	{ id: "service-preferences", label: "Service Preferences" },
-	{ id: "bot-permissions", label: "Bot permissions" },
-	{ id: "command-permissions", label: "Command permissions" },
+	{ id: "guild-overview", label: "Overview", icon: FiHome },
+	{ id: "admin-actions", label: "Admin actions", icon: FiSettings },
+	{ id: "guild-channels", label: "Channels", icon: FiHash },
+	{ id: "service-preferences", label: "Service Preferences", icon: FiSliders },
+	{ id: "bot-permissions", label: "Bot permissions", icon: FiShield },
+	{ id: "command-permissions", label: "Command permissions", icon: FaListCheck },
 ];
 
 const readSectionFromHash = () => {
@@ -799,9 +800,12 @@ function GuildDetails({ guild }: { guild: AdminGuildDetails }) {
 	return (
 		<Tabs value={section} onValueChange={changeSection} className="gap-5">
 			<TabsList aria-label="Guild sections">
-				{guildSections.map(({ id, label }) => (
+				{guildSections.map(({ id, label, icon: Icon }) => (
 					<TabsTab key={id} value={id} size="sm">
-						{label}
+						<span className="inline-flex items-center gap-2">
+							<Icon className="size-4" aria-hidden="true" />
+							{label}
+						</span>
 					</TabsTab>
 				))}
 			</TabsList>

@@ -1,57 +1,123 @@
-import { Avatar, Button, Card, PillLink } from "@febkosq8/arc";
+import { Avatar, Button, PillLink, Tabs, TabsList, TabsPanel, TabsTab } from "@febkosq8/arc";
 import { useQuery } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import { FiArrowLeft } from "react-icons/fi";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { FiArrowLeft, FiGift, FiHome, FiList } from "react-icons/fi";
+import { Link, useParams } from "react-router-dom";
 
 import { AccessRedirect } from "@jappan/components/AdminRoute";
 import GuildPageHeader from "@jappan/components/display/GuildPageHeader";
-import RoleDisplay from "@jappan/components/display/RoleDisplay";
-import UserDisplay from "@jappan/components/display/UserDisplay";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
+import GuildLeaderboardList from "@jappan/components/panel/guild-leaderboard-list";
+import GuildLeaderboardOverview from "@jappan/components/panel/guild-leaderboard-overview";
+import GuildLeaderboardRewards from "@jappan/components/panel/guild-leaderboard-rewards";
 import APIHandler from "@jappan/handlers/APIHandler";
 import { isAdminSession, useSessionQuery } from "@jappan/handlers/auth";
 import guildIdPattern from "@jappan/helpers/guildIdPattern";
 import useDocumentTitle, { formatTitle } from "@jappan/helpers/useDocumentTitle";
 
+const leaderboardSections = [
+	{ id: "overview", label: "Overview", icon: FiHome },
+	{ id: "rewards", label: "Rewards", icon: FiGift },
+	{ id: "list", label: "List", icon: FiList },
+];
+
+function readSectionFromHash() {
+	const id = window.location.hash.slice(1);
+	return leaderboardSections.some((section) => section.id === id) ? id : leaderboardSections[0].id;
+}
+
+function leaderboardErrorMessage(status: number | undefined) {
+	if (status === 404) return "Guild not found.";
+	if (status === 403) return "You need Manage Server permission in this guild to view its leaderboard.";
+	return "Could not load the leaderboard. Check your access and try again.";
+}
+
+function LeaderboardError({ status, onRetry }: { status: number | undefined; onRetry: () => void }) {
+	return (
+		<div role="alert" className="space-y-2">
+			<p>{leaderboardErrorMessage(status)}</p>
+			<Button size="sm" variant="outline-primary" onClick={onRetry}>
+				Retry
+			</Button>
+		</div>
+	);
+}
+
 export default function GuildLeaderboard() {
 	const { guildId = "" } = useParams();
-	const [searchParams, setSearchParams] = useSearchParams();
+	const [section, setSection] = useState(readSectionFromHash);
+	const queryClient = useQueryClient();
 	const { data: session } = useSessionQuery();
 	const admin = isAdminSession(session);
 	const validGuildId = guildIdPattern.test(guildId);
-	const requestedPage = Number(searchParams.get("page") ?? 1);
-	const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
 	const guildsQuery = useQuery({
 		queryKey: [admin ? "admin" : "user", "list-guilds"],
 		queryFn: () => (admin ? APIHandler.getAdminGuilds() : APIHandler.getUserGuilds()),
 		enabled: !guildId,
 	});
-	const guildQuery = useQuery({
-		queryKey: ["guild", guildId, "leaderboard", page],
-		queryFn: () => APIHandler.getGuildLeaderboard(guildId, page),
+	const overviewQuery = useQuery({
+		queryKey: ["guild", guildId, "leaderboard", 1],
+		queryFn: () => APIHandler.getGuildLeaderboard(guildId, 1),
 		enabled: validGuildId,
 	});
+	const leaderboardQuery = useQuery({
+		queryKey: ["guild", guildId, "leaderboard", "all"],
+		queryFn: async () => {
+			const firstPage = await queryClient.fetchQuery({
+				queryKey: ["guild", guildId, "leaderboard", 1],
+				queryFn: () => APIHandler.getGuildLeaderboard(guildId, 1),
+			});
+			const pages = [firstPage];
+			const batchSize = 5;
 
-	useDocumentTitle(formatTitle(guildQuery.isSuccess ? `Leaderboard: ${guildQuery.data.guildName}` : "Leaderboard"));
+			for (let firstPageInBatch = 2; firstPageInBatch <= firstPage.pageCount; firstPageInBatch += batchSize) {
+				const batchPages = await Promise.all(
+					Array.from(
+						{ length: Math.min(batchSize, firstPage.pageCount - firstPageInBatch + 1) },
+						(_, index) => firstPageInBatch + index,
+					).map((page) =>
+						queryClient.fetchQuery({
+							queryKey: ["guild", guildId, "leaderboard", page],
+							queryFn: () => APIHandler.getGuildLeaderboard(guildId, page),
+						}),
+					),
+				);
+				pages.push(...batchPages);
+			}
 
-	const errorStatus = axios.isAxiosError(guildQuery.error) ? guildQuery.error.response?.status : undefined;
-	if (errorStatus === 401 || (admin && errorStatus === 403)) {
-		return <AccessRedirect status={errorStatus} />;
-	}
+			return { ...firstPage, entries: pages.flatMap((page) => page.entries) };
+		},
+		enabled: validGuildId && section === "list",
+	});
+	const guild = leaderboardQuery.data ?? overviewQuery.data;
+
+	useEffect(() => {
+		const handleHashChange = () => setSection(readSectionFromHash());
+		window.addEventListener("hashchange", handleHashChange);
+		return () => window.removeEventListener("hashchange", handleHashChange);
+	}, []);
+
+	useDocumentTitle(formatTitle(guild ? `Leaderboard: ${guild.guildName}` : "Leaderboard"));
+
+	const guildQueryError = overviewQuery.error ?? leaderboardQuery.error;
+	const guildQueryErrorStatus = axios.isAxiosError(guildQueryError) ? guildQueryError.response?.status : undefined;
 	const guildsErrorStatus = axios.isAxiosError(guildsQuery.error) ? guildsQuery.error.response?.status : undefined;
-	if (guildsErrorStatus === 401 || (admin && guildsErrorStatus === 403)) {
-		return <AccessRedirect status={guildsErrorStatus} />;
+	if (guildQueryErrorStatus === 401 || guildsErrorStatus === 401) {
+		return <AccessRedirect status={401} />;
+	}
+	if (admin && (guildQueryErrorStatus === 403 || guildsErrorStatus === 403)) {
+		return <AccessRedirect status={403} />;
 	}
 
-	const changePage = (nextPage: number) => {
-		const nextSearchParams = new URLSearchParams(searchParams);
-		if (nextPage === 1) {
-			nextSearchParams.delete("page");
-		} else {
-			nextSearchParams.set("page", String(nextPage));
-		}
-		setSearchParams(nextSearchParams);
+	const changeSection = (value: string) => {
+		setSection(value);
+		window.history.replaceState(
+			window.history.state,
+			"",
+			`${window.location.pathname}${window.location.search}#${value}`,
+		);
 	};
 
 	const pageContent = (() => {
@@ -67,22 +133,22 @@ export default function GuildLeaderboard() {
 					</div>
 				);
 			}
-			const guilds = guildsQuery.data.filter((guild) => !("isActiveMember" in guild) || guild.isActiveMember);
+			const guilds = guildsQuery.data.filter((item) => !("isActiveMember" in item) || item.isActiveMember);
 			if (guilds.length === 0) {
 				return <p className="text-muted-foreground">No guilds available to view.</p>;
 			}
 			return (
 				<ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-					{guilds.map((guild) => (
-						<li key={guild.id}>
+					{guilds.map((item) => (
+						<li key={item.id}>
 							<Link
-								to={`/guild/${encodeURIComponent(guild.id)}/leaderboard`}
+								to={`/guild/${encodeURIComponent(item.id)}/leaderboard`}
 								className="flex min-w-0 items-center gap-3 rounded-md border border-border p-3 transition-colors hover:bg-accent hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-opacity-75"
 							>
-								<Avatar name={guild.name} image={guild.icon} size="md" aria-hidden="true" />
+								<Avatar name={item.name} image={item.icon} size="md" aria-hidden="true" />
 								<span className="min-w-0">
-									<span className="block truncate font-medium">{guild.name}</span>
-									<span className="block truncate text-xs text-muted-foreground">{guild.id}</span>
+									<span className="block truncate font-medium">{item.name}</span>
+									<span className="block truncate text-xs text-muted-foreground">{item.id}</span>
 								</span>
 							</Link>
 						</li>
@@ -93,144 +159,69 @@ export default function GuildLeaderboard() {
 		if (!validGuildId) {
 			return <p role="alert">Invalid guild ID.</p>;
 		}
-		if (guildQuery.isPending || guildQuery.isFetching) {
-			return <LoadingIndicator label="Loading leaderboard" />;
-		}
-		if (guildQuery.isError) {
-			const message =
-				errorStatus === 404
-					? "Guild not found."
-					: errorStatus === 403
-						? "You need Manage Server permission in this guild to view its leaderboard."
-						: "Could not load the leaderboard. Check your access and try again.";
-			return (
-				<div role="alert" className="space-y-2">
-					<p>{message}</p>
-					<Button size="sm" variant="outline-primary" onClick={() => void guildQuery.refetch()}>
-						Retry
-					</Button>
-				</div>
-			);
-		}
 
-		const leaderboard = guildQuery.data;
 		return (
-			<div className="space-y-4">
-				{leaderboard.reward && (
-					<Card hoverable={false} aria-label="Leveling reward" className="p-5 sm:p-6">
-						<h2 className="text-lg font-semibold">Leveling reward</h2>
-						<dl className="mt-3 grid gap-3 sm:grid-cols-2">
-							<div>
-								<dt className="text-sm text-muted-foreground">Reward role</dt>
-								<dd className="mt-1 font-medium">
-									<RoleDisplay id={leaderboard.reward.role.id} name={leaderboard.reward.role.name} />
-								</dd>
-							</div>
-							<div>
-								<dt className="text-sm text-muted-foreground">Points required</dt>
-								<dd className="mt-1 font-medium">
-									{leaderboard.reward.threshold.toLocaleString()} points
-								</dd>
-							</div>
-						</dl>
-					</Card>
-				)}
-				{!leaderboard.enabled ? (
-					<Card hoverable={false} className="p-5 sm:p-6">
-						<p className="text-muted-foreground">Leveling is disabled for this guild.</p>
-					</Card>
-				) : (
-					<Card hoverable={false} className="overflow-hidden p-0">
-						{leaderboard.entries.length ? (
-							<div className="overflow-x-auto">
-								<table className="w-full min-w-[32rem] text-left text-sm">
-									<thead className="border-b border-border bg-muted/40 text-muted-foreground">
-										<tr>
-											<th scope="col" className="px-4 py-3 font-medium">
-												Rank
-											</th>
-											<th scope="col" className="px-4 py-3 font-medium">
-												Member
-											</th>
-											<th scope="col" className="px-4 py-3 text-right font-medium">
-												Points
-											</th>
-										</tr>
-									</thead>
-									<tbody className="divide-y divide-border">
-										{leaderboard.entries.map((entry) => (
-											<tr key={entry.userId}>
-												<th scope="row" className="px-4 py-3 font-semibold">
-													{entry.rank}
-												</th>
-												<td className="px-4 py-3">
-													<UserDisplay
-														id={entry.userId}
-														name={entry.username}
-														avatarUrl={entry.avatarUrl}
-														showId={false}
-													/>
-												</td>
-												<td className="px-4 py-3 text-right tabular-nums">
-													{entry.points.toLocaleString()}
-												</td>
-											</tr>
-										))}
-									</tbody>
-								</table>
-							</div>
-						) : (
-							<p className="p-5 text-muted-foreground">No member activity has been recorded yet.</p>
-						)}
-					</Card>
-				)}
-				{leaderboard.enabled && (
-					<nav aria-label="Leaderboard pages" className="flex items-center justify-between gap-3">
-						<Button
-							type="button"
-							size="sm"
-							variant="outline-secondary"
-							disabled={leaderboard.page <= 1}
-							onClick={() => changePage(leaderboard.page - 1)}
-						>
-							Previous
-						</Button>
-						<p aria-live="polite" className="text-sm text-muted-foreground">
-							Page {leaderboard.page} of {leaderboard.pageCount}
-						</p>
-						<Button
-							type="button"
-							size="sm"
-							variant="outline-secondary"
-							disabled={leaderboard.page >= leaderboard.pageCount}
-							onClick={() => changePage(leaderboard.page + 1)}
-						>
-							Next
-						</Button>
-					</nav>
-				)}
-			</div>
+			<Tabs value={section} onValueChange={changeSection} className="gap-5">
+				<TabsList aria-label="Leaderboard sections">
+					{leaderboardSections.map(({ id, label, icon: Icon }) => (
+						<TabsTab key={id} value={id} size="sm">
+							<span className="inline-flex items-center gap-2">
+								<Icon className="size-4" aria-hidden="true" />
+								{label}
+							</span>
+						</TabsTab>
+					))}
+				</TabsList>
+				<TabsPanel value="overview" keepMounted>
+					{overviewQuery.isPending || overviewQuery.isFetching ? (
+						<LoadingIndicator label="Loading leaderboard overview" />
+					) : overviewQuery.isError ? (
+						<LeaderboardError status={guildQueryErrorStatus} onRetry={() => void overviewQuery.refetch()} />
+					) : (
+						<GuildLeaderboardOverview leaderboard={overviewQuery.data} />
+					)}
+				</TabsPanel>
+				<TabsPanel value="rewards" keepMounted>
+					{overviewQuery.isPending || overviewQuery.isFetching ? (
+						<LoadingIndicator label="Loading leaderboard rewards" />
+					) : overviewQuery.isError ? (
+						<LeaderboardError status={guildQueryErrorStatus} onRetry={() => void overviewQuery.refetch()} />
+					) : (
+						<GuildLeaderboardRewards leaderboard={overviewQuery.data} />
+					)}
+				</TabsPanel>
+				<TabsPanel value="list" keepMounted>
+					{leaderboardQuery.isPending || leaderboardQuery.isFetching ? (
+						<LoadingIndicator label="Loading leaderboard" />
+					) : leaderboardQuery.isError ? (
+						<LeaderboardError
+							status={guildQueryErrorStatus}
+							onRetry={() => void leaderboardQuery.refetch()}
+						/>
+					) : (
+						<GuildLeaderboardList leaderboard={leaderboardQuery.data} />
+					)}
+				</TabsPanel>
+			</Tabs>
 		);
 	})();
 
 	return (
 		<main className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6">
-			<PillLink
-				href={`${admin ? "/admin/guild" : "/guild"}/${encodeURIComponent(guildId)}`}
-				variant="outline-secondary"
-				size="sm"
-				className="mb-5 gap-2"
-			>
-				<FiArrowLeft aria-hidden="true" />
-				Back to guild
-			</PillLink>
+			{guildId && (
+				<PillLink
+					href={`${admin ? "/admin/guild" : "/guild"}/${encodeURIComponent(guildId)}`}
+					variant="outline-secondary"
+					size="sm"
+					className="mb-5 gap-2"
+				>
+					<FiArrowLeft aria-hidden="true" />
+					Back to guild
+				</PillLink>
+			)}
 			<GuildPageHeader
 				title="Guild leaderboard"
-				guild={
-					guildQuery.data
-						? { id: guildId, name: guildQuery.data.guildName, icon: guildQuery.data.guildIcon }
-						: undefined
-				}
+				guild={guild ? { id: guildId, name: guild.guildName, icon: guild.guildIcon } : undefined}
 			/>
 			{pageContent}
 		</main>
