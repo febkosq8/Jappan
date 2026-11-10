@@ -14,10 +14,15 @@ import WrongPage from "@jappan/pages/WrongPage";
 import { SIGN_OUT_FLASH_KEY } from "@jappan/handlers/auth";
 import { updateHashOnScroll } from "@febkosq8/arc";
 import { useEffect, useRef } from "react";
-import { Route, Routes, useLocation } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation, useParams } from "react-router-dom";
 import { toast, Toaster } from "sonner";
 
 const sectionIds = ["about", "features", "team"];
+
+function LeaderboardRedirect() {
+	const { guildId } = useParams();
+	return <Navigate to={guildId ? `/guild/${encodeURIComponent(guildId)}/leaderboard` : "/leaderboard"} replace />;
+}
 
 function App() {
 	const containerRef = useRef<HTMLDivElement>(null);
@@ -56,19 +61,20 @@ function App() {
 				<Route path="/auth/error" element={<AuthError />} />
 				<Route element={<AdminRoute />}>
 					<Route path="/admin/guilds" element={<AdminListGuilds />} />
-					<Route path="/admin/guild/:guildId?" element={<AdminViewGuild />} />
-					<Route path="/admin/leaderboard" element={<GuildLeaderboard admin />} />
+					<Route path="/admin/guild" element={<Navigate to="/admin/guilds" replace />} />
+					<Route path="/admin/guild/:guildId" element={<AdminViewGuild />} />
+					<Route path="/admin/leaderboard" element={<Navigate to="/leaderboard" replace />} />
+					<Route path="/admin/leaderboard/:guildId" element={<LeaderboardRedirect />} />
 					<Route path="/admin/bot" element={<ManageBot />} />
 				</Route>
 				<Route element={<AuthRoute />}>
 					<Route path="/guilds" element={<UserListGuilds />} />
-					<Route path="/guild/:guildId?" element={<UserViewGuild />} />
-					<Route path="/leaderboard" element={<GuildLeaderboard admin={false} />} />
-					<Route path="/leaderboard/:guildId" element={<GuildLeaderboard admin={false} />} />
+					<Route path="/guild" element={<Navigate to="/guilds" replace />} />
+					<Route path="/guild/:guildId" element={<UserViewGuild />} />
+					<Route path="/leaderboard" element={<GuildLeaderboard />} />
+					<Route path="/guild/:guildId/leaderboard" element={<GuildLeaderboard />} />
+					<Route path="/leaderboard/:guildId" element={<LeaderboardRedirect />} />
 					<Route path="/player/:sessionId" element={<WebPlayer />} />
-				</Route>
-				<Route element={<AdminRoute />}>
-					<Route path="/admin/leaderboard/:guildId" element={<GuildLeaderboard admin />} />
 				</Route>
 				<Route path="*" element={<WrongPage />} />
 			</Routes>

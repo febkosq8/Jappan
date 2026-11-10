@@ -29,14 +29,14 @@ import APIHandler, {
 import { AccessRedirect, accessErrorStatus } from "@jappan/components/AdminRoute";
 import ChannelDisplay from "@jappan/components/display/ChannelDisplay";
 import ExternalTextLink from "@jappan/components/ExternalTextLink";
+import GuildPageHeader from "@jappan/components/display/GuildPageHeader";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import ServicePreferencesEditor from "@jappan/components/guild/ServicePreferencesEditor";
-import { guildIdPattern } from "@jappan/components/panel/guild-lookup";
-import GuildLookup from "@jappan/components/panel/guild-lookup";
 import GuildSectionLink from "@jappan/components/panel/guild-section-link";
 import GuildOverview from "@jappan/components/panel/guild-overview";
 import BotPermissionsPanel from "@jappan/components/panel/bot-permissions-panel";
 import CommandPermissionsPanel from "@jappan/components/panel/command-permissions-panel";
+import guildIdPattern from "@jappan/helpers/guildIdPattern";
 import useDocumentTitle, { formatTitle } from "@jappan/helpers/useDocumentTitle";
 import { CONFIRM_CLICK_MS } from "@jappan/helpers/confirmClick";
 
@@ -837,7 +837,7 @@ export default function AdminViewGuild() {
 		enabled: validGuildId,
 	});
 	// The ID joins the title once the guild has loaded
-	useDocumentTitle(formatTitle(guildQuery.isSuccess ? `View Guild: ${guildId}` : "View Guild", "Admin"));
+	useDocumentTitle(formatTitle(guildQuery.isSuccess ? `Guild: ${guildQuery.data.name}` : "Guild details", "Admin"));
 
 	const guildNotFound =
 		guildQuery.isError && axios.isAxiosError(guildQuery.error) && guildQuery.error.response?.status === 404;
@@ -845,29 +845,15 @@ export default function AdminViewGuild() {
 	useEffect(() => {
 		if (!validGuildId || guildQuery.isFetching || !guildNotFound) return;
 		toast.warning(`Guild ${guildId} not found.`, { id: "guild-not-found" });
-		navigate("/admin/guild", { replace: true });
+		navigate("/admin/guilds", { replace: true });
 	}, [guildId, guildNotFound, guildQuery.isFetching, navigate, validGuildId]);
-
-	async function refreshGuild() {
-		const result = await guildQuery.refetch();
-		if (result.isError) {
-			if (
-				!accessErrorStatus(result.error) &&
-				(!axios.isAxiosError(result.error) || result.error.response?.status !== 404)
-			) {
-				toast.error("Could not refresh guild details. Please try again.");
-			}
-		} else {
-			toast.success("Guild details refreshed.");
-		}
-	}
 
 	const accessStatus = accessErrorStatus(guildQuery.error);
 	if (accessStatus) return <AccessRedirect status={accessStatus} />;
 
 	let content: ReactNode;
 	if (!guildId) {
-		content = <p className="text-muted-foreground">Enter a guild ID to view its details.</p>;
+		content = <p role="alert">Invalid guild ID.</p>;
 	} else if (!validGuildId) {
 		content = <p role="alert">Invalid guild ID.</p>;
 	} else if (guildQuery.isPending || guildQuery.isFetching) {
@@ -891,30 +877,7 @@ export default function AdminViewGuild() {
 				<FiArrowLeft aria-hidden="true" />
 				All guilds
 			</PillLink>
-			<h1 className="mb-5 typography-heading-2 text-3xl font-bold tracking-tight">Guild : {guildId}</h1>
-			{validGuildId && guildQuery.isSuccess ? (
-				<Button
-					type="button"
-					size="sm"
-					variant="outline-destructive"
-					className="mb-6"
-					onClick={() => navigate("/admin/guild")}
-				>
-					Reset
-				</Button>
-			) : (
-				<GuildLookup
-					key={guildId}
-					guildId={guildId}
-					onLookup={(id) => {
-						if (id === guildId) {
-							void refreshGuild();
-						} else {
-							navigate(`/admin/guild/${encodeURIComponent(id)}`);
-						}
-					}}
-				/>
-			)}
+			<GuildPageHeader title="Guild details" guild={guildQuery.data} />
 			{content}
 		</main>
 	);

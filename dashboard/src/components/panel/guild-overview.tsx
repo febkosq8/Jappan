@@ -1,8 +1,8 @@
 import { Card, DateHandler } from "@febkosq8/arc";
 import { Link } from "react-router-dom";
+import { FiBarChart2 } from "react-icons/fi";
 
 import ChannelDisplay from "@jappan/components/display/ChannelDisplay";
-import GuildDisplay from "@jappan/components/display/GuildDisplay";
 import UserDisplay from "@jappan/components/display/UserDisplay";
 import type { AdminGuildDetails, UserGuildDetails } from "@jappan/handlers/APIHandler";
 import GuildCommandDeployment from "@jappan/components/guild/GuildCommandDeployment";
@@ -10,16 +10,12 @@ import GuildDetail from "@jappan/components/panel/guild-detail";
 import GuildSectionLink from "@jappan/components/panel/guild-section-link";
 
 export default function GuildOverview({ guild }: { guild: AdminGuildDetails | UserGuildDetails }) {
-	const leaderboardPath = "discoveredTimestampMs" in guild ? "/admin/leaderboard" : "/leaderboard";
 	return (
 		<div className="space-y-4">
 			<Card id="guild-overview" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
 				<h2 className="flex items-center gap-1 text-lg font-semibold">
 					Guild overview <GuildSectionLink id="guild-overview" label="guild overview" />
 				</h2>
-				<div className="mt-4">
-					<GuildDisplay id={guild.id} name={guild.name} icon={guild.icon} />
-				</div>
 				<dl className="mt-5 grid gap-3 sm:grid-cols-2">
 					{"hasRequiredPermissions" in guild && guild.hasRequiredPermissions !== undefined && (
 						<GuildDetail label="Required permissions">
@@ -75,23 +71,30 @@ export default function GuildOverview({ guild }: { guild: AdminGuildDetails | Us
 						</GuildDetail>
 					)}
 				</dl>
-			</Card>
-			<Card
-				hoverable={false}
-				className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6"
-			>
-				<div>
-					<h2 className="text-lg font-semibold">Leveling leaderboard</h2>
-					<p className="mt-1 text-sm text-muted-foreground">
-						View member activity points and the configured leveling reward.
-					</p>
-				</div>
-				<Link
-					to={`${leaderboardPath}/${encodeURIComponent(guild.id)}`}
-					className="inline-flex w-fit items-center justify-center whitespace-nowrap rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-opacity-75"
+				<section
+					aria-labelledby="guild-leaderboard-title"
+					className="mt-4 flex flex-col gap-3 rounded-md border border-border bg-muted/30 p-3 sm:flex-row sm:items-center sm:justify-between"
 				>
-					View leaderboard
-				</Link>
+					<div className="flex min-w-0 items-center gap-3">
+						<span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+							<FiBarChart2 className="size-5" aria-hidden="true" />
+						</span>
+						<div className="min-w-0">
+							<h3 id="guild-leaderboard-title" className="font-semibold">
+								Leveling leaderboard
+							</h3>
+							<p className="text-sm text-muted-foreground">
+								View member activity points and the configured reward.
+							</p>
+						</div>
+					</div>
+					<Link
+						to={`/guild/${encodeURIComponent(guild.id)}/leaderboard`}
+						className="inline-flex w-fit shrink-0 items-center justify-center whitespace-nowrap rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-opacity-75 sm:ml-auto"
+					>
+						View leaderboard
+					</Link>
+				</section>
 			</Card>
 		</div>
 	);

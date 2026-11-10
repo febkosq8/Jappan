@@ -7,21 +7,15 @@ interface GuildMenuProps {
 
 export default function GuildMenu({ asSubmenu = false }: GuildMenuProps) {
 	const { pathname } = useLocation();
-	const isListPage = pathname === "/guilds";
-	const isViewPage = pathname === "/guild" || pathname.startsWith("/guild/");
-	const isLeaderboardPage = pathname.startsWith("/leaderboard");
-	const isGuildPage = pathname.startsWith("/guild") || isLeaderboardPage;
+	const isGuildsPage = pathname === "/guilds" || /^\/guild\/[^/]+\/?$/u.test(pathname);
+	const isLeaderboardPage = pathname === "/leaderboard" || /^\/guild\/[^/]+\/leaderboard(?:\/|$)/u.test(pathname);
+	const isGuildPage = isGuildsPage || isLeaderboardPage;
 
 	const items = (
 		<>
-			<Menu.Item asChild nativeButton={false} active={isListPage}>
-				<Link to="/guilds" aria-current={isListPage ? "page" : undefined}>
-					My Guilds
-				</Link>
-			</Menu.Item>
-			<Menu.Item asChild nativeButton={false} active={isViewPage}>
-				<Link to="/guild" aria-current={isViewPage ? "page" : undefined}>
-					View Guild
+			<Menu.Item asChild nativeButton={false} active={isGuildsPage}>
+				<Link to="/guilds" aria-current={isGuildsPage ? "page" : undefined}>
+					Guilds
 				</Link>
 			</Menu.Item>
 			<Menu.Item asChild nativeButton={false} active={isLeaderboardPage}>

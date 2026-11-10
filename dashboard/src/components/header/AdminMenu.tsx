@@ -7,27 +7,15 @@ interface AdminMenuProps {
 
 export default function AdminMenu({ asSubmenu = false }: AdminMenuProps) {
 	const { pathname } = useLocation();
-	const isViewGuildPage = pathname === "/admin/guild" || pathname.startsWith("/admin/guild/");
-	const isListGuildsPage = pathname === "/admin/guilds";
-	const isLeaderboardPage = pathname.startsWith("/admin/leaderboard");
+	const isGuildsPage = pathname === "/admin/guilds" || pathname.startsWith("/admin/guild/");
 	const isViewBotPage = pathname === "/admin/bot";
 
 	const items = (
 		<>
 			<Menu.Sub buttonText="Guild">
-				<Menu.Item asChild nativeButton={false} active={isListGuildsPage}>
-					<Link to="/admin/guilds" aria-current={isListGuildsPage ? "page" : undefined}>
-						List Guilds
-					</Link>
-				</Menu.Item>
-				<Menu.Item asChild nativeButton={false} active={isViewGuildPage}>
-					<Link to="/admin/guild" aria-current={isViewGuildPage ? "page" : undefined}>
-						View Guild
-					</Link>
-				</Menu.Item>
-				<Menu.Item asChild nativeButton={false} active={isLeaderboardPage}>
-					<Link to="/admin/leaderboard" aria-current={isLeaderboardPage ? "page" : undefined}>
-						Leaderboard
+				<Menu.Item asChild nativeButton={false} active={isGuildsPage}>
+					<Link to="/admin/guilds" aria-current={isGuildsPage ? "page" : undefined}>
+						Guilds
 					</Link>
 				</Menu.Item>
 			</Menu.Sub>

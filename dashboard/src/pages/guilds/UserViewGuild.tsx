@@ -8,13 +8,13 @@ import { toast } from "sonner";
 
 import APIHandler, { type UserGuildDetails } from "@jappan/handlers/APIHandler";
 import { AccessRedirect } from "@jappan/components/AdminRoute";
+import GuildPageHeader from "@jappan/components/display/GuildPageHeader";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import ServicePreferencesEditor from "@jappan/components/guild/ServicePreferencesEditor";
-import { guildIdPattern } from "@jappan/components/panel/guild-lookup";
-import GuildLookup from "@jappan/components/panel/guild-lookup";
 import GuildOverview from "@jappan/components/panel/guild-overview";
 import BotPermissionsPanel from "@jappan/components/panel/bot-permissions-panel";
 import CommandPermissionsPanel from "@jappan/components/panel/command-permissions-panel";
+import guildIdPattern from "@jappan/helpers/guildIdPattern";
 import useDocumentTitle, { formatTitle } from "@jappan/helpers/useDocumentTitle";
 
 const guildSections = [
@@ -85,7 +85,7 @@ export default function UserViewGuild() {
 		enabled: validGuildId,
 	});
 	// The ID joins the title once the guild has loaded
-	useDocumentTitle(formatTitle(guildQuery.isSuccess ? `View Guild: ${guildId}` : "View Guild"));
+	useDocumentTitle(formatTitle(guildQuery.isSuccess ? `Guild: ${guildQuery.data.name}` : "Guild details"));
 
 	const guildNotFound =
 		guildQuery.isError && axios.isAxiosError(guildQuery.error) && guildQuery.error.response?.status === 404;
@@ -93,7 +93,7 @@ export default function UserViewGuild() {
 	useEffect(() => {
 		if (!validGuildId || guildQuery.isFetching || !guildNotFound) return;
 		toast.warning(`Guild ${guildId} not found.`, { id: "guild-not-found" });
-		navigate("/guild", { replace: true });
+		navigate("/guilds", { replace: true });
 	}, [guildId, guildNotFound, guildQuery.isFetching, navigate, validGuildId]);
 
 	const isUnauthorized = axios.isAxiosError(guildQuery.error) && guildQuery.error.response?.status === 401;
@@ -101,7 +101,7 @@ export default function UserViewGuild() {
 
 	let content: ReactNode;
 	if (!guildId) {
-		content = <p className="text-muted-foreground">Enter a guild ID to view its details and manage preferences.</p>;
+		content = <p role="alert">Invalid guild ID.</p>;
 	} else if (!validGuildId) {
 		content = <p role="alert">Invalid guild ID.</p>;
 	} else if (guildQuery.isPending || guildQuery.isFetching) {
@@ -132,34 +132,9 @@ export default function UserViewGuild() {
 		<main className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6">
 			<PillLink href="/guilds" variant="outline-secondary" size="sm" className="mb-5 gap-2">
 				<FiArrowLeft aria-hidden="true" />
-				My Guilds
+				Guilds
 			</PillLink>
-			<h1 className="mb-5 typography-heading-2 text-3xl font-bold tracking-tight">
-				{guildId ? `Guild : ${guildId}` : "View Guild"}
-			</h1>
-			{validGuildId && guildQuery.isSuccess ? (
-				<Button
-					type="button"
-					size="sm"
-					variant="outline-destructive"
-					className="mb-6"
-					onClick={() => navigate("/guild")}
-				>
-					Reset
-				</Button>
-			) : (
-				<GuildLookup
-					key={guildId}
-					guildId={guildId}
-					onLookup={(id) => {
-						if (id === guildId) {
-							void guildQuery.refetch();
-						} else {
-							navigate(`/guild/${encodeURIComponent(id)}`);
-						}
-					}}
-				/>
-			)}
+			<GuildPageHeader title="Guild details" guild={guildQuery.data} />
 			{content}
 		</main>
 	);

@@ -5,17 +5,20 @@ import { FiArrowLeft } from "react-icons/fi";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 
 import { AccessRedirect } from "@jappan/components/AdminRoute";
-import GuildDisplay from "@jappan/components/display/GuildDisplay";
+import GuildPageHeader from "@jappan/components/display/GuildPageHeader";
 import RoleDisplay from "@jappan/components/display/RoleDisplay";
 import UserDisplay from "@jappan/components/display/UserDisplay";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import APIHandler from "@jappan/handlers/APIHandler";
-import { guildIdPattern } from "@jappan/components/panel/guild-lookup";
+import { isAdminSession, useSessionQuery } from "@jappan/handlers/auth";
+import guildIdPattern from "@jappan/helpers/guildIdPattern";
 import useDocumentTitle, { formatTitle } from "@jappan/helpers/useDocumentTitle";
 
-export default function GuildLeaderboard({ admin }: { admin: boolean }) {
+export default function GuildLeaderboard() {
 	const { guildId = "" } = useParams();
 	const [searchParams, setSearchParams] = useSearchParams();
+	const { data: session } = useSessionQuery();
+	const admin = isAdminSession(session);
 	const validGuildId = guildIdPattern.test(guildId);
 	const requestedPage = Number(searchParams.get("page") ?? 1);
 	const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
@@ -73,7 +76,7 @@ export default function GuildLeaderboard({ admin }: { admin: boolean }) {
 					{guilds.map((guild) => (
 						<li key={guild.id}>
 							<Link
-								to={`${admin ? "/admin/leaderboard" : "/leaderboard"}/${encodeURIComponent(guild.id)}`}
+								to={`/guild/${encodeURIComponent(guild.id)}/leaderboard`}
 								className="flex min-w-0 items-center gap-3 rounded-md border border-border p-3 transition-colors hover:bg-accent hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-opacity-75"
 							>
 								<Avatar name={guild.name} image={guild.icon} size="md" aria-hidden="true" />
@@ -221,12 +224,14 @@ export default function GuildLeaderboard({ admin }: { admin: boolean }) {
 				<FiArrowLeft aria-hidden="true" />
 				Back to guild
 			</PillLink>
-			<h1 className="mb-5 typography-heading-2 text-3xl font-bold tracking-tight">Guild leaderboard</h1>
-			{guildQuery.data && (
-				<div className="mb-5">
-					<GuildDisplay id={guildId} name={guildQuery.data.guildName} icon={guildQuery.data.guildIcon} />
-				</div>
-			)}
+			<GuildPageHeader
+				title="Guild leaderboard"
+				guild={
+					guildQuery.data
+						? { id: guildId, name: guildQuery.data.guildName, icon: guildQuery.data.guildIcon }
+						: undefined
+				}
+			/>
 			{pageContent}
 		</main>
 	);

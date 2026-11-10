@@ -17,20 +17,15 @@ export default function Header() {
 	const mobilePage =
 		isAdmin && location.pathname === "/admin/bot"
 			? "Manage Bot"
-			: isAdmin && location.pathname.startsWith("/admin/leaderboard")
+			: location.pathname === "/leaderboard" || /^\/guild\/[^/]+\/leaderboard(?:\/|$)/u.test(location.pathname)
 				? "Leaderboard"
-				: isAdmin && (location.pathname === "/admin/guild" || location.pathname.startsWith("/admin/guild/"))
-					? "View Guild"
-					: isAdmin && location.pathname === "/admin/guilds"
-						? "List Guilds"
-						: isAuthenticated && location.pathname === "/guilds"
-							? "My Guilds"
-							: isAuthenticated && location.pathname.startsWith("/leaderboard")
-								? "Leaderboard"
-								: isAuthenticated &&
-									  (location.pathname === "/guild" || location.pathname.startsWith("/guild/"))
-									? "View Guild"
-									: currentPage;
+				: isAdmin && (location.pathname === "/admin/guilds" || location.pathname.startsWith("/admin/guild/"))
+					? "Guilds"
+					: isAuthenticated && (location.pathname === "/guilds" || location.pathname.startsWith("/guild/"))
+						? "Guilds"
+						: isAuthenticated && location.pathname.startsWith("/leaderboard")
+							? "Leaderboard"
+							: currentPage;
 	const homeItem = (
 		<Menu.Item asChild nativeButton={false} active={isHomePage}>
 			<Link to="/" aria-current={isHomePage ? "page" : undefined}>
