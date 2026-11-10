@@ -31,14 +31,12 @@ import ChannelDisplay from "@jappan/components/display/ChannelDisplay";
 import ExternalTextLink from "@jappan/components/ExternalTextLink";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import ServicePreferencesEditor from "@jappan/components/guild/ServicePreferencesEditor";
-import {
-	guildIdPattern,
-	GuildLookup,
-	GuildSectionLink,
-	GuildOverview,
-	BotPermissionsPanel,
-	CommandPermissionsPanel,
-} from "@jappan/components/guild/panels";
+import { guildIdPattern } from "@jappan/components/panel/guild-lookup";
+import GuildLookup from "@jappan/components/panel/guild-lookup";
+import GuildSectionLink from "@jappan/components/panel/guild-section-link";
+import GuildOverview from "@jappan/components/panel/guild-overview";
+import BotPermissionsPanel from "@jappan/components/panel/bot-permissions-panel";
+import CommandPermissionsPanel from "@jappan/components/panel/command-permissions-panel";
 import useDocumentTitle, { formatTitle } from "@jappan/helpers/useDocumentTitle";
 import { CONFIRM_CLICK_MS } from "@jappan/helpers/confirmClick";
 

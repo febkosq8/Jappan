@@ -5,12 +5,12 @@ import { FiArrowLeft } from "react-icons/fi";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 
 import { AccessRedirect } from "@jappan/components/AdminRoute";
-import { guildIdPattern } from "@jappan/components/guild/panels";
 import GuildDisplay from "@jappan/components/display/GuildDisplay";
 import RoleDisplay from "@jappan/components/display/RoleDisplay";
 import UserDisplay from "@jappan/components/display/UserDisplay";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import APIHandler from "@jappan/handlers/APIHandler";
+import { guildIdPattern } from "@jappan/components/panel/guild-lookup";
 import useDocumentTitle, { formatTitle } from "@jappan/helpers/useDocumentTitle";
 
 export default function GuildLeaderboard({ admin }: { admin: boolean }) {

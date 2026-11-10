@@ -10,13 +10,11 @@ import APIHandler, { type UserGuildDetails } from "@jappan/handlers/APIHandler";
 import { AccessRedirect } from "@jappan/components/AdminRoute";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import ServicePreferencesEditor from "@jappan/components/guild/ServicePreferencesEditor";
-import {
-	guildIdPattern,
-	GuildLookup,
-	GuildOverview,
-	BotPermissionsPanel,
-	CommandPermissionsPanel,
-} from "@jappan/components/guild/panels";
+import { guildIdPattern } from "@jappan/components/panel/guild-lookup";
+import GuildLookup from "@jappan/components/panel/guild-lookup";
+import GuildOverview from "@jappan/components/panel/guild-overview";
+import BotPermissionsPanel from "@jappan/components/panel/bot-permissions-panel";
+import CommandPermissionsPanel from "@jappan/components/panel/command-permissions-panel";
 import useDocumentTitle, { formatTitle } from "@jappan/helpers/useDocumentTitle";
 
 const guildSections = [
