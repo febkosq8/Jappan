@@ -57,9 +57,16 @@ export default function PlaylistManager() {
 	useDocumentTitle(formatTitle("My playlists"));
 
 	const saveMutation = useMutation({
-		mutationFn: APIHandler.saveUserPlaylist,
-		onSuccess: async (playlist) => {
-			toast.success(`Playlist "${playlist.listname}" saved.`);
+		mutationFn: (playlist: UserPlaylist) => {
+			const promise = APIHandler.saveUserPlaylist(playlist);
+			toast.promise(promise, {
+				loading: `Checking and saving "${playlist.listname}"…`,
+				success: `Playlist "${playlist.listname}" saved.`,
+				error: (error) => getErrorMessage(error),
+			});
+			return promise;
+		},
+		onSuccess: async () => {
 			setListname("");
 			setQuery("");
 			setShuffle(false);
@@ -67,18 +74,23 @@ export default function PlaylistManager() {
 			setEditingName(null);
 			await queryClient.invalidateQueries({ queryKey });
 		},
-		onError: (error: unknown) => toast.error(getErrorMessage(error)),
 	});
 	const removeMutation = useMutation({
-		mutationFn: APIHandler.removeUserPlaylist,
+		mutationFn: (removedName: string) => {
+			const promise = APIHandler.removeUserPlaylist(removedName);
+			toast.promise(promise, {
+				loading: `Removing "${removedName}"…`,
+				success: `Playlist "${removedName}" removed.`,
+				error: (error) => getErrorMessage(error),
+			});
+			return promise;
+		},
 		onSuccess: async (_result, removedName) => {
-			toast.success(`Playlist "${removedName}" removed.`);
 			if (editingName?.toLowerCase() === removedName.toLowerCase()) {
 				clearForm();
 			}
 			await queryClient.invalidateQueries({ queryKey });
 		},
-		onError: (error: unknown) => toast.error(getErrorMessage(error)),
 	});
 	const busy = saveMutation.isPending || removeMutation.isPending;
 	const canSubmit =

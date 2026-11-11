@@ -59,7 +59,7 @@ export default defineRouter("/playlists", [
 			content: { "application/json": { schema: savePlaylistSchema } },
 		},
 		responses: {
-			200: { description: "Playlist saved", schema: playlistSchema },
+			204: { description: "Playlist saved or updated" },
 			400: { description: "Invalid playlist details", schema: errorResponseSchema },
 			401: { description: "Authentication required", schema: errorResponseSchema },
 			403: { description: "Active account and linked Discord account required", schema: errorResponseSchema },
@@ -88,7 +88,7 @@ export default defineRouter("/playlists", [
 				username: session.user.username ?? session.user.name,
 				entry: { listname, query, shuffle, loop },
 			});
-			return response.status(200).json({ listname, query, shuffle, loop });
+			return response.status(204).end();
 		},
 	},
 	{

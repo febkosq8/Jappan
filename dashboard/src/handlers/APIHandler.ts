@@ -365,9 +365,8 @@ class APIHandler {
 		return data;
 	}
 
-	static async saveUserPlaylist(playlist: UserPlaylist): Promise<UserPlaylist> {
-		const { data } = await apiClient.put<UserPlaylist>("/api/v1/playlists", playlist, { withCredentials: true });
-		return data;
+	static async saveUserPlaylist(playlist: UserPlaylist): Promise<void> {
+		await apiClient.put<void>("/api/v1/playlists", playlist, { withCredentials: true });
 	}
 
 	static async removeUserPlaylist(listname: string): Promise<void> {

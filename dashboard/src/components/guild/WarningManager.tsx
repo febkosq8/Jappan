@@ -59,24 +59,32 @@ export default function WarningManager({
 	}, [memberQuery.data]);
 
 	const issueMutation = useMutation({
-		mutationFn: () => APIHandler.issueGuildMemberWarning(guildId, memberId, reason.trim()),
-		onSuccess: async (result) => {
-			if (result.action === "ban_failed" || result.action === "timeout_failed") {
-				toast.warning(issueSuccessMessage(result));
-			} else {
-				toast.success(issueSuccessMessage(result));
-			}
+		mutationFn: () => {
+			const promise = APIHandler.issueGuildMemberWarning(guildId, memberId, reason.trim());
+			toast.promise(promise, {
+				loading: "Issuing warning…",
+				success: issueSuccessMessage,
+				error: (error) => getErrorMessage(error),
+			});
+			return promise;
+		},
+		onSuccess: async () => {
 			await queryClient.invalidateQueries({ queryKey: ["user", "guild", guildId, "warnings"] });
 		},
-		onError: (error: unknown) => toast.error(getErrorMessage(error)),
 	});
 	const overrideMutation = useMutation({
-		mutationFn: () => APIHandler.overrideGuildMemberWarnings(guildId, memberId, Number(overrideValue)),
-		onSuccess: async (warningCount) => {
-			toast.success(`Warning count updated to ${warningCount}.`);
+		mutationFn: () => {
+			const promise = APIHandler.overrideGuildMemberWarnings(guildId, memberId, Number(overrideValue));
+			toast.promise(promise, {
+				loading: "Updating warning count…",
+				success: (warningCount) => `Warning count updated to ${warningCount}.`,
+				error: (error) => getErrorMessage(error),
+			});
+			return promise;
+		},
+		onSuccess: async () => {
 			await queryClient.invalidateQueries({ queryKey: ["user", "guild", guildId, "warnings"] });
 		},
-		onError: (error: unknown) => toast.error(getErrorMessage(error)),
 	});
 
 	const selectedMember = memberQuery.data;

@@ -48,22 +48,33 @@ export default function VoiceRegionLockManager({
 		retry: false,
 	});
 	const addMutation = useMutation({
-		mutationFn: (input: { userId: string; channelId: string; region: string }) =>
-			APIHandler.addGuildVoiceRegionLock(guildId, input),
+		mutationFn: (input: { userId: string; channelId: string; region: string }) => {
+			const promise = APIHandler.addGuildVoiceRegionLock(guildId, input);
+			toast.promise(promise, {
+				loading: "Creating voice region lock…",
+				success: "Voice region lock created.",
+				error: (error) => getErrorMessage(error),
+			});
+			return promise;
+		},
 		onSuccess: async () => {
-			toast.success("Voice region lock created.");
 			setSelectedMember(null);
 			await queryClient.invalidateQueries({ queryKey });
 		},
-		onError: (error: unknown) => toast.error(getErrorMessage(error)),
 	});
 	const removeMutation = useMutation({
-		mutationFn: (userId: string) => APIHandler.removeGuildVoiceRegionLock(guildId, userId),
+		mutationFn: (userId: string) => {
+			const promise = APIHandler.removeGuildVoiceRegionLock(guildId, userId);
+			toast.promise(promise, {
+				loading: "Removing voice region lock…",
+				success: "Voice region lock removed.",
+				error: (error) => getErrorMessage(error),
+			});
+			return promise;
+		},
 		onSuccess: async () => {
-			toast.success("Voice region lock removed.");
 			await queryClient.invalidateQueries({ queryKey });
 		},
-		onError: (error: unknown) => toast.error(getErrorMessage(error)),
 	});
 
 	const voiceChannels = (channelsQuery.data ?? []).filter((channel) => channel.typeName === "GuildVoice");
@@ -112,9 +123,7 @@ export default function VoiceRegionLockManager({
 			header: "Region",
 			size: 160,
 			filterFn: "includesString",
-			cell: ({ row }) => (
-				<span className="capitalize">{row.original.region.replace(/-/g, " ")}</span>
-			),
+			cell: ({ row }) => <span className="capitalize">{row.original.region.replace(/-/g, " ")}</span>,
 		},
 		{
 			id: "actions",
