@@ -326,6 +326,14 @@ export interface PlayerSuggestion {
 	title: string;
 	value: string;
 }
+
+export interface UserPlaylist {
+	listname: string;
+	query: string;
+	shuffle: boolean;
+	loop: boolean;
+}
+
 export type PlayerControlAction =
 	| { path: "pause" | "resume" | "next" | "previous" | "stop" | "queue/clear" | "lock" | "unlock" }
 	| { path: "shuffle"; body: { enabled?: boolean } }
@@ -351,6 +359,21 @@ class APIHandler {
 		});
 		return data;
 	}
+
+	static async getUserPlaylists(): Promise<UserPlaylist[]> {
+		const { data } = await apiClient.get<UserPlaylist[]>("/api/v1/playlists", { withCredentials: true });
+		return data;
+	}
+
+	static async saveUserPlaylist(playlist: UserPlaylist): Promise<UserPlaylist> {
+		const { data } = await apiClient.put<UserPlaylist>("/api/v1/playlists", playlist, { withCredentials: true });
+		return data;
+	}
+
+	static async removeUserPlaylist(listname: string): Promise<void> {
+		await apiClient.delete("/api/v1/playlists", { data: { listname }, withCredentials: true });
+	}
+
 	static async getAdminGuilds(): Promise<AdminGuild[]> {
 		const { data } = await apiClient.get<AdminGuild[]>("/api/v1/admin/guilds", { withCredentials: true });
 		return data;

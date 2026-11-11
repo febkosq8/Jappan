@@ -10,7 +10,8 @@ export default function GuildMenu({ asSubmenu = false }: GuildMenuProps) {
 	const isGuildsPage = pathname === "/guilds" || /^\/guild\/[^/]+\/?$/u.test(pathname);
 	const isLeaderboardPage = pathname === "/leaderboards" || /^\/guild\/[^/]+\/leaderboard(?:\/|$)/u.test(pathname);
 	const isPlayerPage = pathname === "/player" || pathname.startsWith("/player/");
-	const isGuildPage = isGuildsPage || isLeaderboardPage || isPlayerPage;
+	const isPlaylistPage = pathname === "/playlists";
+	const isDashboardPage = isGuildsPage || isLeaderboardPage || isPlayerPage || isPlaylistPage;
 
 	const items = (
 		<>
@@ -29,15 +30,20 @@ export default function GuildMenu({ asSubmenu = false }: GuildMenuProps) {
 					Player
 				</Link>
 			</Menu.Item>
+			<Menu.Item asChild nativeButton={false} active={isPlaylistPage}>
+				<Link to="/playlists" aria-current={isPlaylistPage ? "page" : undefined}>
+					My playlists
+				</Link>
+			</Menu.Item>
 		</>
 	);
 
 	return asSubmenu ? (
-		<Menu.Sub buttonText="Guilds" active={isGuildPage}>
+		<Menu.Sub buttonText="Dashboard" active={isDashboardPage}>
 			{items}
 		</Menu.Sub>
 	) : (
-		<Menu buttonText="Guilds" active={isGuildPage}>
+		<Menu buttonText="Dashboard" active={isDashboardPage}>
 			{items}
 		</Menu>
 	);

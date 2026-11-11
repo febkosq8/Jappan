@@ -8,6 +8,7 @@ import {
 	isBotAdmin,
 	isGuildManager,
 	isGuildMember,
+	getLinkedDiscordAccountId,
 	requireAnyAuthorization,
 	requireGuildManager,
 	requireSession,
@@ -25,7 +26,6 @@ import {
 } from "../../../helpers/guild.js";
 import { listGuilds } from "../../../services/adminGuild.js";
 import type { AuthSession } from "../../../services/auth.js";
-import AuthUserModel from "../../../models/authUser.js";
 import { getLeaderboard, LEADERBOARD_PAGE_SIZE } from "../../../services/leveling.js";
 import {
 	getWarnedMembers,
@@ -135,19 +135,6 @@ async function resolveGuildMember({ guild, userId, response }: { guild: Guild; u
 		}
 		throw error;
 	}
-}
-
-async function getLinkedDiscordAccountId(session: AuthSession, response: Response): Promise<string | null> {
-	if (session.user.status !== "active" && session.user.status !== undefined) {
-		response.status(403).json({ error: "Active account required" });
-		return null;
-	}
-	const user = await AuthUserModel.findById(session.user.id).select({ discordAccountId: 1 }).exec();
-	if (!user?.discordAccountId) {
-		response.status(403).json({ error: "Linked Discord account required" });
-		return null;
-	}
-	return user.discordAccountId;
 }
 
 export default defineRouter("/guilds", [

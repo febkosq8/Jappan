@@ -4,10 +4,11 @@ import adminRoutes from "./api/admin/index.js";
 import authRouter from "./api/auth/auth.js";
 import guildRoutes from "./api/guilds/index.js";
 import playerRoutes from "./api/player/index.js";
+import playlistRoutes from "./api/playlists/index.js";
 import base from "./base.js";
 import publicRoutes from "./public/index.js";
 
-const v1 = defineRouter("/api/v1", [publicRoutes, adminRoutes, guildRoutes, playerRoutes]);
+const v1 = defineRouter("/api/v1", [publicRoutes, adminRoutes, guildRoutes, playerRoutes, playlistRoutes]);
 
 export const routers: RouterDefinition[] = [v1, base];
 // Auth is mounted separately (before body parsing) but must still be documented
