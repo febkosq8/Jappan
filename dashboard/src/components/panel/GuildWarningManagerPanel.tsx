@@ -254,44 +254,46 @@ export default function GuildWarningManagerPanel({
 										</Card.Content>
 									</Card>
 								)}
-								<form
-									className="space-y-3"
-									onSubmit={(event) => {
-										event.preventDefault();
-										if (!cannotIssue) issueMutation.mutate();
-									}}
-								>
-									<div>
-										<h3 className="font-semibold">Issue a warning</h3>
-										<p className="mt-1 text-sm text-muted-foreground">
-											Threshold actions and audit logging follow Service Preferences.
-										</p>
-									</div>
-									<label htmlFor="warning-reason" className="block text-sm font-medium">
-										Reason (optional)
-									</label>
-									<div className="flex flex-col items-start gap-3 sm:flex-row">
-										<Input
-											as="textarea"
-											id="warning-reason"
-											rows={2}
-											value={reason}
-											onChange={(event) => setReason(event.target.value)}
-											maxLength={500}
-											disabled={cannotIssue}
-											placeholder="No reason provided"
-											className="w-full flex-1"
-										/>
-										<Button
-											type="submit"
-											size="sm"
-											variant="outline-primary"
-											disabled={cannotIssue}
-										>
-											{issueMutation.isPending ? "Issuing..." : "Issue warning"}
-										</Button>
-									</div>
-								</form>
+								{selectedMember.isGuildMember && (
+									<form
+										className="space-y-3"
+										onSubmit={(event) => {
+											event.preventDefault();
+											if (!cannotIssue) issueMutation.mutate();
+										}}
+									>
+										<div>
+											<h3 className="font-semibold">Issue a warning</h3>
+											<p className="mt-1 text-sm text-muted-foreground">
+												Threshold actions and audit logging follow Service Preferences.
+											</p>
+										</div>
+										<label htmlFor="warning-reason" className="block text-sm font-medium">
+											Reason (optional)
+										</label>
+										<div className="flex flex-col items-start gap-3 sm:flex-row">
+											<Input
+												as="textarea"
+												id="warning-reason"
+												rows={2}
+												value={reason}
+												onChange={(event) => setReason(event.target.value)}
+												maxLength={500}
+												disabled={cannotIssue}
+												placeholder="No reason provided"
+												className="w-full flex-1"
+											/>
+											<Button
+												type="submit"
+												size="sm"
+												variant="outline-primary"
+												disabled={cannotIssue}
+											>
+												{issueMutation.isPending ? "Issuing..." : "Issue warning"}
+											</Button>
+										</div>
+									</form>
+								)}
 								<section
 									aria-labelledby="warning-history-heading"
 									className="min-w-0 border-t border-border pt-5"
