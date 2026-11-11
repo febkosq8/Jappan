@@ -3,6 +3,7 @@ import type { Response } from "express";
 import { z } from "zod";
 
 import { getClient } from "../../../bot.js";
+import { logger } from "../../../services/logger.js";
 import {
 	isBotAdmin,
 	isGuildManager,
@@ -594,11 +595,23 @@ export default defineRouter("/guilds", [
 			const displayLocks = await Promise.all(
 				locks.map(async (lock) => {
 					const member = guild.members.cache.get(lock.userId);
-					const user = member?.user ?? (await guild.client.users.fetch(lock.userId));
+					const user =
+						member?.user ??
+						(await guild.client.users.fetch(lock.userId).catch((error: unknown) => {
+							if (error instanceof DiscordAPIError && error.code === RESTJSONErrorCodes.UnknownUser) {
+								logger.warn("HTTP", "Voice region lock user is no longer available", {
+									guildId: guild.id,
+									userId: lock.userId,
+								});
+								return null;
+							}
+							throw error;
+						}));
 					return {
 						...lock,
-						userName: user.username,
-						avatarUrl: member?.displayAvatarURL({ size: 64 }) ?? user.displayAvatarURL({ size: 64 }),
+						userName: user?.username ?? lock.userName,
+						avatarUrl:
+							member?.displayAvatarURL({ size: 64 }) ?? user?.displayAvatarURL({ size: 64 }) ?? null,
 						channelName: guild.channels.cache.get(lock.channelId)?.name ?? lock.channelName,
 					};
 				}),

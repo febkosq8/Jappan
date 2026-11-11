@@ -41,11 +41,12 @@ export default function GuildMemberPicker({
 	});
 	const matchingMembers = membersQuery.data ?? [];
 	const normalizedSearchInput = searchInput.trim();
+	const searchIsSettled = normalizedSearchInput === searchQuery;
 	const dropdownOpen =
 		enabled &&
 		!disabled &&
 		searchOpen &&
-		normalizedSearchInput === searchQuery &&
+		searchIsSettled &&
 		(normalizedSearchInput.length === 0 || normalizedSearchInput.length >= 2);
 	const activeMember = dropdownOpen ? matchingMembers[activeMemberIndex] : undefined;
 	const errorMessage =
@@ -63,11 +64,11 @@ export default function GuildMemberPicker({
 	};
 
 	const handleSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-		if (event.key === "ArrowDown" && matchingMembers.length > 0) {
+		if (event.key === "ArrowDown" && searchIsSettled && matchingMembers.length > 0) {
 			event.preventDefault();
 			setSearchOpen(true);
 			setActiveMemberIndex((index) => (index + 1) % matchingMembers.length);
-		} else if (event.key === "ArrowUp" && matchingMembers.length > 0) {
+		} else if (event.key === "ArrowUp" && searchIsSettled && matchingMembers.length > 0) {
 			event.preventDefault();
 			setSearchOpen(true);
 			setActiveMemberIndex((index) => (index <= 0 ? matchingMembers.length - 1 : index - 1));
@@ -107,6 +108,7 @@ export default function GuildMemberPicker({
 					aria-activedescendant={activeMember ? `${listboxId}-option-${activeMemberIndex}` : undefined}
 					aria-describedby={`${id}-help`}
 					className="w-full pl-10"
+					onClick={() => setSearchOpen(true)}
 					onFocus={() => setSearchOpen(true)}
 					onBlur={() => setSearchOpen(false)}
 					onKeyDown={handleSearchKeyDown}
@@ -149,10 +151,10 @@ export default function GuildMemberPicker({
 								key={member.id}
 								id={`${listboxId}-option-${index}`}
 								role="option"
+								onClick={() => selectMember(member)}
 								aria-selected={member.id === selectedMemberId}
-								onMouseDown={(event) => {
+								onPointerDown={(event) => {
 									event.preventDefault();
-									selectMember(member);
 								}}
 								onMouseEnter={() => setActiveMemberIndex(index)}
 								className={`flex cursor-pointer items-center gap-3 px-3 py-2 text-sm ${

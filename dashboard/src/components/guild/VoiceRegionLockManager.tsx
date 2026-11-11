@@ -2,7 +2,7 @@ import { Button, Card, LabelField, Select, Table, type TableColumnDef } from "@f
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { useState, type SubmitEvent } from "react";
-import { FiGlobe, FiMapPin, FiUser } from "react-icons/fi";
+import { FiMapPin, FiUser } from "react-icons/fi";
 import { toast } from "sonner";
 
 import UserDisplay from "@jappan/components/display/UserDisplay";
@@ -70,13 +70,15 @@ export default function VoiceRegionLockManager({
 	const regions = locksQuery.data?.regions ?? [];
 	const busy = addMutation.isPending || removeMutation.isPending;
 	const canSubmit =
-		isActiveMember &&
+		shouldLoad &&
 		!busy &&
+		!channelsQuery.isError &&
+		!locksQuery.isError &&
 		!channelsQuery.isFetching &&
 		!locksQuery.isFetching &&
 		selectedMember !== null &&
-		channelId !== "" &&
-		region !== "";
+		voiceChannels.some((channel) => channel.id === channelId) &&
+		regions.includes(region);
 
 	const columns: TableColumnDef<VoiceRegionLock>[] = [
 		{
@@ -86,12 +88,14 @@ export default function VoiceRegionLockManager({
 			size: 260,
 			filterFn: "includesString",
 			cell: ({ row }) => (
-				<UserDisplay
-					id={row.original.userId}
-					name={row.original.userName}
-					avatarUrl={row.original.avatarUrl}
-					size="md"
-				/>
+				<div className="flex min-h-12 items-center py-2">
+					<UserDisplay
+						id={row.original.userId}
+						name={row.original.userName}
+						avatarUrl={row.original.avatarUrl}
+						size="md"
+					/>
+				</div>
 			),
 		},
 		{
@@ -109,10 +113,7 @@ export default function VoiceRegionLockManager({
 			size: 160,
 			filterFn: "includesString",
 			cell: ({ row }) => (
-				<span className="inline-flex items-center gap-1.5 rounded-md bg-accent px-2 py-1 text-sm font-medium capitalize text-primary">
-					<FiGlobe className="size-4 shrink-0" aria-hidden="true" />
-					{row.original.region.replace(/-/g, " ")}
-				</span>
+				<span className="capitalize">{row.original.region.replace(/-/g, " ")}</span>
 			),
 		},
 		{
@@ -149,8 +150,8 @@ export default function VoiceRegionLockManager({
 		<Card id="voice-region-locks" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
 			<h2 className="text-lg font-semibold">Manage voice region locks</h2>
 			<p className="mt-1 text-sm text-muted-foreground">
-				Choose a member, voice channel, and region. When that member joins the channel, its region will change
-				until they leave.
+				Choose a member, voice channel, and region. The region is applied the next time that member joins the
+				channel. Each member can have one lock; creating another replaces their existing lock.
 			</p>
 			{!isActiveMember && (
 				<p
@@ -247,6 +248,11 @@ export default function VoiceRegionLockManager({
 									disabled={!active || busy || channelsQuery.isFetching || channelsQuery.isError}
 									className="h-10"
 								/>
+								{channelsQuery.isSuccess && voiceChannels.length === 0 && (
+									<p className="mt-1 text-xs text-muted-foreground">
+										No voice channels are available.
+									</p>
+								)}
 							</div>
 							<div>
 								<LabelField id="voice-region-lock-region" label="Region" className="mb-1" />

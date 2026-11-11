@@ -1,7 +1,9 @@
 import type { Guild, VoiceChannel, VoiceState } from "discord.js";
 import {
 	ChannelType,
+	DiscordAPIError,
 	PermissionFlagsBits,
+	RESTJSONErrorCodes,
 	channelMention,
 	chatInputApplicationCommandMention,
 	underline,
@@ -54,7 +56,12 @@ export async function addVoiceRegionLock({
 		throw new VoiceRegionLockValidationError(`\`${region}\` is not a valid Discord voice region.`);
 	}
 
-	const channel = await guild.channels.fetch(channelId);
+	const channel = await guild.channels.fetch(channelId).catch((error: unknown) => {
+		if (error instanceof DiscordAPIError && error.code === RESTJSONErrorCodes.UnknownChannel) {
+			throw new VoiceRegionLockValidationError("The selected channel is no longer a voice channel.");
+		}
+		throw error;
+	});
 	if (!channel || channel.type !== ChannelType.GuildVoice) {
 		throw new VoiceRegionLockValidationError("The selected channel is no longer a voice channel.");
 	}
