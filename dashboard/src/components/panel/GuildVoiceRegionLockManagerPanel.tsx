@@ -11,6 +11,10 @@ import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import GuildMemberPicker from "@jappan/components/panel/GuildMemberPicker";
 import APIHandler, { type VoiceRegionLock, type WarningMember } from "@jappan/handlers/APIHandler";
 
+function formatVoiceRegion(region: string): string {
+	return region.replace(/-/g, " ").replace(/(^|\s)\S/gu, (initial) => initial.toUpperCase());
+}
+
 function getErrorMessage(error: unknown): string {
 	if (axios.isAxiosError<{ error?: string }>(error) && typeof error.response?.data?.error === "string") {
 		return error.response.data.error;
@@ -123,7 +127,7 @@ export default function GuildVoiceRegionLockManagerPanel({
 			header: "Region",
 			size: 160,
 			filterFn: "includesString",
-			cell: ({ row }) => <span className="capitalize">{row.original.region.replace(/-/g, " ")}</span>,
+			cell: ({ row }) => formatVoiceRegion(row.original.region),
 		},
 		{
 			id: "actions",
@@ -271,7 +275,10 @@ export default function GuildVoiceRegionLockManagerPanel({
 									onChange={setRegion}
 									data={[
 										{ key: "", label: "Select a region" },
-										...regions.map((regionId) => ({ key: regionId, label: regionId })),
+										...regions.map((regionId) => ({
+											key: regionId,
+											label: formatVoiceRegion(regionId),
+										})),
 									]}
 									disabled={!active || busy || locksQuery.isFetching || locksQuery.isError}
 									className="h-10"
