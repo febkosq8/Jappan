@@ -66,6 +66,35 @@ function getAdminSession(response: Response): AuthSession | undefined {
 export default defineRouter("/bot", [
 	{
 		method: "get",
+		path: "/administrators",
+		tags: ["Admin Bot"],
+		summary: "List configured bot administrators",
+		errorMessage: "Failed to get bot administrators",
+		security: [{ sessionCookie: [] }],
+		responses: {
+			200: {
+				description: "Configured bot administrators",
+				schema: z.array(z.object({ id: z.string(), username: z.string(), avatarUrl: z.string().url() })),
+			},
+			401: { description: "Authentication required", schema: errorResponseSchema },
+			403: { description: "Admin access required", schema: errorResponseSchema },
+			503: { description: "Discord bot is unavailable", schema: errorResponseSchema },
+			500: { description: "Failed to get bot administrators", schema: errorResponseSchema },
+		},
+		middleware: [requireSession, requireAdmin, requireDiscord],
+		handler: async (_request, response) => {
+			const client = getClient();
+			const administrators = await Promise.all(
+				[...new Set(getConfig("ADMIN_USER_IDS"))].map(async (id) => {
+					const user = await client.users.fetch(id);
+					return { id: user.id, username: user.username, avatarUrl: user.displayAvatarURL({ size: 64 }) };
+				}),
+			);
+			return response.status(200).json(administrators);
+		},
+	},
+	{
+		method: "get",
 		path: "/player-sessions",
 		tags: ["Admin Bot"],
 		summary: "View active player sessions",
