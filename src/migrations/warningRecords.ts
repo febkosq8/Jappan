@@ -22,6 +22,12 @@ export const warningRecordsMigration: DatabaseMigration = {
 	run: async (database, reportProgress: (progress: MigrationProgress) => void) => {
 		const collection = database.collection<LegacyGuildMemberState>("guildMemberStates");
 		const total = await collection.countDocuments({ "warnings.count": { $exists: true } });
+		const emptyCount = await collection.countDocuments({ "warnings.count": 0 });
+		const emptyResult = await collection.updateMany({ "warnings.count": 0 }, [{ $set: { warnings: [] } }]);
+		if (emptyResult.modifiedCount !== emptyCount) {
+			throw new Error("The number of empty warning counts changed during migration");
+		}
+
 		const cursor = collection.find(
 			{ "warnings.count": { $exists: true } },
 			{ projection: { _id: 1, guildId: 1, userId: 1, "warnings.count": 1 } },
@@ -29,7 +35,7 @@ export const warningRecordsMigration: DatabaseMigration = {
 		const rest = new REST({ version: "10" }).setToken(getConfig("DISCORD_TOKEN"));
 		const migratedAt = new Date();
 		const ownerIds = new Map<string, string | null>();
-		let completed = 0;
+		let completed = emptyResult.modifiedCount;
 		reportProgress({ completed, total });
 
 		const getGuildOwnerId = async (guildId: string): Promise<string | null> => {
