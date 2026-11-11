@@ -5,11 +5,11 @@ import { FiBarChart2 } from "react-icons/fi";
 import ChannelDisplay from "@jappan/components/display/ChannelDisplay";
 import UserDisplay from "@jappan/components/display/UserDisplay";
 import type { AdminGuildDetails, UserGuildDetails } from "@jappan/handlers/APIHandler";
-import GuildCommandDeployment from "@jappan/components/guild/GuildCommandDeployment";
-import GuildDetail from "@jappan/components/panel/guild-detail";
-import GuildSectionLink from "@jappan/components/panel/guild-section-link";
+import GuildCommandDeployment from "@jappan/components/panel/GuildCommandDeployment";
+import GuildDetail from "@jappan/components/panel/GuildDetail";
+import GuildSectionLink from "@jappan/components/panel/GuildSectionLink";
 
-export default function GuildOverview({ guild }: { guild: AdminGuildDetails | UserGuildDetails }) {
+export default function GuildOverviewPanel({ guild }: { guild: AdminGuildDetails | UserGuildDetails }) {
 	return (
 		<div className="space-y-4">
 			<Card id="guild-overview" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">

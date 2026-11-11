@@ -11,13 +11,13 @@ import APIHandler, { type UserGuildDetails } from "@jappan/handlers/APIHandler";
 import { AccessRedirect } from "@jappan/components/AdminRoute";
 import GuildPageHeader from "@jappan/components/display/GuildPageHeader";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
-import GuildChannels from "@jappan/components/guild/GuildChannels";
-import ServicePreferencesEditor from "@jappan/components/guild/ServicePreferencesEditor";
-import VoiceRegionLockManager from "@jappan/components/guild/VoiceRegionLockManager";
-import WarningManager from "@jappan/components/guild/WarningManager";
-import GuildOverview from "@jappan/components/panel/guild-overview";
-import BotPermissionsPanel from "@jappan/components/panel/bot-permissions-panel";
-import CommandPermissionsPanel from "@jappan/components/panel/command-permissions-panel";
+import GuildChannelsPanel from "@jappan/components/panel/GuildChannelsPanel";
+import GuildServicePreferencesPanel from "@jappan/components/panel/GuildServicePreferencesPanel";
+import GuildVoiceRegionLockManagerPanel from "@jappan/components/panel/GuildVoiceRegionLockManagerPanel";
+import GuildWarningManagerPanel from "@jappan/components/panel/GuildWarningManagerPanel";
+import GuildOverviewPanel from "@jappan/components/panel/GuildOverviewPanel";
+import BotPermissionsPanel from "@jappan/components/panel/BotPermissionsPanel";
+import CommandPermissionsPanel from "@jappan/components/panel/CommandPermissionsPanel";
 import guildIdPattern from "@jappan/helpers/guildIdPattern";
 import useDocumentTitle, { formatTitle } from "@jappan/helpers/useDocumentTitle";
 
@@ -67,23 +67,23 @@ function GuildDetails({ guild }: { guild: UserGuildDetails }) {
 				))}
 			</TabsList>
 			<TabsPanel value="guild-overview" keepMounted>
-				<GuildOverview guild={guild} />
+				<GuildOverviewPanel guild={guild} />
 			</TabsPanel>
 			<TabsPanel value="guild-channels" keepMounted>
-				<GuildChannels guild={guild} />
+				<GuildChannelsPanel guild={guild} />
 			</TabsPanel>
 			<TabsPanel value="service-preferences" keepMounted>
-				<ServicePreferencesEditor guild={guild} active={section === "service-preferences"} />
+				<GuildServicePreferencesPanel guild={guild} active={section === "service-preferences"} />
 			</TabsPanel>
 			<TabsPanel value="warnings" keepMounted>
-				<WarningManager
+				<GuildWarningManagerPanel
 					guildId={guild.id}
 					active={section === "warnings"}
 					isActiveMember={guild.isActiveMember}
 				/>
 			</TabsPanel>
 			<TabsPanel value="voice-region-locks" keepMounted>
-				<VoiceRegionLockManager
+				<GuildVoiceRegionLockManagerPanel
 					key={guild.id}
 					guildId={guild.id}
 					active={section === "voice-region-locks"}

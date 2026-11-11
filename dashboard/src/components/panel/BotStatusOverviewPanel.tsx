@@ -3,7 +3,7 @@ import { Avatar, DateHandler } from "@febkosq8/arc";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import type { BotStatus } from "@jappan/handlers/APIHandler";
 
-export default function BotStatusOverview({
+export default function BotStatusOverviewPanel({
 	bot,
 	isError,
 	updatedAt,

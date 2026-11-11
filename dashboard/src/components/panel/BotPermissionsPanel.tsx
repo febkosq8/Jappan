@@ -1,6 +1,6 @@
 import { Card } from "@febkosq8/arc";
 
-import GuildSectionLink from "@jappan/components/panel/guild-section-link";
+import GuildSectionLink from "@jappan/components/panel/GuildSectionLink";
 
 export default function BotPermissionsPanel({ permissions }: { permissions?: string[] }) {
 	return (

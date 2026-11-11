@@ -27,8 +27,8 @@ import {
 import { SiDiscord } from "react-icons/si";
 import { toast } from "sonner";
 import APIHandler from "@jappan/handlers/APIHandler";
-import BotStatusOverview from "@jappan/components/panel/bot-status-overview";
-import BotStatusHealth from "@jappan/components/panel/bot-status-health";
+import BotStatusOverviewPanel from "@jappan/components/panel/BotStatusOverviewPanel";
+import BotStatusHealthPanel from "@jappan/components/panel/BotStatusHealthPanel";
 import LoadingIndicator from "../LoadingIndicator";
 
 const commandCategories = ["General", "Music", "Leveling", "Fun", "Moderation"] as const;
@@ -226,7 +226,7 @@ export default function About() {
 								</TabsTab>
 							</TabsList>
 							<TabsPanel value="overview">
-								<BotStatusOverview
+								<BotStatusOverviewPanel
 									bot={botQuery.data}
 									isError={botQuery.isError}
 									updatedAt={botQuery.dataUpdatedAt}
@@ -234,7 +234,7 @@ export default function About() {
 								/>
 							</TabsPanel>
 							<TabsPanel value="health">
-								<BotStatusHealth
+								<BotStatusHealthPanel
 									health={healthQuery.data}
 									healthIsError={healthQuery.isError}
 									bot={botQuery.data}

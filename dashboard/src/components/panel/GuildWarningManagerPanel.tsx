@@ -7,8 +7,8 @@ import { toast } from "sonner";
 
 import APIHandler, { type WarningIssueResult } from "@jappan/handlers/APIHandler";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
-import GuildWarningsTable from "@jappan/components/guild/GuildWarningsTable";
-import GuildMemberPicker from "@jappan/components/guild/GuildMemberPicker";
+import GuildWarningsTable from "@jappan/components/panel/GuildWarningsTable";
+import GuildMemberPicker from "@jappan/components/panel/GuildMemberPicker";
 
 function getErrorMessage(error: unknown): string {
 	if (axios.isAxiosError<{ error?: string }>(error) && typeof error.response?.data?.error === "string") {
@@ -32,7 +32,7 @@ function issueSuccessMessage(result: WarningIssueResult): string {
 	}
 }
 
-export default function WarningManager({
+export default function GuildWarningManagerPanel({
 	guildId,
 	active,
 	isActiveMember,

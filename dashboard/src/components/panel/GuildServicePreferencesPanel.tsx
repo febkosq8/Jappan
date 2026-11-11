@@ -507,7 +507,7 @@ function WarningsSection({ guild, channels, channelsLoading, readOnly, onSaved }
 	);
 }
 
-export default function ServicePreferencesEditor({
+export default function GuildServicePreferencesPanel({
 	guild,
 	active,
 }: {

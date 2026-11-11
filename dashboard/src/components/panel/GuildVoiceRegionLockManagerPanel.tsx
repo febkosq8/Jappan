@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import UserDisplay from "@jappan/components/display/UserDisplay";
 import ChannelDisplay from "@jappan/components/display/ChannelDisplay";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
-import GuildMemberPicker from "@jappan/components/guild/GuildMemberPicker";
+import GuildMemberPicker from "@jappan/components/panel/GuildMemberPicker";
 import APIHandler, { type VoiceRegionLock, type WarningMember } from "@jappan/handlers/APIHandler";
 
 function getErrorMessage(error: unknown): string {
@@ -18,7 +18,7 @@ function getErrorMessage(error: unknown): string {
 	return "Could not manage voice region locks. Please try again.";
 }
 
-export default function VoiceRegionLockManager({
+export default function GuildVoiceRegionLockManagerPanel({
 	guildId,
 	active,
 	isActiveMember,

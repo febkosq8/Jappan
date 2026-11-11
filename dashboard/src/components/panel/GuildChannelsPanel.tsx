@@ -6,7 +6,7 @@ import APIHandler, { type AdminGuildChannel } from "@jappan/handlers/APIHandler"
 import { AccessRedirect, accessErrorStatus } from "@jappan/components/AdminRoute";
 import ChannelDisplay from "@jappan/components/display/ChannelDisplay";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
-import GuildSectionLink from "@jappan/components/panel/guild-section-link";
+import GuildSectionLink from "@jappan/components/panel/GuildSectionLink";
 
 function ChannelGroupList({ guildId, channels }: { guildId: string; channels: AdminGuildChannel[] }) {
 	const categoryType = 4;
@@ -168,7 +168,7 @@ function ChannelGroupList({ guildId, channels }: { guildId: string; channels: Ad
 	);
 }
 
-export default function GuildChannels({ guild }: { guild: { id: string; isActiveMember: boolean } }) {
+export default function GuildChannelsPanel({ guild }: { guild: { id: string; isActiveMember: boolean } }) {
 	const channelsQuery = useQuery({
 		queryKey: ["user", "guild", guild.id, "channels"],
 		queryFn: () => APIHandler.getGuildChannels(guild.id),

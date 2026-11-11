@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import APIHandler from "@jappan/handlers/APIHandler";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
-import GuildSectionLink from "@jappan/components/panel/guild-section-link";
+import GuildSectionLink from "@jappan/components/panel/GuildSectionLink";
 
 export default function CommandPermissionsPanel({ permissions }: { permissions?: string[] }) {
 	const commandsQuery = useQuery({

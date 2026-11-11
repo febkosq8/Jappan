@@ -10,7 +10,7 @@ const serviceNames = [
 	{ key: "player", label: "Music player" },
 ] as const;
 
-export default function BotStatusHealth({
+export default function BotStatusHealthPanel({
 	health,
 	healthIsError,
 	bot,

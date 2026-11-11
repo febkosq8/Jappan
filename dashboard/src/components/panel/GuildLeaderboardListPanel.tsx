@@ -44,7 +44,7 @@ const columns: TableColumnDef<LeaderboardEntry>[] = [
 	},
 ];
 
-export default function GuildLeaderboardList({ leaderboard }: { leaderboard: GuildLeaderboardData }) {
+export default function GuildLeaderboardListPanel({ leaderboard }: { leaderboard: GuildLeaderboardData }) {
 	if (!leaderboard.enabled) {
 		return (
 			<Card hoverable={false} className="p-5 sm:p-6">

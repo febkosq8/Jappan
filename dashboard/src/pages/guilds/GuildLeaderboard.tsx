@@ -9,9 +9,9 @@ import { Link, useParams } from "react-router-dom";
 import { AccessRedirect } from "@jappan/components/AdminRoute";
 import GuildPageHeader from "@jappan/components/display/GuildPageHeader";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
-import GuildLeaderboardList from "@jappan/components/panel/guild-leaderboard-list";
-import GuildLeaderboardOverview from "@jappan/components/panel/guild-leaderboard-overview";
-import GuildLeaderboardRewards from "@jappan/components/panel/guild-leaderboard-rewards";
+import GuildLeaderboardListPanel from "@jappan/components/panel/GuildLeaderboardListPanel";
+import GuildLeaderboardOverviewPanel from "@jappan/components/panel/GuildLeaderboardOverviewPanel";
+import GuildLeaderboardRewardsPanel from "@jappan/components/panel/GuildLeaderboardRewardsPanel";
 import APIHandler from "@jappan/handlers/APIHandler";
 import { isAdminSession, useSessionQuery } from "@jappan/handlers/auth";
 import guildIdPattern from "@jappan/helpers/guildIdPattern";
@@ -178,7 +178,7 @@ export default function GuildLeaderboard() {
 					) : overviewQuery.isError ? (
 						<LeaderboardError status={guildQueryErrorStatus} onRetry={() => void overviewQuery.refetch()} />
 					) : (
-						<GuildLeaderboardOverview leaderboard={overviewQuery.data} />
+						<GuildLeaderboardOverviewPanel leaderboard={overviewQuery.data} />
 					)}
 				</TabsPanel>
 				<TabsPanel value="rewards" keepMounted>
@@ -187,7 +187,7 @@ export default function GuildLeaderboard() {
 					) : overviewQuery.isError ? (
 						<LeaderboardError status={guildQueryErrorStatus} onRetry={() => void overviewQuery.refetch()} />
 					) : (
-						<GuildLeaderboardRewards leaderboard={overviewQuery.data} />
+						<GuildLeaderboardRewardsPanel leaderboard={overviewQuery.data} />
 					)}
 				</TabsPanel>
 				<TabsPanel value="list" keepMounted>
@@ -199,7 +199,7 @@ export default function GuildLeaderboard() {
 							onRetry={() => void leaderboardQuery.refetch()}
 						/>
 					) : (
-						<GuildLeaderboardList leaderboard={leaderboardQuery.data} />
+						<GuildLeaderboardListPanel leaderboard={leaderboardQuery.data} />
 					)}
 				</TabsPanel>
 			</Tabs>

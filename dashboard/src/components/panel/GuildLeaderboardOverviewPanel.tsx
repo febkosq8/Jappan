@@ -3,7 +3,7 @@ import { FaTrophy } from "react-icons/fa";
 
 import type { GuildLeaderboard as GuildLeaderboardData } from "@jappan/handlers/APIHandler";
 
-export default function GuildLeaderboardOverview({ leaderboard }: { leaderboard: GuildLeaderboardData }) {
+export default function GuildLeaderboardOverviewPanel({ leaderboard }: { leaderboard: GuildLeaderboardData }) {
 	if (!leaderboard.enabled) {
 		return (
 			<Card hoverable={false} className="p-5 sm:p-6">

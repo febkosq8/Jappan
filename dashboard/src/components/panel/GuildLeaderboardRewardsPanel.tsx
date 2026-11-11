@@ -3,7 +3,7 @@ import { Card } from "@febkosq8/arc";
 import RoleDisplay from "@jappan/components/display/RoleDisplay";
 import type { GuildLeaderboard as GuildLeaderboardData } from "@jappan/handlers/APIHandler";
 
-export default function GuildLeaderboardRewards({ leaderboard }: { leaderboard: GuildLeaderboardData }) {
+export default function GuildLeaderboardRewardsPanel({ leaderboard }: { leaderboard: GuildLeaderboardData }) {
 	if (!leaderboard.reward) {
 		return (
 			<Card hoverable={false} className="p-5 sm:p-6">
