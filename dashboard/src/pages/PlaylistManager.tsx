@@ -139,7 +139,7 @@ export default function PlaylistManager() {
 		},
 		{
 			accessorKey: "query",
-			header: "Search query or playlist URL",
+			header: "Search query or track/playlist URL",
 			size: 340,
 			filterFn: "includesString",
 			sortingFn: "alphanumeric",
@@ -296,9 +296,9 @@ export default function PlaylistManager() {
 								<div>
 									<LabelField
 										id="playlist-query"
-										label="Search or playlist link"
+										label="Search or track/playlist link"
 										className="mb-1"
-										help="Jappan checks your search or link before saving, so you’ll know if it can find tracks."
+										help="Enter a search query, track URL, or playlist URL. Jappan checks it before saving."
 									/>
 									<Input
 										id="playlist-query"
@@ -306,7 +306,7 @@ export default function PlaylistManager() {
 										onChange={(event) => setQuery(event.target.value)}
 										maxLength={MAX_PLAYLIST_QUERY_LENGTH}
 										autoComplete="off"
-										placeholder="Search for tracks or paste a playlist link"
+										placeholder="Search for tracks or paste a track/playlist URL"
 										className="w-full"
 										required
 									/>

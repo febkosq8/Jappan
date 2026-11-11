@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { getLinkedDiscordAccountId, requireActiveUser, requireSession } from "../../../handlers/auth.js";
 import { requireDatabase } from "../../../handlers/availability.js";
+import { isValidPlaylistQuery } from "../../../helpers/playlist.js";
 import { defineRouter, errorResponseSchema } from "../../../helpers/route.js";
 import type { AuthSession } from "../../../services/auth.js";
 import { searchPlayer } from "../../../services/player.js";
@@ -18,7 +19,12 @@ const playlistSchema = z.object({
 });
 const savePlaylistSchema = z.strictObject({
 	listname: z.string().trim().min(1, "Playlist names must be between 1 and 100 characters.").max(100),
-	query: z.string().trim().min(1, "Enter a search query or playlist URL.").max(2000),
+	query: z
+		.string()
+		.trim()
+		.min(1, "Enter a search query, track URL, or playlist URL.")
+		.max(2000)
+		.refine(isValidPlaylistQuery, "Enter a valid HTTP(S) track/playlist URL or a search query."),
 	shuffle: z.boolean(),
 	loop: z.boolean(),
 });
