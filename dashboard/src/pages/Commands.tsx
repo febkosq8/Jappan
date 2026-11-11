@@ -120,7 +120,6 @@ function CommandDetails({ command }: { command: GlobalCommand }) {
 						<ul className="mt-2 space-y-2">
 							{command.options.map((option) => {
 								const details = [
-									option.type,
 									option.required ? "Required" : "Optional",
 									...(option.autocomplete ? ["Autocomplete"] : []),
 									...(option.minValue !== null ? [`Minimum: ${option.minValue}`] : []),
@@ -130,9 +129,14 @@ function CommandDetails({ command }: { command: GlobalCommand }) {
 								];
 								return (
 									<li key={option.name} className="rounded-md border border-border p-3 text-sm">
-										<p className="font-medium">
-											<code>{option.name}</code>
-										</p>
+										<div className="flex flex-wrap items-start justify-between gap-2">
+											<p className="min-w-0 wrap-break-word font-medium">
+												<code>{option.name}</code>
+											</p>
+											<Tag variant="secondary" size="xs">
+												Type: {option.type}
+											</Tag>
+										</div>
 										<p className="mt-1 text-muted-foreground">{option.description}</p>
 										<div className="mt-2">
 											<ValueTags values={details} />
@@ -145,19 +149,11 @@ function CommandDetails({ command }: { command: GlobalCommand }) {
 										{option.choices.length > 0 && (
 											<div className="mt-2">
 												<p className="text-muted-foreground">Choices</p>
-												<ul className="mt-1 space-y-1">
+												<ol className="mt-1 list-decimal space-y-1 pl-5">
 													{option.choices.map((choice) => (
-														<li key={String(choice.value)}>
-															{choice.name}
-															{String(choice.value) !== choice.name && (
-																<>
-																	{" "}
-																	(<code>{choice.value}</code>)
-																</>
-															)}
-														</li>
+														<li key={String(choice.value)}>{choice.name}</li>
 													))}
-												</ul>
+												</ol>
 											</div>
 										)}
 									</li>
