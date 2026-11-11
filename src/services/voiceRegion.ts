@@ -2,6 +2,7 @@ import type { Guild, VoiceChannel, VoiceState } from "discord.js";
 import {
 	ChannelType,
 	DiscordAPIError,
+	EmbedBuilder,
 	PermissionFlagsBits,
 	RESTJSONErrorCodes,
 	channelMention,
@@ -10,7 +11,7 @@ import {
 	userMention,
 } from "discord.js";
 
-import { createGuildDashboardUrl } from "../helpers/dashboard.js";
+import { createGuildDashboardLink } from "../helpers/dashboard.js";
 import { isActiveGuild, sendGuildMessage } from "../helpers/guild.js";
 import { formatVoiceRegion } from "../helpers/voiceRegion.js";
 import type { GuildMemberStateDocument } from "../models/guildMemberState.js";
@@ -141,6 +142,29 @@ function hasOtherLockedMemberInChannel({
 	);
 }
 
+function createVoiceRegionEmbed({
+	userId,
+	previousRegion,
+	nextRegion,
+	event,
+}: {
+	userId: string;
+	previousRegion: string;
+	nextRegion: string;
+	event: "join" | "leave";
+}): EmbedBuilder {
+	const config = getConfig();
+	return new EmbedBuilder()
+		.setColor("Blue")
+		.setAuthor({ name: `${config.BOT_NAME} : VC Region Lock`, iconURL: config.BOT_PFP, url: config.BOT_WEBSITE })
+		.setTitle(event === "join" ? "Voice region updated" : "Voice region restored")
+		.setDescription(
+			`🌐 \`${formatVoiceRegion(previousRegion)}\` → \`${formatVoiceRegion(nextRegion)}\`\n` +
+				`${userMention(userId)} ${event === "join" ? "joined" : "left"} the voice channel.`,
+		)
+		.setTimestamp();
+}
+
 async function handleVoiceRegionLockDisable({
 	guild,
 	userId,
@@ -219,11 +243,6 @@ export async function handleVoiceRegionState(oldState: VoiceState, newState: Voi
 
 		const locks = await getVoiceRegionLocks(newState.guild);
 		if (!isActiveGuild(newState.guild)) return;
-		const dashboardUrl = createGuildDashboardUrl({
-			config: getConfig(),
-			guildId: newState.guild.id,
-			section: "voice-region-locks",
-		});
 
 		if (joinedLockedChannel) {
 			if (
@@ -245,7 +264,21 @@ export async function handleVoiceRegionState(oldState: VoiceState, newState: Voi
 				region: lock.region,
 			});
 			await channel.send({
-				content: `🔊 Voice region 🌐 updated from \`${formatVoiceRegion(previousRegion)}\` to \`${formatVoiceRegion(lock.region)}\` because ${userMention(member.id)} joined.\n[Manage voice region locks in the web dashboard](${dashboardUrl})`,
+				embeds: [
+					createVoiceRegionEmbed({
+						userId: member.id,
+						previousRegion,
+						nextRegion: lock.region,
+						event: "join",
+					}),
+				],
+				components: [
+					createGuildDashboardLink({
+						config: getConfig(),
+						guildId: newState.guild.id,
+						section: "voice-region-locks",
+					}),
+				],
 				allowedMentions: { parse: [] },
 			});
 			return;
@@ -274,7 +307,21 @@ export async function handleVoiceRegionState(oldState: VoiceState, newState: Voi
 				region: fallbackRegion,
 			});
 			await channel.send({
-				content: `🔊 Voice region 🌐 restored from \`${formatVoiceRegion(previousRegion)}\` to \`${formatVoiceRegion(fallbackRegion)}\` because ${userMention(member.id)} left.\n[Manage voice region locks in the web dashboard](${dashboardUrl})`,
+				embeds: [
+					createVoiceRegionEmbed({
+						userId: member.id,
+						previousRegion,
+						nextRegion: fallbackRegion,
+						event: "leave",
+					}),
+				],
+				components: [
+					createGuildDashboardLink({
+						config: getConfig(),
+						guildId: newState.guild.id,
+						section: "voice-region-locks",
+					}),
+				],
 				allowedMentions: { parse: [] },
 			});
 		}
