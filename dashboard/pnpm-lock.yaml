@@ -167,8 +167,8 @@ importers:
   .:
     dependencies:
       '@febkosq8/arc':
-        specifier: 0.8.7
-        version: 0.8.7(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        specifier: 0.8.8
+        version: 0.8.8(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@tanstack/react-form':
         specifier: 1.33.5
         version: 1.33.5(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -451,8 +451,8 @@ packages:
     resolution: {integrity: sha512-IkO+/KEUvwbVpiURZg+P7zF74z5Jxe0UgJxVni+RtoHQ6IZieXaO02kmadomap/q+l6bc/jdPGGqTjhuZnuz1Q==}
     engines: {node: ^20.19.0 || ^22.13.0 || >=24}
 
-  '@febkosq8/arc@0.8.7':
-    resolution: {integrity: sha512-dNklnl3yiTyxGNdXjEyzme3fD+aRgRhNpqmOacqWcIsTYDAzr5C/fcOT3rIZEOdY7uzyuM4iexLJIaS8QXo/2A==}
+  '@febkosq8/arc@0.8.8':
+    resolution: {integrity: sha512-++mLgo59RXJODRlntk2WaVInRowEde170zjKgxmKUu9ejWR/xPFJmo21klCXp2kxi2nLUz5NoPZLchJdT8+auQ==}
     engines: {node: '>=26.13.0'}
     peerDependencies:
       react: 19.3.1
@@ -2034,7 +2034,7 @@ snapshots:
       '@eslint/core': 1.2.1
       levn: 0.4.1
 
-  '@febkosq8/arc@0.8.7(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
+  '@febkosq8/arc@0.8.8(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
     dependencies:
       '@base-ui/react': 1.9.0(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@rinzai/zen': 0.17.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)

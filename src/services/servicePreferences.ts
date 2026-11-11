@@ -123,7 +123,7 @@ export async function updateMemberAnnouncementsPreference({
 	for (const { event, enabled, channelId } of events) {
 		if (!enabled) continue;
 		if (!channelId) return invalid(`A ${event} channel is required to enable ${event} announcements`);
-		const channelError = await validateChannel(guild, channelId);
+		const channelError = await validateChannel(guild, channelId, [PermissionFlagsBits.EmbedLinks]);
 		if (channelError) return invalid(`${event[0]?.toUpperCase()}${event.slice(1)} channel: ${channelError}`);
 	}
 	for (const { event, enabled, channelId } of events) {
@@ -158,7 +158,7 @@ export async function updateWarningsPreference({
 		return invalid("Ban threshold must be greater than the timeout threshold");
 	}
 	if (auditChannelId) {
-		const channelError = await validateChannel(guild, auditChannelId);
+		const channelError = await validateChannel(guild, auditChannelId, [PermissionFlagsBits.EmbedLinks]);
 		if (channelError) return invalid(channelError);
 	}
 	await setWarningSettings({

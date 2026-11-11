@@ -25,33 +25,25 @@ function getErrorMessage(error: unknown): string {
 function channelOptions({
 	channels,
 	current,
-	requireSendPermissions = false,
 }: {
 	channels: AdminGuildChannel[] | undefined;
 	current: PreferenceEntity | null;
-	requireSendPermissions?: boolean;
 }) {
 	const options = (channels ?? [])
-		.filter(
-			(channel) =>
-				textChannelTypes.includes(channel.typeName) && (!requireSendPermissions || channel.canSendMessage),
-		)
+		.filter((channel) => textChannelTypes.includes(channel.typeName))
 		.map((channel) => ({
 			key: channel.id,
 			label: `#${channel.name} (${channel.id}) | ${channel.parent?.name ?? "No Category"}`,
+			disabled: !channel.canSendMessage,
 		}));
 	if (current && !options.some((option) => option.key === current.id)) {
 		const currentChannel = channels?.find((channel) => channel.id === current.id);
 		options.unshift({
 			key: current.id,
 			label: `${current.name ?? "unavailable"} (${current.id})${
-				requireSendPermissions
-					? currentChannel && !currentChannel.canSendMessage
-						? " (missing permissions)"
-						: " (unavailable)"
-					: ""
+				currentChannel && !currentChannel.canSendMessage ? " (missing permissions)" : " (unavailable)"
 			}`,
-			disabled: requireSendPermissions,
+			disabled: true,
 		});
 	}
 	return [{ key: "", label: "None" }, ...options];
@@ -308,7 +300,7 @@ function AuditLogSection({ guild, channels, channelsLoading, channelsError, read
 				label="Channel"
 				value={channelId}
 				onChange={setChannelId}
-				data={channelOptions({ channels, current: auditLog.channel, requireSendPermissions: true })}
+				data={channelOptions({ channels, current: auditLog.channel })}
 				loading={channelsLoading}
 				disabled={disabled || !enabled}
 			/>
