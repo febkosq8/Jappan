@@ -20,7 +20,12 @@ const commandData = {
 	defaultMemberPermissions: PermissionFlagsBits.ManageGuild,
 	hasSubCommands: true,
 	subCommands: [
-		{ name: "on", description: "Turn on one member announcement direction", category: "moderator" },
+		{
+			name: "on",
+			description: "Turn on one member announcement direction",
+			category: "moderator",
+			usageNotes: ["Select the channel for each chosen event; both channels are required when event is both."],
+		},
 		{ name: "off", description: "Turn off one member announcement direction", category: "moderator" },
 		{ name: "check", description: "Check member announcement status", category: "moderator" },
 	],

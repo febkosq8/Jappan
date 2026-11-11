@@ -17,6 +17,7 @@ export interface BotCommandData {
 	readonly isDBDependant?: boolean;
 	readonly defaultMemberPermissions?: PermissionResolvable;
 	readonly requiredBotPermissions?: readonly PermissionResolvable[];
+	readonly usageNotes?: readonly string[];
 	readonly hasSubCommands?: boolean;
 	readonly subCommands?: readonly BotCommandData[];
 }

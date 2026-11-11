@@ -26,7 +26,15 @@ const commandData = {
 	defaultMemberPermissions: PermissionFlagsBits.ManageGuild,
 	hasSubCommands: true,
 	subCommands: [
-		{ name: "setup", description: "Configure warning thresholds and audit logging", category: "moderator" },
+		{
+			name: "setup",
+			description: "Configure warning thresholds and audit logging",
+			category: "moderator",
+			usageNotes: [
+				"Select a timeout duration when setting a timeout threshold.",
+				"When both thresholds are set, the ban threshold must be greater than the timeout threshold.",
+			],
+		},
 		{ name: "issue", description: "Issue a warning to a user", category: "moderator" },
 		{ name: "check", description: "Check warning settings or a user's warning count", category: "moderator" },
 		{ name: "override", description: "Override a user's warning count", category: "moderator" },

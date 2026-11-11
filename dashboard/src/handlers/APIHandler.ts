@@ -271,6 +271,20 @@ export interface GlobalCommand {
 	category: "general" | "music" | "level" | "fun" | "moderator" | "admin";
 	requiredBotPermissions: string[];
 	requiredUserPermissions: string[];
+	usageNotes: string[];
+	options: {
+		name: string;
+		description: string;
+		type: string;
+		required: boolean;
+		autocomplete: boolean;
+		choices: { name: string; value: string | number }[];
+		channelTypes: string[];
+		minValue: number | null;
+		maxValue: number | null;
+		minLength: number | null;
+		maxLength: number | null;
+	}[];
 }
 
 export interface PlayerTrack {

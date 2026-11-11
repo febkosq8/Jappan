@@ -1,4 +1,4 @@
-import { PermissionsBitField } from "discord.js";
+import { ApplicationCommandOptionType, ChannelType, PermissionsBitField } from "discord.js";
 import { z } from "zod";
 
 import { getClient } from "../../bot.js";
@@ -6,7 +6,7 @@ import { getClientGuilds } from "../../helpers/guild.js";
 import { defineRouter, errorResponseSchema } from "../../helpers/route.js";
 import type { RouteDefinition } from "../../helpers/route.js";
 import { getBotVersion } from "../../helpers/utils.js";
-import { getCommandId, getGlobalCommands, type BotCommandData } from "../../services/commandLoader.js";
+import { getCommandId, getGlobalCommands, type BotCommand, type BotCommandData } from "../../services/commandLoader.js";
 import healthRouter from "./health.js";
 
 const commandSchema = z.object({
@@ -18,6 +18,116 @@ const commandSchema = z.object({
 	requiredBotPermissions: z.array(z.string()),
 	requiredUserPermissions: z.array(z.string()),
 });
+
+const commandOptionSchema = z.object({
+	name: z.string(),
+	description: z.string(),
+	type: z.string(),
+	required: z.boolean(),
+	autocomplete: z.boolean(),
+	choices: z.array(z.object({ name: z.string(), value: z.union([z.string(), z.number()]) })),
+	channelTypes: z.array(z.string()),
+	minValue: z.number().nullable(),
+	maxValue: z.number().nullable(),
+	minLength: z.number().nullable(),
+	maxLength: z.number().nullable(),
+});
+
+const detailedCommandSchema = commandSchema.extend({
+	options: z.array(commandOptionSchema),
+	usageNotes: z.array(z.string()),
+});
+
+type CommandOption = NonNullable<ReturnType<BotCommand["data"]["toJSON"]>["options"]>[number];
+
+function getPublicCommandEntries(command: BotCommand): z.infer<typeof detailedCommandSchema>[] {
+	const entries: z.infer<typeof detailedCommandSchema>[] = [];
+	const definition = command.data.toJSON();
+	const id = getCommandId(definition.name) ?? null;
+	const addEntry = ({
+		definition,
+		metadata,
+		prefix,
+		botPermissions,
+		userPermissions,
+	}: {
+		definition: { name: string; description: string; options?: readonly CommandOption[] | undefined };
+		metadata: BotCommandData;
+		prefix: string;
+		botPermissions: PermissionsBitField;
+		userPermissions: PermissionsBitField;
+	}): void => {
+		const name = prefix ? `${prefix} ${definition.name}` : definition.name;
+		const requiredBotPermissions = new PermissionsBitField(botPermissions.bitfield).add(
+			...(metadata.requiredBotPermissions ?? []),
+		);
+		const requiredUserPermissions = new PermissionsBitField(userPermissions.bitfield).add(
+			...(metadata.defaultMemberPermissions === undefined ? [] : [metadata.defaultMemberPermissions]),
+		);
+		const options = definition.options ?? [];
+		entries.push({
+			id,
+			type: prefix ? "sub-command" : "command",
+			name,
+			description: metadata.description,
+			category: metadata.category,
+			requiredBotPermissions: requiredBotPermissions.toArray(),
+			requiredUserPermissions: requiredUserPermissions.toArray(),
+			usageNotes: [...(metadata.usageNotes ?? [])],
+			options: options.flatMap((option) => {
+				if (
+					option.type === ApplicationCommandOptionType.Subcommand ||
+					option.type === ApplicationCommandOptionType.SubcommandGroup
+				)
+					return [];
+				return [
+					{
+						name: option.name,
+						description: option.description,
+						type: ApplicationCommandOptionType[option.type],
+						required: option.required ?? false,
+						autocomplete: "autocomplete" in option && option.autocomplete === true,
+						choices:
+							"choices" in option
+								? (option.choices ?? []).map(({ name, value }) => ({ name, value }))
+								: [],
+						channelTypes:
+							"channel_types" in option
+								? (option.channel_types ?? []).map((type) => ChannelType[type])
+								: [],
+						minValue: "min_value" in option ? (option.min_value ?? null) : null,
+						maxValue: "max_value" in option ? (option.max_value ?? null) : null,
+						minLength: "min_length" in option ? (option.min_length ?? null) : null,
+						maxLength: "max_length" in option ? (option.max_length ?? null) : null,
+					},
+				];
+			}),
+		});
+		for (const option of options) {
+			if (
+				option.type !== ApplicationCommandOptionType.Subcommand &&
+				option.type !== ApplicationCommandOptionType.SubcommandGroup
+			)
+				continue;
+			const childMetadata = metadata.subCommands?.find((child) => child.name === option.name) ?? metadata;
+			addEntry({
+				definition: option,
+				metadata: childMetadata,
+				prefix: name,
+				botPermissions: requiredBotPermissions,
+				userPermissions: requiredUserPermissions,
+			});
+		}
+	};
+	addEntry({
+		definition,
+		metadata: command.commandData,
+		prefix: "",
+		botPermissions: new PermissionsBitField(),
+		userPermissions: new PermissionsBitField(),
+	});
+	return entries;
+}
 
 const botStatusSchema = z.object({
 	botName: z.string(),
@@ -73,63 +183,13 @@ const publicRoutes: RouteDefinition[] = [
 		errorMessage: "Failed to list commands",
 		responses: {
 			200: {
-				description: "Global command descriptions and declared permissions",
-				schema: z.array(commandSchema),
+				description: "Global command definitions, options, and declared permissions",
+				schema: z.array(detailedCommandSchema),
 			},
 			500: { description: "Failed to list commands", schema: errorResponseSchema },
 		},
-		handler: (_request, response) => {
-			const entries: z.infer<typeof commandSchema>[] = [];
-			const addEntry = ({
-				command,
-				id,
-				prefix,
-				botPermissions,
-				userPermissions,
-			}: {
-				command: BotCommandData;
-				id: string | null;
-				prefix: string;
-				botPermissions: PermissionsBitField;
-				userPermissions: PermissionsBitField;
-			}): void => {
-				const name = prefix ? `${prefix} ${command.name}` : command.name;
-				const requiredBotPermissions = new PermissionsBitField(botPermissions.bitfield).add(
-					...(command.requiredBotPermissions ?? []),
-				);
-				const requiredUserPermissions = new PermissionsBitField(userPermissions.bitfield).add(
-					...(command.defaultMemberPermissions === undefined ? [] : [command.defaultMemberPermissions]),
-				);
-				entries.push({
-					id,
-					type: prefix ? "sub-command" : "command",
-					name,
-					description: command.description,
-					category: command.category,
-					requiredBotPermissions: requiredBotPermissions.toArray(),
-					requiredUserPermissions: requiredUserPermissions.toArray(),
-				});
-				for (const subcommand of command.subCommands ?? []) {
-					addEntry({
-						command: subcommand,
-						id,
-						prefix: name,
-						botPermissions: requiredBotPermissions,
-						userPermissions: requiredUserPermissions,
-					});
-				}
-			};
-			for (const command of getGlobalCommands().values()) {
-				addEntry({
-					command: command.commandData,
-					id: getCommandId(command.commandData.name) ?? null,
-					prefix: "",
-					botPermissions: new PermissionsBitField(),
-					userPermissions: new PermissionsBitField(),
-				});
-			}
-			return response.status(200).json(entries);
-		},
+		handler: (_request, response) =>
+			response.status(200).json(Array.from(getGlobalCommands().values()).flatMap(getPublicCommandEntries)),
 	},
 ];
 

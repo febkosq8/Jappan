@@ -20,7 +20,12 @@ const commandData = {
 	defaultMemberPermissions: PermissionFlagsBits.ManageGuild,
 	hasSubCommands: true,
 	subCommands: [
-		{ name: "on", description: "Turn on the leveling system", category: "level" },
+		{
+			name: "on",
+			description: "Turn on the leveling system",
+			category: "level",
+			usageNotes: ["Provide both threshold and role to configure a reward, or omit both."],
+		},
 		{ name: "off", description: "Turn off the leveling system", category: "level" },
 		{ name: "check", description: "Check the leveling status", category: "level" },
 	],
