@@ -239,7 +239,7 @@ export default function GuildWarningManagerPanel({
 										{selectedMember.warningCount} warning(s)
 									</span>
 								</div>
-								{!selectedMember.isGuildMember && (
+								{!selectedMember.isGuildMember ? (
 									<Card hoverable={false} className="rounded-md border-border">
 										<Card.Content
 											role="status"
@@ -253,8 +253,7 @@ export default function GuildWarningManagerPanel({
 											</span>
 										</Card.Content>
 									</Card>
-								)}
-								{selectedMember.isGuildMember && (
+								) : (
 									<form
 										className="space-y-3"
 										onSubmit={(event) => {
