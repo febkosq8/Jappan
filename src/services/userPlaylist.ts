@@ -34,7 +34,7 @@ export async function removeUserPlaylist({ userId, listname }: { userId: string;
 				},
 			},
 		],
-		{ new: true, updatePipeline: true },
+		{ returnDocument: "after", updatePipeline: true },
 	);
 	return Boolean(playlist);
 }
@@ -81,7 +81,7 @@ export async function saveUserPlaylist({
 				},
 			},
 		],
-		{ upsert: true, new: true, runValidators: true, updatePipeline: true },
+		{ upsert: true, runValidators: true, updatePipeline: true },
 	);
 }
 

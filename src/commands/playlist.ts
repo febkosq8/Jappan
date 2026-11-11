@@ -1,6 +1,7 @@
 import { EmbedBuilder, InteractionContextType, MessageFlags, SlashCommandBuilder } from "discord.js";
 
 import { formatUser } from "../helpers/discord.js";
+import { isValidPlaylistQuery } from "../helpers/playlist.js";
 import { createPlayerEmbed } from "../helpers/player.js";
 import type { BotCommand, BotCommandData } from "../services/commandLoader.js";
 import { searchPlayer } from "../services/player.js";
@@ -35,7 +36,7 @@ const command: BotCommand = {
 						.setRequired(true),
 				)
 				.addStringOption((option) =>
-					option.setName("query").setDescription("Playlist URL or song search query").setRequired(true),
+					option.setName("query").setDescription("Track/playlist URL or song search query").setRequired(true),
 				)
 				.addBooleanOption((option) =>
 					option.setName("shuffle").setDescription("Shuffle on playback").setRequired(true),
@@ -66,6 +67,10 @@ const command: BotCommand = {
 			const query = interaction.options.getString("query", true).trim();
 			if (!listname || listname.length > 100) {
 				await interaction.editReply("⛔ Playlist names must be between 1 and 100 characters.");
+				return;
+			}
+			if (!isValidPlaylistQuery(query)) {
+				await interaction.editReply("⛔ Enter a valid HTTP(S) track/playlist URL or a search query.");
 				return;
 			}
 			const searchResponse = await searchPlayer(query, { requestedBy: interaction.user.id });

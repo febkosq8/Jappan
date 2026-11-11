@@ -158,7 +158,16 @@ export default function ManageBot() {
 	});
 
 	const undeployMutation = useMutation({
-		mutationFn: APIHandler.undeployAdminBotGuildCommands,
+		mutationFn: () => {
+			const promise = APIHandler.undeployAdminBotGuildCommands();
+			toast.promise(promise, {
+				loading: "Removing guild commands…",
+				success: (result) =>
+					`Removed commands from ${result.undeployedGuilds.length} guilds; ${result.failedGuilds.length} failed.`,
+				error: "Could not undeploy guild commands. Check guilds before retrying.",
+			});
+			return promise;
+		},
 		onSettled: () => {
 			void queryClient.invalidateQueries({ queryKey: ["admin", "guild"] });
 			void queryClient.invalidateQueries({ queryKey: ["admin", "list-guilds"] });
@@ -166,7 +175,15 @@ export default function ManageBot() {
 	});
 
 	const selfKickMutation = useMutation({
-		mutationFn: APIHandler.selfKickAdminBot,
+		mutationFn: (message: string) => {
+			const promise = APIHandler.selfKickAdminBot(message);
+			toast.promise(promise, {
+				loading: "Leaving guilds…",
+				success: (result) => `Left ${result.leftGuilds.length} guilds; ${result.failedGuilds.length} failed.`,
+				error: "Could not confirm the results. Check guilds before retrying.",
+			});
+			return promise;
+		},
 		onSuccess: () => {
 			setSelfKickMessage("");
 		},

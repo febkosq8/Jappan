@@ -5,6 +5,21 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.2] - 2026-11-11
+
+### Added
+
+- Added dashboard management for guild voice-region locks, with API support to list, add, and remove locks.
+- Added dashboard warning management and API support to review member warnings, issue warnings, and update warning counts.
+- Added a dashboard playlist manager for saving, editing, listing, sorting, and removing account-owned playlists.
+- Added authenticated playlist API endpoints to manage playlists associated with a user's linked Discord account.
+
+### Changed
+
+- Added loading, success, and error promise toasts to dashboard mutations for playlists, voice-region locks, warnings, and bot guild-command actions.
+- Grouped user pages, including My playlists, under the “Dashboard” navigation menu.
+- Updated `/playlist add` to accept search queries and valid HTTP(S) track or playlist URLs, while rejecting malformed URL-like input.
+
 ## [2.1.1] - 2026-11-10
 
 ### Added

@@ -10,15 +10,15 @@ function getMobilePage({
 	currentPage,
 	isAdmin,
 	isAuthenticated,
-	isPlayerPage,
 	pathname,
 }: {
 	currentPage: string;
 	isAdmin: boolean;
 	isAuthenticated: boolean;
-	isPlayerPage: boolean;
 	pathname: string;
 }) {
+	const isPlayerPage = pathname === "/player" || pathname.startsWith("/player/");
+	const isPlaylistPage = pathname === "/playlists";
 	const isLeaderboardsPage =
 		pathname === "/leaderboards" ||
 		/^\/guild\/[^/]+\/leaderboard(?:\/|$)/u.test(pathname) ||
@@ -26,11 +26,9 @@ function getMobilePage({
 	const isAdminGuildsPage = pathname === "/admin/guilds" || pathname.startsWith("/admin/guild/");
 	const isGuildsPage = pathname === "/guilds" || pathname.startsWith("/guild/");
 
-	if (isAuthenticated && isPlayerPage) return "Guilds";
 	if (isAdmin && pathname === "/admin/bot") return "Manage Bot";
-	if (isLeaderboardsPage) return "Leaderboards";
-	if (isAdmin && isAdminGuildsPage) return "Guilds";
-	if (isAuthenticated && isGuildsPage) return "Guilds";
+	if (isAuthenticated && (isPlayerPage || isPlaylistPage || isLeaderboardsPage || isGuildsPage)) return "Dashboard";
+	if (isAdmin && isAdminGuildsPage) return "Dashboard";
 
 	return currentPage;
 }
@@ -42,13 +40,11 @@ export default function Header() {
 	const isCommandsPage = location.pathname === "/commands";
 	const isAdmin = !isError && isAdminSession(session);
 	const isAuthenticated = !isError && !!session;
-	const isPlayerPage = location.pathname === "/player" || location.pathname.startsWith("/player/");
 	const currentPage = isHomePage ? "Home" : isCommandsPage ? "Commands" : "Pages";
 	const mobilePage = getMobilePage({
 		currentPage,
 		isAdmin,
 		isAuthenticated,
-		isPlayerPage,
 		pathname: location.pathname,
 	});
 	const homeItem = (

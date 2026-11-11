@@ -1,6 +1,6 @@
 import { fromNodeHeaders } from "better-auth/node";
 import { DiscordAPIError, PermissionFlagsBits, RESTJSONErrorCodes } from "discord.js";
-import type { Request, RequestHandler } from "express";
+import type { Request, RequestHandler, Response as ExpressResponse } from "express";
 
 import { getClient } from "../bot.js";
 import { getClientGuild } from "../helpers/guild.js";
@@ -173,3 +173,19 @@ export const isActiveUser: AuthorizationCheck = authorizationCheck("Login requir
 export const requireActiveUser: RequestHandler = requireAnyAuthorization([isActiveUser]);
 export const requireAdmin: RequestHandler = requireAnyAuthorization([isBotAdmin]);
 export const requireGuildManager: RequestHandler = requireAnyAuthorization([isGuildManager]);
+
+export async function getLinkedDiscordAccountId(
+	session: AuthSession,
+	response: ExpressResponse,
+): Promise<string | null> {
+	if (session.user.status !== "active" && session.user.status !== undefined) {
+		response.status(403).json({ error: "Active account required" });
+		return null;
+	}
+	const user = await AuthUserModel.findById(session.user.id).select({ discordAccountId: 1 }).exec();
+	if (!user?.discordAccountId) {
+		response.status(403).json({ error: "Linked Discord account required" });
+		return null;
+	}
+	return user.discordAccountId;
+}

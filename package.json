@@ -1,6 +1,6 @@
 {
 	"name": "jappan",
-	"version": "2.1.1",
+	"version": "2.1.2",
 	"description": "Jappan - Discord Bot",
 	"type": "module",
 	"main": "dist/index.js",

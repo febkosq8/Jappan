@@ -11,6 +11,7 @@ import UserViewGuild from "@jappan/pages/guilds/UserViewGuild";
 import GuildLeaderboard from "@jappan/pages/guilds/GuildLeaderboard";
 import PlayerLanding from "@jappan/pages/player/PlayerLanding";
 import WebPlayer from "@jappan/pages/player/WebPlayer";
+import PlaylistManager from "@jappan/pages/PlaylistManager";
 import WrongPage from "@jappan/pages/WrongPage";
 import { SIGN_OUT_FLASH_KEY } from "@jappan/handlers/auth";
 import { updateHashOnScroll } from "@febkosq8/arc";
@@ -70,6 +71,7 @@ function App() {
 					<Route path="/admin/bot" element={<ManageBot />} />
 				</Route>
 				<Route element={<AuthRoute />}>
+					<Route path="/playlists" element={<PlaylistManager />} />
 					<Route path="/guilds" element={<UserListGuilds />} />
 					<Route path="/guild" element={<Navigate to="/guilds" replace />} />
 					<Route path="/guild/:guildId" element={<UserViewGuild />} />
