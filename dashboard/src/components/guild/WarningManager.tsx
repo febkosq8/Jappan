@@ -1,13 +1,14 @@
 import { Avatar, Button, Card, Input } from "@febkosq8/arc";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import { useEffect, useId, useState, type KeyboardEvent } from "react";
-import { FiAlertCircle, FiSearch, FiUser } from "react-icons/fi";
+import { useEffect, useState } from "react";
+import { FiAlertCircle, FiUser } from "react-icons/fi";
 import { toast } from "sonner";
 
 import APIHandler, { type WarningIssueResult } from "@jappan/handlers/APIHandler";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import GuildWarningsTable from "@jappan/components/guild/GuildWarningsTable";
+import GuildMemberPicker from "@jappan/components/guild/GuildMemberPicker";
 
 function getErrorMessage(error: unknown): string {
 	if (axios.isAxiosError<{ error?: string }>(error) && typeof error.response?.data?.error === "string") {
@@ -41,27 +42,11 @@ export default function WarningManager({
 	isActiveMember: boolean;
 }) {
 	const queryClient = useQueryClient();
-	const memberListboxId = useId();
-	const [searchInput, setSearchInput] = useState("");
-	const [searchQuery, setSearchQuery] = useState("");
-	const [searchOpen, setSearchOpen] = useState(false);
-	const [activeMemberIndex, setActiveMemberIndex] = useState(-1);
 	const [memberId, setMemberId] = useState("");
 	const [reason, setReason] = useState("");
 	const [overrideValue, setOverrideValue] = useState("");
 	const warningsQueryKey = ["user", "guild", guildId, "warnings", memberId];
 
-	useEffect(() => {
-		const timeoutId = window.setTimeout(() => setSearchQuery(searchInput.trim()), 250);
-		return () => window.clearTimeout(timeoutId);
-	}, [searchInput]);
-
-	const membersQuery = useQuery({
-		queryKey: ["user", "guild", guildId, "members", searchQuery],
-		queryFn: () => APIHandler.searchGuildMembers(guildId, searchQuery || undefined),
-		enabled: active && isActiveMember && (searchQuery.length === 0 || searchQuery.length >= 2),
-		retry: false,
-	});
 	const memberQuery = useQuery({
 		queryKey: warningsQueryKey,
 		queryFn: () => APIHandler.getGuildMemberWarnings(guildId, memberId),
@@ -95,44 +80,13 @@ export default function WarningManager({
 	});
 
 	const selectedMember = memberQuery.data;
-	const matchingMembers = membersQuery.data ?? [];
-	const normalizedSearchInput = searchInput.trim();
-	const searchIsSettled = normalizedSearchInput === searchQuery;
-	const memberDropdownOpen =
-		searchOpen && searchIsSettled && (normalizedSearchInput.length === 0 || normalizedSearchInput.length >= 2);
-	const activeMember = memberDropdownOpen ? matchingMembers[activeMemberIndex] : undefined;
 	const busy = issueMutation.isPending || overrideMutation.isPending;
 	const parsedOverride = Number(overrideValue);
 	const canOverride = overrideValue.trim() !== "" && Number.isSafeInteger(parsedOverride) && parsedOverride >= 0;
 
-	const selectMember = (selectedMemberId: string) => {
-		setMemberId(selectedMemberId);
-		setSearchInput("");
-		setSearchQuery("");
-		setSearchOpen(false);
-		setActiveMemberIndex(-1);
-	};
-
-	const handleSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-		if (event.key === "ArrowDown" && matchingMembers.length > 0) {
-			event.preventDefault();
-			setSearchOpen(true);
-			setActiveMemberIndex((index) => (index + 1) % matchingMembers.length);
-		} else if (event.key === "ArrowUp" && matchingMembers.length > 0) {
-			event.preventDefault();
-			setActiveMemberIndex((index) => (index <= 0 ? matchingMembers.length - 1 : index - 1));
-		} else if (event.key === "Enter" && activeMember) {
-			event.preventDefault();
-			selectMember(activeMember.id);
-		} else if (event.key === "Escape") {
-			setSearchOpen(false);
-			setActiveMemberIndex(-1);
-		}
-	};
-
 	return (
 		<div className="space-y-5">
-			<Card id="warning-actions" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
+			<Card id="warnings" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
 				<h2 className="text-lg font-semibold">Manage warnings</h2>
 				<p className="mt-1 text-sm text-muted-foreground">
 					Select a member to review their warning count, issue a warning, or update the count. Thresholds and
@@ -154,104 +108,13 @@ export default function WarningManager({
 							</h3>
 							<p className="text-sm text-muted-foreground">Search by username or server nickname.</p>
 						</div>
-						<div className="relative">
-							<FiSearch
-								className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-								aria-hidden="true"
-							/>
-							<Input
-								id="warning-member-search"
-								type="search"
-								value={searchInput}
-								onChange={(event) => {
-									setSearchInput(event.target.value);
-									setActiveMemberIndex(-1);
-									setSearchOpen(true);
-								}}
-								disabled={!isActiveMember || !active}
-								placeholder="Search guild members"
-								autoComplete="off"
-								role="combobox"
-								aria-expanded={memberDropdownOpen}
-								aria-controls={memberListboxId}
-								aria-autocomplete="list"
-								aria-activedescendant={
-									activeMember ? `${memberListboxId}-option-${activeMemberIndex}` : undefined
-								}
-								aria-describedby="warning-member-search-help"
-								className="w-full pl-10"
-								onFocus={() => setSearchOpen(true)}
-								onBlur={() => setSearchOpen(false)}
-								onKeyDown={handleSearchKeyDown}
-							/>
-							{memberDropdownOpen && (
-								<ul
-									id={memberListboxId}
-									role="listbox"
-									aria-label={searchQuery ? "Matching guild members" : "Guild members"}
-									className="absolute inset-x-0 top-full z-20 mt-1 max-h-72 overflow-y-auto rounded-md border border-border bg-popover shadow-lg"
-								>
-									{membersQuery.isFetching && (
-										<li className="px-3 py-2" role="status">
-											<LoadingIndicator
-												label="Searching guild members"
-												inline
-												size={80}
-												rows={1}
-												columns={5}
-											/>
-										</li>
-									)}
-									{membersQuery.isError && (
-										<li role="alert" className="px-3 py-2 text-sm text-destructive">
-											{getErrorMessage(membersQuery.error)}
-										</li>
-									)}
-									{membersQuery.isSuccess && matchingMembers.length === 0 && (
-										<li className="px-3 py-2 text-sm text-muted-foreground">
-											{searchQuery ? "No matching members found." : "No guild members found."}
-										</li>
-									)}
-									{!searchQuery && membersQuery.isSuccess && matchingMembers.length > 0 && (
-										<li className="border-b border-border px-3 py-2 text-xs text-muted-foreground">
-											Showing up to 100 members. Search for anyone else.
-										</li>
-									)}
-									{matchingMembers.map((member, index) => (
-										<li
-											key={member.id}
-											id={`${memberListboxId}-option-${index}`}
-											role="option"
-											aria-selected={member.id === memberId}
-											onMouseDown={(event) => {
-												event.preventDefault();
-												selectMember(member.id);
-											}}
-											onMouseEnter={() => setActiveMemberIndex(index)}
-											className={`flex cursor-pointer items-center gap-3 px-3 py-2 text-sm ${
-												index === activeMemberIndex ? "bg-accent text-primary" : ""
-											}`}
-										>
-											<Avatar
-												name={member.displayName}
-												image={member.avatarUrl}
-												size="sm"
-												aria-hidden="true"
-											/>
-											<span className="min-w-0">
-												<span className="block truncate font-medium">{member.displayName}</span>
-												<span className="block truncate text-xs text-muted-foreground">
-													@{member.username}
-												</span>
-											</span>
-										</li>
-									))}
-								</ul>
-							)}
-						</div>
-						<p id="warning-member-search-help" className="mt-1 text-xs text-muted-foreground">
-							Up to 100 members load when this tab opens. Search by username or nickname to find others.
-						</p>
+						<GuildMemberPicker
+							id="warning-member-search"
+							guildId={guildId}
+							enabled={active && isActiveMember}
+							selectedMemberId={memberId}
+							onSelect={(member) => setMemberId(member.id)}
+						/>
 					</section>
 
 					<section

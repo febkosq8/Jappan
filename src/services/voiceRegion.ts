@@ -1,7 +1,9 @@
 import type { Guild, VoiceChannel, VoiceState } from "discord.js";
 import {
 	ChannelType,
+	DiscordAPIError,
 	PermissionFlagsBits,
+	RESTJSONErrorCodes,
 	channelMention,
 	chatInputApplicationCommandMention,
 	underline,
@@ -24,6 +26,13 @@ export interface VoiceRegionLock {
 	readonly fallbackRegion: string | null;
 }
 
+export class VoiceRegionLockValidationError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = "VoiceRegionLockValidationError";
+	}
+}
+
 export async function getVoiceRegionIds(guild: Guild): Promise<string[]> {
 	const regions = await guild.client.fetchVoiceRegions();
 	return Array.from(regions.values(), (region) => region.id);
@@ -34,34 +43,47 @@ export async function addVoiceRegionLock({
 	userId,
 	userName,
 	channelId,
-	channelName,
 	region,
 }: {
 	guild: Guild;
 	userId: string;
 	userName: string;
 	channelId: string;
-	channelName: string;
 	region: string;
-}): Promise<void> {
+}): Promise<VoiceRegionLock> {
 	const regions = await getVoiceRegionIds(guild);
 	if (!regions.includes(region)) {
-		throw new Error(`\`${region}\` is not a valid Discord voice region.`);
+		throw new VoiceRegionLockValidationError(`\`${region}\` is not a valid Discord voice region.`);
 	}
 
-	const channel = await guild.channels.fetch(channelId);
-	if (!channel?.isVoiceBased()) {
-		throw new Error("The selected channel is no longer a voice channel.");
+	const channel = await guild.channels.fetch(channelId).catch((error: unknown) => {
+		if (error instanceof DiscordAPIError && error.code === RESTJSONErrorCodes.UnknownChannel) {
+			throw new VoiceRegionLockValidationError("The selected channel is no longer a voice channel.");
+		}
+		throw error;
+	});
+	if (!channel || channel.type !== ChannelType.GuildVoice) {
+		throw new VoiceRegionLockValidationError("The selected channel is no longer a voice channel.");
 	}
 
 	const botMember = await guild.members.fetchMe();
 	if (!botMember.permissionsIn(channel).has(PermissionFlagsBits.ManageChannels)) {
-		throw new Error(`I need \`Manage Channels\` permission in <#${channelId}> to lock its region.`);
+		throw new VoiceRegionLockValidationError(
+			`I need \`Manage Channels\` permission in <#${channelId}> to lock its region.`,
+		);
 	}
 
 	const storedMemberState = await getOrCreateGuildMemberState({ guildId: guild.id, userId, username: userName });
-	storedMemberState.voiceRegionLock = { channelId, channelName, region, fallbackRegion: null };
+	storedMemberState.voiceRegionLock = { channelId, channelName: channel.name, region, fallbackRegion: null };
 	await storedMemberState.save();
+	return {
+		userId,
+		userName,
+		channelId,
+		channelName: channel.name,
+		region,
+		fallbackRegion: null,
+	};
 }
 
 export async function removeVoiceRegionLock(guild: Guild, userId: string): Promise<boolean> {

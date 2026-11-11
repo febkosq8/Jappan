@@ -97,7 +97,6 @@ const command: BotCommand = {
 					userId: user.id,
 					userName: user.username,
 					channelId: channel.id,
-					channelName: channel.name ?? "Voice channel",
 					region,
 				});
 				await interaction.editReply(

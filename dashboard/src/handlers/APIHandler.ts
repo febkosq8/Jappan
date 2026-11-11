@@ -207,6 +207,21 @@ export interface WarningIssueResult {
 	action: "none" | "banned" | "timed_out" | "ban_failed" | "timeout_failed";
 }
 
+export interface VoiceRegionLock {
+	userId: string;
+	userName: string;
+	avatarUrl: string | null;
+	channelId: string;
+	channelName: string;
+	region: string;
+	fallbackRegion: string | null;
+}
+
+export interface VoiceRegionLocks {
+	locks: VoiceRegionLock[];
+	regions: string[];
+}
+
 export interface ServicePreferencesEditorGuild {
 	id: string;
 	isActiveMember: boolean;
@@ -405,6 +420,33 @@ class APIHandler {
 			{ withCredentials: true },
 		);
 		return data.warningCount;
+	}
+
+	static async getGuildVoiceRegionLocks(guildId: string): Promise<VoiceRegionLocks> {
+		const { data } = await apiClient.get<VoiceRegionLocks>(
+			`/api/v1/guilds/${encodeURIComponent(guildId)}/voice-region-locks`,
+			{ withCredentials: true },
+		);
+		return data;
+	}
+
+	static async addGuildVoiceRegionLock(
+		guildId: string,
+		input: { userId: string; channelId: string; region: string },
+	): Promise<VoiceRegionLock> {
+		const { data } = await apiClient.post<VoiceRegionLock>(
+			`/api/v1/guilds/${encodeURIComponent(guildId)}/voice-region-locks`,
+			input,
+			{ withCredentials: true },
+		);
+		return data;
+	}
+
+	static async removeGuildVoiceRegionLock(guildId: string, userId: string): Promise<void> {
+		await apiClient.delete(
+			`/api/v1/guilds/${encodeURIComponent(guildId)}/voice-region-locks/${encodeURIComponent(userId)}`,
+			{ withCredentials: true },
+		);
 	}
 
 	static async getBotStatus(): Promise<BotStatus> {
