@@ -137,6 +137,7 @@ export const warningMemberSchema = z.object({
 });
 
 export const warningMemberDetailsSchema = warningMemberSchema.extend({
+	isGuildMember: z.boolean(),
 	warningCount: z.number().int().nonnegative(),
 	warnings: z.array(
 		z.object({

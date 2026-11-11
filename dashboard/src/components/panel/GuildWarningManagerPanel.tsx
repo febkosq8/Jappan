@@ -2,7 +2,7 @@ import { Avatar, Button, Card, DateHandler, Input, Table, type TableColumnDef } 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { useRef, useState } from "react";
-import { FiAlertCircle, FiUser } from "react-icons/fi";
+import { FiAlertCircle, FiInfo, FiUser } from "react-icons/fi";
 import { toast } from "sonner";
 
 import APIHandler, { type WarningIssueResult, type WarningRecord } from "@jappan/handlers/APIHandler";
@@ -83,6 +83,7 @@ export default function GuildWarningManagerPanel({
 	const busy = issueMutation.isPending || deleteMutation.isPending;
 	const unavailable = busy || !active || !isActiveMember;
 	const selectedMember = memberQuery.data;
+	const cannotIssue = unavailable || selectedMember?.isGuildMember !== true;
 	const selectMember = (userId: string) => {
 		setMemberId(userId);
 		setReason("");
@@ -101,7 +102,17 @@ export default function GuildWarningManagerPanel({
 			header: "Issued",
 			size: 210,
 			filterFn: "includesString",
-			cell: ({ row }) => (row.original.issuedAt ? DateHandler.getDateTime(row.original.issuedAt) : "Unknown"),
+			cell: ({ row }) =>
+				row.original.issuedAt ? (
+					<div>
+						<span className="block">{DateHandler.getDateTime(row.original.issuedAt)}</span>
+						<span className="block text-xs text-muted-foreground">
+							{DateHandler.getRelativeTime(row.original.issuedAt)}
+						</span>
+					</div>
+				) : (
+					"Unknown"
+				),
 		},
 		{
 			id: "issuer",
@@ -125,6 +136,7 @@ export default function GuildWarningManagerPanel({
 			header: "Threshold action",
 			size: 170,
 			filterFn: "includesString",
+			cell: ({ row }) => <span className="capitalize">{row.original.thresholdAction.replace(/_/gu, " ")}</span>,
 		},
 		{
 			id: "actions",
@@ -227,11 +239,26 @@ export default function GuildWarningManagerPanel({
 										{selectedMember.warningCount} warning(s)
 									</span>
 								</div>
+								{!selectedMember.isGuildMember && (
+									<Card hoverable={false} className="rounded-md border-border">
+										<Card.Content
+											role="status"
+											className="flex items-center justify-start gap-3 p-0! text-left text-sm"
+										>
+											<FiInfo className="size-5 shrink-0 text-primary" aria-hidden="true" />
+											<span>
+												This user is no longer in the guild.
+												<br />
+												You can review and delete their warnings, but cannot issue new ones.
+											</span>
+										</Card.Content>
+									</Card>
+								)}
 								<form
 									className="space-y-3"
 									onSubmit={(event) => {
 										event.preventDefault();
-										if (!unavailable) issueMutation.mutate();
+										if (!cannotIssue) issueMutation.mutate();
 									}}
 								>
 									<div>
@@ -251,7 +278,7 @@ export default function GuildWarningManagerPanel({
 											value={reason}
 											onChange={(event) => setReason(event.target.value)}
 											maxLength={500}
-											disabled={unavailable}
+											disabled={cannotIssue}
 											placeholder="No reason provided"
 											className="w-full flex-1"
 										/>
@@ -259,7 +286,7 @@ export default function GuildWarningManagerPanel({
 											type="submit"
 											size="sm"
 											variant="outline-primary"
-											disabled={unavailable}
+											disabled={cannotIssue}
 										>
 											{issueMutation.isPending ? "Issuing..." : "Issue warning"}
 										</Button>

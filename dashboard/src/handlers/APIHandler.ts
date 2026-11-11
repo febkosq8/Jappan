@@ -201,6 +201,7 @@ export interface WarningRecord {
 }
 
 export interface WarningMemberDetails extends WarningMember {
+	isGuildMember: boolean;
 	warningCount: number;
 	warnings: WarningRecord[];
 }

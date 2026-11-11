@@ -26,6 +26,7 @@ import {
 } from "../../../helpers/guild.js";
 import { listGuilds } from "../../../services/adminGuild.js";
 import type { AuthSession } from "../../../services/auth.js";
+import { getGuildMemberState } from "../../../services/guildMemberState.js";
 import { getLeaderboard, LEADERBOARD_PAGE_SIZE } from "../../../services/leveling.js";
 import {
 	getWarnedMembers,
@@ -134,6 +135,23 @@ async function resolveGuildMember({ guild, userId, response }: { guild: Guild; u
 		}
 		throw error;
 	}
+}
+
+async function fetchWarningUser(guild: Guild, userId: string) {
+	return guild.client.users.fetch(userId).catch((error: unknown) => {
+		if (
+			error instanceof DiscordAPIError &&
+			[
+				RESTJSONErrorCodes.UnknownUser,
+				RESTJSONErrorCodes.MissingAccess,
+				RESTJSONErrorCodes.MissingPermissions,
+			].includes(Number(error.code))
+		) {
+			logger.warn("HTTP", "Warning user details are no longer available", { guildId: guild.id, userId, error });
+			return null;
+		}
+		throw error;
+	});
 }
 
 export default defineRouter("/guilds", [
@@ -546,31 +564,28 @@ export default defineRouter("/guilds", [
 		handler: async (request, response) => {
 			const guild = await resolveGuild(request.params.guildId, response);
 			if (!guild) return;
-			const member = await resolveGuildMember({ guild, userId: request.params.userId, response });
-			if (!member) return;
-			const warnings = await getWarningRecords(guild.id, member.id);
+			const userId = request.params.userId;
+			if (typeof userId !== "string" || !/^\d{17,20}$/u.test(userId)) {
+				return response.status(400).json({ error: "Invalid user ID" });
+			}
+			const member = await guild.members.fetch(userId).catch((error: unknown) => {
+				if (error instanceof DiscordAPIError && error.code === RESTJSONErrorCodes.UnknownMember) {
+					return null;
+				}
+				throw error;
+			});
+			const storedMember = !member ? await getGuildMemberState(guild.id, userId) : null;
+			if (!member && !storedMember) {
+				return response.status(404).json({ error: "User has no stored guild warning history" });
+			}
+			const user = member?.user ?? (await fetchWarningUser(guild, userId));
+			const username = user?.username ?? storedMember?.username ?? userId;
+			const warnings = await getWarningRecords(guild.id, userId);
 			const issuers = new Map<string, { userId: string; username?: string; avatarUrl?: string | null }>();
 			await Promise.all(
 				[...new Set(warnings.map((warning) => warning.issuerId).filter((id): id is string => id !== null))].map(
 					async (issuerId) => {
-						const issuer = await guild.client.users.fetch(issuerId).catch((error: unknown) => {
-							if (
-								error instanceof DiscordAPIError &&
-								[
-									RESTJSONErrorCodes.UnknownUser,
-									RESTJSONErrorCodes.MissingAccess,
-									RESTJSONErrorCodes.MissingPermissions,
-								].includes(Number(error.code))
-							) {
-								logger.warn("HTTP", "Warning issuer is no longer available", {
-									guildId: guild.id,
-									issuerId,
-									error,
-								});
-								return null;
-							}
-							throw error;
-						});
+						const issuer = await fetchWarningUser(guild, issuerId);
 						issuers.set(
 							issuerId,
 							issuer
@@ -585,10 +600,11 @@ export default defineRouter("/guilds", [
 				),
 			);
 			return response.status(200).json({
-				id: member.id,
-				username: member.user.username,
-				displayName: member.displayName,
-				avatarUrl: member.displayAvatarURL({ size: 64 }),
+				id: userId,
+				username,
+				displayName: member?.displayName ?? user?.globalName ?? username,
+				avatarUrl: member?.displayAvatarURL({ size: 64 }) ?? user?.displayAvatarURL({ size: 64 }) ?? null,
+				isGuildMember: member !== null,
 				warningCount: warnings.length,
 				warnings: warnings.map((warning) => ({
 					...warning,
@@ -831,11 +847,13 @@ export default defineRouter("/guilds", [
 			if (!warningId.success) {
 				return response.status(400).json({ error: warningId.error.issues[0]?.message ?? "Invalid warning ID" });
 			}
-			const member = await resolveGuildMember({ guild, userId: request.params.userId, response });
-			if (!member) return;
+			const userId = request.params.userId;
+			if (typeof userId !== "string" || !/^\d{17,20}$/u.test(userId)) {
+				return response.status(400).json({ error: "Invalid user ID" });
+			}
 			const removed = await removeWarning({
 				guildId: guild.id,
-				userId: member.id,
+				userId,
 				warningId: warningId.data,
 			});
 			if (!removed) {

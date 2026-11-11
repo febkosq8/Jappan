@@ -36,17 +36,15 @@ function getColumns({
 			size: 120,
 			filterFn: "includesString",
 			cell: ({ row }) => (
-				<Button
+				<button
 					type="button"
-					size="sm"
-					variant="outline-primary"
-					className="tabular-nums"
+					className="inline-flex items-center rounded-md text-primary tabular-nums underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
 					disabled={disabled}
 					aria-label={`View ${row.original.username}'s ${row.original.warningCount} warning(s)`}
 					onClick={() => onSelectMember(row.original.userId)}
 				>
 					{row.original.warningCount.toLocaleString()}
-				</Button>
+				</button>
 			),
 		},
 	];

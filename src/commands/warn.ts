@@ -42,6 +42,8 @@ const commandData = {
 		PermissionFlagsBits.ViewChannel,
 		PermissionFlagsBits.SendMessages,
 		PermissionFlagsBits.EmbedLinks,
+		PermissionFlagsBits.ModerateMembers,
+		PermissionFlagsBits.BanMembers,
 	],
 } satisfies BotCommandData;
 

@@ -1,10 +1,11 @@
 import mongoose from "mongoose";
-import { EmbedBuilder, type GuildMember } from "discord.js";
+import { EmbedBuilder, PermissionFlagsBits, type GuildMember } from "discord.js";
 
 import type { GuildDocument } from "../models/guild.js";
 import GuildMemberStateModel, { type GuildMemberStateDocument } from "../models/guildMemberState.js";
 import { getOrCreateGuildData } from "../helpers/guild.js";
 import { getGuildMemberState } from "./guildMemberState.js";
+import { logger } from "./logger.js";
 
 export type WarningThresholdAction =
 	"unknown" | "pending" | "none" | "banned" | "timed_out" | "ban_failed" | "timeout_failed";
@@ -206,6 +207,13 @@ export async function issueWarningForMember({
 		reason,
 	});
 	const warningCount = state.warnings.length;
+	const logDetails = {
+		guildId: guild.id,
+		userId: member.id,
+		issuerId,
+		warningId: warningId.toString(),
+		warningCount,
+	};
 
 	const thresholdReason = `Warning threshold reached: ${reason}`.slice(0, 500);
 	let action: WarningIssueResult["action"] = "none";
@@ -238,6 +246,11 @@ export async function issueWarningForMember({
 	} catch (error: unknown) {
 		const failedAction =
 			attemptedAction === null ? "unknown" : attemptedAction === "ban" ? "ban_failed" : "timeout_failed";
+		logger.error("DISCORD", "Warning threshold action failed", {
+			...logDetails,
+			action: failedAction,
+			error,
+		});
 		await updateWarningThresholdAction({
 			guildId: guild.id,
 			userId: member.id,
@@ -245,6 +258,23 @@ export async function issueWarningForMember({
 			action: failedAction,
 		});
 		throw error;
+	}
+
+	if (action === "ban_failed" || action === "timeout_failed") {
+		const botMember = guild.members.me;
+		logger.warn("DISCORD", "Warning threshold action blocked by permissions or role hierarchy", {
+			...logDetails,
+			action,
+			isGuildOwner: member.id === guild.ownerId,
+			isAdministrator: member.permissions.has(PermissionFlagsBits.Administrator),
+			manageable: member.manageable,
+			botHighestRoleId: botMember?.roles.highest.id,
+			memberHighestRoleId: member.roles.highest.id,
+			hasRequiredPermission:
+				botMember?.permissions.has(
+					action === "ban_failed" ? PermissionFlagsBits.BanMembers : PermissionFlagsBits.ModerateMembers,
+				) ?? false,
+		});
 	}
 
 	await updateWarningThresholdAction({ guildId: guild.id, userId: member.id, warningId, action });
@@ -263,7 +293,12 @@ export async function issueWarningForMember({
 							{ name: "Total Warnings", value: `${warningCount}`, inline: true },
 							{ name: "Reason", value: reason },
 							{ name: "Issued By", value: `<@${issuerId}>` },
-							{ name: "Threshold Action", value: action },
+							{
+								name: "Threshold Action",
+								value: action
+									.replace(/_/gu, " ")
+									.replace(/\b\w/gu, (character) => character.toUpperCase()),
+							},
 						)
 						.setTimestamp(),
 				],
