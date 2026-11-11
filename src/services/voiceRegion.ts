@@ -10,10 +10,13 @@ import {
 	userMention,
 } from "discord.js";
 
+import { createGuildDashboardUrl } from "../helpers/dashboard.js";
 import { isActiveGuild, sendGuildMessage } from "../helpers/guild.js";
+import { formatVoiceRegion } from "../helpers/voiceRegion.js";
 import type { GuildMemberStateDocument } from "../models/guildMemberState.js";
 import GuildMemberStateModel from "../models/guildMemberState.js";
 import { getCommandId } from "./commandLoader.js";
+import { getConfig } from "./config.js";
 import { getGuildMemberState, getOrCreateGuildMemberState } from "./guildMemberState.js";
 import { logger } from "./logger.js";
 
@@ -216,6 +219,11 @@ export async function handleVoiceRegionState(oldState: VoiceState, newState: Voi
 
 		const locks = await getVoiceRegionLocks(newState.guild);
 		if (!isActiveGuild(newState.guild)) return;
+		const dashboardUrl = createGuildDashboardUrl({
+			config: getConfig(),
+			guildId: newState.guild.id,
+			section: "voice-region-locks",
+		});
 
 		if (joinedLockedChannel) {
 			if (
@@ -237,7 +245,7 @@ export async function handleVoiceRegionState(oldState: VoiceState, newState: Voi
 				region: lock.region,
 			});
 			await channel.send({
-				content: `🔊 Voice region 🌐 updated from \`${previousRegion}\` to \`${lock.region}\` because ${userMention(member.id)} joined.`,
+				content: `🔊 Voice region 🌐 updated from \`${formatVoiceRegion(previousRegion)}\` to \`${formatVoiceRegion(lock.region)}\` because ${userMention(member.id)} joined.\n[Manage voice region locks in the web dashboard](${dashboardUrl})`,
 				allowedMentions: { parse: [] },
 			});
 			return;
@@ -266,7 +274,7 @@ export async function handleVoiceRegionState(oldState: VoiceState, newState: Voi
 				region: fallbackRegion,
 			});
 			await channel.send({
-				content: `🔊 Voice region 🌐 restored from \`${previousRegion}\` to \`${fallbackRegion}\` because ${userMention(member.id)} left.`,
+				content: `🔊 Voice region 🌐 restored from \`${formatVoiceRegion(previousRegion)}\` to \`${formatVoiceRegion(fallbackRegion)}\` because ${userMention(member.id)} left.\n[Manage voice region locks in the web dashboard](${dashboardUrl})`,
 				allowedMentions: { parse: [] },
 			});
 		}

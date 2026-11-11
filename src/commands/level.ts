@@ -9,6 +9,7 @@ import {
 } from "discord.js";
 
 import type { BotCommand, BotCommandData } from "../helpers/command.js";
+import { createGuildDashboardLink } from "../helpers/dashboard.js";
 import type { Config } from "../services/config.js";
 import { getLevelingStatus, setLeveling } from "../services/leveling.js";
 
@@ -161,6 +162,13 @@ const command: BotCommand = {
 						threshold: status.leveling.threshold ?? null,
 						roleId: status.leveling.roleId ?? null,
 						config,
+					}),
+				],
+				components: [
+					createGuildDashboardLink({
+						config,
+						guildId: interaction.guild.id,
+						section: "service-preferences",
 					}),
 				],
 			});

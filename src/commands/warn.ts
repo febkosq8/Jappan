@@ -9,6 +9,7 @@ import {
 } from "discord.js";
 
 import type { BotCommand, BotCommandData } from "../helpers/command.js";
+import { createGuildDashboardLink } from "../helpers/dashboard.js";
 import type { Config } from "../services/config.js";
 import {
 	getWarningCount,
@@ -157,6 +158,22 @@ const command: BotCommand = {
 			await interaction.editReply("⛔ This command can only be used in a guild.");
 			return;
 		}
+		const dashboardLinks = {
+			settings: [
+				createGuildDashboardLink({
+					config,
+					guildId: interaction.guild.id,
+					section: "service-preferences",
+				}),
+			],
+			warnings: [
+				createGuildDashboardLink({
+					config,
+					guildId: interaction.guild.id,
+					section: "warnings",
+				}),
+			],
+		};
 
 		const subcommand = interaction.options.getSubcommand();
 
@@ -209,6 +226,7 @@ const command: BotCommand = {
 						config,
 					}),
 				],
+				components: dashboardLinks.settings,
 			});
 			return;
 		}
@@ -225,27 +243,34 @@ const command: BotCommand = {
 			});
 			switch (result.action) {
 				case "ban_failed":
-					await interaction.editReply(
-						`Warning issued to ${user}, but I could not ban them because their role is higher than mine or they are the server owner. Total warnings: ${result.warningCount}.`,
-					);
+					await interaction.editReply({
+						content: `Warning issued to ${user}, but I could not ban them because their role is higher than mine or they are the server owner. Total warnings: ${result.warningCount}.`,
+						components: dashboardLinks.warnings,
+					});
 					return;
 				case "timeout_failed":
-					await interaction.editReply(
-						`Warning issued to ${user}, but I could not time them out because their role is higher than mine or they are the server owner. Total warnings: ${result.warningCount}.`,
-					);
+					await interaction.editReply({
+						content: `Warning issued to ${user}, but I could not time them out because their role is higher than mine or they are the server owner. Total warnings: ${result.warningCount}.`,
+						components: dashboardLinks.warnings,
+					});
 					return;
 				case "banned":
-					await interaction.editReply(
-						`${user} was warned and banned after reaching ${result.warningCount} warnings.`,
-					);
+					await interaction.editReply({
+						content: `${user} was warned and banned after reaching ${result.warningCount} warnings.`,
+						components: dashboardLinks.warnings,
+					});
 					return;
 				case "timed_out":
-					await interaction.editReply(
-						`${user} was warned and timed out after reaching ${result.warningCount} warnings.`,
-					);
+					await interaction.editReply({
+						content: `${user} was warned and timed out after reaching ${result.warningCount} warnings.`,
+						components: dashboardLinks.warnings,
+					});
 					return;
 				case "none":
-					await interaction.editReply(`Warning issued to ${user}. Total warnings: ${result.warningCount}.`);
+					await interaction.editReply({
+						content: `Warning issued to ${user}. Total warnings: ${result.warningCount}.`,
+						components: dashboardLinks.warnings,
+					});
 					return;
 			}
 		}
@@ -253,9 +278,10 @@ const command: BotCommand = {
 		if (subcommand === "check") {
 			const user = interaction.options.getUser("user");
 			if (user) {
-				await interaction.editReply(
-					`${user} currently has ${await getWarningCount(interaction.guild.id, user.id)} warning(s).`,
-				);
+				await interaction.editReply({
+					content: `${user} currently has ${await getWarningCount(interaction.guild.id, user.id)} warning(s).`,
+					components: dashboardLinks.warnings,
+				});
 				return;
 			}
 			const status = await getWarningSettings(interaction.guild.id, interaction.guild.name);
@@ -270,6 +296,7 @@ const command: BotCommand = {
 						config,
 					}),
 				],
+				components: dashboardLinks.settings,
 			});
 			return;
 		}
@@ -283,7 +310,10 @@ const command: BotCommand = {
 				username: user.username,
 				count,
 			});
-			await interaction.editReply(`Warning count for ${user} is now ${count}.`);
+			await interaction.editReply({
+				content: `Warning count for ${user} is now ${count}.`,
+				components: dashboardLinks.warnings,
+			});
 			return;
 		}
 

@@ -9,6 +9,7 @@ import {
 } from "discord.js";
 
 import type { BotCommand, BotCommandData } from "../helpers/command.js";
+import { createGuildDashboardLink } from "../helpers/dashboard.js";
 import type { Config } from "../services/config.js";
 import { getMemberAnnouncementStatus, setMemberAnnouncement } from "../services/memberAnnouncement.js";
 
@@ -236,6 +237,13 @@ const command: BotCommand = {
 						leaveEnabled: status.leaveEnabled,
 						leaveChannelId: status.leaveChannelId ?? null,
 						config,
+					}),
+				],
+				components: [
+					createGuildDashboardLink({
+						config,
+						guildId: interaction.guild.id,
+						section: "service-preferences",
 					}),
 				],
 			});
