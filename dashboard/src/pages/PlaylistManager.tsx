@@ -277,19 +277,19 @@ export default function PlaylistManager() {
 										className="mb-1"
 										help={
 											editingName
-												? "Names cannot be changed while editing. To use a different name, save a new playlist."
-												: "Up to 100 characters. Saving an existing name updates that playlist."
+												? "Playlist names can't be changed while editing."
+												: "Up to 100 characters. Saving a name that already exists updates that playlist."
 										}
 									/>
 									<Input
 										id="playlist-name"
 										value={listname}
 										onChange={(event) => setListname(event.target.value)}
+										disabled={busy || editingName !== null}
 										maxLength={MAX_PLAYLIST_NAME_LENGTH}
 										autoComplete="off"
 										placeholder="e.g. Morning mix"
 										className="w-full"
-										readOnly={editingName !== null}
 										required
 									/>
 								</div>
