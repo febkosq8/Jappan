@@ -1,7 +1,8 @@
 import type { DatabaseMigration, MigrationProgress } from "../services/migrations.js";
 
 const warningResetFilter = {
-	$or: [{ warnings: { $not: { $type: "array" } } }, { "warnings.0": { $exists: true } }],
+	warnings: { $type: "object", $not: { $type: "array" } },
+	"warnings.count": { $exists: true },
 };
 
 export const warningRecordsMigration: DatabaseMigration = {

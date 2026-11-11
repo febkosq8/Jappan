@@ -144,6 +144,13 @@ export const warningMemberDetailsSchema = warningMemberSchema.extend({
 			issuedAt: z.string().datetime().nullable(),
 			reason: z.string(),
 			issuerId: snowflake("issuer").nullable(),
+			issuer: z
+				.object({
+					userId: snowflake("issuer"),
+					username: z.string().optional(),
+					avatarUrl: z.url().nullable().optional(),
+				})
+				.nullable(),
 			thresholdAction: z.enum([
 				"unknown",
 				"pending",

@@ -196,6 +196,7 @@ export interface WarningRecord {
 	issuedAt: string | null;
 	reason: string;
 	issuerId: string | null;
+	issuer: { userId: string; username?: string; avatarUrl?: string | null } | null;
 	thresholdAction: "unknown" | "pending" | "none" | "banned" | "timed_out" | "ban_failed" | "timeout_failed";
 }
 

@@ -518,7 +518,7 @@ export default defineRouter("/guilds", [
 		method: "get",
 		path: "/:guildId/users/:userId/warn",
 		tags,
-		summary: "Get a guild member's warning count",
+		summary: "Get a guild member's warning count and history",
 		errorMessage: "Failed to get member warning count",
 		security,
 		parameters: [
@@ -532,7 +532,10 @@ export default defineRouter("/guilds", [
 			},
 		],
 		responses: {
-			200: { description: "Guild member and current warning count", schema: warningMemberDetailsSchema },
+			200: {
+				description: "Guild member, warning count, and history with issuer details",
+				schema: warningMemberDetailsSchema,
+			},
 			...accessResponses,
 			404: { description: "Guild or member not found", schema: errorResponseSchema },
 			409: { description: "Bot is not a guild member", schema: errorResponseSchema },
@@ -546,13 +549,51 @@ export default defineRouter("/guilds", [
 			const member = await resolveGuildMember({ guild, userId: request.params.userId, response });
 			if (!member) return;
 			const warnings = await getWarningRecords(guild.id, member.id);
+			const issuers = new Map<string, { userId: string; username?: string; avatarUrl?: string | null }>();
+			await Promise.all(
+				[...new Set(warnings.map((warning) => warning.issuerId).filter((id): id is string => id !== null))].map(
+					async (issuerId) => {
+						const issuer = await guild.client.users.fetch(issuerId).catch((error: unknown) => {
+							if (
+								error instanceof DiscordAPIError &&
+								[
+									RESTJSONErrorCodes.UnknownUser,
+									RESTJSONErrorCodes.MissingAccess,
+									RESTJSONErrorCodes.MissingPermissions,
+								].includes(Number(error.code))
+							) {
+								logger.warn("HTTP", "Warning issuer is no longer available", {
+									guildId: guild.id,
+									issuerId,
+									error,
+								});
+								return null;
+							}
+							throw error;
+						});
+						issuers.set(
+							issuerId,
+							issuer
+								? {
+										userId: issuer.id,
+										username: issuer.username,
+										avatarUrl: issuer.displayAvatarURL({ size: 64 }),
+									}
+								: { userId: issuerId },
+						);
+					},
+				),
+			);
 			return response.status(200).json({
 				id: member.id,
 				username: member.user.username,
 				displayName: member.displayName,
 				avatarUrl: member.displayAvatarURL({ size: 64 }),
 				warningCount: warnings.length,
-				warnings,
+				warnings: warnings.map((warning) => ({
+					...warning,
+					issuer: warning.issuerId ? issuers.get(warning.issuerId) : null,
+				})),
 			});
 		},
 	},
