@@ -1,6 +1,7 @@
 import { Button, Card, Input, LabelField, Select, Switch } from "@febkosq8/arc";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
+import { Link, useLocation } from "react-router-dom";
 import { useState, type ReactNode, type SubmitEvent } from "react";
 import { toast } from "sonner";
 
@@ -21,15 +22,37 @@ function getErrorMessage(error: unknown): string {
 	return "Could not save preferences. Please try again.";
 }
 
-function channelOptions(channels: AdminGuildChannel[] | undefined, current: PreferenceEntity | null) {
+function channelOptions({
+	channels,
+	current,
+	requireSendPermissions = false,
+}: {
+	channels: AdminGuildChannel[] | undefined;
+	current: PreferenceEntity | null;
+	requireSendPermissions?: boolean;
+}) {
 	const options = (channels ?? [])
-		.filter((channel) => textChannelTypes.includes(channel.typeName))
+		.filter(
+			(channel) =>
+				textChannelTypes.includes(channel.typeName) && (!requireSendPermissions || channel.canSendMessage),
+		)
 		.map((channel) => ({
 			key: channel.id,
 			label: `#${channel.name} (${channel.id}) | ${channel.parent?.name ?? "No Category"}`,
 		}));
 	if (current && !options.some((option) => option.key === current.id)) {
-		options.unshift({ key: current.id, label: `${current.name ?? "unavailable"} (${current.id})` });
+		const currentChannel = channels?.find((channel) => channel.id === current.id);
+		options.unshift({
+			key: current.id,
+			label: `${current.name ?? "unavailable"} (${current.id})${
+				requireSendPermissions
+					? currentChannel && !currentChannel.canSendMessage
+						? " (missing permissions)"
+						: " (unavailable)"
+					: ""
+			}`,
+			disabled: requireSendPermissions,
+		});
 	}
 	return [{ key: "", label: "None" }, ...options];
 }
@@ -76,7 +99,7 @@ function SelectField({
 	label: string;
 	value: string;
 	onChange: (value: string) => void;
-	data: { key: string; label: string }[];
+	data: { key: string; label: string; disabled?: boolean }[];
 	disabled: boolean;
 	loading: boolean;
 }) {
@@ -150,6 +173,7 @@ function PreferenceForm({
 	pending,
 	disabled,
 	onSubmit,
+	permissionWarning,
 	children,
 }: {
 	id: string;
@@ -158,6 +182,7 @@ function PreferenceForm({
 	pending: boolean;
 	disabled: boolean;
 	onSubmit: () => void;
+	permissionWarning?: ReactNode;
 	children: ReactNode;
 }) {
 	function submit(event: SubmitEvent<HTMLFormElement>) {
@@ -184,6 +209,7 @@ function PreferenceForm({
 						{pending ? "Saving..." : "Save"}
 					</Button>
 				</div>
+				{permissionWarning}
 				{children}
 			</form>
 		</Card>
@@ -195,6 +221,7 @@ interface SectionProps {
 	channels: AdminGuildChannel[] | undefined;
 	roles: GuildRole[] | undefined;
 	channelsLoading: boolean;
+	channelsError: boolean;
 	rolesLoading: boolean;
 	readOnly: boolean;
 	onSaved: () => Promise<void>;
@@ -217,11 +244,45 @@ function useSave<Input>(save: (input: Input) => Promise<void>, label: string, on
 	});
 }
 
-function AuditLogSection({ guild, channels, channelsLoading, readOnly, onSaved }: SectionProps) {
+function AuditLogSection({ guild, channels, channelsLoading, channelsError, readOnly, onSaved }: SectionProps) {
+	const location = useLocation();
 	const { auditLog } = guild.servicePreferences;
 	const [enabled, setEnabled] = useState(auditLog.enabled);
 	const [channelId, setChannelId] = useState(auditLog.channel?.id ?? "");
 	const [fullVerbosity, setFullVerbosity] = useState(auditLog.fullVerbosity);
+	const selectedChannel = channels?.find((channel) => channel.id === channelId);
+	const missingPermissions: string[] = [];
+	const permissions = guild.permissions;
+	const hasAdministratorPermission = permissions?.includes("Administrator") ?? false;
+	if (permissions && !hasAdministratorPermission && !permissions.includes("ViewAuditLog")) {
+		missingPermissions.push("View Audit Log");
+	}
+	if (channelId && selectedChannel && !selectedChannel.canSendMessage) {
+		missingPermissions.push("View Channel, Send Messages, or Embed Links in the selected channel");
+	}
+	const permissionCheckUnavailable = permissions === undefined || channels === undefined || channelsError;
+	const cannotEnable =
+		enabled &&
+		(permissionCheckUnavailable || missingPermissions.length > 0 || (Boolean(channelId) && !selectedChannel));
+	const permissionWarning =
+		enabled && cannotEnable ? (
+			<div
+				role="alert"
+				className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive"
+			>
+				<p className="font-medium">Missing required permissions.</p>
+				<p className="mt-1">
+					Check the{" "}
+					<Link
+						to={`${location.pathname}${location.search}#command-permissions`}
+						className="font-medium underline underline-offset-2"
+					>
+						Command Permissions tab
+					</Link>{" "}
+					for more info.
+				</p>
+			</div>
+		) : undefined;
 	const mutation = useSave(
 		(input: { enabled: boolean; channelId: string | null; fullVerbosity: boolean }) =>
 			APIHandler.updateAuditLogPreference(guild.id, input),
@@ -235,10 +296,11 @@ function AuditLogSection({ guild, channels, channelsLoading, readOnly, onSaved }
 			title="Audit log"
 			description="Post moderation and server events to a channel."
 			pending={mutation.isPending}
-			disabled={disabled || (enabled && !channelId)}
+			disabled={disabled || (enabled && (!channelId || cannotEnable))}
 			onSubmit={() =>
 				mutation.mutate({ enabled, channelId: channelId || null, fullVerbosity: enabled && fullVerbosity })
 			}
+			permissionWarning={permissionWarning}
 		>
 			<ToggleField label="Enabled" checked={enabled} onChange={setEnabled} disabled={disabled} />
 			<SelectField
@@ -246,7 +308,7 @@ function AuditLogSection({ guild, channels, channelsLoading, readOnly, onSaved }
 				label="Channel"
 				value={channelId}
 				onChange={setChannelId}
-				data={channelOptions(channels, auditLog.channel)}
+				data={channelOptions({ channels, current: auditLog.channel, requireSendPermissions: true })}
 				loading={channelsLoading}
 				disabled={disabled || !enabled}
 			/>
@@ -348,7 +410,7 @@ function MemberAnnouncementsSection({ guild, channels, channelsLoading, readOnly
 				label="Join channel"
 				value={joinChannelId}
 				onChange={setJoinChannelId}
-				data={channelOptions(channels, memberAnnouncements.joinChannel)}
+				data={channelOptions({ channels, current: memberAnnouncements.joinChannel })}
 				loading={channelsLoading}
 				disabled={disabled || !joinEnabled}
 			/>
@@ -363,7 +425,7 @@ function MemberAnnouncementsSection({ guild, channels, channelsLoading, readOnly
 				label="Leave channel"
 				value={leaveChannelId}
 				onChange={setLeaveChannelId}
-				data={channelOptions(channels, memberAnnouncements.leaveChannel)}
+				data={channelOptions({ channels, current: memberAnnouncements.leaveChannel })}
 				loading={channelsLoading}
 				disabled={disabled || !leaveEnabled}
 			/>
@@ -437,7 +499,7 @@ function WarningsSection({ guild, channels, channelsLoading, readOnly, onSaved }
 				label="Audit channel"
 				value={auditChannelId}
 				onChange={setAuditChannelId}
-				data={channelOptions(channels, warnings.auditChannel)}
+				data={channelOptions({ channels, current: warnings.auditChannel })}
 				loading={channelsLoading}
 				disabled={disabled}
 			/>
@@ -477,6 +539,7 @@ export default function ServicePreferencesEditor({
 		channels: channelsQuery.data,
 		roles: rolesQuery.data,
 		channelsLoading: guild.isActiveMember && active && channelsQuery.isFetching,
+		channelsError: guild.isActiveMember && active && channelsQuery.isError,
 		rolesLoading: guild.isActiveMember && active && rolesQuery.isFetching,
 		readOnly: !guild.isActiveMember,
 		onSaved: handleSaved,

@@ -225,6 +225,7 @@ export interface VoiceRegionLocks {
 export interface ServicePreferencesEditorGuild {
 	id: string;
 	isActiveMember: boolean;
+	permissions?: string[];
 	servicePreferences: ServicePreferences;
 }
 

@@ -81,6 +81,8 @@ This document records design decisions and behavior that is easy to miss.
   Role assignability reflects bot permissions, hierarchy, and managed roles.
 - Preference updates follow the slash-command validation rules, clear dependent
   values when disabled, and do not post a confirmation message to the guild.
+  Enabling audit logging also requires `Embed Links` in the selected channel,
+  because audit events are sent as embeds.
 
 ## Bot actions and player sessions
 

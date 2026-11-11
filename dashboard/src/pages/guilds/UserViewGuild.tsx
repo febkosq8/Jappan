@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useEffect, useState, type ReactNode } from "react";
 import { FaListCheck } from "react-icons/fa6";
-import { FiAlertCircle, FiArrowLeft, FiGlobe, FiHome, FiShield, FiSliders } from "react-icons/fi";
+import { FiAlertCircle, FiArrowLeft, FiGlobe, FiHash, FiHome, FiShield, FiSliders } from "react-icons/fi";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -11,6 +11,7 @@ import APIHandler, { type UserGuildDetails } from "@jappan/handlers/APIHandler";
 import { AccessRedirect } from "@jappan/components/AdminRoute";
 import GuildPageHeader from "@jappan/components/display/GuildPageHeader";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
+import GuildChannels from "@jappan/components/guild/GuildChannels";
 import ServicePreferencesEditor from "@jappan/components/guild/ServicePreferencesEditor";
 import VoiceRegionLockManager from "@jappan/components/guild/VoiceRegionLockManager";
 import WarningManager from "@jappan/components/guild/WarningManager";
@@ -22,6 +23,7 @@ import useDocumentTitle, { formatTitle } from "@jappan/helpers/useDocumentTitle"
 
 const guildSections = [
 	{ id: "guild-overview", label: "Overview", icon: FiHome },
+	{ id: "guild-channels", label: "Channels", icon: FiHash },
 	{ id: "service-preferences", label: "Service Preferences", icon: FiSliders },
 	{ id: "warnings", label: "Warnings", icon: FiAlertCircle },
 	{ id: "voice-region-locks", label: "Voice region locks", icon: FiGlobe },
@@ -66,6 +68,9 @@ function GuildDetails({ guild }: { guild: UserGuildDetails }) {
 			</TabsList>
 			<TabsPanel value="guild-overview" keepMounted>
 				<GuildOverview guild={guild} />
+			</TabsPanel>
+			<TabsPanel value="guild-channels" keepMounted>
+				<GuildChannels guild={guild} />
 			</TabsPanel>
 			<TabsPanel value="service-preferences" keepMounted>
 				<ServicePreferencesEditor guild={guild} active={section === "service-preferences"} />
