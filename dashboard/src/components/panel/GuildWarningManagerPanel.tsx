@@ -1,7 +1,7 @@
 import { Avatar, Button, Card, Input } from "@febkosq8/arc";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { FiAlertCircle, FiUser } from "react-icons/fi";
 import { toast } from "sonner";
 
@@ -44,7 +44,6 @@ export default function GuildWarningManagerPanel({
 	const queryClient = useQueryClient();
 	const [memberId, setMemberId] = useState("");
 	const [reason, setReason] = useState("");
-	const [overrideValue, setOverrideValue] = useState("");
 	const warningsQueryKey = ["user", "guild", guildId, "warnings", memberId];
 
 	const memberQuery = useQuery({
@@ -53,10 +52,6 @@ export default function GuildWarningManagerPanel({
 		enabled: active && isActiveMember && memberId !== "",
 		retry: false,
 	});
-
-	useEffect(() => {
-		setOverrideValue(memberQuery.data?.warningCount.toString() ?? "");
-	}, [memberQuery.data]);
 
 	const issueMutation = useMutation({
 		mutationFn: () => {
@@ -72,12 +67,12 @@ export default function GuildWarningManagerPanel({
 			await queryClient.invalidateQueries({ queryKey: ["user", "guild", guildId, "warnings"] });
 		},
 	});
-	const overrideMutation = useMutation({
-		mutationFn: () => {
-			const promise = APIHandler.overrideGuildMemberWarnings(guildId, memberId, Number(overrideValue));
+	const deleteMutation = useMutation({
+		mutationFn: (warningId: string) => {
+			const promise = APIHandler.deleteGuildMemberWarning(guildId, memberId, warningId);
 			toast.promise(promise, {
-				loading: "Updating warning count…",
-				success: (warningCount) => `Warning count updated to ${warningCount}.`,
+				loading: "Deleting warning…",
+				success: "Warning deleted.",
 				error: (error) => getErrorMessage(error),
 			});
 			return promise;
@@ -88,17 +83,15 @@ export default function GuildWarningManagerPanel({
 	});
 
 	const selectedMember = memberQuery.data;
-	const busy = issueMutation.isPending || overrideMutation.isPending;
-	const parsedOverride = Number(overrideValue);
-	const canOverride = overrideValue.trim() !== "" && Number.isSafeInteger(parsedOverride) && parsedOverride >= 0;
+	const busy = issueMutation.isPending || deleteMutation.isPending;
 
 	return (
 		<div className="space-y-5">
 			<Card id="warnings" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
 				<h2 className="text-lg font-semibold">Manage warnings</h2>
 				<p className="mt-1 text-sm text-muted-foreground">
-					Select a member to review their warning count, issue a warning, or update the count. Thresholds and
-					audit logging are managed in Service Preferences.
+					Select a member to review warning history, issue a warning, or remove an individual warning.
+					Thresholds and audit logging are managed in Service Preferences.
 				</p>
 				{!isActiveMember && (
 					<p
@@ -225,42 +218,68 @@ export default function GuildWarningManagerPanel({
 													{issueMutation.isPending ? "Issuing..." : "Issue warning"}
 												</Button>
 											</div>
-											<div className="flex min-w-0 flex-col rounded-md border border-border p-3">
-												<h4 className="font-medium">Adjust warning count</h4>
-												<p className="mt-1 text-sm text-muted-foreground">
-													Set the member's current total.
-												</p>
-												<div className="my-3">
-													<label
-														htmlFor="warning-count-override"
-														className="mb-1 block text-sm font-medium"
-													>
-														New warning count
-													</label>
-													<Input
-														id="warning-count-override"
-														type="number"
-														inputMode="numeric"
-														min={0}
-														step={1}
-														value={overrideValue}
-														onChange={(event) => setOverrideValue(event.target.value)}
-														disabled={busy}
-														className="w-full"
-													/>
-												</div>
-												<Button
-													type="button"
-													size="sm"
-													variant="outline-secondary"
-													className="mt-auto w-full"
-													disabled={busy || !canOverride}
-													onClick={() => overrideMutation.mutate()}
-												>
-													{overrideMutation.isPending ? "Saving..." : "Save count"}
-												</Button>
-											</div>
 										</div>
+										<section
+											aria-labelledby="warning-history-heading"
+											className="rounded-md border border-border p-3"
+										>
+											<div className="flex flex-wrap items-baseline justify-between gap-2">
+												<h4 id="warning-history-heading" className="font-medium">
+													Warning history
+												</h4>
+												<span className="text-sm text-muted-foreground">
+													{selectedMember.warningCount} active warning(s)
+												</span>
+											</div>
+											{selectedMember.warnings.length > 0 ? (
+												<ol className="mt-3 space-y-3">
+													{selectedMember.warnings
+														.slice()
+														.reverse()
+														.map((warning) => (
+															<li
+																key={warning.id}
+																className="flex flex-wrap items-start justify-between gap-3 rounded-md border border-border p-3"
+															>
+																<div className="min-w-0 flex-1 space-y-1">
+																	<p className="break-words font-medium">
+																		{warning.reason}
+																	</p>
+																	<p className="text-sm text-muted-foreground">
+																		{warning.issuedAt
+																			? new Date(
+																					warning.issuedAt,
+																				).toLocaleString()
+																			: "Date unknown"}
+																		{" · "}
+																		Issuer: {warning.issuerId ?? "Unknown"}
+																	</p>
+																	<p className="text-sm text-muted-foreground">
+																		Threshold action:{" "}
+																		{warning.thresholdAction.replace(/_/gu, " ")}
+																	</p>
+																</div>
+																<Button
+																	type="button"
+																	size="sm"
+																	variant="outline-secondary"
+																	disabled={
+																		busy || warning.thresholdAction === "pending"
+																	}
+																	aria-label={`Delete warning: ${warning.reason}`}
+																	onClick={() => deleteMutation.mutate(warning.id)}
+																>
+																	Delete
+																</Button>
+															</li>
+														))}
+												</ol>
+											) : (
+												<p className="mt-3 text-sm text-muted-foreground">
+													No active warnings.
+												</p>
+											)}
+										</section>
 									</>
 								)}
 							</div>

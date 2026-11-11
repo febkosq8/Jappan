@@ -191,8 +191,17 @@ export interface WarningMember {
 	avatarUrl: string | null;
 }
 
+export interface WarningRecord {
+	id: string;
+	issuedAt: string | null;
+	reason: string;
+	issuerId: string | null;
+	thresholdAction: "unknown" | "pending" | "none" | "banned" | "timed_out" | "ban_failed" | "timeout_failed";
+}
+
 export interface WarningMemberDetails extends WarningMember {
 	warningCount: number;
+	warnings: WarningRecord[];
 }
 
 export interface WarnedMember {
@@ -450,13 +459,11 @@ class APIHandler {
 		return data;
 	}
 
-	static async overrideGuildMemberWarnings(guildId: string, userId: string, count: number): Promise<number> {
-		const { data } = await apiClient.patch<{ warningCount: number }>(
-			`/api/v1/guilds/${encodeURIComponent(guildId)}/users/${encodeURIComponent(userId)}/warn`,
-			{ count },
+	static async deleteGuildMemberWarning(guildId: string, userId: string, warningId: string): Promise<void> {
+		await apiClient.delete(
+			`/api/v1/guilds/${encodeURIComponent(guildId)}/users/${encodeURIComponent(userId)}/warn/${encodeURIComponent(warningId)}`,
 			{ withCredentials: true },
 		);
-		return data.warningCount;
 	}
 
 	static async getGuildVoiceRegionLocks(guildId: string): Promise<VoiceRegionLocks> {

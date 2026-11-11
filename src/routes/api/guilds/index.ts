@@ -29,9 +29,9 @@ import type { AuthSession } from "../../../services/auth.js";
 import { getLeaderboard, LEADERBOARD_PAGE_SIZE } from "../../../services/leveling.js";
 import {
 	getWarnedMembers,
-	getWarningCount,
+	getWarningRecords,
 	issueWarningForMember,
-	overrideWarningCount,
+	removeWarning,
 } from "../../../services/warnings.js";
 import {
 	addVoiceRegionLock,
@@ -55,8 +55,7 @@ import {
 	memberAnnouncementsPreferenceSchema,
 	warnedMemberSchema,
 	warningActionResultSchema,
-	warningCountOverrideSchema,
-	warningCountSchema,
+	warningIdSchema,
 	warningIssueSchema,
 	warningMemberDetailsSchema,
 	warningMemberSchema,
@@ -460,7 +459,7 @@ export default defineRouter("/guilds", [
 				members.map((member) => ({
 					userId: member.userId,
 					username: member.username,
-					warningCount: member.warnings.count,
+					warningCount: member.warningCount,
 					avatarUrl:
 						guild.members.cache.get(member.userId)?.displayAvatarURL({ size: 64 }) ??
 						guild.client.users.cache.get(member.userId)?.displayAvatarURL({ size: 64 }) ??
@@ -546,12 +545,14 @@ export default defineRouter("/guilds", [
 			if (!guild) return;
 			const member = await resolveGuildMember({ guild, userId: request.params.userId, response });
 			if (!member) return;
+			const warnings = await getWarningRecords(guild.id, member.id);
 			return response.status(200).json({
 				id: member.id,
 				username: member.user.username,
 				displayName: member.displayName,
 				avatarUrl: member.displayAvatarURL({ size: 64 }),
-				warningCount: await getWarningCount(guild.id, member.id),
+				warningCount: warnings.length,
+				warnings,
 			});
 		},
 	},
@@ -749,11 +750,11 @@ export default defineRouter("/guilds", [
 		},
 	},
 	{
-		method: "patch",
-		path: "/:guildId/users/:userId/warn",
+		method: "delete",
+		path: "/:guildId/users/:userId/warn/:warningId",
 		tags,
-		summary: "Override a guild member's warning count",
-		errorMessage: "Failed to override member warning count",
+		summary: "Delete a warning from a guild member's history",
+		errorMessage: "Failed to delete member warning",
 		security,
 		parameters: [
 			...parameters,
@@ -764,36 +765,42 @@ export default defineRouter("/guilds", [
 				description: "Discord user ID",
 				schema: z.string().regex(/^\d{17,20}$/u),
 			},
+			{
+				name: "warningId",
+				in: "path",
+				required: true,
+				description: "Warning record ID",
+				schema: warningIdSchema,
+			},
 		],
-		requestBody: {
-			required: true,
-			content: { "application/json": { schema: warningCountOverrideSchema } },
-		},
 		responses: {
-			200: { description: "Warning count updated", schema: warningCountSchema },
+			204: { description: "Warning deleted" },
 			...accessResponses,
-			404: { description: "Guild or member not found", schema: errorResponseSchema },
+			400: { description: "Invalid warning ID", schema: errorResponseSchema },
+			404: { description: "Guild, member, or warning not found", schema: errorResponseSchema },
 			409: { description: "Bot is not a guild member", schema: errorResponseSchema },
 			503: { description: "Guild or service unavailable", schema: errorResponseSchema },
-			500: { description: "Failed to override member warning count", schema: errorResponseSchema },
+			500: { description: "Failed to delete member warning", schema: errorResponseSchema },
 		},
 		middleware,
 		handler: async (request, response) => {
 			const guild = await resolveGuild(request.params.guildId, response);
 			if (!guild) return;
-			const body = warningCountOverrideSchema.safeParse(request.body);
-			if (!body.success) {
-				return response.status(400).json({ error: body.error.issues[0]?.message ?? "Invalid request body" });
+			const warningId = warningIdSchema.safeParse(request.params.warningId);
+			if (!warningId.success) {
+				return response.status(400).json({ error: warningId.error.issues[0]?.message ?? "Invalid warning ID" });
 			}
 			const member = await resolveGuildMember({ guild, userId: request.params.userId, response });
 			if (!member) return;
-			const updatedMember = await overrideWarningCount({
+			const removed = await removeWarning({
 				guildId: guild.id,
 				userId: member.id,
-				username: member.user.username,
-				count: body.data.count,
+				warningId: warningId.data,
 			});
-			return response.status(200).json({ warningCount: updatedMember.warnings.count });
+			if (!removed) {
+				return response.status(404).json({ error: "Warning not found" });
+			}
+			return response.status(204).end();
 		},
 	},
 	{

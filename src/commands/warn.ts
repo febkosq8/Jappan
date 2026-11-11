@@ -15,7 +15,6 @@ import {
 	getWarningCount,
 	getWarningSettings,
 	issueWarningForMember,
-	overrideWarningCount,
 	setWarningSettings,
 } from "../services/warnings.js";
 
@@ -37,7 +36,6 @@ const commandData = {
 		},
 		{ name: "issue", description: "Issue a warning to a user", category: "moderator" },
 		{ name: "check", description: "Check warning settings or a user's warning count", category: "moderator" },
-		{ name: "override", description: "Override a user's warning count", category: "moderator" },
 	],
 	isDBDependant: true,
 	requiredBotPermissions: [
@@ -140,7 +138,11 @@ const command: BotCommand = {
 				.setDescription("Issue a warning to a user")
 				.addUserOption((option) => option.setName("user").setDescription("User to warn").setRequired(true))
 				.addStringOption((option) =>
-					option.setName("reason").setDescription("Reason for the warning").setRequired(false),
+					option
+						.setName("reason")
+						.setDescription("Reason for the warning")
+						.setMaxLength(500)
+						.setRequired(false),
 				),
 		)
 		.addSubcommand((subcommand) =>
@@ -148,15 +150,6 @@ const command: BotCommand = {
 				.setName("check")
 				.setDescription("Check warning settings or a user's warning count")
 				.addUserOption((option) => option.setName("user").setDescription("User to check").setRequired(false)),
-		)
-		.addSubcommand((subcommand) =>
-			subcommand
-				.setName("override")
-				.setDescription("Override a user's warning count")
-				.addUserOption((option) => option.setName("user").setDescription("User to update").setRequired(true))
-				.addIntegerOption((option) =>
-					option.setName("count").setDescription("New warning count").setMinValue(0).setRequired(true),
-				),
 		)
 		.setDefaultMemberPermissions(commandData.defaultMemberPermissions)
 		.setContexts([InteractionContextType.Guild]),
@@ -305,22 +298,6 @@ const command: BotCommand = {
 					}),
 				],
 				components: dashboardLinks.settings,
-			});
-			return;
-		}
-
-		if (subcommand === "override") {
-			const user = interaction.options.getUser("user", true);
-			const count = interaction.options.getInteger("count", true);
-			await overrideWarningCount({
-				guildId: interaction.guild.id,
-				userId: user.id,
-				username: user.username,
-				count,
-			});
-			await interaction.editReply({
-				content: `Warning count for ${user} is now ${count}.`,
-				components: dashboardLinks.warnings,
 			});
 			return;
 		}
