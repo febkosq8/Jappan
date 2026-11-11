@@ -83,10 +83,11 @@ export default defineRouter("/playlists", [
 			if (!searchResponse.success || !searchResponse.data.hasTracks()) {
 				return response.status(422).json({ error: `No tracks found for '${query}'.` });
 			}
+			const entry = { listname, query, shuffle, loop };
 			await saveUserPlaylist({
 				userId,
 				username: session.user.username ?? session.user.name,
-				entry: { listname, query, shuffle, loop },
+				entry,
 			});
 			return response.status(204).end();
 		},
