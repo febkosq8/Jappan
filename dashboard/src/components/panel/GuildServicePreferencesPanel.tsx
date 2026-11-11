@@ -33,7 +33,7 @@ function channelOptions({
 		.filter((channel) => textChannelTypes.includes(channel.typeName))
 		.map((channel) => ({
 			key: channel.id,
-			label: `#${channel.name} (${channel.id}) | ${channel.parent?.name ?? "No Category"}`,
+			label: `#${channel.name} (${channel.id}) | ${channel.parent ? (channel.parent.name ?? "Unavailable category") : "Uncategorized"}`,
 			disabled: !channel.canSendMessage,
 		}));
 	if (current && !options.some((option) => option.key === current.id)) {
@@ -46,7 +46,7 @@ function channelOptions({
 			disabled: true,
 		});
 	}
-	return [{ key: "", label: "None" }, ...options];
+	return [{ key: "", label: "No channel selected" }, ...options];
 }
 
 function roleOptions(roles: GuildRole[] | undefined, current: PreferenceEntity | null) {

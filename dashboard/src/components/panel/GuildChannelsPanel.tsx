@@ -30,7 +30,7 @@ function ChannelGroupList({ guildId, channels }: { guildId: string; channels: Ad
 			? [
 					{
 						key: "uncategorized",
-						name: "No parent category",
+						name: "Uncategorized channels",
 						categoryId: null,
 						unavailable: false,
 						createdTimestampMs: null,
@@ -63,7 +63,11 @@ function ChannelGroupList({ guildId, channels }: { guildId: string; channels: Ad
 					hoverable={false}
 					role="region"
 					aria-label={group.name}
-					className="min-w-0 rounded-md border-border p-3"
+					className={
+						group.categoryId === null
+							? "min-w-0 rounded-md border-dashed border-border bg-muted/30 p-3"
+							: "min-w-0 rounded-md border-border p-3"
+					}
 				>
 					<div className="flex items-center justify-between gap-2">
 						<h3 className="wrap-break-word font-semibold">{group.name}</h3>
@@ -71,6 +75,9 @@ function ChannelGroupList({ guildId, channels }: { guildId: string; channels: Ad
 							{group.channels.length} {group.channels.length === 1 ? "channel" : "channels"}
 						</span>
 					</div>
+					{group.categoryId === null && (
+						<p className="mt-1 text-sm text-muted-foreground">These channels are not in a category.</p>
+					)}
 					{group.categoryId && (
 						<p className="break-all text-xs text-muted-foreground">
 							{group.unavailable ? "Category unavailable · " : ""}
