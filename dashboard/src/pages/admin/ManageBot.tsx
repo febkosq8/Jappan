@@ -23,6 +23,8 @@ import { AccessRedirect, accessErrorStatus } from "@jappan/components/AdminRoute
 import ChannelDisplay from "@jappan/components/display/ChannelDisplay";
 import UserDisplay from "@jappan/components/display/UserDisplay";
 import ExternalTextLink from "@jappan/components/ExternalTextLink";
+import LatencyHelp from "@jappan/components/LatencyHelp";
+import LatencyValue from "@jappan/components/LatencyValue";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import APIHandler, { type AdminBotPlayerSession } from "@jappan/handlers/APIHandler";
 import useDocumentTitle, { formatTitle } from "@jappan/helpers/useDocumentTitle";
@@ -280,7 +282,7 @@ export default function ManageBot() {
 					) : (
 						<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 							<Card hoverable={false} className="rounded-md border-border">
-								<Card.Content className="flex min-h-24 flex-col items-start justify-between gap-3 p-3!">
+								<Card.Content className="flex min-w-0 flex-col items-start gap-2 p-0!">
 									<h2 className="text-sm font-semibold">Bot identity</h2>
 									{bot ? (
 										<div className="flex min-w-0 items-center gap-2 self-end">
@@ -309,7 +311,7 @@ export default function ManageBot() {
 								</Card.Content>
 							</Card>
 							<Card hoverable={false} className="rounded-md border-border">
-								<Card.Content className="flex min-h-24 flex-col items-start justify-between gap-3 p-3!">
+								<Card.Content className="flex min-w-0 flex-col items-start gap-2 p-0!">
 									<p className="text-sm font-semibold">Version</p>
 									{bot ? (
 										<strong className="self-end text-right text-lg">{bot.version}</strong>
@@ -327,7 +329,7 @@ export default function ManageBot() {
 								</Card.Content>
 							</Card>
 							<Card hoverable={false} className="rounded-md border-border">
-								<Card.Content className="flex min-h-24 min-w-0 flex-col items-start justify-between gap-3 p-3!">
+								<Card.Content className="flex min-w-0 flex-col items-start gap-2 p-0!">
 									<p className="text-sm font-semibold">Started</p>
 									{bot ? (
 										<time
@@ -358,7 +360,7 @@ export default function ManageBot() {
 								{ label: "Members", value: bot?.memberCount },
 							].map(({ label, value }) => (
 								<Card key={label} hoverable={false} className="rounded-md border-border">
-									<Card.Content className="flex min-h-24 flex-col items-start justify-between gap-3 p-3!">
+									<Card.Content className="flex min-w-0 flex-col items-start gap-2 p-0!">
 										<p className="text-sm font-semibold">{label}</p>
 										{bot ? (
 											<div className="self-end text-right">
@@ -381,15 +383,26 @@ export default function ManageBot() {
 								</Card>
 							))}
 							{[
-								{ label: "Gateway latency", value: bot?.gatewayLatencyMs },
-								{ label: "Dashboard API latency", value: bot?.apiLatencyMs },
-							].map(({ label, value }) => (
+								{
+									label: "Gateway latency",
+									value: bot?.gatewayLatencyMs,
+									kind: "gateway" as const,
+								},
+								{
+									label: "Dashboard API latency",
+									value: bot?.apiLatencyMs,
+									kind: "api" as const,
+								},
+							].map(({ label, value, kind }) => (
 								<Card key={label} hoverable={false} className="rounded-md border-border">
-									<Card.Content className="flex min-h-24 flex-col items-start justify-between gap-3 p-3!">
-										<p className="text-sm font-semibold">{label}</p>
+									<Card.Content className="flex min-w-0 flex-col items-start gap-2 p-0!">
+										<div className="flex items-center gap-2">
+											<p className="text-sm font-semibold">{label}</p>
+											<LatencyHelp kind={kind} />
+										</div>
 										{bot ? (
 											<strong className="self-end text-right text-lg">
-												{value == null ? "Unavailable" : `${value.toLocaleString()} ms`}
+												<LatencyValue value={value} />
 											</strong>
 										) : (
 											<div className="self-end">

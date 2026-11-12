@@ -1,6 +1,8 @@
 import { Tag } from "@febkosq8/arc";
 import { FiAlertTriangle, FiCheckCircle, FiXCircle } from "react-icons/fi";
 
+import LatencyHelp from "@jappan/components/LatencyHelp";
+import LatencyValue from "@jappan/components/LatencyValue";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import type { BotStatus, HealthResponse } from "@jappan/handlers/APIHandler";
 
@@ -75,15 +77,14 @@ export default function BotStatusHealthPanel({
 					);
 				})}
 			</ul>
-			<dl className="mt-3 rounded-md border border-border px-3 py-2">
-				<dt className="text-sm text-muted-foreground">Gateway latency</dt>
-				<dd className="mt-1 font-medium">
+			<dl className="mt-3 flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2 text-base">
+				<dt className="flex items-center gap-2 text-muted-foreground">
+					Gateway latency
+					<LatencyHelp kind="gateway" />
+				</dt>
+				<dd className="text-right font-medium">
 					{bot ? (
-						bot.gatewayLatencyMs === null ? (
-							"Unavailable"
-						) : (
-							`${bot.gatewayLatencyMs.toLocaleString()} ms`
-						)
+						<LatencyValue value={bot.gatewayLatencyMs} />
 					) : botIsError ? (
 						"Unavailable"
 					) : (
