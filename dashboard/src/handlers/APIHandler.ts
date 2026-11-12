@@ -115,6 +115,55 @@ export interface AdminGuildMessageResult {
 	messageUrl: string;
 }
 
+export interface AdminGuildClearMessagePreview {
+	previewId: string;
+	guild: { id: string; name: string };
+	channel: { id: string; name: string };
+	scannedCount: number;
+	matchedCount: number;
+	deleteCount: number;
+	bulkDeleteCount: number;
+	individualDeleteCount: number;
+	olderThanBulkDeleteLimit: number;
+	scanLimitReached: boolean;
+	expiresAt: number;
+	messages: {
+		id: string;
+		author: { id: string; username: string; displayName: string };
+		content: string;
+		createdTimestampMs: number;
+		jumpUrl: string;
+	}[];
+}
+
+export interface ClearMessageJobState {
+	jobId: string;
+	guildId: string;
+	guildName: string;
+	channelName: string;
+	selectedChannelId: string | null;
+	targetUserId: string | null;
+	textFilter: string | null;
+	status: "running" | "complete" | "stopped" | "failed";
+	startedAtMs: number;
+	finishedAtMs: number | null;
+	messageLimit: number;
+	channelCount: number;
+	completedChannels: number;
+	currentChannelName: string | null;
+	scannedMessages: number;
+	matchedMessages: number;
+	messagesToDelete: number;
+	messagesProcessed: number;
+	deletedMessages: number;
+	failedMessages: number;
+	unprocessedMessages: number;
+	progressPercentage: number;
+	timeLimitReached: boolean;
+	errors: string[];
+	error?: string;
+}
+
 export interface AdminGuildKickResult {
 	departureMessage: {
 		channelId: string;
@@ -564,6 +613,34 @@ class APIHandler {
 			`/api/v1/guilds/${encodeURIComponent(guildId)}/channels`,
 			{ withCredentials: true },
 		);
+		return data;
+	}
+
+	static async previewAdminGuildMessages(
+		guildId: string,
+		filters: { channelId: string; count: number; userId?: string; text?: string },
+	): Promise<AdminGuildClearMessagePreview> {
+		const { data } = await apiClient.post<AdminGuildClearMessagePreview>(
+			`/api/v1/admin/guilds/${encodeURIComponent(guildId)}/messages/preview`,
+			filters,
+			{ withCredentials: true },
+		);
+		return data;
+	}
+
+	static async startAdminGuildMessageClear(guildId: string, previewId: string): Promise<{ jobId: string }> {
+		const { data } = await apiClient.post<{ jobId: string }>(
+			`/api/v1/admin/guilds/${encodeURIComponent(guildId)}/messages/clear`,
+			{ previewId, confirm: true },
+			{ withCredentials: true },
+		);
+		return data;
+	}
+
+	static async getClearMessageJob(jobId: string): Promise<ClearMessageJobState> {
+		const { data } = await apiClient.get<ClearMessageJobState>(`/api/v1/clear-jobs/${encodeURIComponent(jobId)}`, {
+			withCredentials: true,
+		});
 		return data;
 	}
 

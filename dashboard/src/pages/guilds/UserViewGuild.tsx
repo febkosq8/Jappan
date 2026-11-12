@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useEffect, useState, type ReactNode } from "react";
 import { FaListCheck } from "react-icons/fa6";
-import { FiAlertCircle, FiArrowLeft, FiGlobe, FiHash, FiHome, FiShield, FiSliders } from "react-icons/fi";
+import { FiAlertCircle, FiArrowLeft, FiGlobe, FiHash, FiHome, FiShield, FiSliders, FiTrash2 } from "react-icons/fi";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -18,6 +18,7 @@ import GuildWarningManagerPanel from "@jappan/components/panel/GuildWarningManag
 import GuildOverviewPanel from "@jappan/components/panel/GuildOverviewPanel";
 import BotPermissionsPanel from "@jappan/components/panel/BotPermissionsPanel";
 import CommandPermissionsPanel from "@jappan/components/panel/CommandPermissionsPanel";
+import ClearMessagesPanel from "@jappan/components/panel/ClearMessagesPanel";
 import guildIdPattern from "@jappan/helpers/guildIdPattern";
 import useDocumentTitle, { formatTitle } from "@jappan/helpers/useDocumentTitle";
 
@@ -29,6 +30,7 @@ const guildSections = [
 	{ id: "voice-region-locks", label: "Voice region locks", icon: FiGlobe },
 	{ id: "bot-permissions", label: "Bot permissions", icon: FiShield },
 	{ id: "command-permissions", label: "Command permissions", icon: FaListCheck },
+	{ id: "clear-messages", label: "Clear messages", icon: FiTrash2 },
 ];
 
 const readSectionFromHash = () => {
@@ -95,6 +97,9 @@ function GuildDetails({ guild }: { guild: UserGuildDetails }) {
 			</TabsPanel>
 			<TabsPanel value="command-permissions" keepMounted>
 				<CommandPermissionsPanel permissions={guild.permissions} />
+			</TabsPanel>
+			<TabsPanel value="clear-messages" keepMounted>
+				<ClearMessagesPanel active={section === "clear-messages"} initialGuildId={guild.id} />
 			</TabsPanel>
 		</Tabs>
 	);

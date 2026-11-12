@@ -11,6 +11,7 @@ import { getConfig } from "./config.js";
 import { isDatabaseConnected } from "./database.js";
 import { logger } from "./logger.js";
 import { toPlayerWebUser } from "./playerAccess.js";
+import { stopClearMessageJobWebsocket } from "./clearMessageJobWebsocket.js";
 import { stopPlayerWebsocket } from "./playerWebsocket.js";
 
 /** How often connected sessions are checked again, so signing out or suspending an account ends open sockets. */
@@ -165,6 +166,7 @@ export function stopWebsocket(): void {
 	}
 	stopListeningForEndedSessions?.();
 	stopListeningForEndedSessions = undefined;
+	stopClearMessageJobWebsocket();
 	stopPlayerWebsocket();
 	if (!server) {
 		return;
