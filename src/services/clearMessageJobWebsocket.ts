@@ -4,6 +4,7 @@ import {
 	authorizeClearMessageJob,
 	getClearMessageJob,
 	onClearMessageJobState,
+	isClearMessageJobTerminal,
 	type ClearMessageJobState,
 } from "./clearMessageJobs.js";
 import { logger } from "./logger.js";
@@ -28,7 +29,7 @@ function getSubscriptionKey(socket: WebsocketSocket, jobId: string): string {
 function publishClearMessageJob(state: ClearMessageJobState): void {
 	const room = getRoom(state.jobId);
 	websocketServer?.to(room).emit("clear-job:state", state);
-	if (state.status === "running") return;
+	if (!isClearMessageJobTerminal(state.status)) return;
 	websocketServer?.in(room).socketsLeave(room);
 	for (const [key, subscription] of subscriptions) {
 		if (subscription.jobId === state.jobId) subscriptions.delete(key);
@@ -62,7 +63,7 @@ export async function subscribeToClearMessageJob({
 	});
 	if (access.status !== "ok") return asFailure(access);
 
-	if (access.job.status === "running") {
+	if (!isClearMessageJobTerminal(access.job.status)) {
 		await socket.join(getRoom(jobId));
 	}
 	const state = getClearMessageJob(jobId);
@@ -70,7 +71,7 @@ export async function subscribeToClearMessageJob({
 		await socket.leave(getRoom(jobId));
 		return { ok: false, status: 404, error: "Message clear job not found" };
 	}
-	if (state.status === "running") {
+	if (!isClearMessageJobTerminal(state.status)) {
 		subscriptions.set(getSubscriptionKey(socket, jobId), { socket, jobId });
 	} else {
 		await socket.leave(getRoom(jobId));

@@ -1,4 +1,4 @@
-import type { GuildBasedChannel, User } from "discord.js";
+import type { EmbedAuthorOptions, User } from "discord.js";
 import {
 	ActionRowBuilder,
 	ButtonBuilder,
@@ -11,20 +11,23 @@ import {
 	SlashCommandBuilder,
 } from "discord.js";
 
-import { formatUserMention } from "../helpers/discord.js";
+import { formatChannelMention, formatUserMention } from "../helpers/discord.js";
+import { DISCORD_INTERACTION_TIME_LIMIT_MS } from "../helpers/interaction.js";
 import type { BotCommand, BotCommandData } from "../services/commandLoader.js";
 import {
 	getClearMessageJob,
 	onClearMessageJobState,
-	startClearMessageJob,
+	createClearMessageJob,
+	isClearMessageJobTerminal,
 	type ClearMessageJobState,
 	type ClearableGuildChannel,
 } from "../services/clearMessageJobs.js";
+import { getClearChannelPermissionError, isClearableGuildChannel } from "../services/clearMessagePreviews.js";
 import { logger } from "../services/logger.js";
 
 const commandData = {
 	name: "clear",
-	description: "Delete messages from one channel or across the guild",
+	description: "Create a message clear job to preview and confirm on the web",
 	category: "moderator",
 	defaultMemberPermissions: PermissionFlagsBits.ManageGuild,
 	isDBDependant: false,
@@ -38,37 +41,55 @@ const commandData = {
 	],
 } satisfies BotCommandData;
 
-function isClearableChannel(channel: GuildBasedChannel | null): channel is ClearableGuildChannel {
-	return channel !== null && channel.isTextBased() && "messages" in channel && "permissionsFor" in channel;
-}
-
 function createJobEmbed({
 	state,
 	jobUrl,
 	targetUser,
 	targetText,
+	author,
 }: {
 	state: ClearMessageJobState;
 	jobUrl: string;
 	targetUser?: User;
 	targetText?: string;
+	author: EmbedAuthorOptions;
 }) {
 	const status =
-		state.status === "running"
-			? "Running"
-			: state.status === "stopped"
-				? "Stopped at the time limit"
-				: state.status === "failed"
-					? "Failed"
-					: state.failedMessages > 0 || state.unprocessedMessages > 0 || state.errors.length > 0
-						? "Finished with partial results"
-						: "Complete";
+		state.status === "awaiting_preview"
+			? "Awaiting web preview"
+			: state.status === "previewing"
+				? "Preparing web preview"
+				: state.status === "awaiting_confirmation"
+					? "Awaiting web confirmation"
+					: state.status === "cancelled"
+						? "Cancelled"
+						: state.status === "running"
+							? "Running"
+							: state.status === "stopped"
+								? "Stopped at the time limit"
+								: state.status === "failed"
+									? "Failed"
+									: state.failedMessages > 0 ||
+										  state.unprocessedMessages > 0 ||
+										  state.errors.length > 0
+										? "Finished with partial results"
+										: "Complete";
 	const embed = new EmbedBuilder()
 		.setColor(state.status === "failed" || state.failedMessages > 0 ? "Red" : "Blue")
 		.setTitle("Clear messages")
-		.setDescription(`[Open live job progress](${jobUrl})`)
+		.setAuthor(author)
+		.setTimestamp()
+		.setDescription(`[Open job page](${jobUrl})`)
 		.addFields(
 			{ name: "Status", value: status, inline: true },
+			{
+				name: "Channel scope",
+				value: state.selectedChannelId
+					? formatChannelMention({ id: state.selectedChannelId, name: state.channelName })
+					: "All guild channels",
+				inline: true,
+			},
+			{ name: "Maximum requested", value: state.messageLimit.toString(), inline: true },
 			{ name: "Overall progress", value: `${state.progressPercentage}%`, inline: true },
 			{ name: "Channels", value: `${state.completedChannels}/${state.channelCount}`, inline: true },
 			{
@@ -83,7 +104,7 @@ function createJobEmbed({
 		embed.addFields({ name: "Text filter", value: targetText.slice(0, 1024), inline: true });
 	}
 	if (state.unprocessedMessages > 0) {
-		embed.addFields({ name: "Not processed", value: state.unprocessedMessages.toString(), inline: true });
+		embed.addFields({ name: "Remaining", value: state.unprocessedMessages.toString(), inline: true });
 	}
 	return embed;
 }
@@ -103,7 +124,9 @@ const command: BotCommand = {
 		.addNumberOption((option) =>
 			option
 				.setName("count")
-				.setDescription("Maximum total messages to delete; defaults to 200")
+				.setDescription("Maximum total messages to delete (1-200); defaults to 200")
+				.setMinValue(1)
+				.setMaxValue(200)
 				.setRequired(false),
 		)
 		.addUserOption((option) =>
@@ -128,8 +151,8 @@ const command: BotCommand = {
 		const targetUser = interaction.options.getUser("username");
 		const targetText = interaction.options.getString("text")?.trim();
 		const count = Math.floor(interaction.options.getNumber("count") ?? 200);
-		if (count < 1) {
-			await interaction.editReply("⛔ Count must be at least 1.");
+		if (!Number.isFinite(count) || count < 1 || count > 200) {
+			await interaction.editReply("⛔ Count must be between 1 and 200.");
 			return;
 		}
 
@@ -137,7 +160,7 @@ const command: BotCommand = {
 			let channels: ClearableGuildChannel[];
 			if (selectedChannel) {
 				const selectedGuildChannel = await interaction.guild.channels.fetch(selectedChannel.id);
-				if (!isClearableChannel(selectedGuildChannel)) {
+				if (!isClearableGuildChannel(selectedGuildChannel)) {
 					await interaction.editReply(
 						"⛔ The selected channel could not be found or cannot contain messages.",
 					);
@@ -145,37 +168,36 @@ const command: BotCommand = {
 				}
 				channels = [selectedGuildChannel];
 			} else {
-				channels = [...(await interaction.guild.channels.fetch()).values()].filter(
-					(channel): channel is ClearableGuildChannel =>
-						channel !== null &&
-						channel.isTextBased() &&
-						"messages" in channel &&
-						"permissionsFor" in channel,
-				);
+				channels = [...(await interaction.guild.channels.fetch()).values()].filter(isClearableGuildChannel);
 			}
-			const authorizationChannelId = interaction.channelId;
-			const job = startClearMessageJob({
+			const member = await interaction.guild.members.fetch(interaction.user.id);
+			const botMember = interaction.guild.members.me ?? (await interaction.guild.members.fetchMe());
+			const author = { name: config.BOT_NAME, iconURL: config.BOT_PFP, url: config.BOT_WEBSITE };
+			const validateChannel = (channel: ClearableGuildChannel) =>
+				getClearChannelPermissionError({
+					channel,
+					member,
+					botMember,
+					isBotAdministrator: false,
+				});
+			if (selectedChannel && channels[0]) {
+				const error = validateChannel(channels[0]);
+				if (error) {
+					await interaction.editReply(`⛔ ${error}`);
+					return;
+				}
+			}
+			channels = channels.filter((channel) => validateChannel(channel) === null);
+			const job = createClearMessageJob({
 				guild: interaction.guild,
 				channels,
 				creatorDiscordId: interaction.user.id,
-				authorizationChannelId,
 				count,
 				...(selectedChannel ? { selectedChannelId: selectedChannel.id } : {}),
 				...(targetUser ? { targetUserId: targetUser.id } : {}),
 				...(targetText ? { text: targetText } : {}),
 				excludedInteractionId: interaction.id,
-				validateChannel: (channel) => {
-					const missingPermissions = channel
-						.permissionsFor(interaction.client.user)
-						?.missing([
-							PermissionFlagsBits.ViewChannel,
-							PermissionFlagsBits.ReadMessageHistory,
-							PermissionFlagsBits.ManageMessages,
-						]);
-					return missingPermissions && missingPermissions.length > 0
-						? `Missing bot permissions: ${missingPermissions.join(", ")}`
-						: null;
-				},
+				deadlineAt: interaction.createdTimestamp + DISCORD_INTERACTION_TIME_LIMIT_MS,
 			});
 			const jobUrl = new URL(`/clear-jobs/${encodeURIComponent(job.jobId)}`, config.BOT_WEBSITE).href;
 			const createMessage = (state: ClearMessageJobState) => ({
@@ -183,36 +205,40 @@ const command: BotCommand = {
 					createJobEmbed({
 						state,
 						jobUrl,
+						author,
 						...(targetUser ? { targetUser } : {}),
 						...(targetText ? { targetText } : {}),
 					}),
 				],
 				components: [
 					new ActionRowBuilder<ButtonBuilder>().addComponents(
-						new ButtonBuilder().setLabel("View live progress").setURL(jobUrl).setStyle(ButtonStyle.Link),
+						new ButtonBuilder().setLabel("Open job page").setURL(jobUrl).setStyle(ButtonStyle.Link),
 					),
 				],
 			});
 			await interaction.editReply(createMessage(job));
-
+			let started = false;
 			let finalized = false;
 			let stopListening: () => void = () => {};
-			const finishJob = (state: ClearMessageJobState) => {
-				if (finalized || state.jobId !== job.jobId || state.status === "running") return;
-				finalized = true;
-				stopListening();
+			const updateMessage = (state: ClearMessageJobState) => {
+				if (state.jobId !== job.jobId || finalized) return;
+				const terminal = isClearMessageJobTerminal(state.status);
+				if (!terminal && (state.status !== "running" || started)) return;
+				started ||= state.status === "running";
+				finalized = terminal;
+				if (terminal) stopListening();
 				void interaction.editReply(createMessage(state)).catch((error: unknown) => {
-					logger.warn("SLASH_COMMANDS", "Could not update clear job completion response", {
+					logger.warn("SLASH_COMMANDS", "Could not update clear job response", {
 						jobId: state.jobId,
 						error: error instanceof Error ? error.message : String(error),
 					});
 				});
 			};
-			stopListening = onClearMessageJobState(finishJob);
+			stopListening = onClearMessageJobState(updateMessage);
 			const currentState = getClearMessageJob(job.jobId);
-			if (currentState) finishJob(currentState);
+			if (currentState) updateMessage(currentState);
 		} catch (error: unknown) {
-			await interaction.editReply("⛔ There was an error while starting the message clear job.");
+			await interaction.editReply("⛔ There was an error while creating the message clear job.");
 			throw error;
 		}
 	},
