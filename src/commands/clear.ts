@@ -12,7 +12,6 @@ import {
 } from "discord.js";
 
 import { formatChannelMention, formatUserMention } from "../helpers/discord.js";
-import { DISCORD_INTERACTION_TIME_LIMIT_MS } from "../helpers/interaction.js";
 import type { BotCommand, BotCommandData } from "../services/commandLoader.js";
 import {
 	getClearMessageJob,
@@ -24,6 +23,7 @@ import {
 } from "../services/clearMessageJobs.js";
 import { getClearChannelPermissionError, isClearableGuildChannel } from "../services/clearMessagePreviews.js";
 import { logger } from "../services/logger.js";
+import { ClearMessageTextFilterError, clearMessageTextFilterMaxLength } from "../services/clearMessageTextFilter.js";
 
 const commandData = {
 	name: "clear",
@@ -45,13 +45,11 @@ function createJobEmbed({
 	state,
 	jobUrl,
 	targetUser,
-	targetText,
 	author,
 }: {
 	state: ClearMessageJobState;
 	jobUrl: string;
 	targetUser?: User;
-	targetText?: string;
 	author: EmbedAuthorOptions;
 }) {
 	const status =
@@ -100,8 +98,15 @@ function createJobEmbed({
 	if (targetUser) {
 		embed.addFields({ name: "Target user", value: formatUserMention(targetUser), inline: true });
 	}
-	if (targetText) {
-		embed.addFields({ name: "Text filter", value: targetText.slice(0, 1024), inline: true });
+	if (state.textFilter) {
+		embed.addFields(
+			{
+				name: state.regex ? "Regex filter" : "Text filter",
+				value: state.textFilter.slice(0, 1024),
+				inline: true,
+			},
+			{ name: "Matching", value: state.ignoreCase ? "Ignore case" : "Case-sensitive", inline: true },
+		);
 	}
 	if (state.unprocessedMessages > 0) {
 		embed.addFields({ name: "Remaining", value: state.unprocessedMessages.toString(), inline: true });
@@ -135,7 +140,20 @@ const command: BotCommand = {
 		.addStringOption((option) =>
 			option
 				.setName("text")
-				.setDescription("Only delete messages containing this text (case-sensitive)")
+				.setDescription("Text to match, or an RE2 pattern when regex is enabled")
+				.setMaxLength(clearMessageTextFilterMaxLength)
+				.setRequired(false),
+		)
+		.addBooleanOption((option) =>
+			option
+				.setName("regex")
+				.setDescription("Treat text as a safe RE2 regex; defaults to false")
+				.setRequired(false),
+		)
+		.addBooleanOption((option) =>
+			option
+				.setName("ignore-case")
+				.setDescription("Ignore case when matching text or regex; defaults to false")
 				.setRequired(false),
 		)
 		.setDefaultMemberPermissions(commandData.defaultMemberPermissions)
@@ -149,7 +167,9 @@ const command: BotCommand = {
 
 		const selectedChannel = interaction.options.getChannel("channel");
 		const targetUser = interaction.options.getUser("username");
-		const targetText = interaction.options.getString("text")?.trim();
+		const targetText = interaction.options.getString("text");
+		const regex = interaction.options.getBoolean("regex") ?? false;
+		const ignoreCase = interaction.options.getBoolean("ignore-case") ?? false;
 		const count = Math.floor(interaction.options.getNumber("count") ?? 200);
 		if (!Number.isFinite(count) || count < 1 || count > 200) {
 			await interaction.editReply("⛔ Count must be between 1 and 200.");
@@ -195,9 +215,10 @@ const command: BotCommand = {
 				count,
 				...(selectedChannel ? { selectedChannelId: selectedChannel.id } : {}),
 				...(targetUser ? { targetUserId: targetUser.id } : {}),
-				...(targetText ? { text: targetText } : {}),
+				...(targetText !== null ? { text: targetText } : {}),
+				regex,
+				ignoreCase,
 				excludedInteractionId: interaction.id,
-				deadlineAt: interaction.createdTimestamp + DISCORD_INTERACTION_TIME_LIMIT_MS,
 			});
 			const jobUrl = new URL(`/clear-jobs/${encodeURIComponent(job.jobId)}`, config.BOT_WEBSITE).href;
 			const createMessage = (state: ClearMessageJobState) => ({
@@ -207,7 +228,6 @@ const command: BotCommand = {
 						jobUrl,
 						author,
 						...(targetUser ? { targetUser } : {}),
-						...(targetText ? { targetText } : {}),
 					}),
 				],
 				components: [
@@ -238,6 +258,15 @@ const command: BotCommand = {
 			const currentState = getClearMessageJob(job.jobId);
 			if (currentState) updateMessage(currentState);
 		} catch (error: unknown) {
+			if (error instanceof ClearMessageTextFilterError) {
+				logger.warn("SLASH_COMMANDS", "Invalid clear message text filter", {
+					guildId: interaction.guild.id,
+					userId: interaction.user.id,
+					error: error.message,
+				});
+				await interaction.editReply(`⛔ ${error.message}`);
+				return;
+			}
 			await interaction.editReply("⛔ There was an error while creating the message clear job.");
 			throw error;
 		}

@@ -10,9 +10,8 @@ import {
 import { z } from "zod";
 
 import type { ClearableGuildChannel } from "./clearMessageJobs.js";
-import { DISCORD_INTERACTION_TIME_LIMIT_MS } from "../helpers/interaction.js";
+import { createClearMessageTextFilter } from "./clearMessageTextFilter.js";
 
-export const clearMessagePreviewLifetimeMs = 10 * 60 * 1000;
 const scanLimitPerChannel = 100;
 const bulkDeleteAgeMs = 14 * 24 * 60 * 60 * 1000;
 const clearableChannelTypes = new Set<number>([
@@ -36,6 +35,8 @@ export const clearMessagePreviewSchema = z.object({
 			})
 			.nullable(),
 		textFilter: z.string().nullable(),
+		regex: z.boolean(),
+		ignoreCase: z.boolean(),
 	}),
 	scannedChannelCount: z.number().int().nonnegative(),
 	skippedChannelCount: z.number().int().nonnegative(),
@@ -125,6 +126,8 @@ export async function createClearMessagePreview({
 	selectedChannelId,
 	targetUserId,
 	text,
+	regex = false,
+	ignoreCase = false,
 	excludedInteractionId,
 	skippedChannelCount = 0,
 	validateChannel,
@@ -138,11 +141,13 @@ export async function createClearMessagePreview({
 	selectedChannelId?: string;
 	targetUserId?: string;
 	text?: string;
+	regex?: boolean;
+	ignoreCase?: boolean;
 	excludedInteractionId?: string;
 	skippedChannelCount?: number;
 	validateChannel?: (channel: ClearableGuildChannel) => string | null;
 	onProgress?: (progress: ClearMessagePreviewProgress) => void;
-	jobDeadlineAt?: number;
+	jobDeadlineAt: number;
 	signal?: AbortSignal;
 }): Promise<ClearMessagePreviewRecord> {
 	if (!Number.isInteger(count) || count < 1 || count > 200) {
@@ -152,11 +157,14 @@ export async function createClearMessagePreview({
 	let scannedChannelCount = 0;
 	let scanLimitReached = false;
 	const matchingMessages: Message[] = [];
-	const textFilter = text?.trim() || null;
-	const scanDeadlineAt = jobDeadlineAt ?? Date.now() + DISCORD_INTERACTION_TIME_LIMIT_MS;
+	const textFilter = createClearMessageTextFilter({
+		...(text !== undefined ? { text } : {}),
+		regex,
+		ignoreCase,
+	});
 	for (const channel of channels) {
 		signal?.throwIfAborted();
-		if (Date.now() >= scanDeadlineAt) {
+		if (Date.now() >= jobDeadlineAt) {
 			throw new Error("Preview scanning reached the time limit. Choose a channel and create a new preview.");
 		}
 		const permissionError = validateChannel?.(channel);
@@ -180,7 +188,7 @@ export async function createClearMessagePreview({
 			...[...messages.values()].filter(
 				(message) =>
 					(!targetUserId || message.author.id === targetUserId) &&
-					(!textFilter || message.content.includes(textFilter)) &&
+					textFilter.matches(message.content) &&
 					(!excludedInteractionId || message.interactionMetadata?.id !== excludedInteractionId),
 			),
 		);
@@ -215,7 +223,9 @@ export async function createClearMessagePreview({
 						avatarUrl: targetUser.displayAvatarURL(),
 					}
 				: null,
-			textFilter,
+			textFilter: textFilter.text,
+			regex,
+			ignoreCase,
 		},
 		scannedChannelCount,
 		skippedChannelCount,
@@ -226,7 +236,7 @@ export async function createClearMessagePreview({
 		individualDeleteCount: messages.length - bulkDeleteCount,
 		olderThanBulkDeleteLimit: messages.length - bulkDeleteCount,
 		scanLimitReached,
-		expiresAt: Math.min(Date.now() + clearMessagePreviewLifetimeMs, scanDeadlineAt),
+		expiresAt: jobDeadlineAt,
 		messages: messages.map((message) => ({
 			id: message.id,
 			channelName: message.channel.isDMBased() ? "" : message.channel.name,

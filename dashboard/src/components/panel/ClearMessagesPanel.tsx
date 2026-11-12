@@ -1,4 +1,4 @@
-import { Button, Card, Input, LabelField, Select } from "@febkosq8/arc";
+import { Button, Card, Input, LabelField, Select, Switch } from "@febkosq8/arc";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useEffect, useState } from "react";
@@ -29,6 +29,8 @@ export default function ClearMessagesPanel({
 	const [channelId, setChannelId] = useState("");
 	const [countInput, setCountInput] = useState("100");
 	const [text, setText] = useState("");
+	const [regex, setRegex] = useState(false);
+	const [ignoreCase, setIgnoreCase] = useState(false);
 	const [selectedMember, setSelectedMember] = useState<WarningMember | null>(null);
 
 	useEffect(() => {
@@ -60,7 +62,9 @@ export default function ClearMessagesPanel({
 				...(channelId ? { channelId } : {}),
 				count,
 				...(selectedMember ? { userId: selectedMember.id } : {}),
-				...(text.trim() ? { text: text.trim() } : {}),
+				...(text ? { text } : {}),
+				regex,
+				ignoreCase,
 			});
 		},
 		onSuccess: (result) => {
@@ -97,9 +101,9 @@ export default function ClearMessagesPanel({
 					) : !initialGuildId && guildsQuery.data?.length === 0 ? (
 						<p className="text-sm text-muted-foreground">No manageable servers are available.</p>
 					) : (
-						<div className="grid gap-4 sm:grid-cols-2">
+						<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 							{!initialGuildId && (
-								<div>
+								<div className="col-span-full">
 									<LabelField id="clear-messages-guild" label="Server" className="mb-1" />
 									<Select
 										id="clear-messages-guild"
@@ -185,21 +189,6 @@ export default function ClearMessagesPanel({
 								</p>
 							</div>
 							<div>
-								<LabelField id="clear-messages-text" label="Text contains" className="mb-1" />
-								<Input
-									id="clear-messages-text"
-									value={text}
-									onChange={(event) => updateFilter(() => setText(event.target.value))}
-									placeholder="Case-sensitive text filter"
-									maxLength={2000}
-									disabled={!active || isBusy}
-									className="w-full"
-								/>
-								<p className="mt-1 text-xs text-muted-foreground">
-									Messages containing this exact text will match.
-								</p>
-							</div>
-							<div className="sm:col-span-2">
 								<LabelField
 									id="clear-messages-member"
 									label="Message author (optional)"
@@ -229,6 +218,50 @@ export default function ClearMessagesPanel({
 										onSelect={(member) => updateFilter(() => setSelectedMember(member))}
 									/>
 								)}
+							</div>
+							<div className="col-span-full">
+								<div className="mb-1 flex flex-wrap items-center justify-between gap-3">
+									<LabelField
+										id="clear-messages-text"
+										label={regex ? "Text matches" : "Text contains"}
+									/>
+									<div className="flex flex-wrap items-center gap-4">
+										<label className="flex items-center gap-2 text-sm">
+											<Switch
+												checked={regex}
+												onChange={(checked) => updateFilter(() => setRegex(checked))}
+												disabled={!active || isBusy}
+												aria-label="Regex"
+											/>
+											<span>Regex</span>
+										</label>
+										<label className="flex items-center gap-2 text-sm">
+											<Switch
+												checked={ignoreCase}
+												onChange={(checked) => updateFilter(() => setIgnoreCase(checked))}
+												disabled={!active || isBusy}
+												aria-label="Ignore case"
+											/>
+											<span>Ignore case</span>
+										</label>
+									</div>
+								</div>
+								<Input
+									as="textarea"
+									id="clear-messages-text"
+									rows={2}
+									value={text}
+									onChange={(event) => updateFilter(() => setText(event.target.value))}
+									placeholder={regex ? "RE2 pattern, without /.../ delimiters" : "Text filter"}
+									maxLength={2000}
+									disabled={!active || isBusy}
+									className="w-full"
+								/>
+								<p className="mt-1 text-xs text-muted-foreground">
+									{regex
+										? "Safe RE2 syntax; no lookarounds or backreferences."
+										: "Matches messages containing this text."}
+								</p>
 							</div>
 						</div>
 					)}

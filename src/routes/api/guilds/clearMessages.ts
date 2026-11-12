@@ -14,7 +14,15 @@ import {
 import { requireDatabase, requireDiscord } from "../../../handlers/availability.js";
 import { defineRouter, errorResponseSchema } from "../../../helpers/route.js";
 import { getAdminGuildForAction } from "../../../helpers/guild.js";
-import { createClearMessageJob, type ClearableGuildChannel } from "../../../services/clearMessageJobs.js";
+import {
+	createClearMessageJob,
+	ClearMessageJobActionError,
+	type ClearableGuildChannel,
+} from "../../../services/clearMessageJobs.js";
+import {
+	ClearMessageTextFilterError,
+	clearMessageTextFilterMaxLength,
+} from "../../../services/clearMessageTextFilter.js";
 import { getClearChannelPermissionError, isClearableGuildChannel } from "../../../services/clearMessagePreviews.js";
 import type { AuthSession } from "../../../services/auth.js";
 
@@ -29,7 +37,16 @@ const guildClearRequestSchema = z.strictObject({
 		.string()
 		.regex(/^\d{17,20}$/u, "Invalid user ID")
 		.optional(),
-	text: z.string().max(2000, "Text filter must be 2000 characters or fewer").optional(),
+	text: z
+		.string()
+		.max(clearMessageTextFilterMaxLength, "Text filter must be 2000 characters or fewer")
+		.optional()
+		.describe("Literal text by default; with regex enabled, supply an RE2 pattern without slash delimiters"),
+	regex: z
+		.boolean()
+		.default(false)
+		.describe("Use linear-time RE2 matching; invalid, overly complex, and unsupported patterns are rejected"),
+	ignoreCase: z.boolean().default(false).describe("Ignore case for either literal text or regex matching"),
 });
 
 const clearMessageMiddleware = [
@@ -154,6 +171,20 @@ export default defineRouter("/guilds", [
 			500: { description: "Failed to create message clear job", schema: errorResponseSchema },
 		},
 		middleware: clearMessageMiddleware,
+		errorHandler: (error, _request, response) => {
+			const status =
+				error instanceof ClearMessageTextFilterError
+					? 400
+					: error instanceof ClearMessageJobActionError
+						? error.status
+						: 500;
+			response.status(status).json({
+				error:
+					error instanceof ClearMessageTextFilterError || error instanceof ClearMessageJobActionError
+						? error.message
+						: "Failed to create message clear job",
+			});
+		},
 		handler: async (request, response) => {
 			const guildId = request.params.guildId;
 			if (typeof guildId !== "string" || !/^\d{17,20}$/u.test(guildId)) {
@@ -178,7 +209,9 @@ export default defineRouter("/guilds", [
 				count: body.data.count,
 				...(body.data.channelId ? { selectedChannelId: body.data.channelId } : {}),
 				...(body.data.userId ? { targetUserId: body.data.userId } : {}),
-				...(body.data.text?.trim() ? { text: body.data.text.trim() } : {}),
+				...(body.data.text !== undefined ? { text: body.data.text } : {}),
+				regex: body.data.regex,
+				ignoreCase: body.data.ignoreCase,
 			});
 			return response.status(202).json({ jobId: job.jobId });
 		},

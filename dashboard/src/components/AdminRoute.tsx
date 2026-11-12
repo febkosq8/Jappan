@@ -1,7 +1,7 @@
 import axios from "axios";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 
-import { isAdminSession, useSessionQuery } from "@jappan/handlers/auth";
+import { isAdminSession, sessionErrorCode, useSessionQuery } from "@jappan/handlers/auth";
 import { authErrorURL } from "@jappan/handlers/authRedirect";
 import LoadingIndicator from "./LoadingIndicator";
 
@@ -19,7 +19,7 @@ function AuthErrorRedirect({
 	errorCode,
 	rejectedSessionId,
 }: {
-	errorCode: "UNAUTHENTICATED" | "FORBIDDEN" | "SESSION_UNAVAILABLE";
+	errorCode: "UNAUTHENTICATED" | "FORBIDDEN" | "NETWORK_ERROR" | "SESSION_CHECK_FAILED";
 	rejectedSessionId?: string;
 }) {
 	const location = useLocation();
@@ -40,7 +40,12 @@ export default function AdminRoute() {
 
 	if (sessionQuery.isPending) return <LoadingIndicator label="Checking session" />;
 	if (sessionQuery.isError)
-		return <AuthErrorRedirect errorCode="SESSION_UNAVAILABLE" rejectedSessionId={sessionQuery.data?.session.id} />;
+		return (
+			<AuthErrorRedirect
+				errorCode={sessionErrorCode(sessionQuery.error)}
+				rejectedSessionId={sessionQuery.data?.session.id}
+			/>
+		);
 	if (!sessionQuery.data) return <AccessRedirect status={401} />;
 	if (!isAdminSession(sessionQuery.data)) return <AccessRedirect status={403} />;
 	return <Outlet />;
@@ -51,7 +56,12 @@ export function AuthRoute() {
 
 	if (sessionQuery.isPending) return <LoadingIndicator label="Checking session" />;
 	if (sessionQuery.isError)
-		return <AuthErrorRedirect errorCode="SESSION_UNAVAILABLE" rejectedSessionId={sessionQuery.data?.session.id} />;
+		return (
+			<AuthErrorRedirect
+				errorCode={sessionErrorCode(sessionQuery.error)}
+				rejectedSessionId={sessionQuery.data?.session.id}
+			/>
+		);
 	if (!sessionQuery.data) return <AccessRedirect status={401} />;
 	return <Outlet />;
 }

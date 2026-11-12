@@ -1,9 +1,9 @@
 import { Button, Card, DateHandler, PillLink, Tag } from "@febkosq8/arc";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
-import { FiActivity, FiAlertCircle, FiArrowLeft, FiCheckCircle, FiClock, FiHash, FiSliders } from "react-icons/fi";
+import { FiActivity, FiAlertCircle, FiArrowLeft, FiCheckCircle, FiClock, FiSliders } from "react-icons/fi";
 
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import GuildPageHeader from "@jappan/components/display/GuildPageHeader";
@@ -47,14 +47,18 @@ function actionError(error: unknown): string {
 }
 
 function latestState(current: ClearMessageJobState | undefined, incoming: ClearMessageJobState): ClearMessageJobState {
-	return current && current.version > incoming.version ? current : incoming;
+	return current &&
+		(current.version > incoming.version ||
+			(current.version === incoming.version && current.serverTimestampMs > incoming.serverTimestampMs))
+		? current
+		: incoming;
 }
 
 export default function ClearMessageJob() {
 	const { jobId = "" } = useParams();
 	const queryClient = useQueryClient();
 	const [accessProblem, setAccessProblem] = useState(false);
-	const [now, setNow] = useState(() => Date.now());
+	const [monotonicNow, setMonotonicNow] = useState(() => performance.now());
 	const [confirmationPreviewId, setConfirmationPreviewId] = useState<string | null>(null);
 	const attemptedPreview = useRef("");
 	const updateState = (state: ClearMessageJobState) =>
@@ -73,10 +77,11 @@ export default function ClearMessageJob() {
 		jobQuery.isSuccess &&
 		!["complete", "stopped", "failed", "cancelled"].includes(jobQuery.data.status) &&
 		!accessProblem;
+	const receivedAt = useMemo(() => performance.now(), [jobId, jobQuery.data?.serverTimestampMs]);
 	useEffect(() => {
 		if (!active) return;
-		setNow(Date.now());
-		const timer = window.setInterval(() => setNow(Date.now()), 1000);
+		setMonotonicNow(performance.now());
+		const timer = window.setInterval(() => setMonotonicNow(performance.now()), 1000);
 		return () => window.clearInterval(timer);
 	}, [active, jobId]);
 
@@ -174,6 +179,7 @@ export default function ClearMessageJob() {
 	}
 
 	const job = jobQuery.data;
+	const now = job.serverTimestampMs + Math.max(0, monotonicNow - receivedAt);
 	const beforeDeletion = ["awaiting_preview", "previewing", "awaiting_confirmation"].includes(job.status);
 	const preview = job.status === "awaiting_confirmation" ? job.preview : null;
 	const previewExpired = Boolean(preview && preview.expiresAt <= now);
@@ -221,7 +227,9 @@ export default function ClearMessageJob() {
 								"Any author"
 							)}
 						</GuildDetail>
-						<GuildDetail label="Text contains (case-sensitive)">
+						<GuildDetail
+							label={`${job.regex ? "Regex" : "Text contains"} (${job.ignoreCase ? "ignore case" : "case-sensitive"})`}
+						>
 							{job.textFilter === undefined ? (
 								"Not recorded for this job"
 							) : job.textFilter ? (
@@ -267,12 +275,8 @@ export default function ClearMessageJob() {
 					{(job.status === "running" || job.status === "previewing") && (
 						<div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
 							{job.currentChannelName && (
-								<p className="flex min-w-0 items-center gap-2">
-									<FiHash className="shrink-0" aria-hidden="true" />
-									<span className="wrap-break-word">
-										{job.status === "previewing" ? "Scanning" : "Processing"} #
-										{job.currentChannelName}
-									</span>
+								<p className="min-w-0 wrap-break-word">
+									{job.status === "previewing" ? "Scanning" : "Processing"} #{job.currentChannelName}
 								</p>
 							)}
 							<p role="status">

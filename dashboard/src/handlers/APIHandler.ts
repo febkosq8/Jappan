@@ -119,7 +119,13 @@ export interface GuildClearMessagePreview {
 	previewId: string;
 	guild: { id: string; name: string };
 	channel: { id: string; name: string } | null;
-	request: { count: number; targetUser: WarningMember | null; textFilter: string | null };
+	request: {
+		count: number;
+		targetUser: WarningMember | null;
+		textFilter: string | null;
+		regex: boolean;
+		ignoreCase: boolean;
+	};
 	scannedChannelCount: number;
 	skippedChannelCount: number;
 	scannedCount: number;
@@ -149,6 +155,8 @@ export interface ClearMessageJobState {
 	selectedChannelId: string | null;
 	targetUserId: string | null;
 	textFilter: string | null;
+	regex: boolean;
+	ignoreCase: boolean;
 	status:
 		| "awaiting_preview"
 		| "previewing"
@@ -161,6 +169,7 @@ export interface ClearMessageJobState {
 	preview: GuildClearMessagePreview | null;
 	startedAtMs: number;
 	finishedAtMs: number | null;
+	serverTimestampMs: number;
 	messageLimit: number;
 	channelCount: number;
 	completedChannels: number;
@@ -632,7 +641,14 @@ class APIHandler {
 
 	static async createGuildMessageClearJob(
 		guildId: string,
-		filters: { channelId?: string; count: number; userId?: string; text?: string },
+		filters: {
+			channelId?: string;
+			count: number;
+			userId?: string;
+			text?: string;
+			regex?: boolean;
+			ignoreCase?: boolean;
+		},
 	): Promise<{ jobId: string }> {
 		const { data } = await apiClient.post<{ jobId: string }>(
 			`/api/v1/guilds/${encodeURIComponent(guildId)}/messages/clear`,

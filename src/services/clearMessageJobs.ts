@@ -6,6 +6,7 @@ import { DISCORD_INTERACTION_TIME_LIMIT_MS } from "../helpers/interaction.js";
 import { getClientGuild } from "../helpers/guild.js";
 import { deleteMessages } from "./clearMessages.js";
 import { logger } from "./logger.js";
+import { createClearMessageTextFilter } from "./clearMessageTextFilter.js";
 import {
 	createClearMessagePreview,
 	getClearChannelPermissionError,
@@ -29,6 +30,8 @@ export interface ClearMessageJobState {
 	selectedChannelId: string | null;
 	targetUserId: string | null;
 	textFilter: string | null;
+	regex: boolean;
+	ignoreCase: boolean;
 	status:
 		| "awaiting_preview"
 		| "previewing"
@@ -41,6 +44,7 @@ export interface ClearMessageJobState {
 	preview: ClearMessagePreview | null;
 	startedAtMs: number;
 	finishedAtMs: number | null;
+	serverTimestampMs: number;
 	messageLimit: number;
 	channelCount: number;
 	completedChannels: number;
@@ -65,7 +69,7 @@ interface ClearMessageJobRecord {
 	createdAtMs: number;
 	options: CreateClearMessageJobOptions;
 	preview: ClearMessagePreviewRecord | null;
-	deadlineAt: number;
+	waitingDeadlineAt: number;
 	expiryTimer: NodeJS.Timeout | null;
 	previewAbortController: AbortController | null;
 }
@@ -78,8 +82,9 @@ export interface CreateClearMessageJobOptions {
 	selectedChannelId?: string;
 	targetUserId?: string;
 	text?: string;
+	regex?: boolean;
+	ignoreCase?: boolean;
 	excludedInteractionId?: string;
-	deadlineAt?: number;
 }
 
 export class ClearMessageJobActionError extends Error {
@@ -100,11 +105,16 @@ type JobStateListener = (state: ClearMessageJobState) => void;
 const jobs = new Map<string, ClearMessageJobRecord>();
 const listeners = new Set<JobStateListener>();
 const jobLifetimeMs = 60 * 60 * 1000;
+const requestLifetimeMs = 15 * 60 * 1000;
 
 function pruneJobs() {
 	const now = Date.now();
 	for (const [jobId, job] of jobs) {
-		if (!isClearMessageJobTerminal(job.state.status) && job.state.status !== "running" && job.deadlineAt <= now) {
+		if (
+			!isClearMessageJobTerminal(job.state.status) &&
+			job.state.status !== "running" &&
+			job.waitingDeadlineAt <= now
+		) {
 			expireRequest(job);
 		}
 		if (isClearMessageJobTerminal(job.state.status) && job.createdAtMs + jobLifetimeMs <= now) {
@@ -120,7 +130,7 @@ function calculateProgress(state: ClearMessageJobState, currentChannelTotal: num
 }
 
 function snapshot(record: ClearMessageJobRecord): ClearMessageJobState {
-	return structuredClone(record.state);
+	return { ...structuredClone(record.state), serverTimestampMs: Date.now() };
 }
 
 function publish(record: ClearMessageJobRecord) {
@@ -165,7 +175,7 @@ async function runClearMessageJob(
 		validateChannel: (channel: ClearableGuildChannel) => string | null;
 	},
 ) {
-	const deadlineAt = record.deadlineAt;
+	const deadlineAt = Date.now() + DISCORD_INTERACTION_TIME_LIMIT_MS;
 	let messagesDeleted = 0;
 	try {
 		for (const channel of channels) {
@@ -264,6 +274,7 @@ export function createClearMessageJob(options: CreateClearMessageJobOptions): Cl
 	if (options.channels.length === 0) {
 		throw new ClearMessageJobActionError(403, "No message channels are available with the required permissions");
 	}
+	const textFilter = createClearMessageTextFilter(options);
 	pruneJobs();
 	const jobId = randomUUID();
 	const startedAtMs = Date.now();
@@ -275,11 +286,14 @@ export function createClearMessageJob(options: CreateClearMessageJobOptions): Cl
 		channelName: options.channels.length === 1 ? (options.channels[0]?.name ?? "Selected channel") : "All channels",
 		selectedChannelId: options.selectedChannelId ?? null,
 		targetUserId: options.targetUserId ?? null,
-		textFilter: options.text ?? null,
+		textFilter: textFilter.text,
+		regex: options.regex ?? false,
+		ignoreCase: options.ignoreCase ?? false,
 		status: "awaiting_preview",
 		preview: null,
 		startedAtMs,
 		finishedAtMs: null,
+		serverTimestampMs: startedAtMs,
 		messageLimit: options.count,
 		channelCount: options.channels.length,
 		completedChannels: 0,
@@ -302,7 +316,7 @@ export function createClearMessageJob(options: CreateClearMessageJobOptions): Cl
 		createdAtMs: startedAtMs,
 		options,
 		preview: null,
-		deadlineAt: options.deadlineAt ?? startedAtMs + DISCORD_INTERACTION_TIME_LIMIT_MS,
+		waitingDeadlineAt: startedAtMs + requestLifetimeMs,
 		expiryTimer: null,
 		previewAbortController: null,
 	};
@@ -312,7 +326,7 @@ export function createClearMessageJob(options: CreateClearMessageJobOptions): Cl
 			if (!isClearMessageJobTerminal(record.state.status) && record.state.status !== "running")
 				expireRequest(record);
 		},
-		Math.max(0, record.deadlineAt - Date.now()),
+		Math.max(0, record.waitingDeadlineAt - Date.now()),
 	);
 	record.expiryTimer.unref();
 	logger.info("HTTP", "Message clear request created", {
@@ -329,7 +343,7 @@ function expireRequest(record: ClearMessageJobRecord): void {
 	record.previewAbortController?.abort();
 	record.state.status = "stopped";
 	record.state.timeLimitReached = true;
-	record.state.error = "This request expired before deletion started. Create a new job.";
+	record.state.error = "This request expired after 15 minutes without confirmation. Create a new job.";
 	record.state.finishedAtMs = Date.now();
 	record.state.currentChannelName = null;
 	record.state.completedChannels = 0;
@@ -349,7 +363,7 @@ function requirePhase(record: ClearMessageJobRecord, phases: ClearMessageJobStat
 	if (
 		!isClearMessageJobTerminal(record.state.status) &&
 		record.state.status !== "running" &&
-		record.deadlineAt <= Date.now()
+		record.waitingDeadlineAt <= Date.now()
 	) {
 		expireRequest(record);
 	}
@@ -440,11 +454,13 @@ export async function prepareClearMessageJob({
 				count: record.state.messageLimit,
 				...(record.options.selectedChannelId ? { selectedChannelId: record.options.selectedChannelId } : {}),
 				...(record.options.targetUserId ? { targetUserId: record.options.targetUserId } : {}),
-				...(record.options.text ? { text: record.options.text } : {}),
+				...(record.state.textFilter !== null ? { text: record.state.textFilter } : {}),
+				regex: record.state.regex,
+				ignoreCase: record.state.ignoreCase,
 				...(record.options.excludedInteractionId
 					? { excludedInteractionId: record.options.excludedInteractionId }
 					: {}),
-				jobDeadlineAt: record.deadlineAt,
+				jobDeadlineAt: record.waitingDeadlineAt,
 				signal: controller.signal,
 				skippedChannelCount: context.skippedChannelCount,
 				validateChannel: context.validateChannel,
@@ -529,6 +545,8 @@ export async function confirmClearMessageJob({
 		throw new ClearMessageJobActionError(409, "Channel access changed. Refresh the preview before confirming.");
 	}
 	record.state.status = "running";
+	if (record.expiryTimer) clearTimeout(record.expiryTimer);
+	record.expiryTimer = null;
 	record.state.preview = null;
 	record.state.completedChannels = 0;
 	record.state.channelCount = channels.length;

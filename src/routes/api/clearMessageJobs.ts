@@ -23,6 +23,8 @@ const clearMessageJobSchema = z.object({
 	selectedChannelId: z.string().nullable(),
 	targetUserId: z.string().nullable(),
 	textFilter: z.string().nullable(),
+	regex: z.boolean(),
+	ignoreCase: z.boolean(),
 	status: z.enum([
 		"awaiting_preview",
 		"previewing",
@@ -36,6 +38,10 @@ const clearMessageJobSchema = z.object({
 	preview: clearMessagePreviewSchema.nullable(),
 	startedAtMs: z.number().int(),
 	finishedAtMs: z.number().int().nullable(),
+	serverTimestampMs: z
+		.number()
+		.int()
+		.describe("Server clock at snapshot creation; use to anchor live elapsed time and preview expiry"),
 	messageLimit: z.number().int().nonnegative(),
 	channelCount: z.number().int().nonnegative(),
 	completedChannels: z.number().int().nonnegative(),
