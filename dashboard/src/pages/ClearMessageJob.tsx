@@ -58,17 +58,12 @@ export default function ClearMessageJob() {
 		const status = axios.isAxiosError(jobQuery.error) ? jobQuery.error.response?.status : undefined;
 		const notFound = !isValidJobId || status === 400 || status === 404;
 		const denied = status === 403;
-		const title = notFound
-			? "No clear job found"
+		const title = notFound ? "No clear job found" : denied ? "You can't view this job" : "Clear job unavailable";
+		const message = accessProblem
+			? "This job is no longer available or you no longer have permission to view it."
 			: denied
-				? "You can't view this job"
-				: "Clear job unavailable";
-		const message =
-			accessProblem
-				? "This job is no longer available or you no longer have permission to view it."
-				: denied
-					? "You do not have permission to view this message clear job."
-					: "Could not load message clear progress.";
+				? "You do not have permission to view this message clear job."
+				: "Could not load message clear progress.";
 		return (
 			<main className="flex min-h-[calc(100dvh-4.0625rem)] flex-col items-center justify-center px-4 py-10 text-center">
 				<FiAlertCircle className="size-10 text-muted-foreground" aria-hidden="true" />
@@ -82,7 +77,7 @@ export default function ClearMessageJob() {
 							<li>The bot restarted, which clears stored jobs.</li>
 						</ul>
 						<p className="mt-3 max-w-md text-muted-foreground">
-							Start a new clear job from your guild dashboard or with /clear in Discord.
+							Start a new job from your guild or use /clear.
 						</p>
 					</>
 				) : (
@@ -91,7 +86,7 @@ export default function ClearMessageJob() {
 					</p>
 				)}
 				<div className="mt-6 flex flex-wrap justify-center gap-3">
-					{isValidJobId && (
+					{isValidJobId && !notFound && (
 						<Button
 							disabled={jobQuery.isFetching}
 							onClick={() =>
