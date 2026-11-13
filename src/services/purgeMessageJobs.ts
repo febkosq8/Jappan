@@ -44,6 +44,7 @@ export interface PurgeMessageJobState {
 		| "cancelled";
 	preview: PurgeMessagePreview | null;
 	startedAtMs: number;
+	requestExpiresAtMs: number;
 	finishedAtMs: number | null;
 	serverTimestampMs: number;
 	messageLimit: number;
@@ -282,8 +283,18 @@ export function createPurgeMessageJob(options: CreatePurgeMessageJobOptions): Pu
 	}
 	const textFilter = createPurgeMessageTextFilter(options);
 	pruneJobs();
+	const existingJob = [...jobs.values()].find(
+		(job) => job.state.guildId === options.guild.id && !isPurgeMessageJobTerminal(job.state.status),
+	);
+	if (existingJob) {
+		throw new PurgeMessageJobActionError(
+			409,
+			"A purge job is already active or pending for this guild. Wait for it to finish or expire before starting another.",
+		);
+	}
 	const jobId = randomUUID();
 	const startedAtMs = Date.now();
+	const requestExpiresAtMs = startedAtMs + requestLifetimeMs;
 	const state: PurgeMessageJobState = {
 		jobId,
 		version: 0,
@@ -299,6 +310,7 @@ export function createPurgeMessageJob(options: CreatePurgeMessageJobOptions): Pu
 		status: "awaiting_preview",
 		preview: null,
 		startedAtMs,
+		requestExpiresAtMs,
 		finishedAtMs: null,
 		serverTimestampMs: startedAtMs,
 		messageLimit: options.count,
@@ -324,7 +336,7 @@ export function createPurgeMessageJob(options: CreatePurgeMessageJobOptions): Pu
 		createdAtMs: startedAtMs,
 		options,
 		preview: null,
-		waitingDeadlineAt: startedAtMs + requestLifetimeMs,
+		waitingDeadlineAt: requestExpiresAtMs,
 		expiryTimer: null,
 		previewAbortController: null,
 	};

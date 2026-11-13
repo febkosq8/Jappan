@@ -18,6 +18,7 @@ import {
 	onPurgeMessageJobState,
 	createPurgeMessageJob,
 	isPurgeMessageJobTerminal,
+	PurgeMessageJobActionError,
 	type PurgeMessageJobState,
 	type PurgeableGuildChannel,
 } from "../services/purgeMessageJobs.js";
@@ -258,6 +259,10 @@ const command: BotCommand = {
 			const currentState = getPurgeMessageJob(job.jobId);
 			if (currentState) updateMessage(currentState);
 		} catch (error: unknown) {
+			if (error instanceof PurgeMessageJobActionError) {
+				await interaction.editReply(`⛔ ${error.message}`);
+				return;
+			}
 			if (error instanceof PurgeMessageTextFilterError) {
 				logger.warn("SLASH_COMMANDS", "Invalid purge message text filter", {
 					guildId: interaction.guild.id,

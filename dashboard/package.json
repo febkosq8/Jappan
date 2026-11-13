@@ -24,7 +24,7 @@
 		"build": "vite build"
 	},
 	"dependencies": {
-		"@febkosq8/arc": "0.8.8",
+		"@febkosq8/arc": "0.8.9",
 		"@tanstack/react-form": "1.33.5",
 		"@tanstack/react-query": "5.107.1",
 		"axios": "1.21.0",

@@ -38,6 +38,7 @@ const purgeMessageJobSchema = z.object({
 	]),
 	preview: purgeMessagePreviewSchema.nullable(),
 	startedAtMs: z.number().int(),
+	requestExpiresAtMs: z.number().int().describe("Confirmation deadline, 15 minutes after the job starts"),
 	finishedAtMs: z.number().int().nullable(),
 	serverTimestampMs: z
 		.number()

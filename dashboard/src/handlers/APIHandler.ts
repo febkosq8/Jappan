@@ -173,6 +173,7 @@ export interface PurgeMessageJobState {
 		| "cancelled";
 	preview: GuildPurgeMessagePreview | null;
 	startedAtMs: number;
+	requestExpiresAtMs: number;
 	finishedAtMs: number | null;
 	serverTimestampMs: number;
 	messageLimit: number;

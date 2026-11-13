@@ -266,6 +266,7 @@ export default function PurgeMessageJob() {
 	const beforeDeletion = ["awaiting_preview", "previewing", "awaiting_confirmation"].includes(job.status);
 	const preview = job.status === "awaiting_confirmation" ? job.preview : null;
 	const previewExpired = Boolean(preview && preview.expiresAt <= now);
+	const requestExpired = job.requestExpiresAtMs <= now;
 	const actionBusy = prepareMutation.isPending || confirmMutation.isPending || cancelMutation.isPending;
 	const StatusIcon =
 		job.status === "running" || job.status === "previewing"
@@ -283,10 +284,25 @@ export default function PurgeMessageJob() {
 				title="Message purge job"
 				guild={{ id: job.guildId, name: job.guildName, icon: job.guildIcon }}
 				rightContent={
-					<Tag variant={jobVariant(job)} size="sm" className="gap-1.5">
-						<StatusIcon aria-hidden="true" />
-						{jobLabel(job)}
-					</Tag>
+					<div className="flex flex-wrap items-center justify-end gap-2">
+						<Tag variant={jobVariant(job)} size="sm" className="gap-1.5">
+							<StatusIcon aria-hidden="true" />
+							{jobLabel(job)}
+						</Tag>
+						{beforeDeletion && (
+							<Tag
+								variant={requestExpired ? "warning" : "secondary"}
+								size="sm"
+								className="gap-1.5 tabular-nums"
+								title={`Confirm by ${DateHandler.getDateTime(job.requestExpiresAtMs)}. Jobs expire 15 minutes after creation.`}
+							>
+								<FiClock aria-hidden="true" />
+								{requestExpired
+									? "Confirmation window expired"
+									: `Expires in ${DateHandler.formatDuration(Math.ceil((job.requestExpiresAtMs - now) / 1000))}`}
+							</Tag>
+						)}
+					</div>
 				}
 			/>
 

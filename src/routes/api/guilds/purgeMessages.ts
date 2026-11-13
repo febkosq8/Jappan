@@ -54,7 +54,7 @@ const purgeMessageMiddleware = [
 	requireDiscord,
 	requireSession,
 	requireValidGuildId,
-	requireAnyAuthorization([isGuildManager, isBotAdmin], "Manage Server or bot admin access required"),
+	requireAnyAuthorization([isGuildManager, isBotAdmin], "Manage Server access required"),
 ];
 async function getPurgeMessageAccess({
 	guildId,
@@ -162,11 +162,14 @@ export default defineRouter("/guilds", [
 			400: { description: "Invalid guild, channel, or filters", schema: errorResponseSchema },
 			401: { description: "Authentication required", schema: errorResponseSchema },
 			403: {
-				description: "Manage Server or bot admin access and channel permissions required",
+				description: "Manage Server access and channel permissions required",
 				schema: errorResponseSchema,
 			},
 			404: { description: "Guild or channel not found", schema: errorResponseSchema },
-			409: { description: "Bot is not a guild member", schema: errorResponseSchema },
+			409: {
+				description: "Bot is not a guild member, or a purge job is already active or pending for this guild",
+				schema: errorResponseSchema,
+			},
 			503: { description: "Guild or service unavailable", schema: errorResponseSchema },
 			500: { description: "Failed to create message purge job", schema: errorResponseSchema },
 		},

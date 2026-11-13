@@ -96,7 +96,8 @@ This document records design decisions and behavior that is easy to miss.
   invalid, or unsupported patterns (including lookarounds and backreferences)
   with HTTP 400 before creating a job. `ignoreCase` applies to either mode.
   Regex whitespace is significant; literal text retains its existing trimming.
-  Scanning and explicit confirmation still happen on the job page.
+  Only one pending or active purge job can exist per guild. Scanning and explicit
+  confirmation still happen on the job page.
 
 ## Bot actions and player sessions
 
