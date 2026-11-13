@@ -230,6 +230,7 @@ export default defineRouter("/guilds", [
 						parent: z.object({ id: z.string(), name: z.string().nullable() }).nullable(),
 						position: z.number().int(),
 						canSendMessage: z.boolean(),
+						canClearMessages: z.boolean().nullable(),
 						topic: z.string().nullable().optional(),
 						nsfw: z.boolean().optional(),
 						rateLimitPerUser: z.number().int().nullable().optional(),

@@ -11,6 +11,8 @@ import {
 	FiArrowLeft,
 	FiCheckCircle,
 	FiClock,
+	FiEye,
+	FiHome,
 	FiSliders,
 } from "react-icons/fi";
 
@@ -81,7 +83,7 @@ function WarningBanner({ children }: { children: ReactNode }) {
 		<Card hoverable={false} className="rounded-md border-warning">
 			<Card.Content role="status" className="flex items-center justify-start gap-3 p-0! text-left text-sm">
 				<FiAlertTriangle className="size-5 shrink-0 text-warning" aria-hidden="true" />
-				<span>{children}</span>
+				<div className="min-w-0 flex-1">{children}</div>
 			</Card.Content>
 		</Card>
 	);
@@ -288,10 +290,16 @@ export default function ClearMessageJob() {
 			>
 				<TabsList aria-label="Clear job sections">
 					<TabsTab value="overview" size="sm">
-						Overview
+						<span className="inline-flex items-center gap-2">
+							<FiHome className="size-4" aria-hidden="true" />
+							Overview
+						</span>
 					</TabsTab>
 					<TabsTab value="activity" size="sm">
-						Preview and progress
+						<span className="inline-flex items-center gap-2">
+							<FiEye className="size-4" aria-hidden="true" />
+							Preview and progress
+						</span>
 					</TabsTab>
 				</TabsList>
 				<TabsPanel value="overview" keepMounted>
@@ -419,24 +427,23 @@ export default function ClearMessageJob() {
 													{preview.deleteCount} selected
 												</Tag>
 											</div>
-											{preview.scanStoppedAtLimit && (
-												<WarningBanner>
-													Scanning stopped after finding {preview.deleteCount} eligible
-													messages. Older matching messages may not be included.
-												</WarningBanner>
-											)}
 											{preview.skippedChannelCount > 0 && (
 												<WarningBanner>
-													{preview.skippedChannelCount} channel
-													{preview.skippedChannelCount === 1 ? " was" : "s were"} skipped due
-													to missing permissions.
-												</WarningBanner>
-											)}
-											{preview.olderThanBulkDeleteLimit > 0 && (
-												<WarningBanner>
-													{preview.olderThanBulkDeleteLimit} message
-													{preview.olderThanBulkDeleteLimit === 1 ? " is" : "s are"} older
-													than 14 days and will be deleted individually.
+													<div className="flex w-full items-center justify-between gap-3">
+														<span>
+															{preview.skippedChannelCount} channel
+															{preview.skippedChannelCount === 1 ? " was" : "s were"}{" "}
+															skipped due to missing permissions.
+														</span>
+														<PillLink
+															href={`/guild/${encodeURIComponent(job.guildId)}#guild-channels`}
+															variant="outline-secondary"
+															size="sm"
+															className="shrink-0 whitespace-nowrap"
+														>
+															Review
+														</PillLink>
+													</div>
 												</WarningBanner>
 											)}
 											{preview.messages.length > 0 ? (
@@ -455,70 +462,114 @@ export default function ClearMessageJob() {
 																		name={`#${group.channelName}`}
 																		showId
 																	/>
-																	<div className="flex items-center gap-2">
-																		<Button
-																			type="button"
-																			variant="outline-secondary"
-																			size="sm"
-																			aria-expanded={
+																	<Button
+																		type="button"
+																		variant="outline-secondary"
+																		size="sm"
+																		aria-expanded={
+																			expandedChannelId === group.channelId
+																		}
+																		aria-controls={`clear-job-channel-${group.channelId}-messages`}
+																		onClick={() =>
+																			setExpandedChannelId(
 																				expandedChannelId === group.channelId
-																			}
-																			aria-controls={`clear-job-channel-${group.channelId}-messages`}
-																			onClick={() =>
-																				setExpandedChannelId(
-																					expandedChannelId ===
-																						group.channelId
-																						? null
-																						: group.channelId,
-																				)
-																			}
-																		>
-																			{expandedChannelId === group.channelId
-																				? "Hide messages"
-																				: "Show messages"}
-																		</Button>
-																		<Tag variant="secondary" size="sm">
-																			{group.messages.length} selected
-																		</Tag>
-																	</div>
+																					? null
+																					: group.channelId,
+																			)
+																		}
+																	>
+																		{expandedChannelId === group.channelId
+																			? "Hide"
+																			: "Show"}{" "}
+																		{group.messages.length} message
+																		{group.messages.length === 1 ? "" : "s"}
+																	</Button>
 																</div>
 																<ul
 																	id={`clear-job-channel-${group.channelId}-messages`}
 																	hidden={expandedChannelId !== group.channelId}
 																	className="space-y-2"
 																>
-																	{group.messages.map((message) => (
-																		<li
-																			key={message.id}
-																			className="rounded-md border border-border p-3"
-																		>
-																			<div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-																				<UserDisplay
-																					id={message.author.id}
-																					name={`${message.author.displayName} (@${message.author.username})`}
-																					avatarUrl={message.author.avatarUrl}
-																					size="sm"
-																					showId
-																				/>
-																				<a
-																					href={message.jumpUrl}
-																					target="_blank"
-																					rel="noreferrer"
-																					className="min-w-0 break-all text-center text-muted-foreground underline hover:text-primary"
-																				>
-																					Message ID: {message.id}
-																				</a>
-																				<span className="whitespace-nowrap text-center text-muted-foreground">
-																					{DateHandler.getDateTime(
-																						message.createdTimestampMs,
-																					)}
-																				</span>
-																			</div>
-																			<p className="mt-2 wrap-break-word whitespace-pre-wrap text-sm">
-																				{message.content}
-																			</p>
-																		</li>
-																	))}
+																	{group.messages.map((message) => {
+																		const textContent =
+																			message.embedContent === undefined &&
+																			message.content === "(No text content)"
+																				? ""
+																				: message.content;
+																		const embedContent = message.embedContent ?? [];
+																		const supportedEmbedContent =
+																			embedContent.filter(
+																				(content): content is string =>
+																					content !== null,
+																			);
+
+																		return (
+																			<li
+																				key={message.id}
+																				className="rounded-md border border-border p-3"
+																			>
+																				<div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+																					<UserDisplay
+																						id={message.author.id}
+																						name={`${message.author.displayName} (@${message.author.username})`}
+																						avatarUrl={
+																							message.author.avatarUrl
+																						}
+																						size="sm"
+																						showId
+																					/>
+																					<a
+																						href={message.jumpUrl}
+																						target="_blank"
+																						rel="noreferrer"
+																						className="min-w-0 break-all text-center text-muted-foreground underline hover:text-primary"
+																					>
+																						Message ID: {message.id}
+																					</a>
+																					<span className="whitespace-nowrap text-center text-muted-foreground">
+																						{DateHandler.getDateTime(
+																							message.createdTimestampMs,
+																						)}
+																					</span>
+																				</div>
+																				{(textContent ||
+																					embedContent.length > 0) && (
+																					<div className="mt-2 space-y-2 wrap-break-word whitespace-pre-wrap text-sm">
+																						{textContent && (
+																							<p>
+																								<span className="font-medium">
+																									Text:
+																								</span>{" "}
+																								{textContent}
+																							</p>
+																						)}
+																						{supportedEmbedContent.length >
+																						0 ? (
+																							<p>
+																								<span className="font-medium">
+																									Embed:
+																								</span>{" "}
+																								{supportedEmbedContent.join(
+																									"\n\n",
+																								)}
+																							</p>
+																						) : (
+																							!textContent &&
+																							embedContent.length > 0 && (
+																								<p
+																									role="status"
+																									className="rounded-md border border-warning bg-warning/10 p-3 font-medium text-warning"
+																								>
+																									No supported content
+																									to preview
+																								</p>
+																							)
+																						)}
+																					</div>
+																				)}
+																			</li>
+																		);
+																	})}
 																</ul>
 															</Card.Content>
 														</Card>

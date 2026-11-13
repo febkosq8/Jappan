@@ -61,6 +61,7 @@ export const clearMessagePreviewSchema = z.object({
 				avatarUrl: z.string(),
 			}),
 			content: z.string(),
+			embedContent: z.array(z.string().nullable()),
 			createdTimestampMs: z.number().int(),
 			jumpUrl: z.string().url(),
 		}),
@@ -99,6 +100,19 @@ export function isClearableGuildChannel(channel: GuildBasedChannel | null): chan
 		typeof channel.messages.fetch === "function" &&
 		"permissionsFor" in channel
 	);
+}
+
+function getEmbedContent(message: Message): (string | null)[] {
+	return message.embeds.map((embed) => {
+		const content = [
+			embed.author?.name,
+			embed.title,
+			embed.description,
+			...embed.fields.flatMap((field) => [field.name, field.value]),
+			embed.footer?.text,
+		].filter((value): value is string => Boolean(value?.trim()));
+		return content.length > 0 ? content.join("\n") : null;
+	});
 }
 
 export function getClearChannelPermissionError({
@@ -175,11 +189,23 @@ export async function createClearMessagePreview({
 	const matchingMessages: Message[] = [];
 	const scannedChannelIds = new Set<string>();
 	const channelScans: ClearMessageChannelScan[] = [];
+	const evaluatedMessages = new Map<string, boolean>();
 	const textFilter = createClearMessageTextFilter({
 		...(text !== undefined ? { text } : {}),
 		regex,
 		ignoreCase,
 	});
+	const isEligibleMessage = (message: Message) => {
+		const cachedResult = evaluatedMessages.get(message.id);
+		if (cachedResult !== undefined) return cachedResult;
+		const isEligible =
+			(!targetUserId || message.author.id === targetUserId) &&
+			textFilter.matches(message.content) &&
+			(!excludedInteractionId || message.interactionMetadata?.id !== excludedInteractionId);
+		evaluatedMessages.set(message.id, isEligible);
+		scannedCount += 1;
+		return isEligible;
+	};
 
 	const fetchBatch = async ({
 		channel,
@@ -214,6 +240,7 @@ export async function createClearMessagePreview({
 			continue;
 		}
 		const batch = await fetchBatch({ channel, limit: initialMessageBatchSize });
+		for (const message of batch) isEligibleMessage(message);
 		const lastMessage = batch[batch.length - 1];
 		channelScans.push({
 			channel,
@@ -249,12 +276,7 @@ export async function createClearMessagePreview({
 		if (!nextScan || !newestMessage) break;
 
 		nextScan.messageIndex += 1;
-		scannedCount += 1;
-		if (
-			(!targetUserId || newestMessage.author.id === targetUserId) &&
-			textFilter.matches(newestMessage.content) &&
-			(!excludedInteractionId || newestMessage.interactionMetadata?.id !== excludedInteractionId)
-		) {
+		if (isEligibleMessage(newestMessage)) {
 			matchedCount += 1;
 			matchingMessages.push(newestMessage);
 			scanStoppedAtLimit = matchedCount >= count;
@@ -343,7 +365,8 @@ export async function createClearMessagePreview({
 				displayName: message.member?.displayName ?? message.author.globalName ?? message.author.username,
 				avatarUrl: message.author.displayAvatarURL(),
 			},
-			content: message.content || "(No text content)",
+			content: message.content,
+			embedContent: getEmbedContent(message),
 			createdTimestampMs: message.createdTimestamp,
 			jumpUrl: message.url,
 		})),

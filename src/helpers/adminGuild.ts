@@ -53,6 +53,15 @@ export async function listAdminGuildChannels(guildId: string) {
 						PermissionFlagsBits.EmbedLinks,
 					],
 				}),
+				canClearMessages: channel.isTextBased()
+					? (channel
+							.permissionsFor(botMember)
+							?.has([
+								PermissionFlagsBits.ViewChannel,
+								PermissionFlagsBits.ReadMessageHistory,
+								PermissionFlagsBits.ManageMessages,
+							]) ?? false)
+					: null,
 				...("topic" in channel ? { topic: channel.topic } : {}),
 				...("nsfw" in channel ? { nsfw: channel.nsfw } : {}),
 				...("rateLimitPerUser" in channel ? { rateLimitPerUser: channel.rateLimitPerUser } : {}),

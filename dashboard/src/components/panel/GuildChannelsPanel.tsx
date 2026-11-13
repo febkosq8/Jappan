@@ -134,6 +134,14 @@ function ChannelGroupList({ guildId, channels }: { guildId: string; channels: Ad
 												<dt className="text-muted-foreground">Can send message:</dt>
 												<dd>{channel.canSendMessage ? "Yes" : "No"}</dd>
 											</div>
+											{channel.canClearMessages != null && (
+												<div className="flex flex-wrap gap-x-1">
+													<dt className="text-muted-foreground">
+														Can scan and clear messages:
+													</dt>
+													<dd>{channel.canClearMessages ? "Yes" : "No"}</dd>
+												</div>
+											)}
 											<div className="flex flex-wrap gap-x-1">
 												<dt className="text-muted-foreground">Created:</dt>
 												<dd>

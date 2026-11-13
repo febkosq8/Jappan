@@ -102,6 +102,7 @@ export interface AdminGuildChannel {
 	parent: PreferenceEntity | null;
 	position: number;
 	canSendMessage: boolean;
+	canClearMessages?: boolean | null;
 	topic?: string | null;
 	nsfw?: boolean;
 	rateLimitPerUser?: number | null;
@@ -142,6 +143,7 @@ export interface GuildClearMessagePreview {
 		channelName: string;
 		author: { id: string; username: string; displayName: string; avatarUrl: string };
 		content: string;
+		embedContent?: (string | null)[];
 		createdTimestampMs: number;
 		jumpUrl: string;
 	}[];
