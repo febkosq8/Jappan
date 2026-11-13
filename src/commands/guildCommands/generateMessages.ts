@@ -3,7 +3,21 @@ import { InteractionContextType, MessageFlags, PermissionFlagsBits, SlashCommand
 import type { BotCommand, BotCommandData } from "../../helpers/command.js";
 import { formatChannelMention } from "../../helpers/discord.js";
 import { getMissingBotPermissions } from "../../helpers/shared/permissions.js";
-import { sendMessages } from "../../services/sendMessages.js";
+import { sendMessages, type MessageType } from "../../helpers/sendMessages.js";
+
+function parseMessageType(value: string | null): MessageType {
+	switch (value) {
+		case null:
+		case "all":
+			return "all";
+		case "gif":
+		case "text":
+		case "embed":
+			return value;
+		default:
+			throw new Error(`Unsupported message type: ${value}`);
+	}
+}
 
 const commandData = {
 	name: "generate-messages",
@@ -16,8 +30,8 @@ const commandData = {
 	usageNotes: [
 		"Generate channel messages for testing; requires Manage Server permission.",
 		"Count defaults to 10 and supports 1 to 200 messages.",
-		"Omit text for random multi-line messages or short paragraphs.",
-		"GIF links are included every third message by default; set gifs to false for text only.",
+		"Message type defaults to all, which mixes GIF, text, and embed messages.",
+		"Text is used for text and embed messages; omit it for random multi-line messages.",
 		"Mentions are disabled. Only one message generation run can be active per channel.",
 	],
 } satisfies BotCommandData;
@@ -28,7 +42,10 @@ const command: BotCommand = {
 		.setName(commandData.name)
 		.setDescription(commandData.description)
 		.addStringOption((option) =>
-			option.setName("text").setDescription("Message text to repeat; omit for random text").setMaxLength(1800),
+			option
+				.setName("text")
+				.setDescription("Message text for text/embed; omit for random text")
+				.setMaxLength(1800),
 		)
 		.addIntegerOption((option) =>
 			option
@@ -37,8 +54,16 @@ const command: BotCommand = {
 				.setMinValue(1)
 				.setMaxValue(200),
 		)
-		.addBooleanOption((option) =>
-			option.setName("gifs").setDescription("Include GIF links in some messages (default: true)"),
+		.addStringOption((option) =>
+			option
+				.setName("message_types")
+				.setDescription("Message format to generate (default: all)")
+				.addChoices(
+					{ name: "All (mixed)", value: "all" },
+					{ name: "GIF", value: "gif" },
+					{ name: "Text", value: "text" },
+					{ name: "Embed", value: "embed" },
+				),
 		)
 		.setDefaultMemberPermissions(commandData.defaultMemberPermissions)
 		.setContexts([InteractionContextType.Guild]),
@@ -69,15 +94,16 @@ const command: BotCommand = {
 
 		const count = interaction.options.getInteger("count") ?? 10;
 		const text = interaction.options.getString("text") ?? undefined;
-		const includeGifs = interaction.options.getBoolean("gifs") ?? true;
+		const messageType = parseMessageType(interaction.options.getString("message_types"));
 		let sent = 0;
 		await interaction.editReply(`Generating ${count} test messages in ${formatChannelMention(channel)}...`);
 		try {
 			await sendMessages({
 				channel,
 				count,
+				jobId: interaction.id,
+				messageType,
 				...(text !== undefined ? { text } : {}),
-				includeGifs,
 				onProgress: (progress) => {
 					sent = progress;
 				},
