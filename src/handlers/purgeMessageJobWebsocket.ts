@@ -7,7 +7,7 @@ import {
 	type WebsocketSocket,
 } from "../helpers/websocket.js";
 import { logger } from "../services/logger.js";
-import { subscribeToClearMessageJob, unsubscribeFromClearMessageJob } from "../services/clearMessageJobWebsocket.js";
+import { subscribeToPurgeMessageJob, unsubscribeFromPurgeMessageJob } from "../services/purgeMessageJobWebsocket.js";
 
 type Failure = Extract<WebsocketResult, { ok: false }>;
 
@@ -32,40 +32,40 @@ async function respond<Data extends object>({
 		try {
 			result = await work();
 		} catch (error: unknown) {
-			logger.error("WEBSOCKET", "Message clear job socket event failed", {
+			logger.error("WEBSOCKET", "Message purge job socket event failed", {
 				event,
 				socket: socket.id,
 				error: error instanceof Error ? error.message : String(error),
 			});
-			result = { ok: false, status: 500, error: "The message clear job request failed" };
+			result = { ok: false, status: 500, error: "The message purge job request failed" };
 		}
 	}
 	if (typeof ack === "function") ack(result);
 }
 
-export function registerClearMessageJobSocketHandlers(socket: WebsocketSocket): void {
-	socket.on("clear-job:subscribe", (payload, ack) => {
+export function registerPurgeMessageJobSocketHandlers(socket: WebsocketSocket): void {
+	socket.on("purge-job:subscribe", (payload, ack) => {
 		void respond({
 			socket,
-			event: "clear-job:subscribe",
+			event: "purge-job:subscribe",
 			ack,
 			work: async () => {
 				const parsed = requestSchema.safeParse(payload);
 				if (!parsed.success) return invalidPayload;
-				return subscribeToClearMessageJob({ socket, jobId: parsed.data.jobId });
+				return subscribeToPurgeMessageJob({ socket, jobId: parsed.data.jobId });
 			},
 		});
 	});
 
-	socket.on("clear-job:unsubscribe", (payload, ack) => {
+	socket.on("purge-job:unsubscribe", (payload, ack) => {
 		void respond({
 			socket,
-			event: "clear-job:unsubscribe",
+			event: "purge-job:unsubscribe",
 			ack,
 			work: async () => {
 				const parsed = requestSchema.safeParse(payload);
 				if (!parsed.success) return invalidPayload;
-				await unsubscribeFromClearMessageJob({ socket, jobId: parsed.data.jobId });
+				await unsubscribeFromPurgeMessageJob({ socket, jobId: parsed.data.jobId });
 				return { ok: true };
 			},
 		});

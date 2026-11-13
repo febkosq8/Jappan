@@ -88,7 +88,7 @@ This document records design decisions and behavior that is easy to miss.
   values when disabled, and do not post a confirmation message to the guild.
   Audit logging, member announcements, and warning audit messages also require
   `Embed Links` in their selected channels because they are sent as embeds.
-- Clear-job requests accept `text`, `regex`, and `ignoreCase`. Both flags default
+- Purge-job requests accept `text`, `regex`, and `ignoreCase`. Both flags default
   to false, preserving literal, case-sensitive matching. With `regex: true`,
   supply an RE2 pattern without slash delimiters, such as `^error\b`.
   The shared bot/web matcher uses a linear-time RE2 engine, limits text to 2000

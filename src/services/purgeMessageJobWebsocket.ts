@@ -1,15 +1,15 @@
 import { formatUser } from "../helpers/discord.js";
 import type { WebsocketResult, WebsocketServer, WebsocketSocket } from "../helpers/websocket.js";
 import {
-	authorizeClearMessageJob,
-	getClearMessageJob,
-	onClearMessageJobState,
-	isClearMessageJobTerminal,
-	type ClearMessageJobState,
-} from "./clearMessageJobs.js";
+	authorizePurgeMessageJob,
+	getPurgeMessageJob,
+	onPurgeMessageJobState,
+	isPurgeMessageJobTerminal,
+	type PurgeMessageJobState,
+} from "./purgeMessageJobs.js";
 import { logger } from "./logger.js";
 
-const ROOM_PREFIX = "clear-job:";
+const ROOM_PREFIX = "purge-job:";
 const ACCESS_REFRESH_INTERVAL_MS = 30_000;
 
 let websocketServer: WebsocketServer | undefined;
@@ -26,10 +26,10 @@ function getSubscriptionKey(socket: WebsocketSocket, jobId: string): string {
 	return `${socket.id}:${jobId}`;
 }
 
-function publishClearMessageJob(state: ClearMessageJobState): void {
+function publishPurgeMessageJob(state: PurgeMessageJobState): void {
 	const room = getRoom(state.jobId);
-	websocketServer?.to(room).emit("clear-job:state", state);
-	if (!isClearMessageJobTerminal(state.status)) return;
+	websocketServer?.to(room).emit("purge-job:state", state);
+	if (!isPurgeMessageJobTerminal(state.status)) return;
 	websocketServer?.in(room).socketsLeave(room);
 	for (const [key, subscription] of subscriptions) {
 		if (subscription.jobId === state.jobId) subscriptions.delete(key);
@@ -37,46 +37,46 @@ function publishClearMessageJob(state: ClearMessageJobState): void {
 }
 
 function asFailure(
-	result: Exclude<Awaited<ReturnType<typeof authorizeClearMessageJob>>, { status: "ok" }>,
-): Extract<WebsocketResult<{ state: ClearMessageJobState }>, { ok: false }> {
+	result: Exclude<Awaited<ReturnType<typeof authorizePurgeMessageJob>>, { status: "ok" }>,
+): Extract<WebsocketResult<{ state: PurgeMessageJobState }>, { ok: false }> {
 	switch (result.status) {
 		case "not_found":
-			return { ok: false, status: 404, error: "Message clear job not found" };
+			return { ok: false, status: 404, error: "Message purge job not found" };
 		case "forbidden":
-			return { ok: false, status: 403, error: "You cannot view this message clear job" };
+			return { ok: false, status: 403, error: "You cannot view this message purge job" };
 		case "unavailable":
 			return { ok: false, status: 503, error: "Guild is unavailable" };
 	}
 }
 
-export async function subscribeToClearMessageJob({
+export async function subscribeToPurgeMessageJob({
 	socket,
 	jobId,
 }: {
 	socket: WebsocketSocket;
 	jobId: string;
-}): Promise<WebsocketResult<{ state: ClearMessageJobState }>> {
-	const access = await authorizeClearMessageJob({
+}): Promise<WebsocketResult<{ state: PurgeMessageJobState }>> {
+	const access = await authorizePurgeMessageJob({
 		jobId,
 		discordUserId: socket.data.user.id,
 		isBotAdmin: socket.data.user.isAdmin,
 	});
 	if (access.status !== "ok") return asFailure(access);
 
-	if (!isClearMessageJobTerminal(access.job.status)) {
+	if (!isPurgeMessageJobTerminal(access.job.status)) {
 		await socket.join(getRoom(jobId));
 	}
-	const state = getClearMessageJob(jobId);
+	const state = getPurgeMessageJob(jobId);
 	if (!state) {
 		await socket.leave(getRoom(jobId));
-		return { ok: false, status: 404, error: "Message clear job not found" };
+		return { ok: false, status: 404, error: "Message purge job not found" };
 	}
-	if (!isClearMessageJobTerminal(state.status)) {
+	if (!isPurgeMessageJobTerminal(state.status)) {
 		subscriptions.set(getSubscriptionKey(socket, jobId), { socket, jobId });
 	} else {
 		await socket.leave(getRoom(jobId));
 	}
-	logger.info("WEBSOCKET", "Client subscribed to message clear job", {
+	logger.info("WEBSOCKET", "Client subscribed to message purge job", {
 		socket: socket.id,
 		jobId,
 		user: formatUser(socket.data.user),
@@ -84,7 +84,7 @@ export async function subscribeToClearMessageJob({
 	return { ok: true, state };
 }
 
-export async function unsubscribeFromClearMessageJob({
+export async function unsubscribeFromPurgeMessageJob({
 	socket,
 	jobId,
 }: {
@@ -95,7 +95,7 @@ export async function unsubscribeFromClearMessageJob({
 	subscriptions.delete(getSubscriptionKey(socket, jobId));
 }
 
-export function handleClearMessageSocketDisconnecting(socket: WebsocketSocket): void {
+export function handlePurgeMessageSocketDisconnecting(socket: WebsocketSocket): void {
 	const jobIds = [...socket.rooms]
 		.filter((room) => room.startsWith(ROOM_PREFIX))
 		.map((room) => room.slice(ROOM_PREFIX.length));
@@ -115,19 +115,19 @@ async function refreshSubscriptions(): Promise<void> {
 				continue;
 			}
 			try {
-				const access = await authorizeClearMessageJob({
+				const access = await authorizePurgeMessageJob({
 					jobId,
 					discordUserId: socket.data.user.id,
 					isBotAdmin: socket.data.user.isAdmin,
 				});
 				if (access.status === "ok") continue;
-				await unsubscribeFromClearMessageJob({ socket, jobId });
+				await unsubscribeFromPurgeMessageJob({ socket, jobId });
 				const failure = asFailure(access);
 				if (!failure.ok) {
-					socket.emit("clear-job:revoked", { jobId, status: failure.status, error: failure.error });
+					socket.emit("purge-job:revoked", { jobId, status: failure.status, error: failure.error });
 				}
 			} catch (error: unknown) {
-				logger.warn("WEBSOCKET", "Failed to refresh message clear job access", {
+				logger.warn("WEBSOCKET", "Failed to refresh message purge job access", {
 					jobId,
 					user: formatUser(socket.data.user),
 					error: error instanceof Error ? error.message : String(error),
@@ -139,14 +139,14 @@ async function refreshSubscriptions(): Promise<void> {
 	}
 }
 
-export function startClearMessageJobWebsocket(server: WebsocketServer): void {
+export function startPurgeMessageJobWebsocket(server: WebsocketServer): void {
 	websocketServer = server;
-	stopListeningForJobState ??= onClearMessageJobState(publishClearMessageJob);
+	stopListeningForJobState ??= onPurgeMessageJobState(publishPurgeMessageJob);
 	refreshTimer ??= setInterval(() => void refreshSubscriptions(), ACCESS_REFRESH_INTERVAL_MS);
 	refreshTimer.unref();
 }
 
-export function stopClearMessageJobWebsocket(): void {
+export function stopPurgeMessageJobWebsocket(): void {
 	if (refreshTimer) {
 		clearInterval(refreshTimer);
 		refreshTimer = undefined;

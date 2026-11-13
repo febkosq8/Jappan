@@ -40,7 +40,7 @@ const featureItems = [
 		icon: <FiShield />,
 		img: [
 			{ img: Mod1, title: "Audit events" },
-			{ img: Mod2, title: "Clear messages" },
+			{ img: Mod2, title: "Purge messages" },
 			{ img: Mod3, title: "Member join and leave announcements" },
 		],
 	},

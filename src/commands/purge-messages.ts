@@ -14,20 +14,20 @@ import {
 import { formatChannelMention, formatUserMention } from "../helpers/discord.js";
 import type { BotCommand, BotCommandData } from "../services/commandLoader.js";
 import {
-	getClearMessageJob,
-	onClearMessageJobState,
-	createClearMessageJob,
-	isClearMessageJobTerminal,
-	type ClearMessageJobState,
-	type ClearableGuildChannel,
-} from "../services/clearMessageJobs.js";
-import { getClearChannelPermissionError, isClearableGuildChannel } from "../services/clearMessagePreviews.js";
+	getPurgeMessageJob,
+	onPurgeMessageJobState,
+	createPurgeMessageJob,
+	isPurgeMessageJobTerminal,
+	type PurgeMessageJobState,
+	type PurgeableGuildChannel,
+} from "../services/purgeMessageJobs.js";
+import { getPurgeChannelPermissionError, isPurgeableGuildChannel } from "../services/purgeMessagePreviews.js";
 import { logger } from "../services/logger.js";
-import { ClearMessageTextFilterError, clearMessageTextFilterMaxLength } from "../services/clearMessageTextFilter.js";
+import { PurgeMessageTextFilterError, purgeMessageTextFilterMaxLength } from "../services/purgeMessageTextFilter.js";
 
 const commandData = {
-	name: "clear",
-	description: "Create a message clear job to preview and confirm on the web",
+	name: "purge-messages",
+	description: "Create a purge job to preview and confirm message deletion on the web",
 	category: "moderator",
 	defaultMemberPermissions: PermissionFlagsBits.ManageGuild,
 	isDBDependant: false,
@@ -47,7 +47,7 @@ function createJobEmbed({
 	targetUser,
 	author,
 }: {
-	state: ClearMessageJobState;
+	state: PurgeMessageJobState;
 	jobUrl: string;
 	targetUser?: User;
 	author: EmbedAuthorOptions;
@@ -74,7 +74,7 @@ function createJobEmbed({
 										: "Complete";
 	const embed = new EmbedBuilder()
 		.setColor(state.status === "failed" || state.failedMessages > 0 ? "Red" : "Blue")
-		.setTitle("Clear messages")
+		.setTitle("Purge messages")
 		.setAuthor(author)
 		.setTimestamp()
 		.setDescription(`[Open job page](${jobUrl})`)
@@ -141,7 +141,7 @@ const command: BotCommand = {
 			option
 				.setName("text")
 				.setDescription("Text to match, or an RE2 pattern when regex is enabled")
-				.setMaxLength(clearMessageTextFilterMaxLength)
+				.setMaxLength(purgeMessageTextFilterMaxLength)
 				.setRequired(false),
 		)
 		.addBooleanOption((option) =>
@@ -177,10 +177,10 @@ const command: BotCommand = {
 		}
 
 		try {
-			let channels: ClearableGuildChannel[];
+			let channels: PurgeableGuildChannel[];
 			if (selectedChannel) {
 				const selectedGuildChannel = await interaction.guild.channels.fetch(selectedChannel.id);
-				if (!isClearableGuildChannel(selectedGuildChannel)) {
+				if (!isPurgeableGuildChannel(selectedGuildChannel)) {
 					await interaction.editReply(
 						"⛔ The selected channel could not be found or cannot contain messages.",
 					);
@@ -188,13 +188,13 @@ const command: BotCommand = {
 				}
 				channels = [selectedGuildChannel];
 			} else {
-				channels = [...(await interaction.guild.channels.fetch()).values()].filter(isClearableGuildChannel);
+				channels = [...(await interaction.guild.channels.fetch()).values()].filter(isPurgeableGuildChannel);
 			}
 			const member = await interaction.guild.members.fetch(interaction.user.id);
 			const botMember = interaction.guild.members.me ?? (await interaction.guild.members.fetchMe());
 			const author = { name: config.BOT_NAME, iconURL: config.BOT_PFP, url: config.BOT_WEBSITE };
-			const validateChannel = (channel: ClearableGuildChannel) =>
-				getClearChannelPermissionError({
+			const validateChannel = (channel: PurgeableGuildChannel) =>
+				getPurgeChannelPermissionError({
 					channel,
 					member,
 					botMember,
@@ -208,7 +208,7 @@ const command: BotCommand = {
 				}
 			}
 			channels = channels.filter((channel) => validateChannel(channel) === null);
-			const job = createClearMessageJob({
+			const job = createPurgeMessageJob({
 				guild: interaction.guild,
 				channels,
 				creatorDiscordId: interaction.user.id,
@@ -220,8 +220,8 @@ const command: BotCommand = {
 				ignoreCase,
 				excludedInteractionId: interaction.id,
 			});
-			const jobUrl = new URL(`/clear-jobs/${encodeURIComponent(job.jobId)}`, config.BOT_WEBSITE).href;
-			const createMessage = (state: ClearMessageJobState) => ({
+			const jobUrl = new URL(`/purge-jobs/${encodeURIComponent(job.jobId)}`, config.BOT_WEBSITE).href;
+			const createMessage = (state: PurgeMessageJobState) => ({
 				embeds: [
 					createJobEmbed({
 						state,
@@ -240,26 +240,26 @@ const command: BotCommand = {
 			let started = false;
 			let finalized = false;
 			let stopListening: () => void = () => {};
-			const updateMessage = (state: ClearMessageJobState) => {
+			const updateMessage = (state: PurgeMessageJobState) => {
 				if (state.jobId !== job.jobId || finalized) return;
-				const terminal = isClearMessageJobTerminal(state.status);
+				const terminal = isPurgeMessageJobTerminal(state.status);
 				if (!terminal && (state.status !== "running" || started)) return;
 				started ||= state.status === "running";
 				finalized = terminal;
 				if (terminal) stopListening();
 				void interaction.editReply(createMessage(state)).catch((error: unknown) => {
-					logger.warn("SLASH_COMMANDS", "Could not update clear job response", {
+					logger.warn("SLASH_COMMANDS", "Could not update purge job response", {
 						jobId: state.jobId,
 						error: error instanceof Error ? error.message : String(error),
 					});
 				});
 			};
-			stopListening = onClearMessageJobState(updateMessage);
-			const currentState = getClearMessageJob(job.jobId);
+			stopListening = onPurgeMessageJobState(updateMessage);
+			const currentState = getPurgeMessageJob(job.jobId);
 			if (currentState) updateMessage(currentState);
 		} catch (error: unknown) {
-			if (error instanceof ClearMessageTextFilterError) {
-				logger.warn("SLASH_COMMANDS", "Invalid clear message text filter", {
+			if (error instanceof PurgeMessageTextFilterError) {
+				logger.warn("SLASH_COMMANDS", "Invalid purge message text filter", {
 					guildId: interaction.guild.id,
 					userId: interaction.user.id,
 					error: error.message,
@@ -267,7 +267,7 @@ const command: BotCommand = {
 				await interaction.editReply(`⛔ ${error.message}`);
 				return;
 			}
-			await interaction.editReply("⛔ There was an error while creating the message clear job.");
+			await interaction.editReply("⛔ There was an error while creating the message purge job.");
 			throw error;
 		}
 	},

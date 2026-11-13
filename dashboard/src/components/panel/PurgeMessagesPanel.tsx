@@ -9,7 +9,7 @@ import GuildMemberPicker from "@jappan/components/panel/GuildMemberPicker";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import APIHandler, { type WarningMember } from "@jappan/handlers/APIHandler";
 
-const clearableChannelTypes = new Set(["GuildText", "GuildAnnouncement", "GuildVoice"]);
+const purgeableChannelTypes = new Set(["GuildText", "GuildAnnouncement", "GuildVoice"]);
 
 function getErrorMessage(error: unknown, fallback: string): string {
 	if (axios.isAxiosError<{ error?: string }>(error) && typeof error.response?.data?.error === "string") {
@@ -18,7 +18,7 @@ function getErrorMessage(error: unknown, fallback: string): string {
 	return fallback;
 }
 
-export default function ClearMessagesPanel({
+export default function PurgeMessagesPanel({
 	active,
 	initialGuildId = "",
 }: {
@@ -60,7 +60,7 @@ export default function ClearMessagesPanel({
 				if (!Number.isInteger(count) || count < 1 || count > 200) {
 					throw new Error("Enter a message limit between 1 and 200.");
 				}
-				return APIHandler.createGuildMessageClearJob(guildId, {
+				return APIHandler.createGuildMessagePurgeJob(guildId, {
 					...(channelId ? { channelId } : {}),
 					count,
 					...(selectedMember ? { userId: selectedMember.id } : {}),
@@ -70,17 +70,17 @@ export default function ClearMessagesPanel({
 				});
 			});
 			toast.promise(promise, {
-				loading: "Creating message clear job…",
-				success: "Clear job created.",
-				error: (error) => getErrorMessage(error, "Could not create a message clear job."),
+				loading: "Creating message purge job…",
+				success: "Purge job created.",
+				error: (error) => getErrorMessage(error, "Could not create a message purge job."),
 			});
 			return promise;
 		},
 		onSuccess: (result) => {
-			navigate(`/clear-jobs/${encodeURIComponent(result.jobId)}`);
+			navigate(`/purge-jobs/${encodeURIComponent(result.jobId)}`);
 		},
 	});
-	const channels = (channelsQuery.data ?? []).filter((channel) => clearableChannelTypes.has(channel.typeName));
+	const channels = (channelsQuery.data ?? []).filter((channel) => purgeableChannelTypes.has(channel.typeName));
 	const count = Number(countInput);
 	const canCreate = Boolean(guildId) && Number.isInteger(count) && count >= 1 && count <= 200;
 	const isBusy = createMutation.isPending;
@@ -90,10 +90,10 @@ export default function ClearMessagesPanel({
 	};
 
 	return (
-		<section aria-labelledby="clear-messages-heading" className="space-y-4">
+		<section aria-labelledby="purge-messages-heading" className="space-y-4">
 			<div>
-				<h2 id="clear-messages-heading" className="text-xl font-semibold">
-					Clear messages
+				<h2 id="purge-messages-heading" className="text-xl font-semibold">
+					Purge messages
 				</h2>
 				<p className="mt-1 text-sm text-muted-foreground">
 					Create a job to preview messages and confirm deletion on its job page.
@@ -113,9 +113,9 @@ export default function ClearMessagesPanel({
 						<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 							{!initialGuildId && (
 								<div className="col-span-full">
-									<LabelField id="clear-messages-guild" label="Server" className="mb-1" />
+									<LabelField id="purge-messages-guild" label="Server" className="mb-1" />
 									<Select
-										id="clear-messages-guild"
+										id="purge-messages-guild"
 										value={guildId}
 										onChange={(value) => {
 											updateFilter(() => {
@@ -138,7 +138,7 @@ export default function ClearMessagesPanel({
 							)}
 							<div>
 								<div className="mb-1 flex items-center gap-2">
-									<LabelField id="clear-messages-channel" label="Channel (optional)" />
+									<LabelField id="purge-messages-channel" label="Channel (optional)" />
 									{channelsQuery.isFetching && (
 										<LoadingIndicator
 											label="Loading channels"
@@ -150,7 +150,7 @@ export default function ClearMessagesPanel({
 									)}
 								</div>
 								<Select
-									id="clear-messages-channel"
+									id="purge-messages-channel"
 									value={channelId}
 									onChange={(value) => updateFilter(() => setChannelId(value))}
 									data={[
@@ -181,9 +181,9 @@ export default function ClearMessagesPanel({
 								)}
 							</div>
 							<div>
-								<LabelField id="clear-messages-count" label="Maximum messages" className="mb-1" />
+								<LabelField id="purge-messages-count" label="Maximum messages" className="mb-1" />
 								<Input
-									id="clear-messages-count"
+									id="purge-messages-count"
 									type="number"
 									min={1}
 									max={200}
@@ -199,7 +199,7 @@ export default function ClearMessagesPanel({
 							</div>
 							<div>
 								<LabelField
-									id="clear-messages-member"
+									id="purge-messages-member"
 									label="Message author (optional)"
 									className="mb-1"
 								/>
@@ -220,7 +220,7 @@ export default function ClearMessagesPanel({
 									</div>
 								) : (
 									<GuildMemberPicker
-										id="clear-messages-member"
+										id="purge-messages-member"
 										guildId={guildId}
 										enabled={active && Boolean(guildId)}
 										disabled={!guildId || isBusy}
@@ -231,7 +231,7 @@ export default function ClearMessagesPanel({
 							<div className="col-span-full">
 								<div className="mb-1 flex flex-wrap items-center justify-between gap-3">
 									<LabelField
-										id="clear-messages-text"
+										id="purge-messages-text"
 										label={regex ? "Text matches" : "Text contains"}
 									/>
 									<div className="flex flex-wrap items-center gap-4">
@@ -257,7 +257,7 @@ export default function ClearMessagesPanel({
 								</div>
 								<Input
 									as="textarea"
-									id="clear-messages-text"
+									id="purge-messages-text"
 									rows={2}
 									value={text}
 									onChange={(event) => updateFilter(() => setText(event.target.value))}
@@ -280,7 +280,7 @@ export default function ClearMessagesPanel({
 							disabled={!active || !canCreate || isBusy}
 							onClick={() => createMutation.mutate()}
 						>
-							{createMutation.isPending ? "Creating job..." : "Start clear job"}
+							{createMutation.isPending ? "Creating job..." : "Start purge job"}
 						</Button>
 					</div>
 				</Card.Content>

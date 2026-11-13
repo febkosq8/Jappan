@@ -4,24 +4,24 @@ import { DiscordAPIError, PermissionFlagsBits, RESTJSONErrorCodes } from "discor
 
 import { DISCORD_INTERACTION_TIME_LIMIT_MS } from "../helpers/interaction.js";
 import { getClientGuild } from "../helpers/guild.js";
-import { deleteMessages } from "./clearMessages.js";
+import { deleteMessages } from "./purgeMessages.js";
 import { logger } from "./logger.js";
-import { createClearMessageTextFilter } from "./clearMessageTextFilter.js";
+import { createPurgeMessageTextFilter } from "./purgeMessageTextFilter.js";
 import {
-	createClearMessagePreview,
-	getClearChannelPermissionError,
-	isClearableGuildChannel,
-	type ClearMessagePreview,
-	type ClearMessagePreviewRecord,
-} from "./clearMessagePreviews.js";
+	createPurgeMessagePreview,
+	getPurgeChannelPermissionError,
+	isPurgeableGuildChannel,
+	type PurgeMessagePreview,
+	type PurgeMessagePreviewRecord,
+} from "./purgeMessagePreviews.js";
 
-export type ClearableGuildChannel = NonThreadGuildBasedChannel & {
+export type PurgeableGuildChannel = NonThreadGuildBasedChannel & {
 	messages: {
 		fetch(options: { limit: number; before?: string }): Promise<Collection<string, Message>>;
 	};
 };
 
-export interface ClearMessageJobState {
+export interface PurgeMessageJobState {
 	jobId: string;
 	version: number;
 	guildId: string;
@@ -42,7 +42,7 @@ export interface ClearMessageJobState {
 		| "stopped"
 		| "failed"
 		| "cancelled";
-	preview: ClearMessagePreview | null;
+	preview: PurgeMessagePreview | null;
 	startedAtMs: number;
 	finishedAtMs: number | null;
 	serverTimestampMs: number;
@@ -64,21 +64,21 @@ export interface ClearMessageJobState {
 	error?: string;
 }
 
-interface ClearMessageJobRecord {
-	state: ClearMessageJobState;
+interface PurgeMessageJobRecord {
+	state: PurgeMessageJobState;
 	creatorDiscordId: string;
 	authorizationChannelIds: string[];
 	createdAtMs: number;
-	options: CreateClearMessageJobOptions;
-	preview: ClearMessagePreviewRecord | null;
+	options: CreatePurgeMessageJobOptions;
+	preview: PurgeMessagePreviewRecord | null;
 	waitingDeadlineAt: number;
 	expiryTimer: NodeJS.Timeout | null;
 	previewAbortController: AbortController | null;
 }
 
-export interface CreateClearMessageJobOptions {
+export interface CreatePurgeMessageJobOptions {
 	guild: Guild;
-	channels: ClearableGuildChannel[];
+	channels: PurgeableGuildChannel[];
 	creatorDiscordId: string;
 	count: number;
 	selectedChannelId?: string;
@@ -89,7 +89,7 @@ export interface CreateClearMessageJobOptions {
 	excludedInteractionId?: string;
 }
 
-export class ClearMessageJobActionError extends Error {
+export class PurgeMessageJobActionError extends Error {
 	constructor(
 		public readonly status: number,
 		message: string,
@@ -98,13 +98,13 @@ export class ClearMessageJobActionError extends Error {
 	}
 }
 
-export function isClearMessageJobTerminal(status: ClearMessageJobState["status"]): boolean {
+export function isPurgeMessageJobTerminal(status: PurgeMessageJobState["status"]): boolean {
 	return ["complete", "stopped", "failed", "cancelled"].includes(status);
 }
 
-type JobStateListener = (state: ClearMessageJobState) => void;
+type JobStateListener = (state: PurgeMessageJobState) => void;
 
-const jobs = new Map<string, ClearMessageJobRecord>();
+const jobs = new Map<string, PurgeMessageJobRecord>();
 const listeners = new Set<JobStateListener>();
 const jobLifetimeMs = 60 * 60 * 1000;
 const requestLifetimeMs = 15 * 60 * 1000;
@@ -113,36 +113,36 @@ function pruneJobs() {
 	const now = Date.now();
 	for (const [jobId, job] of jobs) {
 		if (
-			!isClearMessageJobTerminal(job.state.status) &&
+			!isPurgeMessageJobTerminal(job.state.status) &&
 			job.state.status !== "running" &&
 			job.waitingDeadlineAt <= now
 		) {
 			expireRequest(job);
 		}
-		if (isClearMessageJobTerminal(job.state.status) && job.createdAtMs + jobLifetimeMs <= now) {
+		if (isPurgeMessageJobTerminal(job.state.status) && job.createdAtMs + jobLifetimeMs <= now) {
 			jobs.delete(jobId);
 		}
 	}
 }
 
-function calculateProgress(state: ClearMessageJobState, currentChannelTotal: number, currentChannelProcessed: number) {
+function calculateProgress(state: PurgeMessageJobState, currentChannelTotal: number, currentChannelProcessed: number) {
 	if (state.channelCount === 0) return 100;
 	const channelProgress = currentChannelTotal > 0 ? Math.min(1, currentChannelProcessed / currentChannelTotal) : 0;
 	return Math.min(100, Math.round(((state.completedChannels + channelProgress) / state.channelCount) * 100));
 }
 
-function snapshot(record: ClearMessageJobRecord): ClearMessageJobState {
+function snapshot(record: PurgeMessageJobRecord): PurgeMessageJobState {
 	return { ...structuredClone(record.state), serverTimestampMs: Date.now() };
 }
 
-function publish(record: ClearMessageJobRecord) {
+function publish(record: PurgeMessageJobRecord) {
 	record.state.version += 1;
 	const state = snapshot(record);
 	for (const listener of listeners) {
 		try {
 			listener(state);
 		} catch (error: unknown) {
-			logger.error("WEBSOCKET", "Failed to publish clear job progress", {
+			logger.error("WEBSOCKET", "Failed to publish purge job progress", {
 				jobId: state.jobId,
 				error: error instanceof Error ? error.message : String(error),
 			});
@@ -150,13 +150,13 @@ function publish(record: ClearMessageJobRecord) {
 	}
 }
 
-function addJobError(record: ClearMessageJobRecord, error: string) {
+function addJobError(record: PurgeMessageJobRecord, error: string) {
 	if (!record.state.errors.includes(error)) {
 		record.state.errors.push(error);
 	}
 }
 
-function finishChannel({ record }: { record: ClearMessageJobRecord }) {
+function finishChannel({ record }: { record: PurgeMessageJobRecord }) {
 	record.state.messagesProcessed = record.state.deletedMessages + record.state.failedMessages;
 	record.state.unprocessedMessages = Math.max(0, record.state.messagesToDelete - record.state.messagesProcessed);
 	record.state.completedChannels += 1;
@@ -166,16 +166,16 @@ function finishChannel({ record }: { record: ClearMessageJobRecord }) {
 	publish(record);
 }
 
-async function runClearMessageJob(
-	record: ClearMessageJobRecord,
+async function runPurgeMessageJob(
+	record: PurgeMessageJobRecord,
 	{
 		channels,
 		messages: previewMessages,
 		validateChannel,
 	}: {
-		channels: ClearableGuildChannel[];
+		channels: PurgeableGuildChannel[];
 		messages: Message[];
-		validateChannel: (channel: ClearableGuildChannel) => string | null;
+		validateChannel: (channel: PurgeableGuildChannel) => string | null;
 	},
 ) {
 	const deadlineAt = Date.now() + DISCORD_INTERACTION_TIME_LIMIT_MS;
@@ -249,7 +249,7 @@ async function runClearMessageJob(
 		record.state.currentChannelName = null;
 		record.state.progressPercentage = record.state.status === "complete" ? 100 : record.state.progressPercentage;
 		publish(record);
-		logger.info("HTTP", "Message clear job finished", {
+		logger.info("HTTP", "Message purge job finished", {
 			jobId: record.state.jobId,
 			guildId: record.state.guildId,
 			deleted: record.state.deletedMessages,
@@ -265,7 +265,7 @@ async function runClearMessageJob(
 		record.state.currentChannelName = null;
 		addJobError(record, record.state.error);
 		publish(record);
-		logger.error("HTTP", "Message clear job failed", {
+		logger.error("HTTP", "Message purge job failed", {
 			jobId: record.state.jobId,
 			guildId: record.state.guildId,
 			error: record.state.error,
@@ -273,18 +273,18 @@ async function runClearMessageJob(
 	}
 }
 
-export function createClearMessageJob(options: CreateClearMessageJobOptions): ClearMessageJobState {
+export function createPurgeMessageJob(options: CreatePurgeMessageJobOptions): PurgeMessageJobState {
 	if (!Number.isInteger(options.count) || options.count < 1 || options.count > 200) {
-		throw new ClearMessageJobActionError(400, "Count must be between 1 and 200.");
+		throw new PurgeMessageJobActionError(400, "Count must be between 1 and 200.");
 	}
 	if (options.channels.length === 0) {
-		throw new ClearMessageJobActionError(403, "No message channels are available with the required permissions");
+		throw new PurgeMessageJobActionError(403, "No message channels are available with the required permissions");
 	}
-	const textFilter = createClearMessageTextFilter(options);
+	const textFilter = createPurgeMessageTextFilter(options);
 	pruneJobs();
 	const jobId = randomUUID();
 	const startedAtMs = Date.now();
-	const state: ClearMessageJobState = {
+	const state: PurgeMessageJobState = {
 		jobId,
 		version: 0,
 		guildId: options.guild.id,
@@ -317,7 +317,7 @@ export function createClearMessageJob(options: CreateClearMessageJobOptions): Cl
 		timeLimitReached: false,
 		errors: [],
 	};
-	const record: ClearMessageJobRecord = {
+	const record: PurgeMessageJobRecord = {
 		state,
 		creatorDiscordId: options.creatorDiscordId,
 		authorizationChannelIds: options.channels.map((channel) => channel.id),
@@ -331,13 +331,13 @@ export function createClearMessageJob(options: CreateClearMessageJobOptions): Cl
 	jobs.set(jobId, record);
 	record.expiryTimer = setTimeout(
 		() => {
-			if (!isClearMessageJobTerminal(record.state.status) && record.state.status !== "running")
+			if (!isPurgeMessageJobTerminal(record.state.status) && record.state.status !== "running")
 				expireRequest(record);
 		},
 		Math.max(0, record.waitingDeadlineAt - Date.now()),
 	);
 	record.expiryTimer.unref();
-	logger.info("HTTP", "Message clear request created", {
+	logger.info("HTTP", "Message purge request created", {
 		jobId,
 		guildId: options.guild.id,
 		userId: options.creatorDiscordId,
@@ -347,7 +347,7 @@ export function createClearMessageJob(options: CreateClearMessageJobOptions): Cl
 	return snapshot(record);
 }
 
-function expireRequest(record: ClearMessageJobRecord): void {
+function expireRequest(record: PurgeMessageJobRecord): void {
 	record.previewAbortController?.abort();
 	record.state.status = "stopped";
 	record.state.timeLimitReached = true;
@@ -361,42 +361,42 @@ function expireRequest(record: ClearMessageJobRecord): void {
 	publish(record);
 }
 
-function getActionRecord(jobId: string): ClearMessageJobRecord {
+function getActionRecord(jobId: string): PurgeMessageJobRecord {
 	pruneJobs();
 	const record = jobs.get(jobId);
-	if (!record) throw new ClearMessageJobActionError(404, "Message clear job not found");
+	if (!record) throw new PurgeMessageJobActionError(404, "Message purge job not found");
 	return record;
 }
 
-function requirePhase(record: ClearMessageJobRecord, phases: ClearMessageJobState["status"][]): void {
+function requirePhase(record: PurgeMessageJobRecord, phases: PurgeMessageJobState["status"][]): void {
 	if (
-		!isClearMessageJobTerminal(record.state.status) &&
+		!isPurgeMessageJobTerminal(record.state.status) &&
 		record.state.status !== "running" &&
 		record.waitingDeadlineAt <= Date.now()
 	) {
 		expireRequest(record);
 	}
 	if (!phases.includes(record.state.status)) {
-		throw new ClearMessageJobActionError(
+		throw new PurgeMessageJobActionError(
 			409,
 			"This job is no longer in the requested phase. Reload its latest state.",
 		);
 	}
 }
 
-async function resolveJobChannels(record: ClearMessageJobRecord, isBotAdmin: boolean) {
+async function resolveJobChannels(record: PurgeMessageJobRecord, isBotAdmin: boolean) {
 	const guild = getClientGuild(record.state.guildId);
-	if (!guild?.available) throw new ClearMessageJobActionError(503, "Guild is unavailable");
+	if (!guild?.available) throw new PurgeMessageJobActionError(503, "Guild is unavailable");
 	const member = await guild.members.fetch(record.creatorDiscordId).catch((error: unknown) => {
 		if (error instanceof DiscordAPIError && error.code === RESTJSONErrorCodes.UnknownMember) return null;
 		throw error;
 	});
 	if (!isBotAdmin && !member?.permissions.has(PermissionFlagsBits.ManageGuild)) {
-		throw new ClearMessageJobActionError(403, "Manage Server access to this guild is required");
+		throw new PurgeMessageJobActionError(403, "Manage Server access to this guild is required");
 	}
 	const botMember = guild.members.me ?? (await guild.members.fetchMe());
-	const validateChannel = (channel: ClearableGuildChannel) =>
-		getClearChannelPermissionError({
+	const validateChannel = (channel: PurgeableGuildChannel) =>
+		getPurgeChannelPermissionError({
 			channel,
 			member,
 			botMember,
@@ -409,35 +409,35 @@ async function resolveJobChannels(record: ClearMessageJobRecord, isBotAdmin: boo
 				throw error;
 			})
 		: null;
-	if (selectedId && !isClearableGuildChannel(selectedChannel)) {
-		throw new ClearMessageJobActionError(404, "Selected message channel is no longer available");
+	if (selectedId && !isPurgeableGuildChannel(selectedChannel)) {
+		throw new PurgeMessageJobActionError(404, "Selected message channel is no longer available");
 	}
 	const candidates = selectedChannel ? [selectedChannel] : [...(await guild.channels.fetch()).values()];
-	const channels: ClearableGuildChannel[] = [];
+	const channels: PurgeableGuildChannel[] = [];
 	let skippedChannelCount = 0;
 	for (const channel of candidates) {
-		if (!isClearableGuildChannel(channel)) continue;
+		if (!isPurgeableGuildChannel(channel)) continue;
 		const error = validateChannel(channel);
 		if (error) {
-			if (selectedId) throw new ClearMessageJobActionError(403, error);
+			if (selectedId) throw new PurgeMessageJobActionError(403, error);
 			skippedChannelCount += 1;
 			continue;
 		}
 		channels.push(channel);
 	}
 	if (channels.length === 0) {
-		throw new ClearMessageJobActionError(403, "No message channels are available with the required permissions");
+		throw new PurgeMessageJobActionError(403, "No message channels are available with the required permissions");
 	}
 	return { guild, channels, skippedChannelCount, validateChannel };
 }
 
-export async function prepareClearMessageJob({
+export async function preparePurgeMessageJob({
 	jobId,
 	isBotAdmin,
 }: {
 	jobId: string;
 	isBotAdmin: boolean;
-}): Promise<ClearMessageJobState> {
+}): Promise<PurgeMessageJobState> {
 	const record = getActionRecord(jobId);
 	requirePhase(record, ["awaiting_preview", "awaiting_confirmation"]);
 	const context = await resolveJobChannels(record, isBotAdmin);
@@ -457,7 +457,7 @@ export async function prepareClearMessageJob({
 	publish(record);
 	void (async () => {
 		try {
-			const preview = await createClearMessagePreview({
+			const preview = await createPurgeMessagePreview({
 				guild: context.guild,
 				channels: context.channels,
 				count: record.state.messageLimit,
@@ -505,10 +505,10 @@ export async function prepareClearMessageJob({
 			publish(record);
 		} catch (error: unknown) {
 			if (controller.signal.aborted) {
-				logger.info("HTTP", "Clear job preview preparation stopped", { jobId, status: record.state.status });
+				logger.info("HTTP", "Purge job preview preparation stopped", { jobId, status: record.state.status });
 				return;
 			}
-			logger.error("HTTP", "Failed to prepare clear job preview", {
+			logger.error("HTTP", "Failed to prepare purge job preview", {
 				jobId,
 				error: error instanceof Error ? error.message : String(error),
 			});
@@ -527,7 +527,7 @@ export async function prepareClearMessageJob({
 	return snapshot(record);
 }
 
-export async function confirmClearMessageJob({
+export async function confirmPurgeMessageJob({
 	jobId,
 	previewId,
 	isBotAdmin,
@@ -535,27 +535,27 @@ export async function confirmClearMessageJob({
 	jobId: string;
 	previewId: string;
 	isBotAdmin: boolean;
-}): Promise<ClearMessageJobState> {
+}): Promise<PurgeMessageJobState> {
 	const record = getActionRecord(jobId);
 	requirePhase(record, ["awaiting_confirmation"]);
 	const preview = record.preview;
 	if (!preview || preview.data.previewId !== previewId) {
-		throw new ClearMessageJobActionError(409, "The preview changed. Review the latest preview before confirming.");
+		throw new PurgeMessageJobActionError(409, "The preview changed. Review the latest preview before confirming.");
 	}
 	if (preview.data.expiresAt <= Date.now()) {
-		throw new ClearMessageJobActionError(409, "The preview expired. Refresh it before confirming.");
+		throw new PurgeMessageJobActionError(409, "The preview expired. Refresh it before confirming.");
 	}
 	if (preview.messages.length === 0)
-		throw new ClearMessageJobActionError(409, "This preview has no matching messages");
+		throw new PurgeMessageJobActionError(409, "This preview has no matching messages");
 	const context = await resolveJobChannels(record, isBotAdmin);
 	requirePhase(record, ["awaiting_confirmation"]);
 	if (record.preview !== preview || preview.data.expiresAt <= Date.now()) {
-		throw new ClearMessageJobActionError(409, "The preview changed or expired. Review a fresh preview.");
+		throw new PurgeMessageJobActionError(409, "The preview changed or expired. Review a fresh preview.");
 	}
 	const channelIds = new Set(preview.messages.map((message) => message.channelId));
 	const channels = context.channels.filter((channel) => channelIds.has(channel.id));
 	if (channels.length !== channelIds.size) {
-		throw new ClearMessageJobActionError(409, "Channel access changed. Refresh the preview before confirming.");
+		throw new PurgeMessageJobActionError(409, "Channel access changed. Refresh the preview before confirming.");
 	}
 	record.state.status = "running";
 	if (record.expiryTimer) clearTimeout(record.expiryTimer);
@@ -565,11 +565,11 @@ export async function confirmClearMessageJob({
 	record.state.channelCount = channels.length;
 	record.state.progressPercentage = 0;
 	publish(record);
-	void runClearMessageJob(record, { channels, messages: preview.messages, validateChannel: context.validateChannel });
+	void runPurgeMessageJob(record, { channels, messages: preview.messages, validateChannel: context.validateChannel });
 	return snapshot(record);
 }
 
-export function cancelClearMessageJob(jobId: string): ClearMessageJobState {
+export function cancelPurgeMessageJob(jobId: string): PurgeMessageJobState {
 	const record = getActionRecord(jobId);
 	requirePhase(record, ["awaiting_preview", "previewing", "awaiting_confirmation"]);
 	record.state.status = "cancelled";
@@ -585,18 +585,18 @@ export function cancelClearMessageJob(jobId: string): ClearMessageJobState {
 	return snapshot(record);
 }
 
-export function getClearMessageJob(jobId: string): ClearMessageJobState | null {
+export function getPurgeMessageJob(jobId: string): PurgeMessageJobState | null {
 	pruneJobs();
 	const record = jobs.get(jobId);
 	return record ? snapshot(record) : null;
 }
 
-export function onClearMessageJobState(listener: JobStateListener): () => void {
+export function onPurgeMessageJobState(listener: JobStateListener): () => void {
 	listeners.add(listener);
 	return () => listeners.delete(listener);
 }
 
-export async function authorizeClearMessageJob({
+export async function authorizePurgeMessageJob({
 	jobId,
 	discordUserId,
 	isBotAdmin,
@@ -607,7 +607,7 @@ export async function authorizeClearMessageJob({
 	isBotAdmin: boolean;
 	requireCreator?: boolean;
 }): Promise<
-	| { status: "ok"; job: ClearMessageJobState }
+	| { status: "ok"; job: PurgeMessageJobState }
 	| { status: "not_found" }
 	| { status: "forbidden" }
 	| { status: "unavailable" }
@@ -618,7 +618,7 @@ export async function authorizeClearMessageJob({
 	if (
 		record.creatorDiscordId !== discordUserId &&
 		(requireCreator ||
-			(!isBotAdmin && !isClearMessageJobTerminal(record.state.status) && record.state.status !== "running"))
+			(!isBotAdmin && !isPurgeMessageJobTerminal(record.state.status) && record.state.status !== "running"))
 	) {
 		return { status: "forbidden" };
 	}

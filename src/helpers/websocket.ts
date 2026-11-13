@@ -1,6 +1,6 @@
 import type { Server, Socket } from "socket.io";
 import type { AuthSession } from "../services/auth.js";
-import type { ClearMessageJobState } from "../services/clearMessageJobs.js";
+import type { PurgeMessageJobState } from "../services/purgeMessageJobs.js";
 import type { PlayerWebUser } from "../services/playerAccess.js";
 import type { PlayerSessionState } from "./playerSessionState.js";
 
@@ -35,8 +35,8 @@ export interface ClientToServerEvents {
 		payload: unknown,
 		ack?: WebsocketAck<{ suggestions: readonly PlayerSuggestionPayload[] }>,
 	) => void;
-	"clear-job:subscribe": (payload: unknown, ack?: WebsocketAck<{ state: ClearMessageJobState }>) => void;
-	"clear-job:unsubscribe": (payload: unknown, ack?: WebsocketAck) => void;
+	"purge-job:subscribe": (payload: unknown, ack?: WebsocketAck<{ state: PurgeMessageJobState }>) => void;
+	"purge-job:unsubscribe": (payload: unknown, ack?: WebsocketAck) => void;
 }
 
 export interface ServerToClientEvents {
@@ -52,10 +52,10 @@ export interface ServerToClientEvents {
 	}) => void;
 	/** Another tab for the same user took over this player session. */
 	"player:replaced": (payload: { readonly sessionId: string }) => void;
-	/** The latest state of a subscribed message clear job. */
-	"clear-job:state": (state: ClearMessageJobState) => void;
+	/** The latest state of a subscribed message purge job. */
+	"purge-job:state": (state: PurgeMessageJobState) => void;
 	/** The user can no longer view the job. */
-	"clear-job:revoked": (payload: { readonly jobId: string; readonly status: number; readonly error: string }) => void;
+	"purge-job:revoked": (payload: { readonly jobId: string; readonly status: number; readonly error: string }) => void;
 }
 
 export interface WebsocketSocketData {

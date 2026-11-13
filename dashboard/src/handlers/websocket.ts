@@ -1,7 +1,7 @@
 import { io, type Socket } from "socket.io-client";
 import {
 	apiBaseURL,
-	type ClearMessageJobState,
+	type PurgeMessageJobState,
 	type PlayerControlAction,
 	type PlayerSession,
 	type PlayerSuggestion,
@@ -22,8 +22,8 @@ interface ServerToClientEvents {
 	"player:ended": (payload: { sessionId: string }) => void;
 	"player:revoked": (payload: { sessionId: string; status: number; error: string }) => void;
 	"player:replaced": (payload: { sessionId: string }) => void;
-	"clear-job:state": (state: ClearMessageJobState) => void;
-	"clear-job:revoked": (payload: { jobId: string; status: number; error: string }) => void;
+	"purge-job:state": (state: PurgeMessageJobState) => void;
+	"purge-job:revoked": (payload: { jobId: string; status: number; error: string }) => void;
 }
 
 interface ClientToServerEvents {
@@ -37,8 +37,8 @@ interface ClientToServerEvents {
 		payload: { sessionId: string; query: string },
 		ack: Ack<{ suggestions: PlayerSuggestion[] }>,
 	) => void;
-	"clear-job:subscribe": (payload: { jobId: string }, ack: Ack<{ state: ClearMessageJobState }>) => void;
-	"clear-job:unsubscribe": (payload: { jobId: string }, ack: Ack) => void;
+	"purge-job:subscribe": (payload: { jobId: string }, ack: Ack<{ state: PurgeMessageJobState }>) => void;
+	"purge-job:unsubscribe": (payload: { jobId: string }, ack: Ack) => void;
 }
 
 export type WebsocketClient = Socket<ServerToClientEvents, ClientToServerEvents>;
@@ -159,17 +159,17 @@ export async function fetchPlayerSuggestions({
 	return suggestions;
 }
 
-export async function subscribeToClearMessageJob({
+export async function subscribeToPurgeMessageJob({
 	socket,
 	jobId,
 }: {
 	socket: WebsocketClient;
 	jobId: string;
-}): Promise<ClearMessageJobState> {
+}): Promise<PurgeMessageJobState> {
 	const { state } = await request({
 		socket,
-		event: "clear-job:subscribe",
-		run: () => socket.timeout(REQUEST_TIMEOUT_MS).emitWithAck("clear-job:subscribe", { jobId }),
+		event: "purge-job:subscribe",
+		run: () => socket.timeout(REQUEST_TIMEOUT_MS).emitWithAck("purge-job:subscribe", { jobId }),
 	});
 	return state;
 }

@@ -4,17 +4,17 @@ import { getLinkedDiscordAccountId, requireSession } from "../../handlers/auth.j
 import { requireDatabase, requireDiscord } from "../../handlers/availability.js";
 import { defineRouter, errorResponseSchema, type RouteDefinition } from "../../helpers/route.js";
 import {
-	authorizeClearMessageJob,
-	cancelClearMessageJob,
-	ClearMessageJobActionError,
-	confirmClearMessageJob,
-	prepareClearMessageJob,
-} from "../../services/clearMessageJobs.js";
-import { clearMessagePreviewSchema } from "../../services/clearMessagePreviews.js";
+	authorizePurgeMessageJob,
+	cancelPurgeMessageJob,
+	PurgeMessageJobActionError,
+	confirmPurgeMessageJob,
+	preparePurgeMessageJob,
+} from "../../services/purgeMessageJobs.js";
+import { purgeMessagePreviewSchema } from "../../services/purgeMessagePreviews.js";
 import type { AuthSession } from "../../services/auth.js";
 
 const jobIdSchema = z.string().uuid();
-const clearMessageJobSchema = z.object({
+const purgeMessageJobSchema = z.object({
 	jobId: z.string().uuid(),
 	version: z.number().int().nonnegative(),
 	guildId: z.string(),
@@ -36,7 +36,7 @@ const clearMessageJobSchema = z.object({
 		"failed",
 		"cancelled",
 	]),
-	preview: clearMessagePreviewSchema.nullable(),
+	preview: purgeMessagePreviewSchema.nullable(),
 	startedAtMs: z.number().int(),
 	finishedAtMs: z.number().int().nullable(),
 	serverTimestampMs: z
@@ -68,18 +68,18 @@ const actionRoutes: RouteDefinition[] = (["preview", "confirm", "cancel"] as con
 	tags: ["Guild"],
 	summary:
 		action === "preview"
-			? "Prepare a clear job preview"
+			? "Prepare a purge job preview"
 			: action === "confirm"
 				? "Confirm the reviewed job preview"
-				: "Cancel a clear job before deletion",
-	errorMessage: `Failed to ${action} message clear job`,
+				: "Cancel a purge job before deletion",
+	errorMessage: `Failed to ${action} message purge job`,
 	security: [{ sessionCookie: [] }],
 	parameters: [{ name: "jobId", in: "path", required: true, schema: jobIdSchema }],
 	...(action === "confirm"
 		? { requestBody: { required: true, content: { "application/json": { schema: confirmSchema } } } }
 		: {}),
 	responses: {
-		[action === "cancel" ? 200 : 202]: { description: "Updated job state", schema: clearMessageJobSchema },
+		[action === "cancel" ? 200 : 202]: { description: "Updated job state", schema: purgeMessageJobSchema },
 		400: { description: "Invalid request", schema: errorResponseSchema },
 		401: { description: "Authentication required", schema: errorResponseSchema },
 		403: { description: "Job creator and guild/channel access required", schema: errorResponseSchema },
@@ -93,9 +93,9 @@ const actionRoutes: RouteDefinition[] = (["preview", "confirm", "cancel"] as con
 	},
 	middleware: [requireDatabase, requireDiscord, requireSession],
 	errorHandler: (error, _request, response) => {
-		response.status(error instanceof ClearMessageJobActionError ? error.status : 500).json({
+		response.status(error instanceof PurgeMessageJobActionError ? error.status : 500).json({
 			error:
-				error instanceof ClearMessageJobActionError ? error.message : `Failed to ${action} message clear job`,
+				error instanceof PurgeMessageJobActionError ? error.message : `Failed to ${action} message purge job`,
 		});
 	},
 	handler: async (request, response) => {
@@ -106,55 +106,55 @@ const actionRoutes: RouteDefinition[] = (["preview", "confirm", "cancel"] as con
 		const discordUserId = await getLinkedDiscordAccountId(session, response);
 		if (!discordUserId) return;
 		const isBotAdmin = session.user.role === "admin";
-		const access = await authorizeClearMessageJob({
+		const access = await authorizePurgeMessageJob({
 			jobId: jobId.data,
 			discordUserId,
 			isBotAdmin,
 			requireCreator: true,
 		});
-		if (access.status === "not_found") return response.status(404).json({ error: "Message clear job not found" });
+		if (access.status === "not_found") return response.status(404).json({ error: "Message purge job not found" });
 		if (access.status === "forbidden")
 			return response
 				.status(403)
 				.json({ error: "Only the job creator with guild access can perform this action" });
 		if (access.status === "unavailable") return response.status(503).json({ error: "Guild is unavailable" });
-		if (action === "cancel") return response.status(200).json(cancelClearMessageJob(jobId.data));
+		if (action === "cancel") return response.status(200).json(cancelPurgeMessageJob(jobId.data));
 		if (action === "preview")
-			return response.status(202).json(await prepareClearMessageJob({ jobId: jobId.data, isBotAdmin }));
+			return response.status(202).json(await preparePurgeMessageJob({ jobId: jobId.data, isBotAdmin }));
 		const body = confirmSchema.safeParse(request.body);
 		if (!body.success) return response.status(400).json({ error: "Review the preview and confirm deletion" });
 		return response
 			.status(202)
-			.json(await confirmClearMessageJob({ jobId: jobId.data, previewId: body.data.previewId, isBotAdmin }));
+			.json(await confirmPurgeMessageJob({ jobId: jobId.data, previewId: body.data.previewId, isBotAdmin }));
 	},
 }));
 
-export default defineRouter("/clear-jobs", [
+export default defineRouter("/purge-jobs", [
 	...actionRoutes,
 	{
 		method: "get",
 		path: "/:jobId",
 		tags: ["Guild"],
-		summary: "Get message clear job progress",
-		errorMessage: "Failed to get message clear job",
+		summary: "Get message purge job progress",
+		errorMessage: "Failed to get message purge job",
 		security: [{ sessionCookie: [] }],
 		parameters: [
 			{
 				name: "jobId",
 				in: "path",
 				required: true,
-				description: "Message clear job ID",
+				description: "Message purge job ID",
 				schema: jobIdSchema,
 			},
 		],
 		responses: {
-			200: { description: "Current message clear job state", schema: clearMessageJobSchema },
+			200: { description: "Current message purge job state", schema: purgeMessageJobSchema },
 			400: { description: "Invalid job ID", schema: errorResponseSchema },
 			401: { description: "Authentication required", schema: errorResponseSchema },
 			403: { description: "Job access denied", schema: errorResponseSchema },
 			404: { description: "Job not found", schema: errorResponseSchema },
 			503: { description: "Guild or service unavailable", schema: errorResponseSchema },
-			500: { description: "Failed to get message clear job", schema: errorResponseSchema },
+			500: { description: "Failed to get message purge job", schema: errorResponseSchema },
 		},
 		middleware: [requireDatabase, requireDiscord, requireSession],
 		handler: async (request, response) => {
@@ -166,16 +166,16 @@ export default defineRouter("/clear-jobs", [
 			if (!session) return response.status(401).json({ error: "Authentication required" });
 			const discordUserId = await getLinkedDiscordAccountId(session, response);
 			if (!discordUserId) return;
-			const result = await authorizeClearMessageJob({
+			const result = await authorizePurgeMessageJob({
 				jobId,
 				discordUserId,
 				isBotAdmin: session.user.role === "admin",
 			});
 			switch (result.status) {
 				case "not_found":
-					return response.status(404).json({ error: "Message clear job not found" });
+					return response.status(404).json({ error: "Message purge job not found" });
 				case "forbidden":
-					return response.status(403).json({ error: "You cannot view this message clear job" });
+					return response.status(403).json({ error: "You cannot view this message purge job" });
 				case "unavailable":
 					return response.status(503).json({ error: "Guild is unavailable" });
 				case "ok":

@@ -24,14 +24,14 @@ import ChannelDisplay from "@jappan/components/display/ChannelDisplay";
 import GuildPageHeader from "@jappan/components/display/GuildPageHeader";
 import UserDisplay from "@jappan/components/display/UserDisplay";
 import GuildDetail from "@jappan/components/panel/GuildDetail";
-import APIHandler, { type ClearMessageJobState } from "@jappan/handlers/APIHandler";
-import useClearMessageJobWebsocket from "@jappan/handlers/useClearMessageJobWebsocket";
+import APIHandler, { type PurgeMessageJobState } from "@jappan/handlers/APIHandler";
+import usePurgeMessageJobWebsocket from "@jappan/handlers/usePurgeMessageJobWebsocket";
 import useDocumentTitle, { formatTitle } from "@jappan/helpers/useDocumentTitle";
 
 const jobIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
-const queryKey = (jobId: string) => ["clear-message-job", jobId] as const;
+const queryKey = (jobId: string) => ["purge-message-job", jobId] as const;
 
-function jobVariant(job: ClearMessageJobState): "destructive" | "warning" | "success" {
+function jobVariant(job: PurgeMessageJobState): "destructive" | "warning" | "success" {
 	if (job.status === "failed" || job.failedMessages > 0) return "destructive";
 	if (
 		!["complete", "failed", "cancelled"].includes(job.status) ||
@@ -42,7 +42,7 @@ function jobVariant(job: ClearMessageJobState): "destructive" | "warning" | "suc
 	return "success";
 }
 
-function jobLabel(job: ClearMessageJobState): string {
+function jobLabel(job: PurgeMessageJobState): string {
 	if (job.status === "awaiting_preview") return "Awaiting preview";
 	if (job.status === "previewing") return "Preparing preview";
 	if (job.status === "awaiting_confirmation") return "Awaiting confirmation";
@@ -60,7 +60,7 @@ function actionError(error: unknown): string {
 	return "Could not update this job. Please try again.";
 }
 
-function latestState(current: ClearMessageJobState | undefined, incoming: ClearMessageJobState): ClearMessageJobState {
+function latestState(current: PurgeMessageJobState | undefined, incoming: PurgeMessageJobState): PurgeMessageJobState {
 	return current &&
 		(current.version > incoming.version ||
 			(current.version === incoming.version && current.serverTimestampMs > incoming.serverTimestampMs))
@@ -68,7 +68,7 @@ function latestState(current: ClearMessageJobState | undefined, incoming: ClearM
 		: incoming;
 }
 
-function groupPreviewMessages(messages: NonNullable<ClearMessageJobState["preview"]>["messages"]) {
+function groupPreviewMessages(messages: NonNullable<PurgeMessageJobState["preview"]>["messages"]) {
 	const groups = new Map<string, { channelId: string; channelName: string; messages: typeof messages }>();
 	for (const message of messages) {
 		let group = groups.get(message.channelId);
@@ -92,7 +92,7 @@ function WarningBanner({ children }: { children: ReactNode }) {
 	);
 }
 
-export default function ClearMessageJob() {
+export default function PurgeMessageJob() {
 	const { jobId = "" } = useParams();
 	const queryClient = useQueryClient();
 	const [accessProblem, setAccessProblem] = useState(false);
@@ -102,14 +102,14 @@ export default function ClearMessageJob() {
 	const [section, setSection] = useState<"overview" | "activity">("activity");
 	const attemptedPreview = useRef("");
 	const attemptedClockRefresh = useRef("");
-	const updateState = (state: ClearMessageJobState) =>
-		queryClient.setQueryData<ClearMessageJobState>(queryKey(jobId), (current) => latestState(current, state));
+	const updateState = (state: PurgeMessageJobState) =>
+		queryClient.setQueryData<PurgeMessageJobState>(queryKey(jobId), (current) => latestState(current, state));
 	const isValidJobId = jobIdPattern.test(jobId);
 	const jobQuery = useQuery({
 		queryKey: queryKey(jobId),
 		queryFn: async () => {
-			const state = await APIHandler.getClearMessageJob(jobId);
-			return latestState(queryClient.getQueryData<ClearMessageJobState>(queryKey(jobId)), state);
+			const state = await APIHandler.getPurgeMessageJob(jobId);
+			return latestState(queryClient.getQueryData<PurgeMessageJobState>(queryKey(jobId)), state);
 		},
 		enabled: isValidJobId,
 		retry: false,
@@ -139,7 +139,7 @@ export default function ClearMessageJob() {
 	useEffect(() => setAccessProblem(false), [jobId]);
 	const prepareMutation = useMutation({
 		mutationFn: () => {
-			const promise = APIHandler.prepareClearMessageJob(jobId);
+			const promise = APIHandler.preparePurgeMessageJob(jobId);
 			toast.promise(promise, {
 				loading: "Preparing message preview…",
 				success: "Message preview scan started.",
@@ -156,7 +156,7 @@ export default function ClearMessageJob() {
 				const preview = jobQuery.data?.preview;
 				if (!preview || confirmationPreviewId !== preview.previewId)
 					throw new Error("Review the current preview first.");
-				return APIHandler.confirmClearMessageJob(jobId, preview.previewId);
+				return APIHandler.confirmPurgeMessageJob(jobId, preview.previewId);
 			});
 			toast.promise(promise, {
 				loading: "Starting message deletion…",
@@ -169,10 +169,10 @@ export default function ClearMessageJob() {
 	});
 	const cancelMutation = useMutation({
 		mutationFn: () => {
-			const promise = APIHandler.cancelClearMessageJob(jobId);
+			const promise = APIHandler.cancelPurgeMessageJob(jobId);
 			toast.promise(promise, {
-				loading: "Cancelling clear job…",
-				success: "Clear job cancelled.",
+				loading: "Cancelling purge job…",
+				success: "Purge job cancelled.",
 				error: actionError,
 			});
 			return promise;
@@ -190,27 +190,27 @@ export default function ClearMessageJob() {
 		attemptedPreview.current = jobId;
 		prepareMutation.mutate();
 	}, [jobQuery.data?.status, jobId, hasServerClock, accessProblem, prepareMutation.mutate]);
-	const websocket = useClearMessageJobWebsocket({
+	const websocket = usePurgeMessageJobWebsocket({
 		jobId,
 		enabled: jobQuery.isSuccess,
 		onState: updateState,
 		onAccessProblem: () => setAccessProblem(true),
 	});
 
-	useDocumentTitle(formatTitle(jobQuery.data ? `Clear job: ${jobQuery.data.guildName}` : "Clear job"));
+	useDocumentTitle(formatTitle(jobQuery.data ? `Purge job: ${jobQuery.data.guildName}` : "Purge job"));
 
 	if (!isValidJobId || accessProblem || jobQuery.isError || clockUnavailable) {
 		const status = axios.isAxiosError(jobQuery.error) ? jobQuery.error.response?.status : undefined;
 		const notFound = !isValidJobId || status === 400 || status === 404;
 		const denied = status === 403;
-		const title = notFound ? "No clear job found" : denied ? "You can't view this job" : "Clear job unavailable";
+		const title = notFound ? "No purge job found" : denied ? "You can't view this job" : "Purge job unavailable";
 		const message = clockUnavailable
 			? "This job did not return a valid server time. Reload its latest state."
 			: accessProblem
 				? "This job is no longer available or you no longer have permission to view it."
 				: denied
-					? "You do not have permission to view this message clear job."
-					: "Could not load message clear progress.";
+					? "You do not have permission to view this message purge job."
+					: "Could not load message purge progress.";
 		return (
 			<main className="flex min-h-[calc(100dvh-4.0625rem)] flex-col items-center justify-center px-4 py-10 text-center">
 				<FiAlertCircle className="size-10 text-muted-foreground" aria-hidden="true" />
@@ -224,7 +224,7 @@ export default function ClearMessageJob() {
 							<li>The bot restarted, which clears stored jobs.</li>
 						</ul>
 						<p className="mt-3 max-w-md text-muted-foreground">
-							Start a new job from your guild or use /clear.
+							Start a new job from your guild or use /purge-messages.
 						</p>
 					</>
 				) : (
@@ -256,7 +256,7 @@ export default function ClearMessageJob() {
 	if (jobQuery.isPending || !hasServerClock) {
 		return (
 			<main className="flex min-h-[calc(100dvh-4.0625rem)] items-center justify-center px-4 py-10">
-				<LoadingIndicator label="Loading message clear job" />
+				<LoadingIndicator label="Loading message purge job" />
 			</main>
 		);
 	}
@@ -280,7 +280,7 @@ export default function ClearMessageJob() {
 				Guilds
 			</PillLink>
 			<GuildPageHeader
-				title="Message clear job"
+				title="Message purge job"
 				guild={{ id: job.guildId, name: job.guildName, icon: job.guildIcon }}
 				rightContent={
 					<Tag variant={jobVariant(job)} size="sm" className="gap-1.5">
@@ -297,7 +297,7 @@ export default function ClearMessageJob() {
 				}}
 				className="gap-5"
 			>
-				<TabsList aria-label="Clear job sections">
+				<TabsList aria-label="Purge job sections">
 					<TabsTab value="overview" size="sm">
 						<span className="inline-flex items-center gap-2">
 							<FiHome className="size-4" aria-hidden="true" />
@@ -496,7 +496,7 @@ export default function ClearMessageJob() {
 																		aria-expanded={
 																			expandedChannelId === group.channelId
 																		}
-																		aria-controls={`clear-job-channel-${group.channelId}-messages`}
+																		aria-controls={`purge-job-channel-${group.channelId}-messages`}
 																		onClick={() =>
 																			setExpandedChannelId(
 																				expandedChannelId === group.channelId
@@ -513,7 +513,7 @@ export default function ClearMessageJob() {
 																	</Button>
 																</div>
 																<ul
-																	id={`clear-job-channel-${group.channelId}-messages`}
+																	id={`purge-job-channel-${group.channelId}-messages`}
 																	hidden={expandedChannelId !== group.channelId}
 																	className="space-y-2"
 																>
@@ -707,7 +707,7 @@ export default function ClearMessageJob() {
 							</div>
 							<div
 								role="progressbar"
-								aria-label={beforeDeletion ? "Message preview progress" : "Message clear progress"}
+								aria-label={beforeDeletion ? "Message preview progress" : "Message purge progress"}
 								aria-valuenow={job.progressPercentage}
 								aria-valuemin={0}
 								aria-valuemax={100}

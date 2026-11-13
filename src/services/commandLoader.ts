@@ -5,7 +5,7 @@ import type { BotCommand, BotCommandData } from "../helpers/command.js";
 import { isBotCommand } from "../helpers/command.js";
 import about from "../commands/about.js";
 import auditlog from "../commands/auditlog.js";
-import clear from "../commands/clear.js";
+import purgeMessages from "../commands/purge-messages.js";
 import doppelganger from "../commands/doppelganger.js";
 import admin from "../commands/guildCommands/admin.js";
 import generateMessages from "../commands/guildCommands/generateMessages.js";
@@ -24,7 +24,7 @@ export type { BotCommand, BotCommandContext, BotCommandData, CommandCategory } f
 const globalCommandModules: readonly unknown[] = [
 	about,
 	auditlog,
-	clear,
+	purgeMessages,
 	doppelganger,
 	help,
 	leaderboard,

@@ -12,7 +12,7 @@ import GuildLeaderboard from "@jappan/pages/guilds/GuildLeaderboard";
 import PlayerLanding from "@jappan/pages/player/PlayerLanding";
 import WebPlayer from "@jappan/pages/player/WebPlayer";
 import PlaylistManager from "@jappan/pages/PlaylistManager";
-import ClearMessageJob from "@jappan/pages/ClearMessageJob";
+import PurgeMessageJob from "@jappan/pages/PurgeMessageJob";
 import WrongPage from "@jappan/pages/WrongPage";
 import { SIGN_OUT_FLASH_KEY } from "@jappan/handlers/auth";
 import { updateHashOnScroll } from "@febkosq8/arc";
@@ -81,7 +81,7 @@ function App() {
 					<Route path="/guild/:guildId/leaderboard" element={<GuildLeaderboard />} />
 					<Route path="/leaderboard/:guildId" element={<LeaderboardRedirect />} />
 					<Route path="/player/:sessionId" element={<WebPlayer />} />
-					<Route path="/clear-jobs/:jobId" element={<ClearMessageJob />} />
+					<Route path="/purge-jobs/:jobId" element={<PurgeMessageJob />} />
 				</Route>
 				<Route path="*" element={<WrongPage />} />
 			</Routes>

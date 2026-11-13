@@ -15,18 +15,18 @@ import { requireDatabase, requireDiscord } from "../../../handlers/availability.
 import { defineRouter, errorResponseSchema } from "../../../helpers/route.js";
 import { getAdminGuildForAction } from "../../../helpers/guild.js";
 import {
-	createClearMessageJob,
-	ClearMessageJobActionError,
-	type ClearableGuildChannel,
-} from "../../../services/clearMessageJobs.js";
+	createPurgeMessageJob,
+	PurgeMessageJobActionError,
+	type PurgeableGuildChannel,
+} from "../../../services/purgeMessageJobs.js";
 import {
-	ClearMessageTextFilterError,
-	clearMessageTextFilterMaxLength,
-} from "../../../services/clearMessageTextFilter.js";
-import { getClearChannelPermissionError, isClearableGuildChannel } from "../../../services/clearMessagePreviews.js";
+	PurgeMessageTextFilterError,
+	purgeMessageTextFilterMaxLength,
+} from "../../../services/purgeMessageTextFilter.js";
+import { getPurgeChannelPermissionError, isPurgeableGuildChannel } from "../../../services/purgeMessagePreviews.js";
 import type { AuthSession } from "../../../services/auth.js";
 
-const guildClearRequestSchema = z.strictObject({
+const guildPurgeRequestSchema = z.strictObject({
 	channelId: z
 		.string()
 		.regex(/^\d{17,20}$/u, "Invalid channel ID")
@@ -39,7 +39,7 @@ const guildClearRequestSchema = z.strictObject({
 		.optional(),
 	text: z
 		.string()
-		.max(clearMessageTextFilterMaxLength, "Text filter must be 2000 characters or fewer")
+		.max(purgeMessageTextFilterMaxLength, "Text filter must be 2000 characters or fewer")
 		.optional()
 		.describe("Literal text by default; with regex enabled, supply an RE2 pattern without slash delimiters"),
 	regex: z
@@ -49,14 +49,14 @@ const guildClearRequestSchema = z.strictObject({
 	ignoreCase: z.boolean().default(false).describe("Ignore case for either literal text or regex matching"),
 });
 
-const clearMessageMiddleware = [
+const purgeMessageMiddleware = [
 	requireDatabase,
 	requireDiscord,
 	requireSession,
 	requireValidGuildId,
 	requireAnyAuthorization([isGuildManager, isBotAdmin], "Manage Server or bot admin access required"),
 ];
-async function getClearMessageAccess({
+async function getPurgeMessageAccess({
 	guildId,
 	channelId,
 	response,
@@ -102,7 +102,7 @@ async function getClearMessageAccess({
 		response.status(404).json({ error: "Channel not found" });
 		return null;
 	}
-	if (selectedChannel && !isClearableGuildChannel(selectedChannel)) {
+	if (selectedChannel && !isPurgeableGuildChannel(selectedChannel)) {
 		response.status(400).json({ error: "Choose a text, announcement, or voice channel that supports messages" });
 		return null;
 	}
@@ -111,11 +111,11 @@ async function getClearMessageAccess({
 	const candidates: GuildBasedChannel[] = selectedChannel
 		? [selectedChannel]
 		: [...(await adminGuild.guild.channels.fetch()).values()].filter((channel) => channel !== null);
-	const channels: ClearableGuildChannel[] = [];
+	const channels: PurgeableGuildChannel[] = [];
 	let skippedChannelCount = 0;
 	for (const channel of candidates) {
-		if (!isClearableGuildChannel(channel)) continue;
-		const error = getClearChannelPermissionError({ channel, member, botMember, isBotAdministrator });
+		if (!isPurgeableGuildChannel(channel)) continue;
+		const error = getPurgeChannelPermissionError({ channel, member, botMember, isBotAdministrator });
 		if (error) {
 			if (channelId) {
 				response.status(403).json({ error });
@@ -147,13 +147,13 @@ async function getClearMessageAccess({
 export default defineRouter("/guilds", [
 	{
 		method: "post",
-		path: "/:guildId/messages/clear",
+		path: "/:guildId/messages/purge",
 		tags: ["Guild"],
-		summary: "Create a clear request without scanning or deleting messages",
-		errorMessage: "Failed to create message clear job",
+		summary: "Create a purge request without scanning or deleting messages",
+		errorMessage: "Failed to create message purge job",
 		security: [{ sessionCookie: [] }],
 		parameters: [{ name: "guildId", in: "path", required: true, schema: z.string().regex(/^\d{17,20}$/u) }],
-		requestBody: { required: true, content: { "application/json": { schema: guildClearRequestSchema } } },
+		requestBody: { required: true, content: { "application/json": { schema: guildPurgeRequestSchema } } },
 		responses: {
 			202: {
 				description: "Job created; preview and confirmation happen on the job page",
@@ -168,21 +168,21 @@ export default defineRouter("/guilds", [
 			404: { description: "Guild or channel not found", schema: errorResponseSchema },
 			409: { description: "Bot is not a guild member", schema: errorResponseSchema },
 			503: { description: "Guild or service unavailable", schema: errorResponseSchema },
-			500: { description: "Failed to create message clear job", schema: errorResponseSchema },
+			500: { description: "Failed to create message purge job", schema: errorResponseSchema },
 		},
-		middleware: clearMessageMiddleware,
+		middleware: purgeMessageMiddleware,
 		errorHandler: (error, _request, response) => {
 			const status =
-				error instanceof ClearMessageTextFilterError
+				error instanceof PurgeMessageTextFilterError
 					? 400
-					: error instanceof ClearMessageJobActionError
+					: error instanceof PurgeMessageJobActionError
 						? error.status
 						: 500;
 			response.status(status).json({
 				error:
-					error instanceof ClearMessageTextFilterError || error instanceof ClearMessageJobActionError
+					error instanceof PurgeMessageTextFilterError || error instanceof PurgeMessageJobActionError
 						? error.message
-						: "Failed to create message clear job",
+						: "Failed to create message purge job",
 			});
 		},
 		handler: async (request, response) => {
@@ -190,19 +190,19 @@ export default defineRouter("/guilds", [
 			if (typeof guildId !== "string" || !/^\d{17,20}$/u.test(guildId)) {
 				return response.status(400).json({ error: "Invalid guild ID" });
 			}
-			const body = guildClearRequestSchema.safeParse(request.body);
+			const body = guildPurgeRequestSchema.safeParse(request.body);
 			if (!body.success)
-				return response.status(400).json({ error: body.error.issues[0]?.message ?? "Invalid clear request" });
+				return response.status(400).json({ error: body.error.issues[0]?.message ?? "Invalid purge request" });
 			const session: AuthSession | undefined = response.locals.authSession;
 			if (!session) return response.status(401).json({ error: "Authentication required" });
-			const access = await getClearMessageAccess({
+			const access = await getPurgeMessageAccess({
 				guildId,
 				channelId: body.data.channelId ?? null,
 				response,
 				session,
 			});
 			if (!access) return;
-			const job = createClearMessageJob({
+			const job = createPurgeMessageJob({
 				guild: access.guild,
 				channels: access.channels,
 				creatorDiscordId: access.userId,

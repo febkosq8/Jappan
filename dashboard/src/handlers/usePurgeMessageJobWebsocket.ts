@@ -1,31 +1,31 @@
 import { useEffect, useRef, useState } from "react";
 
-import type { ClearMessageJobState } from "./APIHandler";
+import type { PurgeMessageJobState } from "./APIHandler";
 import {
 	acquireWebsocket,
 	getWebsocket,
 	releaseWebsocket,
-	subscribeToClearMessageJob,
+	subscribeToPurgeMessageJob,
 	WebsocketRequestError,
 } from "./websocket";
 
 const RETRY_DELAY_MS = 5000;
 const SERVER_DISCONNECT_RECONNECT_DELAY_MS = 1000;
 
-export type ClearMessageJobWebsocketStatus = "connecting" | "connected" | "disconnected";
+export type PurgeMessageJobWebsocketStatus = "connecting" | "connected" | "disconnected";
 
-interface ClearMessageJobWebsocketCallbacks {
-	onState: (state: ClearMessageJobState) => void;
+interface PurgeMessageJobWebsocketCallbacks {
+	onState: (state: PurgeMessageJobState) => void;
 	onAccessProblem: () => void;
 }
 
-export default function useClearMessageJobWebsocket({
+export default function usePurgeMessageJobWebsocket({
 	jobId,
 	enabled,
 	...callbacks
-}: ClearMessageJobWebsocketCallbacks & { jobId: string; enabled: boolean }) {
-	const [status, setStatus] = useState<ClearMessageJobWebsocketStatus>("connecting");
-	const callbacksRef = useRef<ClearMessageJobWebsocketCallbacks>(callbacks);
+}: PurgeMessageJobWebsocketCallbacks & { jobId: string; enabled: boolean }) {
+	const [status, setStatus] = useState<PurgeMessageJobWebsocketStatus>("connecting");
+	const callbacksRef = useRef<PurgeMessageJobWebsocketCallbacks>(callbacks);
 	useEffect(() => {
 		callbacksRef.current = callbacks;
 	});
@@ -39,7 +39,7 @@ export default function useClearMessageJobWebsocket({
 
 		const subscribe = () => {
 			if (!active) return;
-			subscribeToClearMessageJob({ socket: client, jobId })
+			subscribeToPurgeMessageJob({ socket: client, jobId })
 				.then((state) => {
 					if (active) {
 						setStatus("connected");
@@ -68,7 +68,7 @@ export default function useClearMessageJobWebsocket({
 			}
 			if (!client.active) retryTimer = window.setTimeout(() => client.connect(), RETRY_DELAY_MS);
 		};
-		const handleState = (state: ClearMessageJobState) => {
+		const handleState = (state: PurgeMessageJobState) => {
 			if (state.jobId === jobId) callbacksRef.current.onState(state);
 		};
 		const handleRevoked = (payload: { jobId: string }) => {
@@ -81,8 +81,8 @@ export default function useClearMessageJobWebsocket({
 		client.on("connect", subscribe);
 		client.on("disconnect", handleDisconnect);
 		client.on("connect_error", handleConnectError);
-		client.on("clear-job:state", handleState);
-		client.on("clear-job:revoked", handleRevoked);
+		client.on("purge-job:state", handleState);
+		client.on("purge-job:revoked", handleRevoked);
 		if (client.connected) subscribe();
 
 		return () => {
@@ -91,10 +91,10 @@ export default function useClearMessageJobWebsocket({
 			client.off("connect", subscribe);
 			client.off("disconnect", handleDisconnect);
 			client.off("connect_error", handleConnectError);
-			client.off("clear-job:state", handleState);
-			client.off("clear-job:revoked", handleRevoked);
+			client.off("purge-job:state", handleState);
+			client.off("purge-job:revoked", handleRevoked);
 			if (client.connected) {
-				getWebsocket()?.emit("clear-job:unsubscribe", { jobId }, () => undefined);
+				getWebsocket()?.emit("purge-job:unsubscribe", { jobId }, () => undefined);
 			}
 			releaseWebsocket();
 		};

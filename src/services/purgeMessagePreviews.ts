@@ -9,19 +9,19 @@ import {
 } from "discord.js";
 import { z } from "zod";
 
-import type { ClearableGuildChannel } from "./clearMessageJobs.js";
-import { createClearMessageTextFilter } from "./clearMessageTextFilter.js";
+import type { PurgeableGuildChannel } from "./purgeMessageJobs.js";
+import { createPurgeMessageTextFilter } from "./purgeMessageTextFilter.js";
 
 const messageBatchSize = 100;
 const initialMessageBatchSize = 1;
 const bulkDeleteAgeMs = 14 * 24 * 60 * 60 * 1000;
-const clearableChannelTypes = new Set<number>([
+const purgeableChannelTypes = new Set<number>([
 	ChannelType.GuildText,
 	ChannelType.GuildAnnouncement,
 	ChannelType.GuildVoice,
 ]);
 
-export const clearMessagePreviewSchema = z.object({
+export const purgeMessagePreviewSchema = z.object({
 	previewId: z.string().uuid(),
 	guild: z.object({ id: z.string(), name: z.string() }),
 	channel: z.object({ id: z.string(), name: z.string() }).nullable(),
@@ -68,14 +68,14 @@ export const clearMessagePreviewSchema = z.object({
 	),
 });
 
-export type ClearMessagePreview = z.infer<typeof clearMessagePreviewSchema>;
+export type PurgeMessagePreview = z.infer<typeof purgeMessagePreviewSchema>;
 
-export interface ClearMessagePreviewRecord {
-	data: ClearMessagePreview;
+export interface PurgeMessagePreviewRecord {
+	data: PurgeMessagePreview;
 	messages: Message[];
 }
 
-export interface ClearMessagePreviewProgress {
+export interface PurgeMessagePreviewProgress {
 	scannedChannelCount: number;
 	scannedCount: number;
 	matchedCount: number;
@@ -83,18 +83,18 @@ export interface ClearMessagePreviewProgress {
 	currentChannelName: string;
 }
 
-interface ClearMessageChannelScan {
-	channel: ClearableGuildChannel;
+interface PurgeMessageChannelScan {
+	channel: PurgeableGuildChannel;
 	messages: Message[];
 	messageIndex: number;
 	before: string | null;
 	hasMore: boolean;
 }
 
-export function isClearableGuildChannel(channel: GuildBasedChannel | null): channel is ClearableGuildChannel {
+export function isPurgeableGuildChannel(channel: GuildBasedChannel | null): channel is PurgeableGuildChannel {
 	return (
 		channel !== null &&
-		clearableChannelTypes.has(channel.type) &&
+		purgeableChannelTypes.has(channel.type) &&
 		channel.isTextBased() &&
 		"messages" in channel &&
 		typeof channel.messages.fetch === "function" &&
@@ -115,13 +115,13 @@ function getEmbedContent(message: Message): (string | null)[] {
 	});
 }
 
-export function getClearChannelPermissionError({
+export function getPurgeChannelPermissionError({
 	channel,
 	member,
 	botMember,
 	isBotAdministrator,
 }: {
-	channel: ClearableGuildChannel;
+	channel: PurgeableGuildChannel;
 	member: GuildMember | null;
 	botMember: GuildMember;
 	isBotAdministrator: boolean;
@@ -149,7 +149,7 @@ export function getClearChannelPermissionError({
 		: null;
 }
 
-export async function createClearMessagePreview({
+export async function createPurgeMessagePreview({
 	guild,
 	channels,
 	count,
@@ -166,7 +166,7 @@ export async function createClearMessagePreview({
 	signal,
 }: {
 	guild: Guild;
-	channels: ClearableGuildChannel[];
+	channels: PurgeableGuildChannel[];
 	count: number;
 	selectedChannelId?: string;
 	targetUserId?: string;
@@ -175,11 +175,11 @@ export async function createClearMessagePreview({
 	ignoreCase?: boolean;
 	excludedInteractionId?: string;
 	skippedChannelCount?: number;
-	validateChannel?: (channel: ClearableGuildChannel) => string | null;
-	onProgress?: (progress: ClearMessagePreviewProgress) => void;
+	validateChannel?: (channel: PurgeableGuildChannel) => string | null;
+	onProgress?: (progress: PurgeMessagePreviewProgress) => void;
 	jobDeadlineAt: number;
 	signal?: AbortSignal;
-}): Promise<ClearMessagePreviewRecord> {
+}): Promise<PurgeMessagePreviewRecord> {
 	if (!Number.isInteger(count) || count < 1 || count > 200) {
 		throw new Error("Count must be between 1 and 200.");
 	}
@@ -188,9 +188,9 @@ export async function createClearMessagePreview({
 	let scanStoppedAtLimit = false;
 	const matchingMessages: Message[] = [];
 	const scannedChannelIds = new Set<string>();
-	const channelScans: ClearMessageChannelScan[] = [];
+	const channelScans: PurgeMessageChannelScan[] = [];
 	const evaluatedMessages = new Map<string, boolean>();
-	const textFilter = createClearMessageTextFilter({
+	const textFilter = createPurgeMessageTextFilter({
 		...(text !== undefined ? { text } : {}),
 		regex,
 		ignoreCase,
@@ -212,7 +212,7 @@ export async function createClearMessagePreview({
 		before,
 		limit,
 	}: {
-		channel: ClearableGuildChannel;
+		channel: PurgeableGuildChannel;
 		before?: string;
 		limit: number;
 	}) => {
@@ -264,7 +264,7 @@ export async function createClearMessagePreview({
 	}
 
 	while (true) {
-		let nextScan: ClearMessageChannelScan | undefined;
+		let nextScan: PurgeMessageChannelScan | undefined;
 		let newestMessage: Message | undefined;
 		for (const scan of channelScans) {
 			const message = scan.messages[scan.messageIndex];
@@ -327,7 +327,7 @@ export async function createClearMessagePreview({
 	const bulkDeleteCount = messages.filter(
 		(message) => message.createdTimestamp >= Date.now() - bulkDeleteAgeMs,
 	).length;
-	const data: ClearMessagePreview = {
+	const data: PurgeMessagePreview = {
 		previewId: randomUUID(),
 		guild: { id: guild.id, name: guild.name },
 		channel: channel ? { id: channel.id, name: channel.name } : null,

@@ -117,7 +117,7 @@ export interface AdminGuildMessageResult {
 	messageUrl: string;
 }
 
-export interface GuildClearMessagePreview {
+export interface GuildPurgeMessagePreview {
 	previewId: string;
 	guild: { id: string; name: string };
 	channel: { id: string; name: string } | null;
@@ -150,7 +150,7 @@ export interface GuildClearMessagePreview {
 	}[];
 }
 
-export interface ClearMessageJobState {
+export interface PurgeMessageJobState {
 	jobId: string;
 	version: number;
 	guildId: string;
@@ -171,7 +171,7 @@ export interface ClearMessageJobState {
 		| "stopped"
 		| "failed"
 		| "cancelled";
-	preview: GuildClearMessagePreview | null;
+	preview: GuildPurgeMessagePreview | null;
 	startedAtMs: number;
 	finishedAtMs: number | null;
 	serverTimestampMs: number;
@@ -645,7 +645,7 @@ class APIHandler {
 		return data;
 	}
 
-	static async createGuildMessageClearJob(
+	static async createGuildMessagePurgeJob(
 		guildId: string,
 		filters: {
 			channelId?: string;
@@ -657,42 +657,42 @@ class APIHandler {
 		},
 	): Promise<{ jobId: string }> {
 		const { data } = await apiClient.post<{ jobId: string }>(
-			`/api/v1/guilds/${encodeURIComponent(guildId)}/messages/clear`,
+			`/api/v1/guilds/${encodeURIComponent(guildId)}/messages/purge`,
 			filters,
 			{ withCredentials: true },
 		);
 		return data;
 	}
 
-	static async prepareClearMessageJob(jobId: string): Promise<ClearMessageJobState> {
-		const { data } = await apiClient.post<ClearMessageJobState>(
-			`/api/v1/clear-jobs/${encodeURIComponent(jobId)}/preview`,
+	static async preparePurgeMessageJob(jobId: string): Promise<PurgeMessageJobState> {
+		const { data } = await apiClient.post<PurgeMessageJobState>(
+			`/api/v1/purge-jobs/${encodeURIComponent(jobId)}/preview`,
 			{},
 			{ withCredentials: true },
 		);
 		return data;
 	}
 
-	static async confirmClearMessageJob(jobId: string, previewId: string): Promise<ClearMessageJobState> {
-		const { data } = await apiClient.post<ClearMessageJobState>(
-			`/api/v1/clear-jobs/${encodeURIComponent(jobId)}/confirm`,
+	static async confirmPurgeMessageJob(jobId: string, previewId: string): Promise<PurgeMessageJobState> {
+		const { data } = await apiClient.post<PurgeMessageJobState>(
+			`/api/v1/purge-jobs/${encodeURIComponent(jobId)}/confirm`,
 			{ previewId, confirm: true },
 			{ withCredentials: true },
 		);
 		return data;
 	}
 
-	static async cancelClearMessageJob(jobId: string): Promise<ClearMessageJobState> {
-		const { data } = await apiClient.post<ClearMessageJobState>(
-			`/api/v1/clear-jobs/${encodeURIComponent(jobId)}/cancel`,
+	static async cancelPurgeMessageJob(jobId: string): Promise<PurgeMessageJobState> {
+		const { data } = await apiClient.post<PurgeMessageJobState>(
+			`/api/v1/purge-jobs/${encodeURIComponent(jobId)}/cancel`,
 			{},
 			{ withCredentials: true },
 		);
 		return data;
 	}
 
-	static async getClearMessageJob(jobId: string): Promise<ClearMessageJobState> {
-		const { data } = await apiClient.get<ClearMessageJobState>(`/api/v1/clear-jobs/${encodeURIComponent(jobId)}`, {
+	static async getPurgeMessageJob(jobId: string): Promise<PurgeMessageJobState> {
+		const { data } = await apiClient.get<PurgeMessageJobState>(`/api/v1/purge-jobs/${encodeURIComponent(jobId)}`, {
 			withCredentials: true,
 		});
 		return data;
