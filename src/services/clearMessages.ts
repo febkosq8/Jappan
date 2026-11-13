@@ -1,5 +1,7 @@
 import type { Message } from "discord.js";
 
+const bulkDeleteBatchSize = 100;
+
 export interface DeleteMessagesFailure {
 	messageId: string;
 	error: string;
@@ -33,38 +35,7 @@ export async function deleteMessages({
 	const reportProgress = () => {
 		onProgress?.({ deleted, failed, processed: deleted + failed, total: messages.length });
 	};
-
-	if (bulkMessages.length > 0 && "bulkDelete" in channel && typeof channel.bulkDelete === "function") {
-		if (Date.now() >= deadlineAt) {
-			timeLimitReached = true;
-		} else {
-			try {
-				const deletedMessages = await channel.bulkDelete(bulkMessages, true);
-				deleted += deletedMessages.size;
-				const deletedIds = new Set(deletedMessages.keys());
-				for (const message of bulkMessages) {
-					if (!deletedIds.has(message.id)) {
-						failed += 1;
-						failures.push({ messageId: message.id, error: "Message was not deleted by the bulk request." });
-					}
-				}
-			} catch (error: unknown) {
-				failed += bulkMessages.length;
-				const errorMessage = error instanceof Error ? error.message : String(error);
-				failures.push(...bulkMessages.map((message) => ({ messageId: message.id, error: errorMessage })));
-			}
-			reportProgress();
-			timeLimitReached = Date.now() >= deadlineAt;
-		}
-	} else {
-		individualMessages.push(...bulkMessages);
-	}
-
-	for (const message of individualMessages) {
-		if (Date.now() >= deadlineAt) {
-			timeLimitReached = true;
-			break;
-		}
+	const deleteIndividually = async (message: Message) => {
 		try {
 			await message.delete();
 			deleted += 1;
@@ -76,6 +47,49 @@ export async function deleteMessages({
 			});
 		}
 		reportProgress();
+	};
+
+	if (bulkMessages.length > 0 && "bulkDelete" in channel && typeof channel.bulkDelete === "function") {
+		for (let start = 0; start < bulkMessages.length; start += bulkDeleteBatchSize) {
+			if (Date.now() >= deadlineAt) {
+				timeLimitReached = true;
+				break;
+			}
+			const batch = bulkMessages.slice(start, start + bulkDeleteBatchSize);
+			if (batch.length === 1) {
+				await deleteIndividually(batch[0]!);
+			} else {
+				try {
+					const deletedMessages = await channel.bulkDelete(batch, true);
+					deleted += deletedMessages.size;
+					const deletedIds = new Set(deletedMessages.keys());
+					for (const message of batch) {
+						if (!deletedIds.has(message.id)) {
+							failed += 1;
+							failures.push({
+								messageId: message.id,
+								error: "Message was not deleted by the bulk request.",
+							});
+						}
+					}
+				} catch (error: unknown) {
+					failed += batch.length;
+					const errorMessage = error instanceof Error ? error.message : String(error);
+					failures.push(...batch.map((message) => ({ messageId: message.id, error: errorMessage })));
+				}
+				reportProgress();
+			}
+		}
+	} else {
+		individualMessages.push(...bulkMessages);
+	}
+
+	for (const message of individualMessages) {
+		if (Date.now() >= deadlineAt) {
+			timeLimitReached = true;
+			break;
+		}
+		await deleteIndividually(message);
 	}
 
 	return {
