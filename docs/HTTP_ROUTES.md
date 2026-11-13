@@ -97,10 +97,6 @@ This document records design decisions and behavior that is easy to miss.
   with HTTP 400 before creating a job. `ignoreCase` applies to either mode.
   Regex whitespace is significant; literal text retains its existing trimming.
   Scanning and explicit confirmation still happen on the job page.
-- Clear-job snapshots include `serverTimestampMs`. Anchor live elapsed time and
-  preview expiry to this server clock, advancing it with a local monotonic timer,
-  rather than comparing server timestamps with the browser's wall clock.
-  Finished-job duration uses `finishedAtMs - startedAtMs`.
 
 ## Bot actions and player sessions
 

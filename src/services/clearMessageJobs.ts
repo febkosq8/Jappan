@@ -17,7 +17,7 @@ import {
 
 export type ClearableGuildChannel = NonThreadGuildBasedChannel & {
 	messages: {
-		fetch(options: { limit: number }): Promise<Collection<string, Message>>;
+		fetch(options: { limit: number; before?: string }): Promise<Collection<string, Message>>;
 	};
 };
 
@@ -26,6 +26,7 @@ export interface ClearMessageJobState {
 	version: number;
 	guildId: string;
 	guildName: string;
+	guildIcon: string | null;
 	channelName: string;
 	selectedChannelId: string | null;
 	targetUserId: string | null;
@@ -48,6 +49,7 @@ export interface ClearMessageJobState {
 	messageLimit: number;
 	channelCount: number;
 	completedChannels: number;
+	currentChannelId: string | null;
 	currentChannelName: string | null;
 	scannedMessages: number;
 	matchedMessages: number;
@@ -158,6 +160,7 @@ function finishChannel({ record }: { record: ClearMessageJobRecord }) {
 	record.state.messagesProcessed = record.state.deletedMessages + record.state.failedMessages;
 	record.state.unprocessedMessages = Math.max(0, record.state.messagesToDelete - record.state.messagesProcessed);
 	record.state.completedChannels += 1;
+	record.state.currentChannelId = null;
 	record.state.currentChannelName = null;
 	record.state.progressPercentage = calculateProgress(record.state, 0, 0);
 	publish(record);
@@ -185,6 +188,7 @@ async function runClearMessageJob(
 			}
 			if (messagesDeleted >= record.state.messageLimit) break;
 
+			record.state.currentChannelId = channel.id;
 			record.state.currentChannelName = channel.name;
 			record.state.progressPercentage = calculateProgress(record.state, 0, 0);
 			publish(record);
@@ -241,6 +245,7 @@ async function runClearMessageJob(
 		record.state.status = record.state.timeLimitReached ? "stopped" : "complete";
 		record.state.finishedAtMs = Date.now();
 		if (record.expiryTimer) clearTimeout(record.expiryTimer);
+		record.state.currentChannelId = null;
 		record.state.currentChannelName = null;
 		record.state.progressPercentage = record.state.status === "complete" ? 100 : record.state.progressPercentage;
 		publish(record);
@@ -256,6 +261,7 @@ async function runClearMessageJob(
 		record.state.error = error instanceof Error ? error.message : String(error);
 		record.state.finishedAtMs = Date.now();
 		if (record.expiryTimer) clearTimeout(record.expiryTimer);
+		record.state.currentChannelId = null;
 		record.state.currentChannelName = null;
 		addJobError(record, record.state.error);
 		publish(record);
@@ -283,6 +289,7 @@ export function createClearMessageJob(options: CreateClearMessageJobOptions): Cl
 		version: 0,
 		guildId: options.guild.id,
 		guildName: options.guild.name,
+		guildIcon: options.guild.iconURL(),
 		channelName: options.channels.length === 1 ? (options.channels[0]?.name ?? "Selected channel") : "All channels",
 		selectedChannelId: options.selectedChannelId ?? null,
 		targetUserId: options.targetUserId ?? null,
@@ -297,6 +304,7 @@ export function createClearMessageJob(options: CreateClearMessageJobOptions): Cl
 		messageLimit: options.count,
 		channelCount: options.channels.length,
 		completedChannels: 0,
+		currentChannelId: null,
 		currentChannelName: null,
 		scannedMessages: 0,
 		matchedMessages: 0,
@@ -345,6 +353,7 @@ function expireRequest(record: ClearMessageJobRecord): void {
 	record.state.timeLimitReached = true;
 	record.state.error = "This request expired after 15 minutes without confirmation. Create a new job.";
 	record.state.finishedAtMs = Date.now();
+	record.state.currentChannelId = null;
 	record.state.currentChannelName = null;
 	record.state.completedChannels = 0;
 	record.state.progressPercentage = 0;
@@ -469,9 +478,11 @@ export async function prepareClearMessageJob({
 					record.state.scannedMessages = progress.scannedCount;
 					record.state.matchedMessages = progress.matchedCount;
 					record.state.completedChannels = progress.scannedChannelCount;
+					record.state.currentChannelId = progress.currentChannelId;
 					record.state.currentChannelName = progress.currentChannelName;
-					record.state.progressPercentage = Math.round(
-						(progress.scannedChannelCount / context.channels.length) * 100,
+					record.state.progressPercentage = Math.min(
+						99,
+						Math.round((progress.scannedChannelCount / context.channels.length) * 100),
 					);
 					publish(record);
 				},
@@ -483,6 +494,7 @@ export async function prepareClearMessageJob({
 			record.state.matchedMessages = preview.data.matchedCount;
 			record.state.messagesToDelete = preview.messages.length;
 			record.state.unprocessedMessages = preview.messages.length;
+			record.state.currentChannelId = null;
 			record.state.currentChannelName = null;
 			record.state.status = "awaiting_confirmation";
 			record.state.progressPercentage = 100;
@@ -504,6 +516,7 @@ export async function prepareClearMessageJob({
 			record.state.status = "failed";
 			record.state.error = error instanceof Error ? error.message : String(error);
 			record.state.finishedAtMs = Date.now();
+			record.state.currentChannelId = null;
 			record.state.currentChannelName = null;
 			record.state.completedChannels = 0;
 			record.state.progressPercentage = 0;
@@ -562,6 +575,7 @@ export function cancelClearMessageJob(jobId: string): ClearMessageJobState {
 	record.state.status = "cancelled";
 	record.previewAbortController?.abort();
 	record.state.finishedAtMs = Date.now();
+	record.state.currentChannelId = null;
 	record.state.currentChannelName = null;
 	record.state.completedChannels = 0;
 	record.state.progressPercentage = 0;

@@ -131,15 +131,16 @@ export interface GuildClearMessagePreview {
 	scannedCount: number;
 	matchedCount: number;
 	deleteCount: number;
+	scanStoppedAtLimit: boolean;
 	bulkDeleteCount: number;
 	individualDeleteCount: number;
 	olderThanBulkDeleteLimit: number;
-	scanLimitReached: boolean;
 	expiresAt: number;
 	messages: {
 		id: string;
+		channelId: string;
 		channelName: string;
-		author: { id: string; username: string; displayName: string };
+		author: { id: string; username: string; displayName: string; avatarUrl: string };
 		content: string;
 		createdTimestampMs: number;
 		jumpUrl: string;
@@ -151,6 +152,7 @@ export interface ClearMessageJobState {
 	version: number;
 	guildId: string;
 	guildName: string;
+	guildIcon: string | null;
 	channelName: string;
 	selectedChannelId: string | null;
 	targetUserId: string | null;
@@ -173,6 +175,7 @@ export interface ClearMessageJobState {
 	messageLimit: number;
 	channelCount: number;
 	completedChannels: number;
+	currentChannelId: string | null;
 	currentChannelName: string | null;
 	scannedMessages: number;
 	matchedMessages: number;

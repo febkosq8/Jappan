@@ -3,6 +3,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 import GuildMemberPicker from "@jappan/components/panel/GuildMemberPicker";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
@@ -53,19 +54,27 @@ export default function ClearMessagesPanel({
 	});
 	const createMutation = useMutation({
 		mutationFn: () => {
-			if (!guildId) throw new Error("Select a server first.");
-			const count = Number(countInput);
-			if (!Number.isInteger(count) || count < 1 || count > 200) {
-				throw new Error("Enter a message limit between 1 and 200.");
-			}
-			return APIHandler.createGuildMessageClearJob(guildId, {
-				...(channelId ? { channelId } : {}),
-				count,
-				...(selectedMember ? { userId: selectedMember.id } : {}),
-				...(text ? { text } : {}),
-				regex,
-				ignoreCase,
+			const promise = Promise.resolve().then(() => {
+				if (!guildId) throw new Error("Select a server first.");
+				const count = Number(countInput);
+				if (!Number.isInteger(count) || count < 1 || count > 200) {
+					throw new Error("Enter a message limit between 1 and 200.");
+				}
+				return APIHandler.createGuildMessageClearJob(guildId, {
+					...(channelId ? { channelId } : {}),
+					count,
+					...(selectedMember ? { userId: selectedMember.id } : {}),
+					...(text ? { text } : {}),
+					regex,
+					ignoreCase,
+				});
 			});
+			toast.promise(promise, {
+				loading: "Creating message clear job…",
+				success: "Clear job created.",
+				error: (error) => getErrorMessage(error, "Could not create a message clear job."),
+			});
+			return promise;
 		},
 		onSuccess: (result) => {
 			navigate(`/clear-jobs/${encodeURIComponent(result.jobId)}`);
@@ -273,11 +282,6 @@ export default function ClearMessagesPanel({
 						>
 							{createMutation.isPending ? "Creating job..." : "Start clear job"}
 						</Button>
-						{createMutation.isError && (
-							<p role="alert" className="text-sm text-destructive">
-								{getErrorMessage(createMutation.error, "Could not create a message clear job.")}
-							</p>
-						)}
 					</div>
 				</Card.Content>
 			</Card>

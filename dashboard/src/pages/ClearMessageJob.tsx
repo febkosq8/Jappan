@@ -1,14 +1,23 @@
 import { Button, Card, DateHandler, PillLink, Tag } from "@febkosq8/arc";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useParams } from "react-router-dom";
-import { FiActivity, FiAlertCircle, FiArrowLeft, FiCheckCircle, FiClock, FiSliders } from "react-icons/fi";
+import { toast } from "sonner";
+import {
+	FiActivity,
+	FiAlertCircle,
+	FiAlertTriangle,
+	FiArrowLeft,
+	FiCheckCircle,
+	FiClock,
+	FiSliders,
+} from "react-icons/fi";
 
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
+import ChannelDisplay from "@jappan/components/display/ChannelDisplay";
 import GuildPageHeader from "@jappan/components/display/GuildPageHeader";
 import UserDisplay from "@jappan/components/display/UserDisplay";
-import ExternalTextLink from "@jappan/components/ExternalTextLink";
 import GuildDetail from "@jappan/components/panel/GuildDetail";
 import APIHandler, { type ClearMessageJobState } from "@jappan/handlers/APIHandler";
 import useClearMessageJobWebsocket from "@jappan/handlers/useClearMessageJobWebsocket";
@@ -54,6 +63,17 @@ function latestState(current: ClearMessageJobState | undefined, incoming: ClearM
 		: incoming;
 }
 
+function WarningBanner({ children }: { children: ReactNode }) {
+	return (
+		<Card hoverable={false} className="rounded-md border-warning">
+			<Card.Content role="status" className="flex items-center justify-start gap-3 p-0! text-left text-sm">
+				<FiAlertTriangle className="size-5 shrink-0 text-warning" aria-hidden="true" />
+				<span>{children}</span>
+			</Card.Content>
+		</Card>
+	);
+}
+
 export default function ClearMessageJob() {
 	const { jobId = "" } = useParams();
 	const queryClient = useQueryClient();
@@ -61,6 +81,7 @@ export default function ClearMessageJob() {
 	const [monotonicNow, setMonotonicNow] = useState(() => performance.now());
 	const [confirmationPreviewId, setConfirmationPreviewId] = useState<string | null>(null);
 	const attemptedPreview = useRef("");
+	const attemptedClockRefresh = useRef("");
 	const updateState = (state: ClearMessageJobState) =>
 		queryClient.setQueryData<ClearMessageJobState>(queryKey(jobId), (current) => latestState(current, state));
 	const isValidJobId = jobIdPattern.test(jobId);
@@ -73,8 +94,17 @@ export default function ClearMessageJob() {
 		enabled: isValidJobId,
 		retry: false,
 	});
+	const hasServerClock = jobQuery.isSuccess && Number.isSafeInteger(jobQuery.data.serverTimestampMs);
+	const clockUnavailable = jobQuery.isSuccess && !jobQuery.isFetching && !hasServerClock;
+	useEffect(() => {
+		if (jobQuery.isSuccess && !hasServerClock && !jobQuery.isFetching && attemptedClockRefresh.current !== jobId) {
+			attemptedClockRefresh.current = jobId;
+			void jobQuery.refetch();
+		}
+	}, [hasServerClock, jobId, jobQuery.isSuccess, jobQuery.isFetching, jobQuery.refetch]);
 	const active =
 		jobQuery.isSuccess &&
+		hasServerClock &&
 		!["complete", "stopped", "failed", "cancelled"].includes(jobQuery.data.status) &&
 		!accessProblem;
 	const receivedAt = useMemo(() => performance.now(), [jobId, jobQuery.data?.serverTimestampMs]);
@@ -87,28 +117,58 @@ export default function ClearMessageJob() {
 
 	useEffect(() => setAccessProblem(false), [jobId]);
 	const prepareMutation = useMutation({
-		mutationFn: () => APIHandler.prepareClearMessageJob(jobId),
+		mutationFn: () => {
+			const promise = APIHandler.prepareClearMessageJob(jobId);
+			toast.promise(promise, {
+				loading: "Preparing message preview…",
+				success: "Message preview scan started.",
+				error: actionError,
+			});
+			return promise;
+		},
 		onMutate: () => setConfirmationPreviewId(null),
 		onSuccess: updateState,
 	});
 	const confirmMutation = useMutation({
 		mutationFn: () => {
-			const preview = jobQuery.data?.preview;
-			if (!preview || confirmationPreviewId !== preview.previewId)
-				throw new Error("Review the current preview first.");
-			return APIHandler.confirmClearMessageJob(jobId, preview.previewId);
+			const promise = Promise.resolve().then(() => {
+				const preview = jobQuery.data?.preview;
+				if (!preview || confirmationPreviewId !== preview.previewId)
+					throw new Error("Review the current preview first.");
+				return APIHandler.confirmClearMessageJob(jobId, preview.previewId);
+			});
+			toast.promise(promise, {
+				loading: "Starting message deletion…",
+				success: "Message deletion started.",
+				error: actionError,
+			});
+			return promise;
 		},
 		onSuccess: updateState,
 	});
 	const cancelMutation = useMutation({
-		mutationFn: () => APIHandler.cancelClearMessageJob(jobId),
+		mutationFn: () => {
+			const promise = APIHandler.cancelClearMessageJob(jobId);
+			toast.promise(promise, {
+				loading: "Cancelling clear job…",
+				success: "Clear job cancelled.",
+				error: actionError,
+			});
+			return promise;
+		},
 		onSuccess: updateState,
 	});
 	useEffect(() => {
-		if (jobQuery.data?.status !== "awaiting_preview" || accessProblem || attemptedPreview.current === jobId) return;
+		if (
+			jobQuery.data?.status !== "awaiting_preview" ||
+			!hasServerClock ||
+			accessProblem ||
+			attemptedPreview.current === jobId
+		)
+			return;
 		attemptedPreview.current = jobId;
 		prepareMutation.mutate();
-	}, [jobQuery.data?.status, jobId, accessProblem, prepareMutation.mutate]);
+	}, [jobQuery.data?.status, jobId, hasServerClock, accessProblem, prepareMutation.mutate]);
 	const websocket = useClearMessageJobWebsocket({
 		jobId,
 		enabled: jobQuery.isSuccess,
@@ -118,16 +178,18 @@ export default function ClearMessageJob() {
 
 	useDocumentTitle(formatTitle(jobQuery.data ? `Clear job: ${jobQuery.data.guildName}` : "Clear job"));
 
-	if (!isValidJobId || accessProblem || jobQuery.isError) {
+	if (!isValidJobId || accessProblem || jobQuery.isError || clockUnavailable) {
 		const status = axios.isAxiosError(jobQuery.error) ? jobQuery.error.response?.status : undefined;
 		const notFound = !isValidJobId || status === 400 || status === 404;
 		const denied = status === 403;
 		const title = notFound ? "No clear job found" : denied ? "You can't view this job" : "Clear job unavailable";
-		const message = accessProblem
-			? "This job is no longer available or you no longer have permission to view it."
-			: denied
-				? "You do not have permission to view this message clear job."
-				: "Could not load message clear progress.";
+		const message = clockUnavailable
+			? "This job did not return a valid server time. Reload its latest state."
+			: accessProblem
+				? "This job is no longer available or you no longer have permission to view it."
+				: denied
+					? "You do not have permission to view this message clear job."
+					: "Could not load message clear progress.";
 		return (
 			<main className="flex min-h-[calc(100dvh-4.0625rem)] flex-col items-center justify-center px-4 py-10 text-center">
 				<FiAlertCircle className="size-10 text-muted-foreground" aria-hidden="true" />
@@ -170,7 +232,7 @@ export default function ClearMessageJob() {
 			</main>
 		);
 	}
-	if (jobQuery.isPending) {
+	if (jobQuery.isPending || !hasServerClock) {
 		return (
 			<main className="flex min-h-[calc(100dvh-4.0625rem)] items-center justify-center px-4 py-10">
 				<LoadingIndicator label="Loading message clear job" />
@@ -196,7 +258,10 @@ export default function ClearMessageJob() {
 				<FiArrowLeft aria-hidden="true" />
 				Guilds
 			</PillLink>
-			<GuildPageHeader title="Message clear job" guild={{ id: job.guildId, name: job.guildName }} />
+			<GuildPageHeader
+				title="Message clear job"
+				guild={{ id: job.guildId, name: job.guildName, icon: job.guildIcon }}
+			/>
 
 			<div className="grid gap-4 md:grid-cols-2">
 				<Card hoverable={false} className="min-w-0 p-5 sm:p-6">
@@ -209,9 +274,11 @@ export default function ClearMessageJob() {
 							{job.selectedChannelId === undefined ? (
 								"Not recorded for this job"
 							) : job.selectedChannelId ? (
-								<ExternalTextLink
-									href={`https://discord.com/channels/${encodeURIComponent(job.guildId)}/${encodeURIComponent(job.selectedChannelId)}`}
-									text={`#${job.channelName}`}
+								<ChannelDisplay
+									guildId={job.guildId}
+									id={job.selectedChannelId}
+									name={`#${job.channelName}`}
+									showId
 								/>
 							) : (
 								"All guild channels"
@@ -274,9 +341,14 @@ export default function ClearMessageJob() {
 					</div>
 					{(job.status === "running" || job.status === "previewing") && (
 						<div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
-							{job.currentChannelName && (
+							{job.currentChannelId && job.currentChannelName && (
 								<p className="min-w-0 wrap-break-word">
-									{job.status === "previewing" ? "Scanning" : "Processing"} #{job.currentChannelName}
+									{job.status === "previewing" ? "Scanning" : "Processing"}{" "}
+									<ChannelDisplay
+										guildId={job.guildId}
+										id={job.currentChannelId}
+										name={`#${job.currentChannelName}`}
+									/>
 								</p>
 							)}
 							<p role="status">
@@ -297,98 +369,122 @@ export default function ClearMessageJob() {
 										: "The preview will be prepared here. No messages have been deleted."}
 							</p>
 							{preview && (
-								<>
-									<div className="flex flex-wrap items-center justify-between gap-2">
-										<h3 className="font-semibold">Message preview</h3>
-										<Tag variant="secondary" size="sm">
-											{preview.deleteCount} selected
-										</Tag>
-									</div>
-									{preview.scanLimitReached && (
-										<p className="text-sm text-warning">
-											Only the newest 100 messages per channel were scanned.
-										</p>
-									)}
-									{preview.skippedChannelCount > 0 && (
-										<p className="text-sm text-warning">
-											{preview.skippedChannelCount} channel
-											{preview.skippedChannelCount === 1 ? " was" : "s were"} skipped due to
-											missing permissions.
-										</p>
-									)}
-									{preview.olderThanBulkDeleteLimit > 0 && (
-										<p className="text-sm text-warning">
-											{preview.olderThanBulkDeleteLimit} message
-											{preview.olderThanBulkDeleteLimit === 1 ? " is" : "s are"} older than 14
-											days and will be deleted individually.
-										</p>
-									)}
-									{preview.messages.length > 0 ? (
-										<ul className="max-h-96 space-y-2 overflow-y-auto">
-											{preview.messages.map((message) => (
-												<li key={message.id} className="rounded-md border border-border p-3">
-													<div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-														<span className="font-medium">
-															{!preview.channel && (
-																<span className="mr-2 text-muted-foreground">
-																	#{message.channelName}
-																</span>
-															)}
-															{message.author.displayName} (@{message.author.username})
-														</span>
-														<a
-															href={message.jumpUrl}
-															target="_blank"
-															rel="noreferrer"
-															className="text-muted-foreground underline hover:text-primary"
-														>
-															{DateHandler.getDateTime(message.createdTimestampMs)}
-														</a>
-													</div>
-													<p className="mt-2 wrap-break-word whitespace-pre-wrap text-sm">
-														{message.content}
-													</p>
-												</li>
-											))}
-										</ul>
-									) : (
-										<p className="text-sm text-muted-foreground">No messages match this request.</p>
-									)}
-									{preview.matchedCount > preview.deleteCount && (
-										<p className="text-xs text-muted-foreground">
-											Only the newest {preview.deleteCount} of {preview.matchedCount} matches will
-											be deleted.
-										</p>
-									)}
-									{previewExpired ? (
-										<p role="alert" className="text-sm text-warning">
-											This preview expired. Refresh it before confirming.
-										</p>
-									) : (
-										<p className="text-xs text-muted-foreground">
-											Preview expires {DateHandler.getDateTime(preview.expiresAt)}.
-										</p>
-									)}
-									{preview.deleteCount > 0 && (
-										<label className="flex items-start gap-2 text-sm">
-											<input
-												type="checkbox"
-												checked={confirmationPreviewId === preview.previewId}
-												onChange={(event) =>
-													setConfirmationPreviewId(
-														event.target.checked ? preview.previewId : null,
-													)
-												}
-												disabled={actionBusy || previewExpired}
-												className="mt-1 size-4 accent-primary focus-visible:ring-2 focus-visible:ring-ring"
-											/>
-											<span>
-												I reviewed the preview and understand that {preview.deleteCount} message
-												{preview.deleteCount === 1 ? "" : "s"} will be permanently deleted.
-											</span>
-										</label>
-									)}
-								</>
+								<Card hoverable={false} className="min-w-0 border-border">
+									<Card.Content className="space-y-4 p-4">
+										<div className="flex flex-wrap items-center justify-between gap-2">
+											<h3 className="font-semibold">Message preview</h3>
+											<Tag variant="secondary" size="sm">
+												{preview.deleteCount} selected
+											</Tag>
+										</div>
+										{preview.scanStoppedAtLimit && (
+											<WarningBanner>
+												Scanning stopped after finding {preview.deleteCount} eligible messages.
+												Older matching messages may not be included.
+											</WarningBanner>
+										)}
+										{preview.skippedChannelCount > 0 && (
+											<WarningBanner>
+												{preview.skippedChannelCount} channel
+												{preview.skippedChannelCount === 1 ? " was" : "s were"} skipped due to
+												missing permissions.
+											</WarningBanner>
+										)}
+										{preview.olderThanBulkDeleteLimit > 0 && (
+											<WarningBanner>
+												{preview.olderThanBulkDeleteLimit} message
+												{preview.olderThanBulkDeleteLimit === 1 ? " is" : "s are"} older than 14
+												days and will be deleted individually.
+											</WarningBanner>
+										)}
+										{preview.messages.length > 0 ? (
+											<ul className="max-h-96 space-y-2 overflow-y-auto">
+												{preview.messages.map((message) => (
+													<li
+														key={message.id}
+														className="rounded-md border border-border p-3"
+													>
+														<div className="grid grid-cols-2 items-center gap-2 text-xs sm:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_auto_minmax(0,1fr)]">
+															<ChannelDisplay
+																guildId={job.guildId}
+																id={message.channelId}
+																name={`#${message.channelName}`}
+																showId
+															/>
+															<a
+																href={message.jumpUrl}
+																target="_blank"
+																rel="noreferrer"
+																className="min-w-0 justify-self-center break-all text-center text-muted-foreground underline hover:text-primary"
+															>
+																Message ID: {message.id}
+															</a>
+															<a
+																href={message.jumpUrl}
+																target="_blank"
+																rel="noreferrer"
+																className="justify-self-center whitespace-nowrap text-center text-muted-foreground underline hover:text-primary"
+															>
+																{DateHandler.getDateTime(message.createdTimestampMs)}
+															</a>
+															<div className="flex min-w-0 justify-end">
+																<UserDisplay
+																	id={message.author.id}
+																	name={`${message.author.displayName} (@${message.author.username})`}
+																	avatarUrl={message.author.avatarUrl}
+																	size="sm"
+																	showId
+																/>
+															</div>
+														</div>
+														<p className="mt-2 wrap-break-word whitespace-pre-wrap text-sm">
+															{message.content}
+														</p>
+													</li>
+												))}
+											</ul>
+										) : (
+											<p className="text-sm text-muted-foreground">
+												No messages match this request.
+											</p>
+										)}
+										{preview.matchedCount > preview.deleteCount && (
+											<p className="text-xs text-muted-foreground">
+												Only the newest {preview.deleteCount} of {preview.matchedCount} matches
+												will be deleted.
+											</p>
+										)}
+										{previewExpired ? (
+											<WarningBanner>
+												This preview expired. Refresh it before confirming.
+											</WarningBanner>
+										) : (
+											<p className="text-xs text-muted-foreground">
+												Preview expires {DateHandler.getDateTime(preview.expiresAt)}.
+											</p>
+										)}
+										{preview.deleteCount > 0 && (
+											<label className="flex items-start gap-2 text-sm">
+												<input
+													type="checkbox"
+													checked={confirmationPreviewId === preview.previewId}
+													onChange={(event) =>
+														setConfirmationPreviewId(
+															event.target.checked ? preview.previewId : null,
+														)
+													}
+													disabled={actionBusy || previewExpired}
+													className="mt-1 size-4 accent-primary focus-visible:ring-2 focus-visible:ring-ring"
+												/>
+												<span>
+													I reviewed the preview and understand that {preview.deleteCount}{" "}
+													message
+													{preview.deleteCount === 1 ? "" : "s"} will be permanently deleted.
+												</span>
+											</label>
+										)}
+									</Card.Content>
+								</Card>
 							)}
 							<div className="flex flex-wrap items-center gap-3">
 								{preview && preview.deleteCount > 0 && (
@@ -430,15 +526,6 @@ export default function ClearMessageJob() {
 							</div>
 						</div>
 					)}
-					{[prepareMutation, confirmMutation, cancelMutation].map(
-						(mutation, index) =>
-							mutation.isError && (
-								<p key={index} role="alert" className="mt-3 text-sm text-destructive">
-									{actionError(mutation.error)}
-								</p>
-							),
-					)}
-
 					<div className="mt-5 rounded-md border border-border bg-muted/30 p-4">
 						<div className="flex items-end justify-between gap-3">
 							<div>
@@ -499,12 +586,11 @@ export default function ClearMessageJob() {
 					</dl>
 
 					{job.timeLimitReached && (
-						<p
-							role="status"
-							className="mt-4 rounded-md border border-warning/30 bg-warning/10 p-3 text-sm text-warning"
-						>
-							The time limit was reached. {job.unprocessedMessages.toLocaleString()} messages remain.
-						</p>
+						<div className="mt-4">
+							<WarningBanner>
+								The time limit was reached. {job.unprocessedMessages.toLocaleString()} messages remain.
+							</WarningBanner>
+						</div>
 					)}
 					{job.error && (
 						<p

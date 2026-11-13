@@ -12,7 +12,8 @@ import { z } from "zod";
 import type { ClearableGuildChannel } from "./clearMessageJobs.js";
 import { createClearMessageTextFilter } from "./clearMessageTextFilter.js";
 
-const scanLimitPerChannel = 100;
+const messageBatchSize = 100;
+const initialMessageBatchSize = 1;
 const bulkDeleteAgeMs = 14 * 24 * 60 * 60 * 1000;
 const clearableChannelTypes = new Set<number>([
 	ChannelType.GuildText,
@@ -43,16 +44,22 @@ export const clearMessagePreviewSchema = z.object({
 	scannedCount: z.number().int().nonnegative(),
 	matchedCount: z.number().int().nonnegative(),
 	deleteCount: z.number().int().nonnegative(),
+	scanStoppedAtLimit: z.boolean(),
 	bulkDeleteCount: z.number().int().nonnegative(),
 	individualDeleteCount: z.number().int().nonnegative(),
 	olderThanBulkDeleteLimit: z.number().int().nonnegative(),
-	scanLimitReached: z.boolean(),
 	expiresAt: z.number().int(),
 	messages: z.array(
 		z.object({
 			id: z.string(),
+			channelId: z.string(),
 			channelName: z.string(),
-			author: z.object({ id: z.string(), username: z.string(), displayName: z.string() }),
+			author: z.object({
+				id: z.string(),
+				username: z.string(),
+				displayName: z.string(),
+				avatarUrl: z.string(),
+			}),
 			content: z.string(),
 			createdTimestampMs: z.number().int(),
 			jumpUrl: z.string().url(),
@@ -71,7 +78,16 @@ export interface ClearMessagePreviewProgress {
 	scannedChannelCount: number;
 	scannedCount: number;
 	matchedCount: number;
+	currentChannelId: string;
 	currentChannelName: string;
+}
+
+interface ClearMessageChannelScan {
+	channel: ClearableGuildChannel;
+	messages: Message[];
+	messageIndex: number;
+	before: string | null;
+	hasMore: boolean;
 }
 
 export function isClearableGuildChannel(channel: GuildBasedChannel | null): channel is ClearableGuildChannel {
@@ -154,14 +170,38 @@ export async function createClearMessagePreview({
 		throw new Error("Count must be between 1 and 200.");
 	}
 	let scannedCount = 0;
-	let scannedChannelCount = 0;
-	let scanLimitReached = false;
+	let matchedCount = 0;
+	let scanStoppedAtLimit = false;
 	const matchingMessages: Message[] = [];
+	const scannedChannelIds = new Set<string>();
+	const channelScans: ClearMessageChannelScan[] = [];
 	const textFilter = createClearMessageTextFilter({
 		...(text !== undefined ? { text } : {}),
 		regex,
 		ignoreCase,
 	});
+
+	const fetchBatch = async ({
+		channel,
+		before,
+		limit,
+	}: {
+		channel: ClearableGuildChannel;
+		before?: string;
+		limit: number;
+	}) => {
+		signal?.throwIfAborted();
+		if (Date.now() >= jobDeadlineAt) {
+			throw new Error("Preview scanning reached the time limit. Choose a channel and create a new preview.");
+		}
+		const messages = await channel.messages.fetch({
+			limit,
+			...(before ? { before } : {}),
+		});
+		signal?.throwIfAborted();
+		return [...messages.values()].sort((first, second) => second.createdTimestamp - first.createdTimestamp);
+	};
+
 	for (const channel of channels) {
 		signal?.throwIfAborted();
 		if (Date.now() >= jobDeadlineAt) {
@@ -173,35 +213,91 @@ export async function createClearMessagePreview({
 			skippedChannelCount += 1;
 			continue;
 		}
-		onProgress?.({
-			scannedChannelCount,
-			scannedCount,
-			matchedCount: matchingMessages.length,
-			currentChannelName: channel.name,
+		const batch = await fetchBatch({ channel, limit: initialMessageBatchSize });
+		const lastMessage = batch[batch.length - 1];
+		channelScans.push({
+			channel,
+			messages: batch,
+			messageIndex: 0,
+			before: lastMessage?.id ?? null,
+			hasMore: batch.length === initialMessageBatchSize,
 		});
-		const messages = await channel.messages.fetch({ limit: scanLimitPerChannel });
-		signal?.throwIfAborted();
-		scannedCount += messages.size;
-		scannedChannelCount += 1;
-		scanLimitReached ||= messages.size === scanLimitPerChannel;
-		matchingMessages.push(
-			...[...messages.values()].filter(
-				(message) =>
-					(!targetUserId || message.author.id === targetUserId) &&
-					textFilter.matches(message.content) &&
-					(!excludedInteractionId || message.interactionMetadata?.id !== excludedInteractionId),
-			),
-		);
+		scannedChannelIds.add(channel.id);
 		onProgress?.({
-			scannedChannelCount,
+			scannedChannelCount: scannedChannelIds.size,
 			scannedCount,
-			matchedCount: matchingMessages.length,
+			matchedCount,
+			currentChannelId: channel.id,
 			currentChannelName: channel.name,
 		});
 	}
-	if (scannedChannelCount === 0) throw new Error("No message channels are available with the required permissions");
-	matchingMessages.sort((first, second) => second.createdTimestamp - first.createdTimestamp);
-	const messages = matchingMessages.slice(0, count);
+
+	if (channelScans.length === 0) {
+		throw new Error("No message channels are available with the required permissions");
+	}
+
+	while (true) {
+		let nextScan: ClearMessageChannelScan | undefined;
+		let newestMessage: Message | undefined;
+		for (const scan of channelScans) {
+			const message = scan.messages[scan.messageIndex];
+			if (message && (!newestMessage || message.createdTimestamp > newestMessage.createdTimestamp)) {
+				nextScan = scan;
+				newestMessage = message;
+			}
+		}
+		if (!nextScan || !newestMessage) break;
+
+		nextScan.messageIndex += 1;
+		scannedCount += 1;
+		if (
+			(!targetUserId || newestMessage.author.id === targetUserId) &&
+			textFilter.matches(newestMessage.content) &&
+			(!excludedInteractionId || newestMessage.interactionMetadata?.id !== excludedInteractionId)
+		) {
+			matchedCount += 1;
+			matchingMessages.push(newestMessage);
+			scanStoppedAtLimit = matchedCount >= count;
+		}
+
+		const pageExhausted = nextScan.messageIndex >= nextScan.messages.length;
+		onProgress?.({
+			scannedChannelCount: scannedChannelIds.size,
+			scannedCount,
+			matchedCount,
+			currentChannelId: nextScan.channel.id,
+			currentChannelName: nextScan.channel.name,
+		});
+
+		if (scanStoppedAtLimit) break;
+
+		if (pageExhausted && nextScan.hasMore) {
+			const previousBefore = nextScan.before;
+			const batch = await fetchBatch({
+				channel: nextScan.channel,
+				...(previousBefore ? { before: previousBefore } : {}),
+				limit: messageBatchSize,
+			});
+			const lastMessage = batch[batch.length - 1];
+			if (batch.length > 0 && (!lastMessage || lastMessage.id === previousBefore)) {
+				throw new Error(`Could not continue scanning messages in #${nextScan.channel.name}.`);
+			}
+			nextScan.messages = batch;
+			nextScan.messageIndex = 0;
+			nextScan.before = lastMessage?.id ?? null;
+			nextScan.hasMore = batch.length === messageBatchSize;
+			onProgress?.({
+				scannedChannelCount: scannedChannelIds.size,
+				scannedCount,
+				matchedCount,
+				currentChannelId: nextScan.channel.id,
+				currentChannelName: nextScan.channel.name,
+			});
+		}
+	}
+	if (scannedChannelIds.size === 0)
+		throw new Error("No message channels are available with the required permissions");
+	const messages = matchingMessages;
 	const targetUser = targetUserId ? await guild.client.users.fetch(targetUserId) : null;
 	const targetMember = targetUserId ? guild.members.cache.get(targetUserId) : null;
 	const channel = selectedChannelId ? channels.find((candidate) => candidate.id === selectedChannelId) : null;
@@ -227,23 +323,25 @@ export async function createClearMessagePreview({
 			regex,
 			ignoreCase,
 		},
-		scannedChannelCount,
+		scannedChannelCount: scannedChannelIds.size,
+		scanStoppedAtLimit,
 		skippedChannelCount,
 		scannedCount,
-		matchedCount: matchingMessages.length,
+		matchedCount,
 		deleteCount: messages.length,
 		bulkDeleteCount,
 		individualDeleteCount: messages.length - bulkDeleteCount,
 		olderThanBulkDeleteLimit: messages.length - bulkDeleteCount,
-		scanLimitReached,
 		expiresAt: jobDeadlineAt,
 		messages: messages.map((message) => ({
 			id: message.id,
+			channelId: message.channelId,
 			channelName: message.channel.isDMBased() ? "" : message.channel.name,
 			author: {
 				id: message.author.id,
 				username: message.author.username,
 				displayName: message.member?.displayName ?? message.author.globalName ?? message.author.username,
+				avatarUrl: message.author.displayAvatarURL(),
 			},
 			content: message.content || "(No text content)",
 			createdTimestampMs: message.createdTimestamp,
