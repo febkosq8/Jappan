@@ -102,7 +102,8 @@ export interface AdminGuildChannel {
 	parent: PreferenceEntity | null;
 	position: number;
 	canSendMessage: boolean;
-	canClearMessages?: boolean | null;
+	canReadMessages: boolean;
+	canManageMessages: boolean;
 	topic?: string | null;
 	nsfw?: boolean;
 	rateLimitPerUser?: number | null;

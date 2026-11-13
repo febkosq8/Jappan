@@ -1,4 +1,4 @@
-import { Button, Card, DateHandler } from "@febkosq8/arc";
+import { Button, Card, DateHandler, Tag } from "@febkosq8/arc";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 
@@ -71,9 +71,9 @@ function ChannelGroupList({ guildId, channels }: { guildId: string; channels: Ad
 				>
 					<div className="flex items-center justify-between gap-2">
 						<h3 className="wrap-break-word font-semibold">{group.name}</h3>
-						<span className="shrink-0 rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">
+						<Tag variant="secondary" size="xs" className="shrink-0">
 							{group.channels.length} {group.channels.length === 1 ? "channel" : "channels"}
-						</span>
+						</Tag>
 					</div>
 					{group.categoryId === null && (
 						<p className="mt-1 text-sm text-muted-foreground">These channels are not in a category.</p>
@@ -86,73 +86,98 @@ function ChannelGroupList({ guildId, channels }: { guildId: string; channels: Ad
 					)}
 					{group.createdTimestampMs !== null && (
 						<p className="mt-1 text-sm text-muted-foreground">
-							Created: {DateHandler.getDateTime(group.createdTimestampMs)} (
-							{DateHandler.getRelativeTime(group.createdTimestampMs)})
+							Created: {DateHandler.getDateTime(group.createdTimestampMs)}
 						</p>
 					)}
 					{group.channels.length === 0 ? (
 						<p className="mt-2 text-sm text-muted-foreground">No channels in this category.</p>
 					) : (
-						<ul className="mt-3 grid gap-3 sm:grid-cols-2">
+						<ul className="mt-3 grid items-start gap-3 sm:grid-cols-2">
 							{group.channels.map((channel) => (
 								<li key={channel.id}>
-									<Card hoverable={false} className="h-full min-w-0 rounded-md border-border p-3">
+									<Card hoverable={false} className="min-w-0 rounded-md border-border p-3">
 										<div className="flex flex-wrap items-start justify-between gap-2">
 											<div className="min-w-0 wrap-break-word">
 												<ChannelDisplay guildId={guildId} id={channel.id} name={channel.name} />
 											</div>
-											{(channel.nsfw ||
-												(channel.rateLimitPerUser != null && channel.rateLimitPerUser > 0) ||
-												(channel.userLimit !== undefined && channel.userLimit > 0)) && (
-												<div className="ml-auto flex flex-wrap justify-end gap-1">
-													{channel.nsfw && (
-														<span className="rounded-md bg-warning/15 px-2 py-1 text-xs font-medium text-foreground">
-															NSFW
-														</span>
+											<div className="ml-auto flex flex-wrap justify-end gap-1">
+												{channel.nsfw && (
+													<Tag variant="warning" size="xs">
+														NSFW
+													</Tag>
+												)}
+												{channel.rateLimitPerUser != null &&
+													channel.rateLimitPerUser > 0 && (
+														<Tag variant="secondary" size="xs">
+															Slowmode:{" "}
+															{DateHandler.formatDuration(channel.rateLimitPerUser)}
+														</Tag>
 													)}
-													{channel.rateLimitPerUser != null &&
-														channel.rateLimitPerUser > 0 && (
-															<span className="rounded-md bg-muted px-2 py-1 text-xs font-medium text-foreground">
-																Slowmode:{" "}
-																{DateHandler.formatDuration(channel.rateLimitPerUser)}
-															</span>
-														)}
-													{channel.userLimit !== undefined && channel.userLimit > 0 && (
-														<span className="rounded-md bg-muted px-2 py-1 text-xs font-medium text-foreground">
-															User limit: {channel.userLimit}
-														</span>
-													)}
-												</div>
-											)}
+												{channel.userLimit !== undefined && channel.userLimit > 0 && (
+													<Tag variant="secondary" size="xs">
+														User limit: {channel.userLimit}
+													</Tag>
+												)}
+												<Tag variant="secondary" size="xs" className="whitespace-nowrap">
+													{channel.typeName.replace(/([a-z])([A-Z])/g, "$1 $2")}
+												</Tag>
+											</div>
 										</div>
-										<dl className="mt-2 text-sm">
-											<div className="flex flex-wrap gap-x-1">
-												<dt className="text-muted-foreground">Type:</dt>
-												<dd>{channel.typeName.replace(/([a-z])([A-Z])/g, "$1 $2")}</dd>
-											</div>
-											<div className="flex flex-wrap gap-x-1">
-												<dt className="text-muted-foreground">Can send message:</dt>
-												<dd>{channel.canSendMessage ? "Yes" : "No"}</dd>
-											</div>
-											{channel.canClearMessages != null && (
-												<div className="flex flex-wrap gap-x-1">
-													<dt className="text-muted-foreground">
-														Can scan and clear messages:
-													</dt>
-													<dd>{channel.canClearMessages ? "Yes" : "No"}</dd>
+										<dl className="mt-2 grid grid-cols-[3fr_2fr] gap-x-3 gap-y-1 text-sm">
+											<div className="col-span-2 grid min-w-0 grid-cols-[3fr_2fr] gap-x-3">
+												<div className="flex min-w-0 flex-wrap gap-x-1">
+													<dt className="text-muted-foreground">Created:</dt>
+													<dd className="wrap-break-word">
+														{DateHandler.getDateTime(channel.createdTimestampMs)}
+													</dd>
 												</div>
-											)}
-											<div className="flex flex-wrap gap-x-1">
-												<dt className="text-muted-foreground">Created:</dt>
-												<dd>
-													{DateHandler.getDateTime(channel.createdTimestampMs)}{" "}
-													<span className="text-muted-foreground">
-														({DateHandler.getRelativeTime(channel.createdTimestampMs)})
-													</span>
+												{channel.bitrate !== undefined && (
+													<div className="flex min-w-0 flex-wrap gap-x-1">
+														<dt className="text-muted-foreground">Bitrate:</dt>
+														<dd className="whitespace-nowrap">
+															{channel.bitrate.toLocaleString()} bps
+														</dd>
+													</div>
+												)}
+											</div>
+											<div className="flex min-w-0 flex-wrap gap-x-1">
+												<dt className="text-muted-foreground">Can send message:</dt>
+												<dd
+													className={
+														channel.canSendMessage
+															? "font-medium text-success"
+															: "font-medium text-destructive"
+													}
+												>
+													{channel.canSendMessage ? "Yes" : "No"}
+												</dd>
+											</div>
+											<div className="flex min-w-0 flex-wrap gap-x-1">
+												<dt className="text-muted-foreground">Can read messages:</dt>
+												<dd
+													className={
+														channel.canReadMessages
+															? "font-medium text-success"
+															: "font-medium text-destructive"
+													}
+												>
+													{channel.canReadMessages ? "Yes" : "No"}
+												</dd>
+											</div>
+											<div className="flex min-w-0 flex-wrap gap-x-1">
+												<dt className="text-muted-foreground">Can manage messages:</dt>
+												<dd
+													className={
+														channel.canManageMessages
+															? "font-medium text-success"
+															: "font-medium text-destructive"
+													}
+												>
+													{channel.canManageMessages ? "Yes" : "No"}
 												</dd>
 											</div>
 											{channel.topic && (
-												<div>
+												<div className="col-span-2 min-w-0">
 													<dt className="text-muted-foreground">Topic:</dt>
 													<dd className="wrap-break-word whitespace-pre-wrap">
 														{channel.topic}
@@ -160,15 +185,9 @@ function ChannelGroupList({ guildId, channels }: { guildId: string; channels: Ad
 												</div>
 											)}
 											{channel.rateLimitPerUser === null && (
-												<div className="flex flex-wrap gap-x-1">
+												<div className="flex min-w-0 flex-wrap gap-x-1">
 													<dt className="text-muted-foreground">Slowmode:</dt>
 													<dd>Unavailable</dd>
-												</div>
-											)}
-											{channel.bitrate !== undefined && (
-												<div className="flex flex-wrap gap-x-1">
-													<dt className="text-muted-foreground">Bitrate:</dt>
-													<dd>{channel.bitrate.toLocaleString()} bps</dd>
 												</div>
 											)}
 										</dl>

@@ -440,6 +440,8 @@ export default function ClearMessageJob() {
 															variant="outline-secondary"
 															size="sm"
 															className="shrink-0 whitespace-nowrap"
+															target="_blank"
+															rel="noreferrer"
 														>
 															Review
 														</PillLink>
