@@ -13,7 +13,10 @@ import {
 	FiClock,
 	FiEye,
 	FiHome,
+	FiLoader,
 	FiSliders,
+	FiWifi,
+	FiWifiOff,
 } from "react-icons/fi";
 
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
@@ -279,6 +282,12 @@ export default function ClearMessageJob() {
 			<GuildPageHeader
 				title="Message clear job"
 				guild={{ id: job.guildId, name: job.guildName, icon: job.guildIcon }}
+				rightContent={
+					<Tag variant={jobVariant(job)} size="sm" className="gap-1.5">
+						<StatusIcon aria-hidden="true" />
+						{jobLabel(job)}
+					</Tag>
+				}
 			/>
 
 			<Tabs
@@ -384,10 +393,6 @@ export default function ClearMessageJob() {
 								<FiActivity className="size-5 text-primary" aria-hidden="true" />
 								Job progress
 							</h2>
-							<Tag variant={jobVariant(job)} size="sm" className="gap-1.5">
-								<StatusIcon aria-hidden="true" />
-								{jobLabel(job)}
-							</Tag>
 						</div>
 						{(job.status === "running" || job.status === "previewing") && (
 							<div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
@@ -401,11 +406,30 @@ export default function ClearMessageJob() {
 										/>
 									</p>
 								)}
-								<p role="status">
+								<Tag
+									role="status"
+									variant={
+										websocket.status === "connected"
+											? "success"
+											: websocket.status === "connecting"
+												? "secondary"
+												: "warning"
+									}
+									size="xs"
+								>
+									{websocket.status === "connected" ? (
+										<FiWifi className="mr-1 size-3" aria-hidden="true" />
+									) : websocket.status === "connecting" ? (
+										<FiLoader className="mr-1 size-3 animate-spin" aria-hidden="true" />
+									) : (
+										<FiWifiOff className="mr-1 size-3" aria-hidden="true" />
+									)}
 									{websocket.status === "connected"
 										? "Live updates connected"
-										: "Reconnecting to live updates…"}
-								</p>
+										: websocket.status === "connecting"
+											? "Connecting to live updates"
+											: "Reconnecting to live updates"}
+								</Tag>
 							</div>
 						)}
 
@@ -424,7 +448,8 @@ export default function ClearMessageJob() {
 											<div className="flex flex-wrap items-center justify-between gap-2">
 												<h3 className="font-semibold">Message preview</h3>
 												<Tag variant="secondary" size="sm">
-													{preview.deleteCount} selected
+													{preview.deleteCount} message{preview.deleteCount === 1 ? "" : "s"}{" "}
+													loaded
 												</Tag>
 											</div>
 											{preview.skippedChannelCount > 0 && (
@@ -696,7 +721,7 @@ export default function ClearMessageJob() {
 							<p role="status" className="mt-3 text-sm text-muted-foreground">
 								{beforeDeletion
 									? `${job.scannedMessages.toLocaleString()} messages scanned`
-									: `${job.messagesProcessed.toLocaleString()} of ${job.messagesToDelete.toLocaleString()} selected messages processed`}
+									: `${job.messagesProcessed.toLocaleString()} of ${job.messagesToDelete.toLocaleString()} messages processed`}
 							</p>
 						</div>
 
