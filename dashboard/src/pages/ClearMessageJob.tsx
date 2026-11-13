@@ -1,4 +1,4 @@
-import { Button, Card, DateHandler, PillLink, Tag } from "@febkosq8/arc";
+import { Button, Card, DateHandler, PillLink, Tabs, TabsList, TabsPanel, TabsTab, Tag } from "@febkosq8/arc";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -63,6 +63,19 @@ function latestState(current: ClearMessageJobState | undefined, incoming: ClearM
 		: incoming;
 }
 
+function groupPreviewMessages(messages: NonNullable<ClearMessageJobState["preview"]>["messages"]) {
+	const groups = new Map<string, { channelId: string; channelName: string; messages: typeof messages }>();
+	for (const message of messages) {
+		let group = groups.get(message.channelId);
+		if (!group) {
+			group = { channelId: message.channelId, channelName: message.channelName, messages: [] };
+			groups.set(message.channelId, group);
+		}
+		group.messages.push(message);
+	}
+	return [...groups.values()];
+}
+
 function WarningBanner({ children }: { children: ReactNode }) {
 	return (
 		<Card hoverable={false} className="rounded-md border-warning">
@@ -80,6 +93,8 @@ export default function ClearMessageJob() {
 	const [accessProblem, setAccessProblem] = useState(false);
 	const [monotonicNow, setMonotonicNow] = useState(() => performance.now());
 	const [confirmationPreviewId, setConfirmationPreviewId] = useState<string | null>(null);
+	const [expandedChannelId, setExpandedChannelId] = useState<string | null>(null);
+	const [section, setSection] = useState<"overview" | "activity">("activity");
 	const attemptedPreview = useRef("");
 	const attemptedClockRefresh = useRef("");
 	const updateState = (state: ClearMessageJobState) =>
@@ -102,6 +117,7 @@ export default function ClearMessageJob() {
 			void jobQuery.refetch();
 		}
 	}, [hasServerClock, jobId, jobQuery.isSuccess, jobQuery.isFetching, jobQuery.refetch]);
+	useEffect(() => setExpandedChannelId(null), [jobId, jobQuery.data?.preview?.previewId]);
 	const active =
 		jobQuery.isSuccess &&
 		hasServerClock &&
@@ -263,358 +279,428 @@ export default function ClearMessageJob() {
 				guild={{ id: job.guildId, name: job.guildName, icon: job.guildIcon }}
 			/>
 
-			<div className="grid gap-4 md:grid-cols-2">
-				<Card hoverable={false} className="min-w-0 p-5 sm:p-6">
-					<h2 className="flex items-center gap-2 text-lg font-semibold">
-						<FiSliders className="size-5 text-primary" aria-hidden="true" />
-						Request
-					</h2>
-					<dl className="mt-5 grid gap-3 sm:grid-cols-2">
-						<GuildDetail label="Channel scope">
-							{job.selectedChannelId === undefined ? (
-								"Not recorded for this job"
-							) : job.selectedChannelId ? (
-								<ChannelDisplay
-									guildId={job.guildId}
-									id={job.selectedChannelId}
-									name={`#${job.channelName}`}
-									showId
-								/>
-							) : (
-								"All guild channels"
-							)}
-						</GuildDetail>
-						<GuildDetail label="Maximum requested">{job.messageLimit.toLocaleString()}</GuildDetail>
-						<GuildDetail label="Message author">
-							{job.targetUserId === undefined ? (
-								"Not recorded for this job"
-							) : job.targetUserId ? (
-								<UserDisplay id={job.targetUserId} name="Selected author" size="sm" />
-							) : (
-								"Any author"
-							)}
-						</GuildDetail>
-						<GuildDetail
-							label={`${job.regex ? "Regex" : "Text contains"} (${job.ignoreCase ? "ignore case" : "case-sensitive"})`}
-						>
-							{job.textFilter === undefined ? (
-								"Not recorded for this job"
-							) : job.textFilter ? (
-								<span className="whitespace-pre-wrap">{job.textFilter}</span>
-							) : (
-								"No text filter"
-							)}
-						</GuildDetail>
-					</dl>
-				</Card>
-				<Card hoverable={false} className="min-w-0 p-5 sm:p-6">
-					<h2 className="flex items-center gap-2 text-lg font-semibold">
-						<FiClock className="size-5 text-primary" aria-hidden="true" />
-						Summary
-					</h2>
-					<dl className="mt-5 grid gap-3 sm:grid-cols-2">
-						<GuildDetail label="Messages scanned">{job.scannedMessages.toLocaleString()}</GuildDetail>
-						<GuildDetail label="Matches found">{job.matchedMessages.toLocaleString()}</GuildDetail>
-						<GuildDetail label="Started">{DateHandler.getDateTime(job.startedAtMs)}</GuildDetail>
-						{job.finishedAtMs !== null && (
-							<GuildDetail label="Finished">{DateHandler.getDateTime(job.finishedAtMs)}</GuildDetail>
-						)}
-						<GuildDetail label="Time spent">
-							<span className="tabular-nums">
-								{DateHandler.formatDuration(
-									Math.max(0, Math.floor(((job.finishedAtMs ?? now) - job.startedAtMs) / 1000)),
-								)}
-							</span>
-						</GuildDetail>
-					</dl>
-				</Card>
-				<Card hoverable={false} className="min-w-0 p-5 sm:p-6 md:col-span-2">
-					<div className="flex flex-wrap items-center justify-between gap-3">
-						<h2 className="flex items-center gap-2 text-lg font-semibold">
-							<FiActivity className="size-5 text-primary" aria-hidden="true" />
-							Job progress
-						</h2>
-						<Tag variant={jobVariant(job)} size="sm" className="gap-1.5">
-							<StatusIcon aria-hidden="true" />
-							{jobLabel(job)}
-						</Tag>
-					</div>
-					{(job.status === "running" || job.status === "previewing") && (
-						<div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
-							{job.currentChannelId && job.currentChannelName && (
-								<p className="min-w-0 wrap-break-word">
-									{job.status === "previewing" ? "Scanning" : "Processing"}{" "}
-									<ChannelDisplay
-										guildId={job.guildId}
-										id={job.currentChannelId}
-										name={`#${job.currentChannelName}`}
-									/>
-								</p>
-							)}
-							<p role="status">
-								{websocket.status === "connected"
-									? "Live updates connected"
-									: "Reconnecting to live updates…"}
-							</p>
-						</div>
-					)}
-
-					{beforeDeletion && (
-						<div className="mt-5 space-y-4 border-t border-border pt-4">
-							<p className="text-sm text-muted-foreground">
-								{job.status === "previewing"
-									? "Preparing the preview. No messages have been deleted."
-									: preview
-										? "Review these messages before confirming deletion."
-										: "The preview will be prepared here. No messages have been deleted."}
-							</p>
-							{preview && (
-								<Card hoverable={false} className="min-w-0 border-border">
-									<Card.Content className="space-y-4 p-4">
-										<div className="flex flex-wrap items-center justify-between gap-2">
-											<h3 className="font-semibold">Message preview</h3>
-											<Tag variant="secondary" size="sm">
-												{preview.deleteCount} selected
-											</Tag>
-										</div>
-										{preview.scanStoppedAtLimit && (
-											<WarningBanner>
-												Scanning stopped after finding {preview.deleteCount} eligible messages.
-												Older matching messages may not be included.
-											</WarningBanner>
-										)}
-										{preview.skippedChannelCount > 0 && (
-											<WarningBanner>
-												{preview.skippedChannelCount} channel
-												{preview.skippedChannelCount === 1 ? " was" : "s were"} skipped due to
-												missing permissions.
-											</WarningBanner>
-										)}
-										{preview.olderThanBulkDeleteLimit > 0 && (
-											<WarningBanner>
-												{preview.olderThanBulkDeleteLimit} message
-												{preview.olderThanBulkDeleteLimit === 1 ? " is" : "s are"} older than 14
-												days and will be deleted individually.
-											</WarningBanner>
-										)}
-										{preview.messages.length > 0 ? (
-											<ul className="max-h-96 space-y-2 overflow-y-auto">
-												{preview.messages.map((message) => (
-													<li
-														key={message.id}
-														className="rounded-md border border-border p-3"
-													>
-														<div className="grid grid-cols-2 items-center gap-2 text-xs sm:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_auto_minmax(0,1fr)]">
-															<ChannelDisplay
-																guildId={job.guildId}
-																id={message.channelId}
-																name={`#${message.channelName}`}
-																showId
-															/>
-															<a
-																href={message.jumpUrl}
-																target="_blank"
-																rel="noreferrer"
-																className="min-w-0 justify-self-center break-all text-center text-muted-foreground underline hover:text-primary"
-															>
-																Message ID: {message.id}
-															</a>
-															<a
-																href={message.jumpUrl}
-																target="_blank"
-																rel="noreferrer"
-																className="justify-self-center whitespace-nowrap text-center text-muted-foreground underline hover:text-primary"
-															>
-																{DateHandler.getDateTime(message.createdTimestampMs)}
-															</a>
-															<div className="flex min-w-0 justify-end">
-																<UserDisplay
-																	id={message.author.id}
-																	name={`${message.author.displayName} (@${message.author.username})`}
-																	avatarUrl={message.author.avatarUrl}
-																	size="sm"
-																	showId
-																/>
-															</div>
-														</div>
-														<p className="mt-2 wrap-break-word whitespace-pre-wrap text-sm">
-															{message.content}
-														</p>
-													</li>
-												))}
-											</ul>
-										) : (
-											<p className="text-sm text-muted-foreground">
-												No messages match this request.
-											</p>
-										)}
-										{preview.matchedCount > preview.deleteCount && (
-											<p className="text-xs text-muted-foreground">
-												Only the newest {preview.deleteCount} of {preview.matchedCount} matches
-												will be deleted.
-											</p>
-										)}
-										{previewExpired ? (
-											<WarningBanner>
-												This preview expired. Refresh it before confirming.
-											</WarningBanner>
-										) : (
-											<p className="text-xs text-muted-foreground">
-												Preview expires {DateHandler.getDateTime(preview.expiresAt)}.
-											</p>
-										)}
-										{preview.deleteCount > 0 && (
-											<label className="flex items-start gap-2 text-sm">
-												<input
-													type="checkbox"
-													checked={confirmationPreviewId === preview.previewId}
-													onChange={(event) =>
-														setConfirmationPreviewId(
-															event.target.checked ? preview.previewId : null,
-														)
-													}
-													disabled={actionBusy || previewExpired}
-													className="mt-1 size-4 accent-primary focus-visible:ring-2 focus-visible:ring-ring"
-												/>
-												<span>
-													I reviewed the preview and understand that {preview.deleteCount}{" "}
-													message
-													{preview.deleteCount === 1 ? "" : "s"} will be permanently deleted.
-												</span>
-											</label>
-										)}
-									</Card.Content>
-								</Card>
-							)}
-							<div className="flex flex-wrap items-center gap-3">
-								{preview && preview.deleteCount > 0 && (
-									<Button
-										variant="destructive"
-										disabled={
-											confirmationPreviewId !== preview.previewId || actionBusy || previewExpired
-										}
-										onClick={() => confirmMutation.mutate()}
-									>
-										{confirmMutation.isPending
-											? "Starting deletion..."
-											: `Delete ${preview.deleteCount} message${preview.deleteCount === 1 ? "" : "s"}`}
-									</Button>
-								)}
-								{job.status !== "previewing" && (
-									<Button
-										variant="outline-primary"
-										disabled={actionBusy}
-										onClick={() => {
-											confirmMutation.reset();
-											prepareMutation.mutate();
-										}}
-									>
-										{prepareMutation.isPending
-											? "Preparing preview..."
-											: preview
-												? "Refresh preview"
-												: "Prepare preview"}
-									</Button>
-								)}
-								<Button
-									variant="outline-secondary"
-									disabled={actionBusy}
-									onClick={() => cancelMutation.mutate()}
+			<Tabs
+				value={section}
+				onValueChange={(value) => {
+					if (value === "overview" || value === "activity") setSection(value);
+				}}
+				className="gap-5"
+			>
+				<TabsList aria-label="Clear job sections">
+					<TabsTab value="overview" size="sm">
+						Overview
+					</TabsTab>
+					<TabsTab value="activity" size="sm">
+						Preview and progress
+					</TabsTab>
+				</TabsList>
+				<TabsPanel value="overview" keepMounted>
+					<div className="grid gap-4 md:grid-cols-2">
+						<Card hoverable={false} className="min-w-0 p-5 sm:p-6">
+							<h2 className="flex items-center gap-2 text-lg font-semibold">
+								<FiSliders className="size-5 text-primary" aria-hidden="true" />
+								Request
+							</h2>
+							<dl className="mt-5 grid gap-3 sm:grid-cols-2">
+								<GuildDetail label="Channel scope">
+									{job.selectedChannelId === undefined ? (
+										"Not recorded for this job"
+									) : job.selectedChannelId ? (
+										<ChannelDisplay
+											guildId={job.guildId}
+											id={job.selectedChannelId}
+											name={`#${job.channelName}`}
+											showId
+										/>
+									) : (
+										"All guild channels"
+									)}
+								</GuildDetail>
+								<GuildDetail label="Maximum requested">{job.messageLimit.toLocaleString()}</GuildDetail>
+								<GuildDetail label="Message author">
+									{job.targetUserId === undefined ? (
+										"Not recorded for this job"
+									) : job.targetUserId ? (
+										<UserDisplay id={job.targetUserId} name="Selected author" size="sm" />
+									) : (
+										"Any author"
+									)}
+								</GuildDetail>
+								<GuildDetail
+									label={`${job.regex ? "Regex" : "Text contains"} (${job.ignoreCase ? "ignore case" : "case-sensitive"})`}
 								>
-									Cancel job
-								</Button>
-							</div>
+									{job.textFilter === undefined ? (
+										"Not recorded for this job"
+									) : job.textFilter ? (
+										<span className="whitespace-pre-wrap">{job.textFilter}</span>
+									) : (
+										"No text filter"
+									)}
+								</GuildDetail>
+							</dl>
+						</Card>
+						<Card hoverable={false} className="min-w-0 p-5 sm:p-6">
+							<h2 className="flex items-center gap-2 text-lg font-semibold">
+								<FiClock className="size-5 text-primary" aria-hidden="true" />
+								Summary
+							</h2>
+							<dl className="mt-5 grid gap-3 sm:grid-cols-2">
+								<GuildDetail label="Messages scanned">
+									{job.scannedMessages.toLocaleString()}
+								</GuildDetail>
+								<GuildDetail label="Matches found">{job.matchedMessages.toLocaleString()}</GuildDetail>
+								<GuildDetail label="Started">{DateHandler.getDateTime(job.startedAtMs)}</GuildDetail>
+								{job.finishedAtMs !== null && (
+									<GuildDetail label="Finished">
+										{DateHandler.getDateTime(job.finishedAtMs)}
+									</GuildDetail>
+								)}
+								<GuildDetail label="Time spent">
+									<span className="tabular-nums">
+										{DateHandler.formatDuration(
+											Math.max(
+												0,
+												Math.floor(((job.finishedAtMs ?? now) - job.startedAtMs) / 1000),
+											),
+										)}
+									</span>
+								</GuildDetail>
+							</dl>
+						</Card>
+					</div>
+				</TabsPanel>
+				<TabsPanel value="activity" keepMounted>
+					<Card hoverable={false} className="min-w-0 p-5 sm:p-6">
+						<div className="flex flex-wrap items-center justify-between gap-3">
+							<h2 className="flex items-center gap-2 text-lg font-semibold">
+								<FiActivity className="size-5 text-primary" aria-hidden="true" />
+								Job progress
+							</h2>
+							<Tag variant={jobVariant(job)} size="sm" className="gap-1.5">
+								<StatusIcon aria-hidden="true" />
+								{jobLabel(job)}
+							</Tag>
 						</div>
-					)}
-					<div className="mt-5 rounded-md border border-border bg-muted/30 p-4">
-						<div className="flex items-end justify-between gap-3">
-							<div>
-								<p className="text-sm text-muted-foreground">
-									{beforeDeletion ? "Preview progress" : "Overall progress"}
-								</p>
-								<p className="mt-1 text-3xl font-bold tabular-nums text-primary">
-									{job.progressPercentage}%
+						{(job.status === "running" || job.status === "previewing") && (
+							<div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
+								{job.currentChannelId && job.currentChannelName && (
+									<p className="min-w-0 wrap-break-word">
+										{job.status === "previewing" ? "Scanning" : "Processing"}{" "}
+										<ChannelDisplay
+											guildId={job.guildId}
+											id={job.currentChannelId}
+											name={`#${job.currentChannelName}`}
+										/>
+									</p>
+								)}
+								<p role="status">
+									{websocket.status === "connected"
+										? "Live updates connected"
+										: "Reconnecting to live updates…"}
 								</p>
 							</div>
-							<p className="text-right text-sm text-muted-foreground">
-								<span className="font-medium tabular-nums text-foreground">
-									{job.completedChannels} / {job.channelCount}
-								</span>{" "}
-								{beforeDeletion ? "channels scanned" : "channels completed"}
+						)}
+
+						{beforeDeletion && (
+							<div className="mt-5 space-y-4 border-t border-border pt-4">
+								<p className="text-sm text-muted-foreground">
+									{job.status === "previewing"
+										? "Preparing the preview. No messages have been deleted."
+										: preview
+											? "Review these messages before confirming deletion."
+											: "The preview will be prepared here. No messages have been deleted."}
+								</p>
+								{preview && (
+									<Card hoverable={false} className="min-w-0 border-border">
+										<Card.Content className="space-y-4 p-4">
+											<div className="flex flex-wrap items-center justify-between gap-2">
+												<h3 className="font-semibold">Message preview</h3>
+												<Tag variant="secondary" size="sm">
+													{preview.deleteCount} selected
+												</Tag>
+											</div>
+											{preview.scanStoppedAtLimit && (
+												<WarningBanner>
+													Scanning stopped after finding {preview.deleteCount} eligible
+													messages. Older matching messages may not be included.
+												</WarningBanner>
+											)}
+											{preview.skippedChannelCount > 0 && (
+												<WarningBanner>
+													{preview.skippedChannelCount} channel
+													{preview.skippedChannelCount === 1 ? " was" : "s were"} skipped due
+													to missing permissions.
+												</WarningBanner>
+											)}
+											{preview.olderThanBulkDeleteLimit > 0 && (
+												<WarningBanner>
+													{preview.olderThanBulkDeleteLimit} message
+													{preview.olderThanBulkDeleteLimit === 1 ? " is" : "s are"} older
+													than 14 days and will be deleted individually.
+												</WarningBanner>
+											)}
+											{preview.messages.length > 0 ? (
+												<div className="max-h-96 space-y-3 overflow-y-auto">
+													{groupPreviewMessages(preview.messages).map((group) => (
+														<Card
+															key={group.channelId}
+															hoverable={false}
+															className="min-w-0 border-border"
+														>
+															<Card.Content className="space-y-3 p-4">
+																<div className="flex flex-wrap items-center justify-between gap-3">
+																	<ChannelDisplay
+																		guildId={job.guildId}
+																		id={group.channelId}
+																		name={`#${group.channelName}`}
+																		showId
+																	/>
+																	<div className="flex items-center gap-2">
+																		<Button
+																			type="button"
+																			variant="outline-secondary"
+																			size="sm"
+																			aria-expanded={
+																				expandedChannelId === group.channelId
+																			}
+																			aria-controls={`clear-job-channel-${group.channelId}-messages`}
+																			onClick={() =>
+																				setExpandedChannelId(
+																					expandedChannelId ===
+																						group.channelId
+																						? null
+																						: group.channelId,
+																				)
+																			}
+																		>
+																			{expandedChannelId === group.channelId
+																				? "Hide messages"
+																				: "Show messages"}
+																		</Button>
+																		<Tag variant="secondary" size="sm">
+																			{group.messages.length} selected
+																		</Tag>
+																	</div>
+																</div>
+																<ul
+																	id={`clear-job-channel-${group.channelId}-messages`}
+																	hidden={expandedChannelId !== group.channelId}
+																	className="space-y-2"
+																>
+																	{group.messages.map((message) => (
+																		<li
+																			key={message.id}
+																			className="rounded-md border border-border p-3"
+																		>
+																			<div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+																				<UserDisplay
+																					id={message.author.id}
+																					name={`${message.author.displayName} (@${message.author.username})`}
+																					avatarUrl={message.author.avatarUrl}
+																					size="sm"
+																					showId
+																				/>
+																				<a
+																					href={message.jumpUrl}
+																					target="_blank"
+																					rel="noreferrer"
+																					className="min-w-0 break-all text-center text-muted-foreground underline hover:text-primary"
+																				>
+																					Message ID: {message.id}
+																				</a>
+																				<span className="whitespace-nowrap text-center text-muted-foreground">
+																					{DateHandler.getDateTime(
+																						message.createdTimestampMs,
+																					)}
+																				</span>
+																			</div>
+																			<p className="mt-2 wrap-break-word whitespace-pre-wrap text-sm">
+																				{message.content}
+																			</p>
+																		</li>
+																	))}
+																</ul>
+															</Card.Content>
+														</Card>
+													))}
+												</div>
+											) : (
+												<p className="text-sm text-muted-foreground">
+													No messages match this request.
+												</p>
+											)}
+											{preview.matchedCount > preview.deleteCount && (
+												<p className="text-xs text-muted-foreground">
+													Only the newest {preview.deleteCount} of {preview.matchedCount}{" "}
+													matches will be deleted.
+												</p>
+											)}
+											{previewExpired ? (
+												<WarningBanner>
+													This preview expired. Refresh it before confirming.
+												</WarningBanner>
+											) : (
+												<p className="text-xs text-muted-foreground">
+													Preview expires {DateHandler.getDateTime(preview.expiresAt)}.
+												</p>
+											)}
+											{preview.deleteCount > 0 && (
+												<label className="flex items-start gap-2 text-sm">
+													<input
+														type="checkbox"
+														checked={confirmationPreviewId === preview.previewId}
+														onChange={(event) =>
+															setConfirmationPreviewId(
+																event.target.checked ? preview.previewId : null,
+															)
+														}
+														disabled={actionBusy || previewExpired}
+														className="mt-1 size-4 accent-primary focus-visible:ring-2 focus-visible:ring-ring"
+													/>
+													<span>
+														I reviewed the preview and understand that {preview.deleteCount}{" "}
+														message
+														{preview.deleteCount === 1 ? "" : "s"} will be permanently
+														deleted.
+													</span>
+												</label>
+											)}
+										</Card.Content>
+									</Card>
+								)}
+								<div className="flex flex-wrap items-center gap-3">
+									{preview && preview.deleteCount > 0 && (
+										<Button
+											variant="destructive"
+											disabled={
+												confirmationPreviewId !== preview.previewId ||
+												actionBusy ||
+												previewExpired
+											}
+											onClick={() => confirmMutation.mutate()}
+										>
+											{confirmMutation.isPending
+												? "Starting deletion..."
+												: `Delete ${preview.deleteCount} message${preview.deleteCount === 1 ? "" : "s"}`}
+										</Button>
+									)}
+									{job.status !== "previewing" && (
+										<Button
+											variant="outline-primary"
+											disabled={actionBusy}
+											onClick={() => {
+												confirmMutation.reset();
+												prepareMutation.mutate();
+											}}
+										>
+											{prepareMutation.isPending
+												? "Preparing preview..."
+												: preview
+													? "Refresh preview"
+													: "Prepare preview"}
+										</Button>
+									)}
+									<Button
+										variant="outline-secondary"
+										disabled={actionBusy}
+										onClick={() => cancelMutation.mutate()}
+									>
+										Cancel job
+									</Button>
+								</div>
+							</div>
+						)}
+						<div className="mt-5 rounded-md border border-border bg-muted/30 p-4">
+							<div className="flex items-end justify-between gap-3">
+								<div>
+									<p className="text-sm text-muted-foreground">
+										{beforeDeletion ? "Preview progress" : "Overall progress"}
+									</p>
+									<p className="mt-1 text-3xl font-bold tabular-nums text-primary">
+										{job.progressPercentage}%
+									</p>
+								</div>
+								<p className="text-right text-sm text-muted-foreground">
+									<span className="font-medium tabular-nums text-foreground">
+										{job.completedChannels} / {job.channelCount}
+									</span>{" "}
+									{beforeDeletion ? "channels scanned" : "channels completed"}
+								</p>
+							</div>
+							<div
+								role="progressbar"
+								aria-label={beforeDeletion ? "Message preview progress" : "Message clear progress"}
+								aria-valuenow={job.progressPercentage}
+								aria-valuemin={0}
+								aria-valuemax={100}
+								className="mt-4 h-2 overflow-hidden rounded-full bg-muted"
+							>
+								<div
+									className="h-full rounded-full bg-primary transition-[width] duration-300 motion-reduce:transition-none"
+									style={{ width: `${job.progressPercentage}%` }}
+								/>
+							</div>
+							<p role="status" className="mt-3 text-sm text-muted-foreground">
+								{beforeDeletion
+									? `${job.scannedMessages.toLocaleString()} messages scanned`
+									: `${job.messagesProcessed.toLocaleString()} of ${job.messagesToDelete.toLocaleString()} selected messages processed`}
 							</p>
 						</div>
-						<div
-							role="progressbar"
-							aria-label={beforeDeletion ? "Message preview progress" : "Message clear progress"}
-							aria-valuenow={job.progressPercentage}
-							aria-valuemin={0}
-							aria-valuemax={100}
-							className="mt-4 h-2 overflow-hidden rounded-full bg-muted"
-						>
+
+						<dl className="mt-4 grid gap-3 sm:grid-cols-3">
+							<GuildDetail label={beforeDeletion || job.status === "running" ? "Pending" : "Remaining"}>
+								<span
+									className={`text-2xl font-bold tabular-nums ${job.unprocessedMessages > 0 ? "text-warning" : "text-foreground"}`}
+								>
+									{job.unprocessedMessages.toLocaleString()}
+								</span>
+							</GuildDetail>
+							<GuildDetail label="Failed">
+								<span
+									className={`text-2xl font-bold tabular-nums ${job.failedMessages > 0 ? "text-destructive" : "text-foreground"}`}
+								>
+									{job.failedMessages.toLocaleString()}
+								</span>
+							</GuildDetail>
+							<GuildDetail label="Deleted">
+								<span className="text-2xl font-bold tabular-nums text-success">
+									{job.deletedMessages.toLocaleString()}
+								</span>
+							</GuildDetail>
+						</dl>
+
+						{job.timeLimitReached && (
+							<div className="mt-4">
+								<WarningBanner>
+									The time limit was reached. {job.unprocessedMessages.toLocaleString()} messages
+									remain.
+								</WarningBanner>
+							</div>
+						)}
+						{job.error && (
+							<p
+								role="alert"
+								className="mt-4 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+							>
+								{job.error}
+							</p>
+						)}
+						{job.errors.length > 0 && (
 							<div
-								className="h-full rounded-full bg-primary transition-[width] duration-300 motion-reduce:transition-none"
-								style={{ width: `${job.progressPercentage}%` }}
-							/>
-						</div>
-						<p role="status" className="mt-3 text-sm text-muted-foreground">
-							{beforeDeletion
-								? `${job.scannedMessages.toLocaleString()} messages scanned`
-								: `${job.messagesProcessed.toLocaleString()} of ${job.messagesToDelete.toLocaleString()} selected messages processed`}
-						</p>
-					</div>
-
-					<dl className="mt-4 grid gap-3 sm:grid-cols-3">
-						<GuildDetail label={beforeDeletion || job.status === "running" ? "Pending" : "Remaining"}>
-							<span
-								className={`text-2xl font-bold tabular-nums ${job.unprocessedMessages > 0 ? "text-warning" : "text-foreground"}`}
+								role="status"
+								className="mt-4 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm"
 							>
-								{job.unprocessedMessages.toLocaleString()}
-							</span>
-						</GuildDetail>
-						<GuildDetail label="Failed">
-							<span
-								className={`text-2xl font-bold tabular-nums ${job.failedMessages > 0 ? "text-destructive" : "text-foreground"}`}
-							>
-								{job.failedMessages.toLocaleString()}
-							</span>
-						</GuildDetail>
-						<GuildDetail label="Deleted">
-							<span className="text-2xl font-bold tabular-nums text-success">
-								{job.deletedMessages.toLocaleString()}
-							</span>
-						</GuildDetail>
-					</dl>
-
-					{job.timeLimitReached && (
-						<div className="mt-4">
-							<WarningBanner>
-								The time limit was reached. {job.unprocessedMessages.toLocaleString()} messages remain.
-							</WarningBanner>
-						</div>
-					)}
-					{job.error && (
-						<p
-							role="alert"
-							className="mt-4 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
-						>
-							{job.error}
-						</p>
-					)}
-					{job.errors.length > 0 && (
-						<div
-							role="status"
-							className="mt-4 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm"
-						>
-							<p className="font-medium text-destructive">Some messages could not be deleted:</p>
-							<ul className="mt-1 list-inside list-disc text-muted-foreground">
-								{job.errors.map((error) => (
-									<li key={error}>{error}</li>
-								))}
-							</ul>
-						</div>
-					)}
-				</Card>
-			</div>
+								<p className="font-medium text-destructive">Some messages could not be deleted:</p>
+								<ul className="mt-1 list-inside list-disc text-muted-foreground">
+									{job.errors.map((error) => (
+										<li key={error}>{error}</li>
+									))}
+								</ul>
+							</div>
+						)}
+					</Card>
+				</TabsPanel>
+			</Tabs>
 		</main>
 	);
 }
