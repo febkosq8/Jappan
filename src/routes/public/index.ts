@@ -189,7 +189,7 @@ const publicRoutes: RouteDefinition[] = [
 		tags: ["Public"],
 		summary: "List global slash commands and subcommands",
 		errorMessage: "Failed to list commands",
-		parameters: listQueryParameters,
+		parameters: listQueryParameters(detailedCommandSchema),
 		responses: {
 			200: {
 				description: "Global command definitions, options, and declared permissions",

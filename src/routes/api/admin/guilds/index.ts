@@ -417,7 +417,7 @@ export default defineRouter("/guilds", [
 		summary: "List registered guilds",
 		errorMessage: "Failed to list guilds",
 		security: [{ sessionBearer: [] }],
-		parameters: listQueryParameters,
+		parameters: listQueryParameters(adminGuildSchema),
 		responses: {
 			200: {
 				description: "Registered guilds with current Discord membership and available details",

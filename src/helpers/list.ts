@@ -110,6 +110,48 @@ function getFieldValues(
 	return getFieldValues(value[property], propertySchema, remainingPath);
 }
 
+function getFilterFieldPaths(schema: AnyZodSchema, prefix = "", paths = new Set<string>()): Set<string> {
+	const unwrappedSchema = unwrapSchema(schema);
+	if (unwrappedSchema instanceof z.ZodArray) {
+		return getFilterFieldPaths(unwrappedSchema.element, prefix, paths);
+	}
+	if (unwrappedSchema instanceof z.ZodUnion) {
+		for (const option of unwrappedSchema.options) {
+			getFilterFieldPaths(option, prefix, paths);
+		}
+		return paths;
+	}
+	if (unwrappedSchema instanceof z.ZodObject) {
+		for (const [property, propertySchema] of Object.entries(unwrappedSchema.shape)) {
+			getFilterFieldPaths(propertySchema, prefix ? `${prefix}.${property}` : property, paths);
+		}
+		return paths;
+	}
+	if (prefix) paths.add(prefix);
+	return paths;
+}
+
+function getFilterFieldOpenApiSchema(schema: AnyZodSchema, field: string): z.ZodType {
+	const types = new Set(getSchemaValueTypesFromField(schema, field));
+	const variants: z.ZodType[] = [];
+	if (types.has("other")) variants.push(z.string());
+	if (types.has("number")) variants.push(z.number());
+	if (types.has("boolean")) variants.push(z.boolean());
+	const [firstVariant, ...remainingVariants] = variants;
+	if (!firstVariant) {
+		throw new Error(`List filter field is missing from its response schema: ${field}`);
+	}
+	return remainingVariants.reduce<z.ZodType>((combined, variant) => z.union([combined, variant]), firstVariant);
+}
+
+function createListFilterSchema(schema: AnyZodSchema, fields?: readonly string[]) {
+	const fieldPaths = fields ?? [...getFilterFieldPaths(schema)];
+	const properties = Object.fromEntries(
+		fieldPaths.map((field) => [field, getFilterFieldOpenApiSchema(schema, field).optional()]),
+	);
+	return z.strictObject(properties);
+}
+
 export function queryIntegerSchema({ min, max }: { min: number; max: number }) {
 	return z.string().regex(/^\d+$/).transform(Number).pipe(z.number().int().min(min).max(max));
 }
@@ -126,42 +168,42 @@ export const listQuerySchema = z.strictObject({
 
 export const queryBooleanSchema = z.enum(["true", "false"]).transform((value) => value === "true");
 
-const listFieldFilterSchema = z.record(z.string(), z.string().trim().min(1));
-
-export const listQueryParameters = [
-	{
-		name: "page",
-		in: "query",
-		required: false,
-		description: "Page of results to return. Example: page=1",
-		schema: z.number().int().min(1).max(1_000_000),
-	},
-	{
-		name: "perPageLimit",
-		in: "query",
-		required: false,
-		description: "Maximum results per page; 0 returns all matching results. Example: perPageLimit=25",
-		schema: z.number().int().min(0).max(MAX_PER_PAGE_LIMIT),
-	},
-	{
-		name: "query",
-		in: "query",
-		required: false,
-		description:
-			"Global case-insensitive substring search across searchable fields. A field filter overrides this query.",
-		schema: z.string().trim().min(1),
-	},
-	{
-		name: "filter",
-		in: "query",
-		required: false,
-		description:
-			"Field-specific case-insensitive substring filters, e.g. filter[name]=Febkosq8. Boolean fields accept true or false; numeric fields require numeric values. If present, filters override query and combine with AND.",
-		schema: listFieldFilterSchema,
-		style: "deepObject",
-		explode: true,
-	},
-] as const satisfies readonly RouteParameter[];
+export function listQueryParameters(schema: AnyZodSchema, fields?: readonly string[]): RouteParameter[] {
+	return [
+		{
+			name: "page",
+			in: "query",
+			required: false,
+			description: "Page of results to return. Example: page=1",
+			schema: z.number().int().min(1).max(1_000_000),
+		},
+		{
+			name: "perPageLimit",
+			in: "query",
+			required: false,
+			description: "Maximum results per page; 0 returns all matching results. Example: perPageLimit=25",
+			schema: z.number().int().min(0).max(MAX_PER_PAGE_LIMIT),
+		},
+		{
+			name: "query",
+			in: "query",
+			required: false,
+			description:
+				"Global case-insensitive substring search across searchable fields. A field filter overrides this query.",
+			schema: z.string().trim().min(1),
+		},
+		{
+			name: "filter",
+			in: "query",
+			required: false,
+			description:
+				"Field-specific case-insensitive substring filters, e.g. filter[name]=Febkosq8. Filter fields and value types are defined by the list item schema. If present, filters override query and combine with AND.",
+			schema: createListFilterSchema(schema, fields),
+			style: "deepObject",
+			explode: true,
+		},
+	];
+}
 
 export interface PaginatedList<T> {
 	items: T[];

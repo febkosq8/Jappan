@@ -210,7 +210,7 @@ export default defineRouter("/guilds", [
 		summary: "List guilds the user can manage",
 		errorMessage: "Failed to list guilds",
 		security,
-		parameters: listQueryParameters,
+		parameters: listQueryParameters(guildSchema),
 		responses: {
 			200: {
 				description: "Registered guilds the user can manage",
@@ -252,7 +252,7 @@ export default defineRouter("/guilds", [
 		summary: "List bot guilds the user is a member of",
 		errorMessage: "Failed to list guild memberships",
 		security,
-		parameters: listQueryParameters,
+		parameters: listQueryParameters(guildSchema),
 		responses: {
 			200: {
 				description: "Bot guilds where the current user is a member",
@@ -294,7 +294,7 @@ export default defineRouter("/guilds", [
 		summary: "List channels in a registered guild",
 		errorMessage: "Failed to list guild channels",
 		security,
-		parameters: [...parameters, ...listQueryParameters],
+		parameters: [...parameters, ...listQueryParameters(guildChannelSchema)],
 		responses: {
 			200: {
 				description: "Guild channels and categories, excluding threads",
@@ -345,7 +345,7 @@ export default defineRouter("/guilds", [
 		summary: "List roles in a registered guild",
 		errorMessage: "Failed to list guild roles",
 		security,
-		parameters: [...parameters, ...listQueryParameters],
+		parameters: [...parameters, ...listQueryParameters(guildRoleSchema)],
 		responses: {
 			200: {
 				description: "Guild roles, highest first, with whether the bot can assign each",
@@ -536,7 +536,7 @@ export default defineRouter("/guilds", [
 		summary: "List users with at least one warning in a guild",
 		errorMessage: "Failed to list warned users",
 		security,
-		parameters: [...parameters, ...listQueryParameters],
+		parameters: [...parameters, ...listQueryParameters(warnedMemberSchema, ["userId", "username", "warningCount"])],
 		responses: {
 			200: {
 				description: "Users with positive warning counts, highest count first",
@@ -597,7 +597,7 @@ export default defineRouter("/guilds", [
 		summary: "List or search guild members",
 		errorMessage: "Failed to list or search guild members",
 		security,
-		parameters: [...parameters, ...listQueryParameters],
+		parameters: [...parameters, ...listQueryParameters(warningMemberSchema)],
 		responses: {
 			200: { description: "Matching guild members", schema: paginatedListSchema(warningMemberSchema) },
 			...accessResponses,
@@ -720,7 +720,7 @@ export default defineRouter("/guilds", [
 		summary: "List voice region locks and available regions",
 		errorMessage: "Failed to list voice region locks",
 		security,
-		parameters: [...parameters, ...listQueryParameters],
+		parameters: [...parameters, ...listQueryParameters(voiceRegionLockSchema)],
 		responses: {
 			200: {
 				description: "Voice region locks and available Discord voice regions",
@@ -982,7 +982,10 @@ export default defineRouter("/guilds", [
 		summary: "Get a guild's leveling leaderboard",
 		errorMessage: "Failed to get guild leaderboard",
 		security,
-		parameters: [...parameters, ...listQueryParameters],
+		parameters: [
+			...parameters,
+			...listQueryParameters(guildLeaderboardEntrySchema, ["userId", "username", "points"]),
+		],
 		responses: {
 			200: { description: "Guild leaderboard and leveling reward", schema: guildLeaderboardSchema },
 			...accessResponses,

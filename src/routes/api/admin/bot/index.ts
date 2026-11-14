@@ -80,7 +80,7 @@ export default defineRouter("/bot", [
 		summary: "List configured bot administrators",
 		errorMessage: "Failed to get bot administrators",
 		security: [{ sessionBearer: [] }],
-		parameters: listQueryParameters,
+		parameters: listQueryParameters(administratorSchema),
 		responses: {
 			200: {
 				description: "Configured bot administrators",
@@ -123,7 +123,7 @@ export default defineRouter("/bot", [
 		summary: "View active player sessions",
 		errorMessage: "Failed to get active player sessions",
 		security: [{ sessionBearer: [] }],
-		parameters: listQueryParameters,
+		parameters: listQueryParameters(activePlayerSessionSchema),
 		responses: {
 			200: {
 				description: "Active player sessions",

@@ -46,7 +46,7 @@ export default defineRouter("/playlists", [
 		summary: "List the signed-in user's saved playlists",
 		errorMessage: "Failed to list saved playlists",
 		security,
-		parameters: listQueryParameters,
+		parameters: listQueryParameters(playlistSchema),
 		responses: {
 			200: { description: "The user's saved playlists", schema: paginatedListSchema(playlistSchema) },
 			400: { description: "Invalid list query", schema: errorResponseSchema },
