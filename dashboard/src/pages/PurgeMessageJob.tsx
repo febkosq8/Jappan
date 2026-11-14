@@ -432,9 +432,17 @@ export default function PurgeMessageJob() {
 							{jobQuery.isFetching ? "Trying again…" : "Try again"}
 						</Button>
 					)}
-					<PillLink variant="outline-secondary" href="/guilds" className="gap-2">
+					<PillLink
+						variant="outline-secondary"
+						href={
+							jobQuery.data
+								? `/guild/${encodeURIComponent(jobQuery.data.guildId)}#purge-messages`
+								: "/guilds"
+						}
+						className="gap-2"
+					>
 						<FiArrowLeft aria-hidden="true" />
-						Back to guilds
+						{jobQuery.data ? "Back to guild" : "Back to guilds"}
 					</PillLink>
 				</div>
 			</main>
@@ -467,9 +475,14 @@ export default function PurgeMessageJob() {
 				: FiAlertCircle;
 	return (
 		<main className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6">
-			<PillLink href="/guilds" variant="outline-secondary" size="sm" className="mb-5 gap-2">
+			<PillLink
+				href={`/guild/${encodeURIComponent(job.guildId)}#purge-messages`}
+				variant="outline-secondary"
+				size="sm"
+				className="mb-5 gap-2"
+			>
 				<FiArrowLeft aria-hidden="true" />
-				Guilds
+				Back to guild
 			</PillLink>
 			<GuildPageHeader
 				title="Message purge job"

@@ -433,6 +433,10 @@ export interface PlayerSession {
 	};
 	serverTimestampMs: number;
 }
+export interface PlayerSessionStartResult {
+	sessionId: string;
+	skippedTracks: number;
+}
 export interface PlayerSuggestion {
 	kind: "track" | "playlist" | "savedPlaylist";
 	title: string;
@@ -469,6 +473,22 @@ class APIHandler {
 		const { data } = await apiClient.get<PlayerSession>(`/api/v1/player/${encodeURIComponent(sessionId)}`, {
 			withCredentials: true,
 		});
+		return data;
+	}
+
+	static async startPlayerSession(input: { guildId: string; query: string }): Promise<PlayerSessionStartResult> {
+		const { data } = await apiClient.post<PlayerSessionStartResult>("/api/v1/player/start", input, {
+			withCredentials: true,
+		});
+		return data;
+	}
+
+	static async getPlayerSuggestions(query: string): Promise<PlayerSuggestion[]> {
+		const { data } = await apiClient.post<PlayerSuggestion[]>(
+			"/api/v1/player/suggestions",
+			{ query },
+			{ withCredentials: true },
+		);
 		return data;
 	}
 

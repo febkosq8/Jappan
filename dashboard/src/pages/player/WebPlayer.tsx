@@ -25,7 +25,7 @@ import { AccessRedirect, accessErrorStatus } from "@jappan/components/AdminRoute
 import ChannelDisplay from "@jappan/components/display/ChannelDisplay";
 import UserDisplay from "@jappan/components/display/UserDisplay";
 import ExternalTextLink from "@jappan/components/ExternalTextLink";
-import AddToQueue from "@jappan/components/player/AddToQueue";
+import TrackInput from "@jappan/components/player/TrackInput";
 import NowPlaying from "@jappan/components/player/NowPlaying";
 import PlayerLoading from "@jappan/components/player/PlayerLoading";
 import formatDuration from "@jappan/helpers/formatDuration";
@@ -536,7 +536,7 @@ export default function WebPlayer() {
 				</TabsPanel>
 				<TabsPanel value="queue" keepMounted className="flex flex-col gap-4">
 					{session.viewer.canControl && (
-						<AddToQueue
+						<TrackInput
 							sessionId={sessionId}
 							disabled={controlMutation.isPending || !connected}
 							adding={controlMutation.isPending && controlMutation.variables?.path === "queue/add"}
