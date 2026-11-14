@@ -147,6 +147,7 @@ export default function PlayerLanding() {
 					sessionId={sessionQuery.data?.session.id ?? "start"}
 					disabled={trackInputDisabled}
 					submitDisabled={!guildId}
+					preloadSuggestions={signedIn}
 					adding={startMutation.isPending}
 					onSavedPlaylistChange={setSavedPlaylistSelected}
 					onAdd={(query, onSuccess) => {

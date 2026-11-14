@@ -20,6 +20,7 @@ export default function TrackInput({
 	sessionId,
 	disabled,
 	submitDisabled = false,
+	preloadSuggestions = false,
 	adding,
 	onAdd,
 	onSavedPlaylistChange,
@@ -35,6 +36,7 @@ export default function TrackInput({
 	sessionId: string;
 	disabled: boolean;
 	submitDisabled?: boolean;
+	preloadSuggestions?: boolean;
 	adding: boolean;
 	onAdd: (query: string, onSuccess: () => void) => void;
 	onSavedPlaylistChange?: (isSavedPlaylist: boolean) => void;
@@ -67,7 +69,7 @@ export default function TrackInput({
 	const suggestionsQuery = useQuery({
 		queryKey: ["player-suggestions", sessionId, debouncedText],
 		queryFn: () => loadSuggestions(debouncedText),
-		enabled: open && !disabled,
+		enabled: (open || preloadSuggestions) && !disabled,
 		staleTime: 30_000,
 		// The server rate-limits each connection, so a failed lookup is not repeated on its own
 		retry: false,
