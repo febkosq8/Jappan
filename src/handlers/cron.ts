@@ -1,6 +1,7 @@
 import type { Client } from "discord.js";
 
 import { updatePresence } from "./discord.js";
+import { cleanJobs } from "../services/jobCleaner.js";
 import { runPlayerHealthCheck } from "../services/player.js";
 import { registerCronJob } from "../services/cron.js";
 
@@ -20,5 +21,12 @@ export function registerCronHandlers(client: Client): void {
 		humanCronTime: "Every 6 hours",
 		task: () => updatePresence(client),
 		runOnStart: true,
+	});
+	registerCronJob({
+		name: "job-cleaner",
+		description: "Remove expired in-memory job state",
+		cronTime: "0 */15 * * * *",
+		humanCronTime: "Every 15 minutes",
+		task: cleanJobs,
 	});
 }

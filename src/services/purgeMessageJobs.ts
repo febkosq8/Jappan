@@ -70,7 +70,7 @@ interface PurgeMessageJobRecord {
 	state: PurgeMessageJobState;
 	creatorDiscordId: string;
 	authorizationChannelIds: string[];
-	createdAtMs: number;
+	lastStateChangeAtMs: number;
 	options: CreatePurgeMessageJobOptions;
 	preview: PurgeMessagePreviewRecord | null;
 	waitingDeadlineAt: number;
@@ -108,7 +108,7 @@ type JobStateListener = (state: PurgeMessageJobState) => void;
 
 const jobs = new Map<string, PurgeMessageJobRecord>();
 const listeners = new Set<JobStateListener>();
-const jobLifetimeMs = 60 * 60 * 1000;
+const terminalJobRetentionMs = 30 * 60 * 1000;
 const requestLifetimeMs = 15 * 60 * 1000;
 
 function pruneJobs() {
@@ -121,10 +121,14 @@ function pruneJobs() {
 		) {
 			expireRequest(job);
 		}
-		if (isPurgeMessageJobTerminal(job.state.status) && job.createdAtMs + jobLifetimeMs <= now) {
+		if (isPurgeMessageJobTerminal(job.state.status) && job.lastStateChangeAtMs + terminalJobRetentionMs <= now) {
 			jobs.delete(jobId);
 		}
 	}
+}
+
+export function cleanPurgeMessageJobs(): void {
+	pruneJobs();
 }
 
 function calculateProgress(state: PurgeMessageJobState, currentChannelTotal: number, currentChannelProcessed: number) {
@@ -138,6 +142,7 @@ function snapshot(record: PurgeMessageJobRecord): PurgeMessageJobState {
 }
 
 function publish(record: PurgeMessageJobRecord) {
+	record.lastStateChangeAtMs = Date.now();
 	record.state.version += 1;
 	const state = snapshot(record);
 	for (const listener of listeners) {
@@ -271,6 +276,14 @@ async function runPurgeMessageJob(
 		if (record.expiryTimer) clearTimeout(record.expiryTimer);
 		record.state.currentChannelId = null;
 		record.state.currentChannelName = null;
+		for (const [messageId, status] of Object.entries(record.state.messageStatuses)) {
+			if (status === "deleting") record.state.messageStatuses[messageId] = "failed";
+		}
+		const finalMessageStatuses = Object.values(record.state.messageStatuses);
+		record.state.deletedMessages = finalMessageStatuses.filter((status) => status === "deleted").length;
+		record.state.failedMessages = finalMessageStatuses.filter((status) => status === "failed").length;
+		record.state.messagesProcessed = record.state.deletedMessages + record.state.failedMessages;
+		record.state.unprocessedMessages = Math.max(0, record.state.messagesToDelete - record.state.messagesProcessed);
 		addJobError(record, record.state.error);
 		publish(record);
 		logger.error("HTTP", "Message purge job failed", {
@@ -341,7 +354,7 @@ export function createPurgeMessageJob(options: CreatePurgeMessageJobOptions): Pu
 		state,
 		creatorDiscordId: options.creatorDiscordId,
 		authorizationChannelIds: options.channels.map((channel) => channel.id),
-		createdAtMs: startedAtMs,
+		lastStateChangeAtMs: startedAtMs,
 		options,
 		preview: null,
 		waitingDeadlineAt: requestExpiresAtMs,
@@ -597,8 +610,6 @@ export function cancelPurgeMessageJob(jobId: string): PurgeMessageJobState {
 	record.state.finishedAtMs = Date.now();
 	record.state.currentChannelId = null;
 	record.state.currentChannelName = null;
-	record.state.completedChannels = 0;
-	record.state.progressPercentage = 0;
 	record.state.preview = null;
 	if (record.expiryTimer) clearTimeout(record.expiryTimer);
 	publish(record);

@@ -152,11 +152,13 @@ function PurgeMessageList({
 								</Tag>
 								{showStatuses && (
 									<div className="flex flex-wrap gap-1">
-										{messageStatusOrder.map((status) => (
-											<Tag key={status} variant={messageStatusVariant(status)} size="xs">
-												{counts[status]} {messageStatusLabel(status).toLowerCase()}
-											</Tag>
-										))}
+										{messageStatusOrder
+											.filter((status) => counts[status] > 0)
+											.map((status) => (
+												<Tag key={status} variant={messageStatusVariant(status)} size="xs">
+													{messageStatusLabel(status)}: {counts[status]}
+												</Tag>
+											))}
 									</div>
 								)}
 								<Button
@@ -449,6 +451,7 @@ export default function PurgeMessageJob() {
 	const job = jobQuery.data;
 	const now = job.serverTimestampMs + Math.max(0, monotonicNow - receivedAt);
 	const beforeDeletion = ["awaiting_preview", "previewing", "awaiting_confirmation"].includes(job.status);
+	const showPreviewProgress = beforeDeletion || job.status === "cancelled";
 	const preview = job.preview;
 	const messageStatusCounts = preview
 		? countMessageStatuses(preview.messages, job.messageStatuses)
@@ -476,6 +479,9 @@ export default function PurgeMessageJob() {
 						<Tag variant={jobVariant(job)} size="sm" className="gap-1.5">
 							<StatusIcon aria-hidden="true" />
 							{jobLabel(job)}
+							{job.status === "running" && (
+								<span className="tabular-nums">· {job.progressPercentage}%</span>
+							)}
 						</Tag>
 						{beforeDeletion && (
 							<Tag
@@ -534,7 +540,7 @@ export default function PurgeMessageJob() {
 											showId
 										/>
 									) : (
-										"All guild channels"
+										<span className="text-muted-foreground italic">All guild channels</span>
 									)}
 								</GuildDetail>
 								<GuildDetail label="Maximum requested">{job.messageLimit.toLocaleString()}</GuildDetail>
@@ -544,7 +550,7 @@ export default function PurgeMessageJob() {
 									) : job.targetUserId ? (
 										<UserDisplay id={job.targetUserId} name="Selected author" size="sm" />
 									) : (
-										"Any author"
+										<span className="text-muted-foreground italic">Any author</span>
 									)}
 								</GuildDetail>
 								<GuildDetail
@@ -555,7 +561,7 @@ export default function PurgeMessageJob() {
 									) : job.textFilter ? (
 										<span className="whitespace-pre-wrap">{job.textFilter}</span>
 									) : (
-										"No text filter"
+										<span className="text-muted-foreground italic">No text filter</span>
 									)}
 								</GuildDetail>
 							</dl>
@@ -641,7 +647,11 @@ export default function PurgeMessageJob() {
 							<div className="flex items-end justify-between gap-3">
 								<div>
 									<p className="text-sm text-muted-foreground">
-										{beforeDeletion ? "Preview progress" : "Overall progress"}
+										{job.status === "cancelled"
+											? "Preview progress at cancellation"
+											: showPreviewProgress
+												? "Preview progress"
+												: "Overall progress"}
 									</p>
 									<p className="mt-1 text-3xl font-bold tabular-nums text-primary">
 										{job.progressPercentage}%
@@ -651,12 +661,12 @@ export default function PurgeMessageJob() {
 									<span className="font-medium tabular-nums text-foreground">
 										{job.completedChannels} / {job.channelCount}
 									</span>{" "}
-									{beforeDeletion ? "channels scanned" : "channels completed"}
+									{showPreviewProgress ? "channels scanned" : "channels completed"}
 								</p>
 							</div>
 							<div
 								role="progressbar"
-								aria-label={beforeDeletion ? "Message preview progress" : "Message purge progress"}
+								aria-label={showPreviewProgress ? "Message preview progress" : "Message purge progress"}
 								aria-valuenow={job.progressPercentage}
 								aria-valuemin={0}
 								aria-valuemax={100}
@@ -668,7 +678,7 @@ export default function PurgeMessageJob() {
 								/>
 							</div>
 							<p role="status" className="mt-3 text-sm text-muted-foreground">
-								{beforeDeletion
+								{showPreviewProgress
 									? `${job.scannedMessages.toLocaleString()} messages scanned`
 									: `${job.messagesProcessed.toLocaleString()} of ${job.messagesToDelete.toLocaleString()} messages processed`}
 							</p>
@@ -676,11 +686,13 @@ export default function PurgeMessageJob() {
 
 						<dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
 							<GuildDetail label="Total">
-								{(preview?.deleteCount ?? job.messagesToDelete).toLocaleString()}
+								<span className="text-2xl font-bold tabular-nums text-foreground">
+									{(preview?.deleteCount ?? job.messagesToDelete).toLocaleString()}
+								</span>
 							</GuildDetail>
 							<GuildDetail label="Pending">
 								<span className="text-2xl font-bold tabular-nums text-warning">
-									{beforeDeletion ? job.unprocessedMessages : messageStatusCounts.pending}
+									{showPreviewProgress ? job.unprocessedMessages : messageStatusCounts.pending}
 								</span>
 							</GuildDetail>
 							<GuildDetail label="Deleting">
@@ -704,15 +716,30 @@ export default function PurgeMessageJob() {
 
 						{(beforeDeletion || preview) && (
 							<div className="mt-5 space-y-4 border-t border-border pt-4">
-								<p className="text-sm text-muted-foreground">
-									{job.status === "previewing"
-										? "Preparing the preview. No messages have been deleted."
-										: preview
-											? beforeDeletion
-												? "Review these messages before confirming deletion."
-												: "Message deletion results update live."
-											: "The preview will be prepared here. No messages have been deleted."}
-								</p>
+								{job.status === "running" ? (
+									<div
+										role="status"
+										className="rounded-md border border-primary/30 bg-primary/10 p-3 text-sm text-primary"
+									>
+										<p className="font-medium">Message deletion results update live.</p>
+										<p className="mt-1">
+											Messages may stay marked Deleting while Discord processes a batch.{" "}
+											{websocket.status === "connected"
+												? "The job is still running while live updates are connected; results appear when Discord responds."
+												: "Live updates are reconnecting, so these statuses may be temporarily out of date."}
+										</p>
+									</div>
+								) : (
+									<p className="text-sm text-muted-foreground">
+										{job.status === "previewing"
+											? "Preparing the preview. No messages have been deleted."
+											: preview
+												? beforeDeletion
+													? "Review these messages before confirming deletion."
+													: "Message deletion results are final."
+												: "The preview will be prepared here. No messages have been deleted."}
+									</p>
+								)}
 								{preview && (
 									<Card hoverable={false} className="min-w-0 border-border">
 										<Card.Content className="space-y-4 p-4">

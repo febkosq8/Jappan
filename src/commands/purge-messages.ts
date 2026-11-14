@@ -140,7 +140,6 @@ async function createPurgeJob({
 			embeds: [
 				createJobEmbed({
 					state,
-					jobUrl,
 					author,
 					...(targetUser ? { targetUser } : {}),
 					...(targetUserId ? { targetUserId } : {}),
@@ -212,13 +211,11 @@ const commandData = {
 
 function createJobEmbed({
 	state,
-	jobUrl,
 	targetUser,
 	targetUserId,
 	author,
 }: {
 	state: PurgeMessageJobState;
-	jobUrl: string;
 	targetUser?: User;
 	targetUserId?: string;
 	author: EmbedAuthorOptions;
@@ -243,14 +240,18 @@ function createJobEmbed({
 										  state.errors.length > 0
 										? "Finished with partial results"
 										: "Complete";
+	const deletionHasStarted =
+		["running", "complete", "stopped"].includes(state.status) ||
+		(state.status === "failed" && state.messagesToDelete > 0);
+	const stage = deletionHasStarted ? "Message deletion" : "Web preview";
 	const embed = new EmbedBuilder()
 		.setColor(state.status === "failed" || state.failedMessages > 0 ? "Red" : "Blue")
 		.setTitle("Purge messages")
 		.setAuthor(author)
 		.setTimestamp()
-		.setDescription(`[Open job page](${jobUrl})`)
 		.addFields(
 			{ name: "Status", value: status, inline: true },
+			{ name: "Stage", value: stage, inline: true },
 			{
 				name: "Channel scope",
 				value: state.selectedChannelId
@@ -259,7 +260,7 @@ function createJobEmbed({
 				inline: true,
 			},
 			{ name: "Maximum requested", value: state.messageLimit.toString(), inline: true },
-			{ name: "Overall progress", value: `${state.progressPercentage}%`, inline: true },
+			{ name: `${stage} progress`, value: `${state.progressPercentage}%`, inline: true },
 			{ name: "Channels", value: `${state.completedChannels}/${state.channelCount}`, inline: true },
 			{
 				name: "Messages",
