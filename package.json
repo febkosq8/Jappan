@@ -30,7 +30,7 @@
 	},
 	"license": "CC-BY-NC-4.0",
 	"engines": {
-		"node": ">=26.13.0"
+		"node": ">=26.13.1"
 	},
 	"homepage": "https://jappan.febkosq8.me",
 	"repository": {
