@@ -214,28 +214,44 @@ function PurgeMessageList({
 												</span>
 											</div>
 											{(textContent || embedContent.length > 0) && (
-												<div className="mt-2 space-y-2 wrap-break-word whitespace-pre-wrap text-sm">
+												<div className="mt-3 space-y-3 text-sm">
 													{textContent && (
-														<p>
-															<span className="font-medium">Text:</span> {textContent}
-														</p>
-													)}
-													{supportedEmbedContent.length > 0 ? (
-														<p>
-															<span className="font-medium">Embed:</span>{" "}
-															{supportedEmbedContent.join("\n\n")}
-														</p>
-													) : (
-														!textContent &&
-														embedContent.length > 0 && (
-															<p
-																role="status"
-																className="rounded-md border border-warning bg-warning/10 p-3 font-medium text-warning"
-															>
-																No supported content to preview
+														<div className="rounded-md border border-border bg-muted/30 p-3">
+															<p className="mb-1 text-xs font-medium text-muted-foreground">
+																Message
 															</p>
-														)
+															<p className="wrap-break-word whitespace-pre-wrap">
+																{textContent}
+															</p>
+														</div>
 													)}
+													{supportedEmbedContent.length > 0
+														? supportedEmbedContent.map((content, index) => (
+																<section
+																	key={`${message.id}-embed-${index}`}
+																	className="overflow-hidden rounded-md border border-border border-l-4 border-l-primary bg-card"
+																	aria-label={`Embed ${index + 1}`}
+																>
+																	<p className="border-b border-border bg-muted/30 px-3 py-1.5 text-xs font-medium text-muted-foreground">
+																		Embed
+																		{supportedEmbedContent.length > 1
+																			? ` ${index + 1}`
+																			: ""}
+																	</p>
+																	<p className="wrap-break-word whitespace-pre-wrap p-3">
+																		{content}
+																	</p>
+																</section>
+															))
+														: !textContent &&
+															embedContent.length > 0 && (
+																<p
+																	role="status"
+																	className="rounded-md border border-warning bg-warning/10 p-3 font-medium text-warning"
+																>
+																	No supported content to preview
+																</p>
+															)}
 												</div>
 											)}
 										</li>
