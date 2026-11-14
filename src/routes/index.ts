@@ -28,7 +28,7 @@ export const openApiOptions: OpenApiOptions = {
 		sessionBearer: {
 			type: "http",
 			scheme: "bearer",
-			description: "Better Auth bearer token from the set-auth-token response header.",
+			description: "Value of the session cookie set when you log in to the Jappan dashboard.",
 		},
 	},
 };
