@@ -205,30 +205,41 @@ const publicRoutes: RouteDefinition[] = [
 			const filtered = filterListByQuery({
 				items: entries,
 				query: query.query,
-				searchableFields: (entry) => [
-					entry.id,
-					entry.name,
-					entry.description,
-					entry.category,
-					entry.type,
-					...entry.requiredBotPermissions,
-					...entry.requiredUserPermissions,
-					...entry.options.flatMap((option) => [
-						option.name,
-						option.description,
-						option.type,
-						option.required,
-						option.autocomplete,
-						...option.choices.flatMap((choice) => [choice.name, choice.value]),
-						...option.channelTypes,
-						option.minValue,
-						option.maxValue,
-						option.minLength,
-						option.maxLength,
-					]),
-					...entry.usageNotes,
-				],
+				fieldFilters: query.fieldFilters,
+				searchableFields: {
+					id: (entry) => entry.id,
+					type: (entry) => entry.type,
+					name: (entry) => entry.name,
+					description: (entry) => entry.description,
+					category: (entry) => entry.category,
+					requiredBotPermissions: (entry) => entry.requiredBotPermissions.join(" "),
+					requiredUserPermissions: (entry) => entry.requiredUserPermissions.join(" "),
+					"options.name": (entry) => entry.options.map((option) => option.name).join(" "),
+					"options.description": (entry) => entry.options.map((option) => option.description).join(" "),
+					"options.type": (entry) => entry.options.map((option) => option.type).join(" "),
+					"options.required": (entry) => entry.options.map((option) => String(option.required)).join(" "),
+					"options.autocomplete": (entry) =>
+						entry.options.map((option) => String(option.autocomplete)).join(" "),
+					"options.choices.name": (entry) =>
+						entry.options.flatMap((option) => option.choices.map((choice) => choice.name)).join(" "),
+					"options.choices.value": (entry) =>
+						entry.options
+							.flatMap((option) => option.choices.map((choice) => String(choice.value)))
+							.join(" "),
+					"options.channelTypes": (entry) => entry.options.flatMap((option) => option.channelTypes).join(" "),
+					"options.minValue": (entry) =>
+						entry.options.map((option) => String(option.minValue ?? "")).join(" "),
+					"options.maxValue": (entry) =>
+						entry.options.map((option) => String(option.maxValue ?? "")).join(" "),
+					"options.minLength": (entry) =>
+						entry.options.map((option) => String(option.minLength ?? "")).join(" "),
+					"options.maxLength": (entry) =>
+						entry.options.map((option) => String(option.maxLength ?? "")).join(" "),
+					usageNotes: (entry) => entry.usageNotes.join(" "),
+				},
+				response,
 			});
+			if (!filtered) return;
 			return response
 				.status(200)
 				.json(paginateList({ items: filtered, page: query.page, perPageLimit: query.perPageLimit }));

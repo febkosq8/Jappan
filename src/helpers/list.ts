@@ -22,6 +22,8 @@ export const listQuerySchema = z.strictObject({
 
 export const queryBooleanSchema = z.enum(["true", "false"]).transform((value) => value === "true");
 
+const listFieldFilterSchema = z.record(z.string(), z.string().trim().min(1));
+
 export const listQueryParameters = [
 	{
 		name: "page",
@@ -42,8 +44,18 @@ export const listQueryParameters = [
 		in: "query",
 		required: false,
 		description:
-			"Case-insensitive substring search across supported fields. Pass the text to find, not a field expression: query=Febkosq8, not query=name=Febkosq8. Combine with other parameters using &.",
+			"Global case-insensitive substring search across searchable fields. A field filter overrides this query.",
 		schema: z.string().trim().min(1),
+	},
+	{
+		name: "filter",
+		in: "query",
+		required: false,
+		description:
+			"Field-specific case-insensitive substring filters, e.g. filter[name]=Febkosq8. If present, these override query; multiple filters are combined with AND.",
+		schema: listFieldFilterSchema,
+		style: "deepObject",
+		explode: true,
 	},
 ] as const satisfies readonly RouteParameter[];
 
@@ -73,13 +85,64 @@ export function parseListQuery<T extends z.ZodObject>(
 	query: unknown,
 	schema: T,
 	response: Response,
-): z.output<T> | undefined {
-	const parsed = schema.safeParse(query);
+): (z.output<T> & { fieldFilters: Record<string, string> }) | undefined {
+	if (typeof query !== "object" || query === null || Array.isArray(query)) {
+		response.status(400).json({ error: "Invalid list query" });
+		return;
+	}
+
+	const queryParameters = query as Record<string, unknown>;
+	const parsedParameters: Record<string, unknown> = {};
+	const fieldFilters: Record<string, string> = {};
+	const addFieldFilter = (field: string, value: unknown): boolean => {
+		if (!/^[A-Za-z][A-Za-z\d_.-]*$/u.test(field)) {
+			response.status(400).json({ error: `Invalid list filter field: ${field}` });
+			return false;
+		}
+		if (typeof value !== "string" || value.trim().length === 0) {
+			response.status(400).json({ error: `Invalid list filter value for field: ${field}` });
+			return false;
+		}
+		if (Object.hasOwn(fieldFilters, field)) {
+			response.status(400).json({ error: `Duplicate list filter field: ${field}` });
+			return false;
+		}
+		fieldFilters[field] = value.trim();
+		return true;
+	};
+
+	for (const [key, value] of Object.entries(queryParameters)) {
+		if (key === "filter") {
+			if (typeof value !== "object" || value === null || Array.isArray(value)) {
+				response.status(400).json({ error: "List filter must be an object" });
+				return;
+			}
+			for (const [field, fieldValue] of Object.entries(value)) {
+				if (!addFieldFilter(field, fieldValue)) return;
+			}
+			continue;
+		}
+
+		if (key.startsWith("filter[")) {
+			const match = /^filter\[([^\]]+)\]$/u.exec(key);
+			if (!match) {
+				response.status(400).json({ error: `Invalid list filter parameter: ${key}` });
+				return;
+			}
+			const field = match[1];
+			if (!field || !addFieldFilter(field, value)) return;
+			continue;
+		}
+
+		parsedParameters[key] = value;
+	}
+
+	const parsed = schema.safeParse(parsedParameters);
 	if (!parsed.success) {
 		response.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid list query" });
 		return;
 	}
-	return parsed.data;
+	return { ...parsed.data, fieldFilters };
 }
 
 export function createPaginatedList<T>({
@@ -129,19 +192,50 @@ export function paginateList<T>({
 export function filterListByQuery<T>({
 	items,
 	query,
+	fieldFilters,
 	searchableFields,
+	response,
 }: {
 	items: readonly T[];
 	query: string | undefined;
-	searchableFields: (item: T) => readonly (string | number | boolean | null | undefined)[];
-}): T[] {
+	fieldFilters: Readonly<Record<string, string>>;
+	searchableFields: Readonly<Record<string, (item: T) => string | number | boolean | null | undefined>>;
+	response: Response;
+}): T[] | undefined {
+	const selectors = new Map(Object.entries(searchableFields));
+	const fieldNames = [...selectors.keys()];
+	if (!validateListFieldFilters({ fieldFilters, fields: fieldNames, response })) return;
+
+	const matches = (value: string | number | boolean | null | undefined, search: string) =>
+		String(value ?? "")
+			.toLocaleLowerCase()
+			.includes(search.toLocaleLowerCase());
+	const filters = Object.entries(fieldFilters);
+	if (filters.length > 0) {
+		const fieldMatches = filters.map(([field, value]) => {
+			const select = selectors.get(field);
+			if (!select) throw new Error(`Unsupported list filter field: ${field}`);
+			return (item: T) => matches(select(item), value);
+		});
+		return items.filter((item) => fieldMatches.every((fieldMatch) => fieldMatch(item)));
+	}
 	if (!query) return [...items];
-	const normalizedQuery = query.toLocaleLowerCase();
-	return items.filter((item) =>
-		searchableFields(item).some((field) =>
-			String(field ?? "")
-				.toLocaleLowerCase()
-				.includes(normalizedQuery),
-		),
-	);
+	return items.filter((item) => [...selectors.values()].some((select) => matches(select(item), query)));
+}
+
+export function validateListFieldFilters({
+	fieldFilters,
+	fields,
+	response,
+}: {
+	fieldFilters: Readonly<Record<string, string>>;
+	fields: readonly string[];
+	response: Response;
+}): boolean {
+	const unsupportedField = Object.keys(fieldFilters).find((field) => !fields.includes(field));
+	if (unsupportedField) {
+		response.status(400).json({ error: `Unsupported list filter field: ${unsupportedField}` });
+		return false;
+	}
+	return true;
 }

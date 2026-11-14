@@ -93,13 +93,37 @@ export async function getWarnedMembers({
 	page,
 	perPageLimit,
 	query,
+	fieldFilters,
 }: {
 	guildId: string;
 	page: number;
 	perPageLimit: number;
 	query?: string;
+	fieldFilters: Readonly<Record<string, string>>;
 }) {
 	const escapedQuery = query?.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+	const filters = Object.entries(fieldFilters);
+	const fieldFilterConditions = filters.map(([field, value]) => {
+		const escapedValue = value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+		switch (field) {
+			case "userId":
+				return { userId: { $regex: escapedValue, $options: "i" } };
+			case "username":
+				return { username: { $regex: escapedValue, $options: "i" } };
+			case "warningCount":
+				return {
+					$expr: {
+						$regexMatch: {
+							input: { $toString: "$warningCount" },
+							regex: escapedValue,
+							options: "i",
+						},
+					},
+				};
+			default:
+				throw new Error(`Unsupported warned-member filter field: ${field}`);
+		}
+	});
 	const [result] = await GuildMemberStateModel.aggregate<{
 		items: { userId: string; username: string; warningCount: number }[];
 		metadata: { total: number }[];
@@ -116,23 +140,25 @@ export async function getWarnedMembers({
 		{
 			$match: {
 				warningCount: { $gte: 1 },
-				...(escapedQuery
-					? {
-							$or: [
-								{ userId: { $regex: escapedQuery, $options: "i" } },
-								{ username: { $regex: escapedQuery, $options: "i" } },
-								{
-									$expr: {
-										$regexMatch: {
-											input: { $toString: "$warningCount" },
-											regex: escapedQuery,
-											options: "i",
+				...(filters.length > 0
+					? { $and: fieldFilterConditions }
+					: escapedQuery
+						? {
+								$or: [
+									{ userId: { $regex: escapedQuery, $options: "i" } },
+									{ username: { $regex: escapedQuery, $options: "i" } },
+									{
+										$expr: {
+											$regexMatch: {
+												input: { $toString: "$warningCount" },
+												regex: escapedQuery,
+												options: "i",
+											},
 										},
 									},
-								},
-							],
-						}
-					: {}),
+								],
+							}
+						: {}),
 			},
 		},
 		{

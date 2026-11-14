@@ -72,28 +72,21 @@ This document records design decisions and behavior that is easy to miss.
   `page` defaults to 1; `perPageLimit` defaults to 25 and values 1-1000 bound
   each response. `perPageLimit=0` returns all matching results in one response
   and reports page 1. `totalPages` is 0 for an empty result. Invalid pagination,
-  filter, search values, or unknown list parameters return HTTP 400. `query` is
-  a trimmed, case-insensitive substring search across the endpoint's searchable
-  fields, including numeric and boolean values. Pass only the text to find, not
-  a field expression: use `?query=Febkosq8`, not `?query=name=Febkosq8`. Combine
-  it with other parameters using `&`, such as
-  `/guilds/manager?query=Febkosq8&perPageLimit=0`.
-- List search fields include:
-    - `/public/commands`: command details, category, permissions, options, and usage notes.
-    - `/playlists`: name, saved query, shuffle, and loop settings.
-    - `/guilds/manager`, `/guilds/member`, `/admin/bot/administrators`: the fields
-      returned by each endpoint.
-    - `/guilds/:guildId/channels`: channel details, including type and permission flags.
-    - `/guilds/:guildId/roles`: role name, ID, position, managed, and assignable state.
-    - `/guilds/:guildId/warnings`: user ID, username, and warning count.
-    - `/guilds/:guildId/members`: user ID, username, display name, and avatar URL.
-    - `/guilds/:guildId/voice-region-locks`: user, channel, region, and fallback-region details.
-      Available regions remain in `regions`, while locks use `items` and `pagination`.
-    - `/guilds/:guildId/leaderboard`: username, user ID, and points. Guild metadata
-      accompanies `items` and `pagination`.
-    - `/admin/guilds`: guild details, membership and permission state, and owner details.
-    - `/admin/bot/player-sessions`: session, player state, guild, channel, owner,
-      queue, and current-track details.
+  filter values, unsupported filter fields, or unknown list parameters return
+  HTTP 400. `query` is a trimmed, case-insensitive substring search across the
+  endpoint's searchable fields, including numeric and boolean values. Pass only
+  the text to find, e.g. `?query=Febkosq8`.
+- Use `filter[field]=value` for a case-insensitive substring search on one
+  supported field, e.g. `/guilds/manager?filter[name]=Febkosq8`. A filter field
+  overrides the global `query`; when several field filters are supplied, they
+  combine with AND. For example,
+  `/guilds/manager?filter[name]=Jappan&filter[owner.username]=Febkosq8` requires
+  both matches. Filters use the endpoint's supported field names; nested fields
+  use dot notation. Unknown fields return HTTP 400. Combine filters with
+  pagination using `&`, e.g.
+  `/guilds/manager?filter[name]=Jappan&perPageLimit=25`.
+  Supported filter fields are endpoint-specific and are defined by each list's
+  searchable data; this document does not enumerate them.
 - The dashboard requests `perPageLimit=0` for lists displayed in client-side tables,
   returning them in one API call. Other clients can request bounded pages.
 - Numeric bot, guild, channel, and invite timestamps use `*TimestampMs` field names

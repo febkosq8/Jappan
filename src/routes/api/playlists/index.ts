@@ -66,8 +66,16 @@ export default defineRouter("/playlists", [
 			const filtered = filterListByQuery({
 				items: playlists,
 				query: query.query,
-				searchableFields: (playlist) => [playlist.listname, playlist.query, playlist.shuffle, playlist.loop],
+				fieldFilters: query.fieldFilters,
+				searchableFields: {
+					listname: (playlist) => playlist.listname,
+					query: (playlist) => playlist.query,
+					shuffle: (playlist) => playlist.shuffle,
+					loop: (playlist) => playlist.loop,
+				},
+				response,
 			});
+			if (!filtered) return;
 			return response
 				.status(200)
 				.json(paginateList({ items: filtered, page: query.page, perPageLimit: query.perPageLimit }));

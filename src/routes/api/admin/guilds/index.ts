@@ -442,21 +442,24 @@ export default defineRouter("/guilds", [
 			const filtered = filterListByQuery({
 				items: guilds,
 				query: query.query,
-				searchableFields: (guild) => [
-					guild.id,
-					guild.name,
-					guild.isActiveMember,
-					guild.icon,
-					guild.memberCount,
-					guild.joinedTimestampMs,
-					guild.hasRequiredPermissions,
-					guild.owner?.userId,
-					guild.owner?.avatarUrl,
-					guild.owner?.username,
-					guild.guildCommandDeploymentState?.deployed,
-					guild.guildCommandDeploymentState?.total,
-				],
+				fieldFilters: query.fieldFilters,
+				searchableFields: {
+					id: (guild) => guild.id,
+					name: (guild) => guild.name,
+					isActiveMember: (guild) => guild.isActiveMember,
+					icon: (guild) => guild.icon,
+					memberCount: (guild) => guild.memberCount,
+					joinedTimestampMs: (guild) => guild.joinedTimestampMs,
+					hasRequiredPermissions: (guild) => guild.hasRequiredPermissions,
+					"owner.userId": (guild) => guild.owner?.userId,
+					"owner.avatarUrl": (guild) => guild.owner?.avatarUrl,
+					"owner.username": (guild) => guild.owner?.username,
+					"guildCommandDeploymentState.deployed": (guild) => guild.guildCommandDeploymentState?.deployed,
+					"guildCommandDeploymentState.total": (guild) => guild.guildCommandDeploymentState?.total,
+				},
+				response,
 			});
+			if (!filtered) return;
 			return response
 				.status(200)
 				.json(paginateList({ items: filtered, page: query.page, perPageLimit: query.perPageLimit }));

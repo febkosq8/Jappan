@@ -107,12 +107,15 @@ export default defineRouter("/bot", [
 			const filtered = filterListByQuery({
 				items: administrators,
 				query: query.query,
-				searchableFields: (administrator) => [
-					administrator.id,
-					administrator.username,
-					administrator.avatarUrl,
-				],
+				fieldFilters: query.fieldFilters,
+				searchableFields: {
+					id: (administrator) => administrator.id,
+					username: (administrator) => administrator.username,
+					avatarUrl: (administrator) => administrator.avatarUrl,
+				},
+				response,
 			});
+			if (!filtered) return;
 			return response
 				.status(200)
 				.json(paginateList({ items: filtered, page: query.page, perPageLimit: query.perPageLimit }));
@@ -145,24 +148,27 @@ export default defineRouter("/bot", [
 			const filtered = filterListByQuery({
 				items: sessions,
 				query: query.query,
-				searchableFields: (session) => [
-					session.sessionId,
-					session.playerState,
-					session.guild.id,
-					session.guild.name,
-					session.guild.icon,
-					session.channel?.id,
-					session.channel?.name,
-					session.owner.id,
-					session.owner.username,
-					session.owner.avatarUrl,
-					session.queueSize,
-					session.nowPlaying?.name,
-					session.nowPlaying?.url,
-					session.nowPlaying?.timestamp?.current,
-					session.nowPlaying?.timestamp?.total,
-				],
+				fieldFilters: query.fieldFilters,
+				searchableFields: {
+					sessionId: (session) => session.sessionId,
+					playerState: (session) => session.playerState,
+					"guild.id": (session) => session.guild.id,
+					"guild.name": (session) => session.guild.name,
+					"guild.icon": (session) => session.guild.icon,
+					"channel.id": (session) => session.channel?.id,
+					"channel.name": (session) => session.channel?.name,
+					"owner.id": (session) => session.owner.id,
+					"owner.username": (session) => session.owner.username,
+					"owner.avatarUrl": (session) => session.owner.avatarUrl,
+					queueSize: (session) => session.queueSize,
+					"nowPlaying.name": (session) => session.nowPlaying?.name,
+					"nowPlaying.url": (session) => session.nowPlaying?.url,
+					"nowPlaying.timestamp.current": (session) => session.nowPlaying?.timestamp?.current,
+					"nowPlaying.timestamp.total": (session) => session.nowPlaying?.timestamp?.total,
+				},
+				response,
 			});
+			if (!filtered) return;
 			return response
 				.status(200)
 				.json(paginateList({ items: filtered, page: query.page, perPageLimit: query.perPageLimit }));

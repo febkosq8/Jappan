@@ -23,6 +23,7 @@ import {
 	paginateList,
 	paginatedListSchema,
 	parseListQuery,
+	validateListFieldFilters,
 } from "../../../helpers/list.js";
 import { defineRouter, errorResponseSchema } from "../../../helpers/route.js";
 import { listAdminGuildChannels, listAdminGuildRoles } from "../../../helpers/adminGuild.js";
@@ -209,16 +210,19 @@ export default defineRouter("/guilds", [
 			const filtered = filterListByQuery({
 				items: guilds,
 				query: query.query,
-				searchableFields: (guild) => [
-					guild.id,
-					guild.name,
-					guild.icon,
-					guild.hasRequiredPermissions,
-					guild.owner?.userId,
-					guild.owner?.avatarUrl,
-					guild.owner?.username,
-				],
+				fieldFilters: query.fieldFilters,
+				searchableFields: {
+					id: (guild) => guild.id,
+					name: (guild) => guild.name,
+					icon: (guild) => guild.icon,
+					hasRequiredPermissions: (guild) => guild.hasRequiredPermissions,
+					"owner.userId": (guild) => guild.owner?.userId,
+					"owner.avatarUrl": (guild) => guild.owner?.avatarUrl,
+					"owner.username": (guild) => guild.owner?.username,
+				},
+				response,
 			});
+			if (!filtered) return;
 			return response
 				.status(200)
 				.json(paginateList({ items: filtered, page: query.page, perPageLimit: query.perPageLimit }));
@@ -256,8 +260,15 @@ export default defineRouter("/guilds", [
 			const filtered = filterListByQuery({
 				items: guilds,
 				query: query.query,
-				searchableFields: (guild) => [guild.id, guild.name, guild.icon],
+				fieldFilters: query.fieldFilters,
+				searchableFields: {
+					id: (guild) => guild.id,
+					name: (guild) => guild.name,
+					icon: (guild) => guild.icon,
+				},
+				response,
 			});
+			if (!filtered) return;
 			return response
 				.status(200)
 				.json(paginateList({ items: filtered, page: query.page, perPageLimit: query.perPageLimit }));
@@ -320,25 +331,28 @@ export default defineRouter("/guilds", [
 					const filtered = filterListByQuery({
 						items: result.channels,
 						query: query.query,
-						searchableFields: (channel) => [
-							channel.id,
-							channel.name,
-							channel.type,
-							channel.typeName,
-							channel.createdTimestampMs,
-							channel.parent?.id,
-							channel.parent?.name,
-							channel.position,
-							channel.canSendMessage,
-							channel.canReadMessages,
-							channel.canManageMessages,
-							channel.topic,
-							channel.nsfw,
-							channel.rateLimitPerUser,
-							channel.bitrate,
-							channel.userLimit,
-						],
+						fieldFilters: query.fieldFilters,
+						searchableFields: {
+							id: (channel) => channel.id,
+							name: (channel) => channel.name,
+							type: (channel) => channel.type,
+							typeName: (channel) => channel.typeName,
+							createdTimestampMs: (channel) => channel.createdTimestampMs,
+							"parent.id": (channel) => channel.parent?.id,
+							"parent.name": (channel) => channel.parent?.name,
+							position: (channel) => channel.position,
+							canSendMessage: (channel) => channel.canSendMessage,
+							canReadMessages: (channel) => channel.canReadMessages,
+							canManageMessages: (channel) => channel.canManageMessages,
+							topic: (channel) => channel.topic,
+							nsfw: (channel) => channel.nsfw,
+							rateLimitPerUser: (channel) => channel.rateLimitPerUser,
+							bitrate: (channel) => channel.bitrate,
+							userLimit: (channel) => channel.userLimit,
+						},
+						response,
 					});
+					if (!filtered) return;
 					return response
 						.status(200)
 						.json(paginateList({ items: filtered, page: query.page, perPageLimit: query.perPageLimit }));
@@ -393,8 +407,17 @@ export default defineRouter("/guilds", [
 					const filtered = filterListByQuery({
 						items: result.roles,
 						query: query.query,
-						searchableFields: (role) => [role.id, role.name, role.position, role.managed, role.assignable],
+						fieldFilters: query.fieldFilters,
+						searchableFields: {
+							id: (role) => role.id,
+							name: (role) => role.name,
+							position: (role) => role.position,
+							managed: (role) => role.managed,
+							assignable: (role) => role.assignable,
+						},
+						response,
 					});
+					if (!filtered) return;
 					return response
 						.status(200)
 						.json(paginateList({ items: filtered, page: query.page, perPageLimit: query.perPageLimit }));
@@ -567,10 +590,20 @@ export default defineRouter("/guilds", [
 			if (!query) return;
 			const guild = await resolveGuild(request.params.guildId, response);
 			if (!guild) return;
+			if (
+				!validateListFieldFilters({
+					fieldFilters: query.fieldFilters,
+					fields: ["userId", "username", "warningCount"],
+					response,
+				})
+			) {
+				return;
+			}
 			const { items: members, total } = await getWarnedMembers({
 				guildId: guild.id,
 				page: query.page,
 				perPageLimit: query.perPageLimit,
+				fieldFilters: query.fieldFilters,
 				...(query.query ? { query: query.query } : {}),
 			});
 			const enrichedMembers = members.map((member) => ({
@@ -624,8 +657,16 @@ export default defineRouter("/guilds", [
 			const filtered = filterListByQuery({
 				items: mappedMembers,
 				query: query.query,
-				searchableFields: (member) => [member.id, member.username, member.displayName, member.avatarUrl],
+				fieldFilters: query.fieldFilters,
+				searchableFields: {
+					id: (member) => member.id,
+					username: (member) => member.username,
+					displayName: (member) => member.displayName,
+					avatarUrl: (member) => member.avatarUrl,
+				},
+				response,
 			});
+			if (!filtered) return;
 			return response
 				.status(200)
 				.json(paginateList({ items: filtered, page: query.page, perPageLimit: query.perPageLimit }));
@@ -765,16 +806,19 @@ export default defineRouter("/guilds", [
 			const filtered = filterListByQuery({
 				items: displayLocks,
 				query: query.query,
-				searchableFields: (lock) => [
-					lock.userId,
-					lock.userName,
-					lock.avatarUrl,
-					lock.channelId,
-					lock.channelName,
-					lock.region,
-					lock.fallbackRegion,
-				],
+				fieldFilters: query.fieldFilters,
+				searchableFields: {
+					userId: (lock) => lock.userId,
+					userName: (lock) => lock.userName,
+					avatarUrl: (lock) => lock.avatarUrl,
+					channelId: (lock) => lock.channelId,
+					channelName: (lock) => lock.channelName,
+					region: (lock) => lock.region,
+					fallbackRegion: (lock) => lock.fallbackRegion,
+				},
+				response,
 			});
+			if (!filtered) return;
 			return response.status(200).json({
 				...paginateList({ items: filtered, page: query.page, perPageLimit: query.perPageLimit }),
 				regions,
@@ -1008,6 +1052,15 @@ export default defineRouter("/guilds", [
 			if (!guildState.servicePreferences) {
 				throw new Error(`Service preferences are unavailable for guild ${guild.id}`);
 			}
+			if (
+				!validateListFieldFilters({
+					fieldFilters: query.fieldFilters,
+					fields: ["userId", "username", "points"],
+					response,
+				})
+			) {
+				return;
+			}
 			const { leveling } = guildState.servicePreferences;
 			const leaderboard = leveling.enabled
 				? await getLeaderboard({
@@ -1015,6 +1068,7 @@ export default defineRouter("/guilds", [
 						page: query.page,
 						pageSize: query.perPageLimit,
 						clampPage: false,
+						fieldFilters: query.fieldFilters,
 						...(query.query ? { query: query.query } : {}),
 					})
 				: { entries: [], page: query.page, pageCount: 0, total: 0 };

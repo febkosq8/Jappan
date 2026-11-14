@@ -376,6 +376,7 @@ interface GetLeaderboardOptions {
 	page: number;
 	pageSize?: number;
 	query?: string;
+	fieldFilters?: Readonly<Record<string, string>>;
 	clampPage?: boolean;
 }
 
@@ -384,6 +385,7 @@ export async function getLeaderboard({
 	page,
 	pageSize = LEADERBOARD_PAGE_SIZE,
 	query,
+	fieldFilters = {},
 	clampPage = true,
 }: GetLeaderboardOptions): Promise<{
 	entries: GuildMemberStateDocument[];
@@ -392,25 +394,49 @@ export async function getLeaderboard({
 	total: number;
 }> {
 	const escapedQuery = query?.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+	const filters = Object.entries(fieldFilters);
+	const fieldFilterConditions = filters.map(([field, value]) => {
+		const escapedValue = value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+		switch (field) {
+			case "userId":
+				return { userId: { $regex: escapedValue, $options: "i" } };
+			case "username":
+				return { username: { $regex: escapedValue, $options: "i" } };
+			case "points":
+				return {
+					$expr: {
+						$regexMatch: {
+							input: { $toString: "$leveling.points" },
+							regex: escapedValue,
+							options: "i",
+						},
+					},
+				};
+			default:
+				throw new Error(`Unsupported leaderboard filter field: ${field}`);
+		}
+	});
 	const filter = {
 		guildId,
-		...(escapedQuery
-			? {
-					$or: [
-						{ userId: { $regex: escapedQuery, $options: "i" } },
-						{ username: { $regex: escapedQuery, $options: "i" } },
-						{
-							$expr: {
-								$regexMatch: {
-									input: { $toString: "$leveling.points" },
-									regex: escapedQuery,
-									options: "i",
+		...(filters.length > 0
+			? { $and: fieldFilterConditions }
+			: escapedQuery
+				? {
+						$or: [
+							{ userId: { $regex: escapedQuery, $options: "i" } },
+							{ username: { $regex: escapedQuery, $options: "i" } },
+							{
+								$expr: {
+									$regexMatch: {
+										input: { $toString: "$leveling.points" },
+										regex: escapedQuery,
+										options: "i",
+									},
 								},
 							},
-						},
-					],
-				}
-			: {}),
+						],
+					}
+				: {}),
 	};
 	const total = await GuildMemberStateModel.countDocuments(filter).exec();
 	const pageCount = pageSize === 0 ? Number(total > 0) : Math.max(1, Math.ceil(total / pageSize));
