@@ -399,7 +399,7 @@ export default function PurgeMessageJob() {
 					? "You do not have permission to view this message purge job."
 					: "Could not load message purge progress.";
 		return (
-			<main className="flex min-h-[calc(100dvh-4.0625rem)] flex-col items-center justify-center px-4 py-10 text-center">
+			<main className="app-page-min-height flex flex-col items-center justify-center px-4 py-10 text-center">
 				<FiAlertCircle className="size-10 text-muted-foreground" aria-hidden="true" />
 				<h1 className="mt-4 text-3xl font-bold">{title}</h1>
 				{notFound ? (
@@ -450,7 +450,7 @@ export default function PurgeMessageJob() {
 	}
 	if (jobQuery.isPending || !hasServerClock) {
 		return (
-			<main className="flex min-h-[calc(100dvh-4.0625rem)] items-center justify-center px-4 py-10">
+			<main className="app-page-min-height flex items-center justify-center px-4 py-10">
 				<LoadingIndicator label="Loading message purge job" />
 			</main>
 		);

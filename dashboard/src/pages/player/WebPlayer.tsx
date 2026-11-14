@@ -198,7 +198,7 @@ export default function WebPlayer() {
 	const accessStatus = accessErrorStatus(sessionQuery.error);
 	if (replaced) {
 		return (
-			<main className="flex min-h-[calc(100dvh-4.0625rem)] flex-col items-center justify-center px-4 text-center">
+			<main className="app-page-min-height flex flex-col items-center justify-center px-4 text-center">
 				<FiCopy className="size-10 text-muted-foreground" aria-hidden="true" />
 				<h1 className="mt-4 text-3xl font-bold">This session is open in another tab</h1>
 				<p className="mt-2 max-w-md text-muted-foreground">
@@ -217,7 +217,7 @@ export default function WebPlayer() {
 	}
 	if (accessStatus === 403) {
 		return (
-			<main className="flex min-h-[calc(100dvh-4.0625rem)] flex-col items-center justify-center px-4 text-center">
+			<main className="app-page-min-height flex flex-col items-center justify-center px-4 text-center">
 				<h1 className="text-2xl font-bold">You can't view this player</h1>
 				<p className="mt-2 max-w-md text-muted-foreground">
 					{getErrorMessage(sessionQuery.error, "You don't have access to this player.")} Join the server in
@@ -232,7 +232,7 @@ export default function WebPlayer() {
 
 	if (ended || status === 404 || status === 400) {
 		return (
-			<main className="flex min-h-[calc(100dvh-4.0625rem)] flex-col items-center justify-center px-4 text-center">
+			<main className="app-page-min-height flex flex-col items-center justify-center px-4 text-center">
 				<h1 className="text-3xl font-bold">No session found</h1>
 				<p className="mt-2 max-w-md text-muted-foreground">This can happen for a few reasons:</p>
 				<ul className="mt-3 max-w-md list-disc space-y-1 pl-5 text-left text-muted-foreground">
@@ -254,7 +254,7 @@ export default function WebPlayer() {
 	const session = sessionQuery.data;
 	if (!session) {
 		return sessionQuery.isError ? (
-			<main className="flex min-h-[calc(100dvh-4.0625rem)] flex-col items-center justify-center px-4 text-center">
+			<main className="app-page-min-height flex flex-col items-center justify-center px-4 text-center">
 				<h1 className="text-2xl font-bold">Player unavailable</h1>
 				<p className="mt-2 text-muted-foreground">
 					{getErrorMessage(sessionQuery.error, "Could not reach the player.")}

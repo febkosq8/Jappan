@@ -138,7 +138,7 @@ export default function AuthError() {
 	}
 
 	return (
-		<main className="flex min-h-[calc(100dvh-4rem)] items-center justify-center px-4 py-10">
+		<main className="app-page-min-height flex items-center justify-center px-4 py-10">
 			<Card className="w-full max-w-lg" aria-labelledby="auth-error-title" hoverLift={false}>
 				<Card.Content className="flex flex-col items-center p-6 text-center sm:p-8">
 					<span
