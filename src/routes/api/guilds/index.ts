@@ -1,4 +1,4 @@
-import { DiscordAPIError, PermissionFlagsBits, RESTJSONErrorCodes, type Guild, type GuildMember } from "discord.js";
+import { DiscordAPIError, PermissionFlagsBits, RESTJSONErrorCodes, type Guild } from "discord.js";
 import type { Response } from "express";
 import { z } from "zod";
 
@@ -26,13 +26,14 @@ import {
 	validateListFieldFilters,
 } from "../../../helpers/list.js";
 import { defineRouter, errorResponseSchema } from "../../../helpers/route.js";
-import { listAdminGuildChannels, listAdminGuildRoles } from "../../../helpers/adminGuild.js";
+import { getAdminGuildRoleDetails, listAdminGuildChannels, listAdminGuildRoles } from "../../../helpers/adminGuild.js";
 import {
 	baseGuildKeys,
 	getGuildState,
 	extendedGuildKeys,
 	getAdminGuildForAction,
 	getOrCreateGuildData,
+	listGuildMembers,
 } from "../../../helpers/guild.js";
 import { listGuilds } from "../../../services/adminGuild.js";
 import type { AuthSession } from "../../../services/auth.js";
@@ -133,7 +134,18 @@ const guildRoleSchema = z.object({
 	name: z.string(),
 	position: z.number().int(),
 	managed: z.boolean(),
+	isBotRole: z.boolean(),
 	assignable: z.boolean(),
+	color: z.string().nullable(),
+	iconUrl: z.string().nullable(),
+	unicodeEmoji: z.string().nullable(),
+});
+const guildRoleDetailsSchema = guildRoleSchema.extend({
+	permissions: z.array(z.string()),
+	hoisted: z.boolean(),
+	mentionable: z.boolean(),
+	createdTimestampMs: z.number().int(),
+	memberCount: z.number().int(),
 });
 
 async function resolveGuild(guildId: unknown, response: Response): Promise<Guild | null> {
@@ -170,22 +182,6 @@ async function resolveGuildMember({ guild, userId, response }: { guild: Guild; u
 			return null;
 		}
 		throw error;
-	}
-}
-
-async function listGuildMembers(guild: Guild): Promise<GuildMember[]> {
-	const members: GuildMember[] = [];
-	let after: string | undefined;
-	while (true) {
-		const page = await guild.members.list({ limit: 1000, ...(after ? { after } : {}) });
-		members.push(...page.values());
-		if (page.size < 1000) return members;
-		const lastMember = [...page.values()].at(-1);
-		if (!lastMember) return members;
-		if (lastMember.id === after) {
-			throw new Error(`Guild member pagination did not advance for guild ${guild.id}`);
-		}
-		after = lastMember.id;
 	}
 }
 
@@ -344,6 +340,54 @@ export default defineRouter("/guilds", [
 	},
 	{
 		method: "get",
+		path: "/:guildId/roles/:roleId",
+		tags,
+		summary: "Get details for a role in a registered guild",
+		errorMessage: "Failed to get guild role details",
+		security,
+		parameters: [
+			...parameters,
+			{
+				name: "roleId",
+				in: "path",
+				required: true,
+				description: "Discord role ID",
+				schema: z.string().regex(guildIdPattern),
+			},
+		],
+		responses: {
+			200: { description: "Guild role details", schema: guildRoleDetailsSchema },
+			...accessResponses,
+			404: { description: "Guild or role not found", schema: errorResponseSchema },
+			409: { description: "Bot is not a guild member", schema: errorResponseSchema },
+			503: { description: "Guild or service unavailable", schema: errorResponseSchema },
+			500: { description: "Failed to get guild role details", schema: errorResponseSchema },
+		},
+		middleware,
+		handler: async (request, response) => {
+			const guildId = request.params.guildId;
+			const roleId = request.params.roleId;
+			if (typeof guildId !== "string" || !guildIdPattern.test(guildId)) {
+				return response.status(400).json({ error: "Invalid guild ID" });
+			}
+			if (typeof roleId !== "string" || !guildIdPattern.test(roleId)) {
+				return response.status(400).json({ error: "Invalid role ID" });
+			}
+			const result = await getAdminGuildRoleDetails(guildId, roleId);
+			switch (result.status) {
+				case "not_found":
+					return response.status(404).json({ error: "Guild or role not found" });
+				case "not_member":
+					return response.status(409).json({ error: "Bot is not a guild member" });
+				case "unavailable":
+					return response.status(503).json({ error: "Guild is unavailable" });
+				case "ok":
+					return response.status(200).json(result.role);
+			}
+		},
+	},
+	{
+		method: "get",
 		path: "/:guildId/roles",
 		tags,
 		summary: "List roles in a registered guild",
@@ -352,7 +396,8 @@ export default defineRouter("/guilds", [
 		parameters: [...parameters, ...listQueryParameters(guildRoleSchema)],
 		responses: {
 			200: {
-				description: "Guild roles, highest first, with whether the bot can assign each",
+				description:
+					"Guild roles excluding @everyone, highest position first, with whether the bot can assign each",
 				schema: paginatedListSchema(guildRoleSchema),
 			},
 			...accessResponses,

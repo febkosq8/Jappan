@@ -345,7 +345,19 @@ export interface GuildRole {
 	name: string;
 	position: number;
 	managed: boolean;
+	isBotRole: boolean;
 	assignable: boolean;
+	color: string | null;
+	iconUrl: string | null;
+	unicodeEmoji: string | null;
+}
+
+export interface GuildRoleDetails extends GuildRole {
+	permissions: string[];
+	hoisted: boolean;
+	mentionable: boolean;
+	createdTimestampMs: number;
+	memberCount: number;
 }
 
 export interface AuditLogPreferenceInput {
@@ -754,6 +766,14 @@ class APIHandler {
 		return APIHandler.getAllListItems<GuildRole>(`/api/v1/guilds/${encodeURIComponent(guildId)}/roles`, {
 			withCredentials: true,
 		});
+	}
+
+	static async getGuildRoleDetails(guildId: string, roleId: string): Promise<GuildRoleDetails> {
+		const { data } = await apiClient.get<GuildRoleDetails>(
+			`/api/v1/guilds/${encodeURIComponent(guildId)}/roles/${encodeURIComponent(roleId)}`,
+			{ withCredentials: true },
+		);
+		return data;
 	}
 
 	private static async updateServicePreference<Input>(guildId: string, action: string, input: Input): Promise<void> {

@@ -14,7 +14,7 @@ import {
 } from "@febkosq8/arc";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import { useEffect, useState, type ReactNode, type SubmitEvent } from "react";
+import { useEffect, useState, type SubmitEvent } from "react";
 import { FaListCheck } from "react-icons/fa6";
 import {
 	FiAlertCircle,
@@ -27,6 +27,7 @@ import {
 	FiShield,
 	FiSliders,
 	FiTrash2,
+	FiUsers,
 } from "react-icons/fi";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -38,10 +39,12 @@ import APIHandler, {
 	type AdminGuildMessageResult,
 } from "@jappan/handlers/APIHandler";
 import { AccessRedirect, accessErrorStatus } from "@jappan/components/AuthRoute";
+import ErrorPage from "@jappan/components/ErrorPage";
 import ExternalTextLink from "@jappan/components/ExternalTextLink";
 import GuildPageHeader from "@jappan/components/display/GuildPageHeader";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import GuildChannelsPanel from "@jappan/components/panel/GuildChannelsPanel";
+import GuildRolesPanel from "@jappan/components/panel/GuildRolesPanel";
 import GuildServicePreferencesPanel from "@jappan/components/panel/GuildServicePreferencesPanel";
 import GuildVoiceRegionLockManagerPanel from "@jappan/components/panel/GuildVoiceRegionLockManagerPanel";
 import GuildWarningManagerPanel from "@jappan/components/panel/GuildWarningManagerPanel";
@@ -58,6 +61,7 @@ const guildSections = [
 	{ id: "guild-overview", label: "Overview", icon: FiHome },
 	{ id: "admin-actions", label: "Admin actions", icon: FiSettings },
 	{ id: "guild-channels", label: "Channels", icon: FiHash },
+	{ id: "guild-roles", label: "Roles", icon: FiUsers },
 	{ id: "service-preferences", label: "Service Preferences", icon: FiSliders },
 	{ id: "warnings", label: "Warnings", icon: FiAlertCircle },
 	{ id: "voice-region-locks", label: "Voice region locks", icon: FiGlobe },
@@ -158,7 +162,7 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 		},
 		onSuccess: () => {
 			queryClient.removeQueries({ queryKey: ["user", "guild", guild.id, "channels"], exact: true });
-			queryClient.removeQueries({ queryKey: ["user", "guild", guild.id, "roles"], exact: true });
+			queryClient.removeQueries({ queryKey: ["user", "guild", guild.id, "roles"] });
 			void queryClient.invalidateQueries({ queryKey: ["user", "guild", guild.id], exact: true });
 			void queryClient.invalidateQueries({ queryKey: ["admin", "guild", guild.id] });
 			void queryClient.invalidateQueries({ queryKey: ["admin", "list-guilds"] });
@@ -609,6 +613,9 @@ function GuildDetails({ guild }: { guild: AdminGuildDetails }) {
 			<TabsPanel value="guild-channels" keepMounted>
 				<GuildChannelsPanel guild={guild} />
 			</TabsPanel>
+			<TabsPanel value="guild-roles" keepMounted>
+				<GuildRolesPanel guild={guild} />
+			</TabsPanel>
 			<TabsPanel value="service-preferences" keepMounted>
 				<GuildServicePreferencesPanel guild={guild} active={section === "service-preferences"} />
 			</TabsPanel>
@@ -663,25 +670,38 @@ export default function AdminViewGuild() {
 
 	const accessStatus = accessErrorStatus(guildQuery.error);
 	if (accessStatus) return <AccessRedirect status={accessStatus} />;
-
-	let content: ReactNode;
-	if (!guildId) {
-		content = <p role="alert">Invalid guild ID.</p>;
-	} else if (!validGuildId) {
-		content = <p role="alert">Invalid guild ID.</p>;
-	} else if (guildQuery.isPending || guildQuery.isFetching) {
-		content = <LoadingIndicator label="Loading guild" />;
-	} else if (guildQuery.isError) {
-		content = guildNotFound ? null : (
-			<div role="alert">
-				<p>Could not load guild details. Check your access and try again.</p>
-				<Button size="sm" variant="outline-primary" onClick={() => void guildQuery.refetch()}>
-					Retry
-				</Button>
-			</div>
+	if (!validGuildId) {
+		return (
+			<ErrorPage
+				status="400"
+				title="Invalid guild ID"
+				message="The guild ID in this address is invalid."
+				actions={
+					<PillLink href="/admin/guilds" variant="outline-secondary">
+						All guilds
+					</PillLink>
+				}
+			/>
 		);
-	} else {
-		content = <GuildDetails guild={guildQuery.data} />;
+	}
+	if (guildNotFound) return null;
+	if (guildQuery.isError) {
+		const errorStatus = axios.isAxiosError(guildQuery.error) ? guildQuery.error.response?.status : undefined;
+		return (
+			<ErrorPage
+				status={errorStatus ? String(errorStatus) : "Guild error"}
+				title="Could not load guild details"
+				message="Could not load guild details. Check your access and try again."
+				actions={
+					<>
+						<Button onClick={() => void guildQuery.refetch()}>Retry</Button>
+						<PillLink href="/admin/guilds" variant="outline-secondary">
+							All guilds
+						</PillLink>
+					</>
+				}
+			/>
+		);
 	}
 
 	return (
@@ -691,7 +711,11 @@ export default function AdminViewGuild() {
 				All guilds
 			</PillLink>
 			<GuildPageHeader title="Guild details" guild={guildQuery.data} />
-			{content}
+			{guildQuery.isPending || guildQuery.isFetching ? (
+				<LoadingIndicator label="Loading guild" />
+			) : guildQuery.data ? (
+				<GuildDetails guild={guildQuery.data} />
+			) : null}
 		</main>
 	);
 }
