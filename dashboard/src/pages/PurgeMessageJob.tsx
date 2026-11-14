@@ -20,6 +20,7 @@ import {
 } from "react-icons/fi";
 
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
+import ErrorPage from "@jappan/components/ErrorPage";
 import ChannelDisplay from "@jappan/components/display/ChannelDisplay";
 import GuildPageHeader from "@jappan/components/display/GuildPageHeader";
 import UserDisplay from "@jappan/components/display/UserDisplay";
@@ -391,6 +392,17 @@ export default function PurgeMessageJob() {
 		const notFound = !isValidJobId || status === 400 || status === 404;
 		const denied = status === 403;
 		const title = notFound ? "No purge job found" : denied ? "You can't view this job" : "Purge job unavailable";
+		const statusLabel = notFound
+			? "404"
+			: denied
+				? "403"
+				: status
+					? String(status)
+					: clockUnavailable
+						? "Invalid response"
+						: accessProblem
+							? "Access error"
+							: "Purge job error";
 		const message = clockUnavailable
 			? "This job did not return a valid server time. Reload its latest state."
 			: accessProblem
@@ -399,53 +411,52 @@ export default function PurgeMessageJob() {
 					? "You do not have permission to view this message purge job."
 					: "Could not load message purge progress.";
 		return (
-			<main className="app-page-min-height flex flex-col items-center justify-center px-4 py-10 text-center">
-				<FiAlertCircle className="size-10 text-muted-foreground" aria-hidden="true" />
-				<h1 className="mt-4 text-3xl font-bold">{title}</h1>
-				{notFound ? (
+			<ErrorPage
+				status={statusLabel}
+				title={title}
+				message={notFound ? "This can happen for a few reasons:" : <span role="alert">{message}</span>}
+				actions={
 					<>
-						<p className="mt-2 max-w-md text-muted-foreground">This can happen for a few reasons:</p>
-						<ul className="mt-3 max-w-md list-disc space-y-1 pl-5 text-left text-muted-foreground">
+						{isValidJobId && !notFound && (
+							<Button
+								disabled={jobQuery.isFetching}
+								onClick={() =>
+									void jobQuery.refetch().then((result) => {
+										if (result.isSuccess) setAccessProblem(false);
+									})
+								}
+							>
+								{jobQuery.isFetching ? "Trying again…" : "Try again"}
+							</Button>
+						)}
+						<PillLink
+							variant="outline-secondary"
+							href={
+								jobQuery.data
+									? `/guild/${encodeURIComponent(jobQuery.data.guildId)}#purge-messages`
+									: "/guilds"
+							}
+							className="gap-2"
+						>
+							<FiArrowLeft aria-hidden="true" />
+							{jobQuery.data ? "Back to guild" : "Back to guilds"}
+						</PillLink>
+					</>
+				}
+			>
+				{notFound && (
+					<>
+						<ul className="list-disc space-y-1 pl-5 text-left text-muted-foreground">
 							<li>The job has expired.</li>
 							<li>The link is invalid or incomplete.</li>
 							<li>The bot restarted, which clears stored jobs.</li>
 						</ul>
-						<p className="mt-3 max-w-md text-muted-foreground">
+						<p className="mt-3 text-muted-foreground">
 							Start a new job from your guild or use /purge-messages.
 						</p>
 					</>
-				) : (
-					<p role="alert" className="mt-2 max-w-md text-muted-foreground">
-						{message}
-					</p>
 				)}
-				<div className="mt-6 flex flex-wrap justify-center gap-3">
-					{isValidJobId && !notFound && (
-						<Button
-							disabled={jobQuery.isFetching}
-							onClick={() =>
-								void jobQuery.refetch().then((result) => {
-									if (result.isSuccess) setAccessProblem(false);
-								})
-							}
-						>
-							{jobQuery.isFetching ? "Trying again…" : "Try again"}
-						</Button>
-					)}
-					<PillLink
-						variant="outline-secondary"
-						href={
-							jobQuery.data
-								? `/guild/${encodeURIComponent(jobQuery.data.guildId)}#purge-messages`
-								: "/guilds"
-						}
-						className="gap-2"
-					>
-						<FiArrowLeft aria-hidden="true" />
-						{jobQuery.data ? "Back to guild" : "Back to guilds"}
-					</PillLink>
-				</div>
-			</main>
+			</ErrorPage>
 		);
 	}
 	if (jobQuery.isPending || !hasServerClock) {
