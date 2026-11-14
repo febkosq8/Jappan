@@ -237,15 +237,6 @@ export default defineRouter("/guilds", [
 				query: query.query,
 				fieldFilters: query.fieldFilters,
 				itemSchema: guildSchema,
-				searchableFields: {
-					id: (guild) => guild.id,
-					name: (guild) => guild.name,
-					icon: (guild) => guild.icon,
-					hasRequiredPermissions: (guild) => guild.hasRequiredPermissions,
-					"owner.userId": (guild) => guild.owner?.userId,
-					"owner.avatarUrl": (guild) => guild.owner?.avatarUrl,
-					"owner.username": (guild) => guild.owner?.username,
-				},
 				response,
 			});
 			if (!filtered) return;
@@ -288,11 +279,6 @@ export default defineRouter("/guilds", [
 				query: query.query,
 				fieldFilters: query.fieldFilters,
 				itemSchema: guildSchema,
-				searchableFields: {
-					id: (guild) => guild.id,
-					name: (guild) => guild.name,
-					icon: (guild) => guild.icon,
-				},
 				response,
 			});
 			if (!filtered) return;
@@ -342,24 +328,6 @@ export default defineRouter("/guilds", [
 						query: query.query,
 						fieldFilters: query.fieldFilters,
 						itemSchema: guildChannelSchema,
-						searchableFields: {
-							id: (channel) => channel.id,
-							name: (channel) => channel.name,
-							type: (channel) => channel.type,
-							typeName: (channel) => channel.typeName,
-							createdTimestampMs: (channel) => channel.createdTimestampMs,
-							"parent.id": (channel) => channel.parent?.id,
-							"parent.name": (channel) => channel.parent?.name,
-							position: (channel) => channel.position,
-							canSendMessage: (channel) => channel.canSendMessage,
-							canReadMessages: (channel) => channel.canReadMessages,
-							canManageMessages: (channel) => channel.canManageMessages,
-							topic: (channel) => channel.topic,
-							nsfw: (channel) => channel.nsfw,
-							rateLimitPerUser: (channel) => channel.rateLimitPerUser,
-							bitrate: (channel) => channel.bitrate,
-							userLimit: (channel) => channel.userLimit,
-						},
 						response,
 					});
 					if (!filtered) return;
@@ -411,13 +379,6 @@ export default defineRouter("/guilds", [
 						query: query.query,
 						fieldFilters: query.fieldFilters,
 						itemSchema: guildRoleSchema,
-						searchableFields: {
-							id: (role) => role.id,
-							name: (role) => role.name,
-							position: (role) => role.position,
-							managed: (role) => role.managed,
-							assignable: (role) => role.assignable,
-						},
 						response,
 					});
 					if (!filtered) return;
@@ -663,12 +624,6 @@ export default defineRouter("/guilds", [
 				query: query.query,
 				fieldFilters: query.fieldFilters,
 				itemSchema: warningMemberSchema,
-				searchableFields: {
-					id: (member) => member.id,
-					username: (member) => member.username,
-					displayName: (member) => member.displayName,
-					avatarUrl: (member) => member.avatarUrl,
-				},
 				response,
 			});
 			if (!filtered) return;
@@ -813,15 +768,6 @@ export default defineRouter("/guilds", [
 				query: query.query,
 				fieldFilters: query.fieldFilters,
 				itemSchema: voiceRegionLockSchema,
-				searchableFields: {
-					userId: (lock) => lock.userId,
-					userName: (lock) => lock.userName,
-					avatarUrl: (lock) => lock.avatarUrl,
-					channelId: (lock) => lock.channelId,
-					channelName: (lock) => lock.channelName,
-					region: (lock) => lock.region,
-					fallbackRegion: (lock) => lock.fallbackRegion,
-				},
 				response,
 			});
 			if (!filtered) return;

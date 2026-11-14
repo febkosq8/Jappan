@@ -108,11 +108,6 @@ export default defineRouter("/bot", [
 				query: query.query,
 				fieldFilters: query.fieldFilters,
 				itemSchema: administratorSchema,
-				searchableFields: {
-					id: (administrator) => administrator.id,
-					username: (administrator) => administrator.username,
-					avatarUrl: (administrator) => administrator.avatarUrl,
-				},
 				response,
 			});
 			if (!filtered) return;
@@ -150,23 +145,6 @@ export default defineRouter("/bot", [
 				query: query.query,
 				fieldFilters: query.fieldFilters,
 				itemSchema: activePlayerSessionSchema,
-				searchableFields: {
-					sessionId: (session) => session.sessionId,
-					playerState: (session) => session.playerState,
-					"guild.id": (session) => session.guild.id,
-					"guild.name": (session) => session.guild.name,
-					"guild.icon": (session) => session.guild.icon,
-					"channel.id": (session) => session.channel?.id,
-					"channel.name": (session) => session.channel?.name,
-					"owner.id": (session) => session.owner.id,
-					"owner.username": (session) => session.owner.username,
-					"owner.avatarUrl": (session) => session.owner.avatarUrl,
-					queueSize: (session) => session.queueSize,
-					"nowPlaying.name": (session) => session.nowPlaying?.name,
-					"nowPlaying.url": (session) => session.nowPlaying?.url,
-					"nowPlaying.timestamp.current": (session) => session.nowPlaying?.timestamp?.current,
-					"nowPlaying.timestamp.total": (session) => session.nowPlaying?.timestamp?.total,
-				},
 				response,
 			});
 			if (!filtered) return;

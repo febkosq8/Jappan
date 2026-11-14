@@ -444,20 +444,6 @@ export default defineRouter("/guilds", [
 				query: query.query,
 				fieldFilters: query.fieldFilters,
 				itemSchema: adminGuildSchema,
-				searchableFields: {
-					id: (guild) => guild.id,
-					name: (guild) => guild.name,
-					isActiveMember: (guild) => guild.isActiveMember,
-					icon: (guild) => guild.icon,
-					memberCount: (guild) => guild.memberCount,
-					joinedTimestampMs: (guild) => guild.joinedTimestampMs,
-					hasRequiredPermissions: (guild) => guild.hasRequiredPermissions,
-					"owner.userId": (guild) => guild.owner?.userId,
-					"owner.avatarUrl": (guild) => guild.owner?.avatarUrl,
-					"owner.username": (guild) => guild.owner?.username,
-					"guildCommandDeploymentState.deployed": (guild) => guild.guildCommandDeploymentState?.deployed,
-					"guildCommandDeploymentState.total": (guild) => guild.guildCommandDeploymentState?.total,
-				},
 				response,
 			});
 			if (!filtered) return;

@@ -68,12 +68,6 @@ export default defineRouter("/playlists", [
 				query: query.query,
 				fieldFilters: query.fieldFilters,
 				itemSchema: playlistSchema,
-				searchableFields: {
-					listname: (playlist) => playlist.listname,
-					query: (playlist) => playlist.query,
-					shuffle: (playlist) => playlist.shuffle,
-					loop: (playlist) => playlist.loop,
-				},
 				response,
 			});
 			if (!filtered) return;

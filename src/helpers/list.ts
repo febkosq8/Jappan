@@ -39,25 +39,75 @@ function getSchemaValueTypes(schema: AnyZodSchema): Array<ListFilterFieldType | 
 	if (unwrappedSchema instanceof z.ZodUnion) {
 		return unwrappedSchema.options.flatMap(getSchemaValueTypes);
 	}
+	if (unwrappedSchema instanceof z.ZodObject) return [];
 	if (unwrappedSchema instanceof z.ZodBoolean) return ["boolean"];
 	if (unwrappedSchema instanceof z.ZodNumber) return ["number"];
 	return ["other"];
 }
 
-function getFilterFieldType(schema: AnyZodSchema, field: string): ListFilterFieldType | undefined {
-	const fieldSchemas = field
+function getFieldSchemas(schema: AnyZodSchema, field: string): AnyZodSchema[] {
+	return field
 		.split(".")
 		.reduce<AnyZodSchema[]>(
 			(schemas, property) => schemas.flatMap((currentSchema) => getPropertySchemas(currentSchema, property)),
 			[schema],
 		);
-	if (fieldSchemas.length === 0) {
-		throw new Error(`List filter field is missing from its response schema: ${field}`);
-	}
+}
+
+function getFilterFieldType(schema: AnyZodSchema, field: string): ListFilterFieldType | undefined {
+	const fieldSchemas = getFieldSchemas(schema, field);
 	const valueTypes = new Set(fieldSchemas.flatMap(getSchemaValueTypes));
 	if (valueTypes.size !== 1) return;
 	const [valueType] = valueTypes;
 	return valueType === "boolean" || valueType === "number" ? valueType : undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function collectSchemaValues(value: unknown, schema: AnyZodSchema): Array<string | number | boolean> {
+	if (value === null || value === undefined) return [];
+	const unwrappedSchema = unwrapSchema(schema);
+	if (unwrappedSchema instanceof z.ZodArray) {
+		return Array.isArray(value)
+			? value.flatMap((entry) => collectSchemaValues(entry, unwrappedSchema.element))
+			: [];
+	}
+	if (unwrappedSchema instanceof z.ZodUnion) {
+		return unwrappedSchema.options.flatMap((option) => collectSchemaValues(value, option));
+	}
+	if (unwrappedSchema instanceof z.ZodObject) {
+		if (!isRecord(value)) return [];
+		return Object.entries(unwrappedSchema.shape).flatMap(([property, propertySchema]) =>
+			collectSchemaValues(value[property], propertySchema),
+		);
+	}
+	return typeof value === "string" || typeof value === "number" || typeof value === "boolean" ? [value] : [];
+}
+
+function getFieldValues(
+	value: unknown,
+	schema: AnyZodSchema,
+	path: readonly string[],
+): Array<string | number | boolean> {
+	if (value === null || value === undefined) return [];
+	const unwrappedSchema = unwrapSchema(schema);
+	if (unwrappedSchema instanceof z.ZodArray) {
+		return Array.isArray(value)
+			? value.flatMap((entry) => getFieldValues(entry, unwrappedSchema.element, path))
+			: [];
+	}
+	if (unwrappedSchema instanceof z.ZodUnion) {
+		return unwrappedSchema.options.flatMap((option) => getFieldValues(value, option, path));
+	}
+	if (path.length === 0) return collectSchemaValues(value, unwrappedSchema);
+	if (!isRecord(value) || !(unwrappedSchema instanceof z.ZodObject)) return [];
+	const [property, ...remainingPath] = path;
+	if (!property) return [];
+	const propertySchema = unwrappedSchema.shape[property];
+	if (!propertySchema) return [];
+	return getFieldValues(value[property], propertySchema, remainingPath);
 }
 
 export function queryIntegerSchema({ min, max }: { min: number; max: number }) {
@@ -247,45 +297,33 @@ export function filterListByQuery<T>({
 	items,
 	query,
 	fieldFilters,
-	searchableFields,
 	itemSchema,
 	response,
 }: {
 	items: readonly T[];
 	query: string | undefined;
 	fieldFilters: Readonly<Record<string, string>>;
-	searchableFields: Readonly<Record<string, (item: T) => string | number | boolean | null | undefined>>;
 	itemSchema: AnyZodSchema;
 	response: Response;
 }): T[] | undefined {
-	const selectors = new Map(Object.entries(searchableFields));
-	const fieldNames = [...selectors.keys()];
-	if (
-		!validateListFieldFilters({
-			fieldFilters,
-			fields: fieldNames,
-			itemSchema,
-			response,
-		})
-	) {
-		return;
-	}
+	if (!validateListFieldFilters({ fieldFilters, itemSchema, response })) return;
 
-	const matches = (value: string | number | boolean | null | undefined, search: string) =>
+	const matches = (value: string | number | boolean, search: string) =>
 		String(value ?? "")
 			.toLocaleLowerCase()
 			.includes(search.toLocaleLowerCase());
 	const filters = Object.entries(fieldFilters);
 	if (filters.length > 0) {
-		const fieldMatches = filters.map(([field, value]) => {
-			const select = selectors.get(field);
-			if (!select) throw new Error(`Unsupported list filter field: ${field}`);
-			return (item: T) => matches(select(item), value);
-		});
-		return items.filter((item) => fieldMatches.every((fieldMatch) => fieldMatch(item)));
+		return items.filter((item) =>
+			filters.every(([field, value]) =>
+				getFieldValues(item, itemSchema, field.split(".")).some((fieldValue) => matches(fieldValue, value)),
+			),
+		);
 	}
 	if (!query) return [...items];
-	return items.filter((item) => [...selectors.values()].some((select) => matches(select(item), query)));
+	return items.filter((item) =>
+		collectSchemaValues(item, itemSchema).some((fieldValue) => matches(fieldValue, query)),
+	);
 }
 
 export function validateListFieldFilters({
@@ -295,11 +333,15 @@ export function validateListFieldFilters({
 	response,
 }: {
 	fieldFilters: Readonly<Record<string, string>>;
-	fields: readonly string[];
+	fields?: readonly string[];
 	itemSchema: AnyZodSchema;
 	response: Response;
 }): boolean {
-	const unsupportedField = Object.keys(fieldFilters).find((field) => !fields.includes(field));
+	const unsupportedField = Object.keys(fieldFilters).find((field) => {
+		if (fields && !fields.includes(field)) return true;
+		const valueTypes = getSchemaValueTypesFromField(itemSchema, field);
+		return valueTypes.length === 0;
+	});
 	if (unsupportedField) {
 		response.status(400).json({ error: `Unsupported list filter field: ${unsupportedField}` });
 		return false;
@@ -318,4 +360,8 @@ export function validateListFieldFilters({
 		}
 	}
 	return true;
+}
+
+function getSchemaValueTypesFromField(schema: AnyZodSchema, field: string): Array<ListFilterFieldType | "other"> {
+	return getFieldSchemas(schema, field).flatMap(getSchemaValueTypes);
 }
