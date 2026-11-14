@@ -146,16 +146,20 @@ export default function TrackInput({
 									);
 								}}
 								onKeyDown={(event) => {
-									if (event.key === "Backspace" && selectedSuggestion && !text) {
+									if (event.key === "Backspace" && selectedSuggestion) {
 										event.preventDefault();
+										event.stopPropagation();
 										setSelectedSuggestion(null);
+										setText("");
+										setDebouncedText("");
+										setOpen(false);
 									}
 								}}
 								open={open}
 								onOpenChange={setOpen}
 								placeholder={selectedSuggestion ? "" : inputPlaceholder}
 								disabled={disabled}
-								loading={suggestionsQuery.isFetching}
+								loading={suggestionsQuery.isFetching && suggestions.length === 0}
 								loadingLabel="Loading suggestions…"
 								renderValue={(item) => suggestionsByKey.get(String(item.key))?.title ?? item.label}
 								renderItem={(item) => {
