@@ -59,19 +59,19 @@ function App() {
 		<div ref={containerRef} className="h-dvh overflow-y-auto scroll-smooth bg-background text-foreground">
 			<Header />
 			<Routes>
-				<Route path="/" element={<Home />} />
-				<Route path="/commands" element={<Commands />} />
-				<Route path="/player" element={<PlayerLanding />} />
 				<Route path="/auth/error" element={<AuthError />} />
-				<Route element={<AdminRoute />}>
-					<Route path="/admin/guilds" element={<AdminListGuilds />} />
-					<Route path="/admin/guild" element={<Navigate to="/admin/guilds" replace />} />
-					<Route path="/admin/guild/:guildId" element={<AdminViewGuild />} />
-					<Route path="/admin/leaderboard" element={<Navigate to="/leaderboards" replace />} />
-					<Route path="/admin/leaderboard/:guildId" element={<LeaderboardRedirect />} />
-					<Route path="/admin/bot" element={<ManageBot />} />
-				</Route>
 				<Route element={<AuthRoute />}>
+					<Route path="/" element={<Home />} />
+					<Route path="/commands" element={<Commands />} />
+					<Route path="/player" element={<PlayerLanding />} />
+					<Route element={<AdminRoute />}>
+						<Route path="/admin/guilds" element={<AdminListGuilds />} />
+						<Route path="/admin/guild" element={<Navigate to="/admin/guilds" replace />} />
+						<Route path="/admin/guild/:guildId" element={<AdminViewGuild />} />
+						<Route path="/admin/leaderboard" element={<Navigate to="/leaderboards" replace />} />
+						<Route path="/admin/leaderboard/:guildId" element={<LeaderboardRedirect />} />
+						<Route path="/admin/bot" element={<ManageBot />} />
+					</Route>
 					<Route path="/playlists" element={<PlaylistManager />} />
 					<Route path="/guilds" element={<UserListGuilds />} />
 					<Route path="/guild" element={<Navigate to="/guilds" replace />} />
@@ -82,8 +82,8 @@ function App() {
 					<Route path="/leaderboard/:guildId" element={<LeaderboardRedirect />} />
 					<Route path="/player/:sessionId" element={<WebPlayer />} />
 					<Route path="/purge-jobs/:jobId" element={<PurgeMessageJob />} />
+					<Route path="*" element={<WrongPage />} />
 				</Route>
-				<Route path="*" element={<WrongPage />} />
 			</Routes>
 			<Toaster className="jappan-toaster" position="bottom-right" richColors closeButton />
 		</div>

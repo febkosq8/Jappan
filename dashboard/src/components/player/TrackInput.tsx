@@ -19,6 +19,7 @@ const kindLabels: Record<PlayerSuggestion["kind"], string> = {
 export default function TrackInput({
 	sessionId,
 	disabled,
+	submitDisabled = false,
 	adding,
 	onAdd,
 	loadSuggestions,
@@ -32,6 +33,7 @@ export default function TrackInput({
 }: {
 	sessionId: string;
 	disabled: boolean;
+	submitDisabled?: boolean;
 	adding: boolean;
 	onAdd: (query: string) => void;
 	loadSuggestions: (query: string) => Promise<PlayerSuggestion[]>;
@@ -78,7 +80,7 @@ export default function TrackInput({
 
 	const submit = (query: string) => {
 		const trimmed = query.trim();
-		if (!trimmed || disabled) {
+		if (!trimmed || disabled || submitDisabled) {
 			return;
 		}
 		onAdd(trimmed);
@@ -103,7 +105,7 @@ export default function TrackInput({
 						<Button
 							type="submit"
 							size="sm"
-							disabled={disabled || (text.trim() === "" && !selectedSuggestion)}
+							disabled={disabled || submitDisabled || (text.trim() === "" && !selectedSuggestion)}
 							className="shrink-0"
 						>
 							{submitIcon}
@@ -142,6 +144,12 @@ export default function TrackInput({
 									setSelectedSuggestion((current) =>
 										current && (nextText === "" || current.title === nextText) ? current : null,
 									);
+								}}
+								onKeyDown={(event) => {
+									if (event.key === "Backspace" && selectedSuggestion && !text) {
+										event.preventDefault();
+										setSelectedSuggestion(null);
+									}
 								}}
 								open={open}
 								onOpenChange={setOpen}

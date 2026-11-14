@@ -82,7 +82,7 @@ export default function PlayerLanding() {
 											: "No available servers",
 					},
 				];
-	const trackInputDisabled = startMutation.isPending || serverSelectDisabled || !guildId;
+	const trackInputDisabled = startMutation.isPending;
 
 	useEffect(() => {
 		if (guildId && !guilds.some((guild) => guild.id === guildId)) {
@@ -116,6 +116,7 @@ export default function PlayerLanding() {
 				<TrackInput
 					sessionId={sessionQuery.data?.session.id ?? "start"}
 					disabled={trackInputDisabled}
+					submitDisabled={!guildId}
 					adding={startMutation.isPending}
 					onAdd={(query) => {
 						if (guildId && !trackInputDisabled) {
