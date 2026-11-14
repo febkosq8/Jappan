@@ -40,7 +40,9 @@ export async function getPlayerSuggestions({
 	const trimmedQuery = query.trim();
 	const savedPlaylists =
 		userId && isDatabaseConnected() ? await listUserPlaylists(userId).catch(() => [] as PlaylistEntry[]) : [];
-	const savedSuggestions = savedPlaylists.map(toSavedPlaylistSuggestion);
+	const savedSuggestions = savedPlaylists
+		.map(toSavedPlaylistSuggestion)
+		.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: "base" }));
 	if (!trimmedQuery) {
 		return savedSuggestions.slice(0, MAX_SUGGESTIONS);
 	}

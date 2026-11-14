@@ -60,9 +60,10 @@ function App() {
 			<Header />
 			<Routes>
 				<Route path="/auth/error" element={<AuthError />} />
+				<Route path="/" element={<Home />} />
+				<Route path="/commands" element={<Commands />} />
+				<Route path="*" element={<WrongPage />} />
 				<Route element={<AuthRoute />}>
-					<Route path="/" element={<Home />} />
-					<Route path="/commands" element={<Commands />} />
 					<Route path="/player" element={<PlayerLanding />} />
 					<Route element={<AdminRoute />}>
 						<Route path="/admin/guilds" element={<AdminListGuilds />} />
@@ -82,7 +83,6 @@ function App() {
 					<Route path="/leaderboard/:guildId" element={<LeaderboardRedirect />} />
 					<Route path="/player/:sessionId" element={<WebPlayer />} />
 					<Route path="/purge-jobs/:jobId" element={<PurgeMessageJob />} />
-					<Route path="*" element={<WrongPage />} />
 				</Route>
 			</Routes>
 			<Toaster className="jappan-toaster" position="bottom-right" richColors closeButton />
