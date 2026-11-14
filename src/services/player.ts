@@ -1,11 +1,11 @@
 import { randomUUID } from "node:crypto";
-import { DefaultExtractors } from "@discord-player/extractor";
+import { DefaultExtractors, SpotifyExtractor as DefaultSpotifyExtractor } from "@discord-player/extractor";
 import { load as loadExtractors } from "@extractorpack/extractorpack";
 import { Player, type PlayerNodeInitializerOptions, type SearchOptions, type SearchResult } from "discord-player";
+import { SpotifyExtractor as SpotifyMetadataExtractor } from "discord-player-spotify";
 import type { APIInteractionGuildMember, Client, GuildMember, Message } from "discord.js";
 
 import { registerPlayerHandlers } from "../handlers/player.js";
-import { getClientGuild } from "../helpers/guild.js";
 import { MAX_QUEUE_SIZE } from "../helpers/playerLimits.js";
 import {
 	checkPlayerHealth,
@@ -78,7 +78,13 @@ export async function initializePlayer(client: Client): Promise<Player | undefin
 			playerOptions,
 		);
 		await loadExtractors(initializedPlayer);
-		await initializedPlayer.extractors.loadMulti(DefaultExtractors);
+		await initializedPlayer.extractors.loadMulti(
+			DefaultExtractors.filter((extractor) => extractor !== DefaultSpotifyExtractor),
+		);
+		const spotifyExtractor = await initializedPlayer.extractors.register(SpotifyMetadataExtractor, {});
+		if (!spotifyExtractor) {
+			throw new Error("Failed to register Spotify metadata extractor");
+		}
 		player = initializedPlayer;
 		registerPlayerHandlers(initializedPlayer);
 		logger.info("PLAYER", "Player initialized", {

@@ -48,7 +48,15 @@ export default function PlayerLanding() {
 		retry: false,
 	});
 	const startMutation = useMutation({
-		mutationFn: APIHandler.startPlayerSession,
+		mutationFn: (input: { guildId: string; query: string }) => {
+			const promise = APIHandler.startPlayerSession(input);
+			toast.promise(promise, {
+				loading: "Starting playback…",
+				success: "Playback started.",
+				error: (error) => getErrorMessage(error, "Could not start playback. Please try again."),
+			});
+			return promise;
+		},
 		onSuccess: ({ sessionId, skippedTracks }) => {
 			if (skippedTracks > 0) {
 				toast.warning(
@@ -57,7 +65,6 @@ export default function PlayerLanding() {
 			}
 			navigate(`/player/${encodeURIComponent(sessionId)}`);
 		},
-		onError: (error: unknown) => toast.error(getErrorMessage(error, "Could not start playback. Please try again.")),
 	});
 	const guilds = guildsQuery.data ?? [];
 	const serverLoading = sessionQuery.isPending || (signedIn && guildsQuery.isPending);
@@ -133,10 +140,7 @@ export default function PlayerLanding() {
 				>
 					<div>
 						<div className="mb-1 flex h-5 items-center gap-2">
-							<label
-								htmlFor="player-start-guild"
-								className="block text-sm font-medium text-foreground"
-							>
+							<label htmlFor="player-start-guild" className="block text-sm font-medium text-foreground">
 								Server
 							</label>
 							{serverLoading && (

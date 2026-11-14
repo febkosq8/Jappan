@@ -196,6 +196,9 @@ importers:
       discord-player:
         specifier: 7.2.0
         version: 7.2.0(@discord-player/extractor@7.2.0)(mediaplex@1.0.0)(supports-color@7.2.0)(tsx@4.23.15)(yaml@2.9.1)
+      discord-player-spotify:
+        specifier: 1.1.9
+        version: 1.1.9
       discord-player-youtubei:
         specifier: 3.1.0
         version: 3.1.0(bgutils-js@4.0.3)(googlevideo@5.0.1)
@@ -1626,6 +1629,9 @@ packages:
   discord-api-types@0.38.59:
     resolution: {integrity: sha512-LZqh8gvWU/Bhl9qEVIRLeLJuaPGO7rA26IXLrXnMcjXxofh/h5UhP6notfCTj4X5kR1ogMvVgcrVYIuynY/CxQ==}
 
+  discord-player-spotify@1.1.9:
+    resolution: {integrity: sha512-LASyWjB/645/JyPLiN1gVKVjRrwDm6gHYgbG8ekq5dVWnsBQ1AU8B377b0kBnTuP2VzNl/bNO6wHctaNtI+n9A==}
+
   discord-player-youtubei@3.1.0:
     resolution: {integrity: sha512-+EoZZh0SCc2m5NDxbRHCv0JpZEGFksEuGZxfztUYChVfdZt0fCbvNgY0xgJ0N6PNKxoXKVNF7PT4i1oWyvWoEg==}
     peerDependencies:
@@ -2235,6 +2241,9 @@ packages:
   ora-classic@5.4.2:
     resolution: {integrity: sha512-/xX8D5AMHB+LnvEJHOglmq6pXwm65CQ/gqPrIjIN5GJ1Bl9KC9fSmgzR/FwjrtalDj/WVxukAVuH8GP00Zpiaw==}
     engines: {node: '>=10'}
+
+  otpauth@9.6.0:
+    resolution: {integrity: sha512-qQXHTxcXohDhQjF1ZEbUVEpTIssFL2rd+2kHfw/McIVCbTLD6qAsbTCQxpXRLyeyUw6Ipjpykw4dWZL/zfIVqA==}
 
   parse5@8.1.1:
     resolution: {integrity: sha512-EcR/6WDcU7b2N3vQSxKALCk9lXGtUMQxXio008OEMBE0kavu/7JLfBEeFPzi43nMqVDSbEn3QCK+BMCc9zO//w==}
@@ -3761,6 +3770,12 @@ snapshots:
 
   discord-api-types@0.38.59: {}
 
+  discord-player-spotify@1.1.9:
+    dependencies:
+      acorn: 8.19.0
+      node-html-parser: 7.1.0
+      otpauth: 9.6.0
+
   discord-player-youtubei@3.1.0(bgutils-js@4.0.3)(googlevideo@5.0.1):
     dependencies:
       bgutils-js: 4.0.3
@@ -4420,6 +4435,10 @@ snapshots:
       log-symbols: 4.1.0
       strip-ansi: 6.0.1
       wcwidth: 1.0.1
+
+  otpauth@9.6.0:
+    dependencies:
+      '@noble/hashes': 2.4.0
 
   parse5@8.1.1:
     dependencies:
