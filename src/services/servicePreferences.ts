@@ -20,8 +20,21 @@ async function validateChannel(
 	if (!channel?.isTextBased()) return "Channel must be a text channel in this guild";
 	const botMember = guild.members.me ?? (await guild.members.fetchMe());
 	const permissions = channel.permissionsFor(botMember);
-	if (!permissions?.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, ...extraPermissions])) {
-		return "Bot needs View Channel and Send Messages in that channel";
+	const requiredPermissions = [
+		PermissionFlagsBits.ViewChannel,
+		PermissionFlagsBits.SendMessages,
+		...extraPermissions,
+	];
+	if (!permissions?.has(requiredPermissions)) {
+		const permissionNames = new Map<bigint, string>([
+			[PermissionFlagsBits.ViewChannel, "View Channel"],
+			[PermissionFlagsBits.SendMessages, "Send Messages"],
+			[PermissionFlagsBits.EmbedLinks, "Embed Links"],
+		]);
+		const missingPermissions = requiredPermissions
+			.filter((permission) => !permissions?.has(permission))
+			.map((permission) => permissionNames.get(permission) ?? "an additional permission");
+		return `Bot needs ${missingPermissions.join(", ")} in that channel`;
 	}
 	return null;
 }
@@ -43,7 +56,7 @@ export async function updateAuditLogPreference({
 		if (!botMember.permissions.has(PermissionFlagsBits.ViewAuditLog)) {
 			return invalid("Bot needs View Audit Log permission in this guild");
 		}
-		const channelError = await validateChannel(guild, channelId);
+		const channelError = await validateChannel(guild, channelId, [PermissionFlagsBits.EmbedLinks]);
 		if (channelError) return invalid(channelError);
 	}
 	await setAuditLog({
@@ -110,7 +123,7 @@ export async function updateMemberAnnouncementsPreference({
 	for (const { event, enabled, channelId } of events) {
 		if (!enabled) continue;
 		if (!channelId) return invalid(`A ${event} channel is required to enable ${event} announcements`);
-		const channelError = await validateChannel(guild, channelId);
+		const channelError = await validateChannel(guild, channelId, [PermissionFlagsBits.EmbedLinks]);
 		if (channelError) return invalid(`${event[0]?.toUpperCase()}${event.slice(1)} channel: ${channelError}`);
 	}
 	for (const { event, enabled, channelId } of events) {
@@ -145,7 +158,7 @@ export async function updateWarningsPreference({
 		return invalid("Ban threshold must be greater than the timeout threshold");
 	}
 	if (auditChannelId) {
-		const channelError = await validateChannel(guild, auditChannelId);
+		const channelError = await validateChannel(guild, auditChannelId, [PermissionFlagsBits.EmbedLinks]);
 		if (channelError) return invalid(channelError);
 	}
 	await setWarningSettings({

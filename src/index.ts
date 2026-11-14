@@ -6,6 +6,7 @@ import { initializeAuth } from "./services/auth.js";
 import { getConfig, loadConfig } from "./services/config.js";
 import { connectDatabase } from "./services/database.js";
 import { logger } from "./services/logger.js";
+import { MigrationError } from "./services/migrations.js";
 import { handleShutdown } from "./services/shutdown.js";
 
 let processFailureCount = 0;
@@ -35,13 +36,13 @@ export async function startBot(): Promise<void> {
 	process.on("unhandledRejection", (reason: unknown) => {
 		handleProcessFailure("Unhandled promise rejection", reason);
 	});
-	await startApp();
 	await connectDatabase();
+	await startApp();
 	await initializeAuth();
 	await startDiscordBot();
 }
 
 startBot().catch((error: unknown) => {
 	logger.error("BOT", "Startup failed", { error });
-	void handleShutdown("STARTUP_FAILURE", 1);
+	void handleShutdown(error instanceof MigrationError ? "MIGRATION_FAILURE" : "STARTUP_FAILURE", 1);
 });

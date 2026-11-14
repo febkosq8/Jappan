@@ -36,6 +36,8 @@ export async function listAdminGuildChannels(guildId: string) {
 		.filter((channel) => channel !== null)
 		.map((channel) => {
 			const parent = channel.parentId ? fetched.get(channel.parentId) : null;
+			const permissions = channel.permissionsFor(botMember);
+			const isTextBased = channel.isTextBased();
 			return {
 				id: channel.id,
 				name: channel.name,
@@ -53,6 +55,13 @@ export async function listAdminGuildChannels(guildId: string) {
 						PermissionFlagsBits.EmbedLinks,
 					],
 				}),
+				canReadMessages:
+					isTextBased &&
+					(permissions?.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ReadMessageHistory]) ??
+						false),
+				canManageMessages:
+					isTextBased &&
+					(permissions?.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ManageMessages]) ?? false),
 				...("topic" in channel ? { topic: channel.topic } : {}),
 				...("nsfw" in channel ? { nsfw: channel.nsfw } : {}),
 				...("rateLimitPerUser" in channel ? { rateLimitPerUser: channel.rateLimitPerUser } : {}),

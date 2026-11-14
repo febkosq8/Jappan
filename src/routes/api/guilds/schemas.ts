@@ -137,11 +137,32 @@ export const warningMemberSchema = z.object({
 });
 
 export const warningMemberDetailsSchema = warningMemberSchema.extend({
+	isGuildMember: z.boolean(),
 	warningCount: z.number().int().nonnegative(),
-});
-
-export const warningCountSchema = z.object({
-	warningCount: z.number().int().nonnegative(),
+	warnings: z.array(
+		z.object({
+			id: z.string().regex(/^[\da-f]{24}$/iu),
+			issuedAt: z.string().datetime().nullable(),
+			reason: z.string(),
+			issuerId: snowflake("issuer").nullable(),
+			issuer: z
+				.object({
+					userId: snowflake("issuer"),
+					username: z.string().optional(),
+					avatarUrl: z.url().nullable().optional(),
+				})
+				.nullable(),
+			thresholdAction: z.enum([
+				"unknown",
+				"pending",
+				"none",
+				"banned",
+				"timed_out",
+				"ban_failed",
+				"timeout_failed",
+			]),
+		}),
+	),
 });
 
 export const warnedMemberSchema = z.object({
@@ -155,9 +176,7 @@ export const warningIssueSchema = z.object({
 	reason: z.string().trim().max(500).optional(),
 });
 
-export const warningCountOverrideSchema = z.object({
-	count: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
-});
+export const warningIdSchema = z.string().regex(/^[\da-f]{24}$/iu, "Invalid warning ID");
 
 export const warningActionResultSchema = z.object({
 	warningCount: z.number().int().nonnegative(),

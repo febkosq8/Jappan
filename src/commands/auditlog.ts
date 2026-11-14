@@ -1,4 +1,7 @@
 import {
+	ActionRowBuilder,
+	ButtonBuilder,
+	ButtonStyle,
 	ChannelType,
 	EmbedBuilder,
 	InteractionContextType,
@@ -130,10 +133,14 @@ const command: BotCommand = {
 				!botMember.permissions.has(PermissionFlagsBits.ViewAuditLog) ||
 				!channel
 					.permissionsFor(botMember)
-					?.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages])
+					?.has([
+						PermissionFlagsBits.ViewChannel,
+						PermissionFlagsBits.SendMessages,
+						PermissionFlagsBits.EmbedLinks,
+					])
 			) {
 				await interaction.editReply(
-					`⛔ I need ${underline("View Audit Log")}, ${underline("View Channel")}, and ${underline("Send Messages")} permissions to enable audit logging.`,
+					`⛔ I need ${underline("View Audit Log")} and ${underline("View Channel")}, ${underline("Send Messages")}, and ${underline("Embed Links")} in the selected channel to enable audit logging.`,
 				);
 				return;
 			}
@@ -175,6 +182,10 @@ const command: BotCommand = {
 
 		if (subcommand === "on" || subcommand === "off" || subcommand === "check") {
 			const status = await getAuditLogStatus(interaction.guild.id, interaction.guild.name);
+			const servicePreferencesUrl = new URL(
+				`/guild/${encodeURIComponent(interaction.guild.id)}#service-preferences`,
+				config.BOT_WEBSITE,
+			).href;
 			await interaction.editReply({
 				embeds: [
 					createStatusEmbed({
@@ -184,6 +195,14 @@ const command: BotCommand = {
 						fullVerbosity: status.auditLog.fullVerbosity,
 						config,
 					}),
+				],
+				components: [
+					new ActionRowBuilder<ButtonBuilder>().addComponents(
+						new ButtonBuilder()
+							.setLabel("Manage in Dashboard")
+							.setStyle(ButtonStyle.Link)
+							.setURL(servicePreferencesUrl),
+					),
 				],
 			});
 			return;

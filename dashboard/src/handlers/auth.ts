@@ -32,13 +32,19 @@ export const SIGN_OUT_FLASH_KEY = "jappan:signedOut";
 export async function fetchSession() {
 	const { data, error } = await authClient.getSession();
 	if (error) {
-		throw new Error(error.message ?? "Session unavailable");
+		throw new Error(error.message ?? "Session check failed");
 	}
 	return data;
 }
 
-export function useSessionQuery(refetchOnWindowFocus = true) {
-	return useQuery({ queryKey: sessionQueryKey, queryFn: fetchSession, refetchOnWindowFocus });
+export function sessionErrorCode(error: unknown): "NETWORK_ERROR" | "SESSION_CHECK_FAILED" {
+	return error instanceof TypeError ? "NETWORK_ERROR" : "SESSION_CHECK_FAILED";
+}
+
+export function useSessionQuery(
+	options: { refetchOnWindowFocus?: boolean; refetchOnMount?: boolean; refetchOnReconnect?: boolean } = {},
+) {
+	return useQuery({ queryKey: sessionQueryKey, queryFn: fetchSession, refetchOnWindowFocus: true, ...options });
 }
 
 export function isAdminSession(session: Awaited<ReturnType<typeof fetchSession>> | undefined): boolean {

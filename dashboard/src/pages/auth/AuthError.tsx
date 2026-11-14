@@ -1,8 +1,8 @@
 import { Button, Card, PillLink } from "@febkosq8/arc";
-import { useSessionQuery, useSignIn } from "@jappan/handlers/auth";
-import { safeCallbackPath } from "@jappan/handlers/authRedirect";
-import { useEffect, useRef, useState } from "react";
-import { FiAlertTriangle, FiArrowLeft, FiLogIn } from "react-icons/fi";
+import { sessionErrorCode, useSessionQuery, useSignIn } from "@jappan/handlers/auth";
+import { authErrorURL, safeCallbackPath } from "@jappan/handlers/authRedirect";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { FiAlertTriangle, FiArrowLeft, FiLogIn, FiRefreshCw } from "react-icons/fi";
 import { Navigate, useLocation, useSearchParams } from "react-router-dom";
 import useDocumentTitle, { formatTitle } from "@jappan/helpers/useDocumentTitle";
 
@@ -24,25 +24,50 @@ const authErrorMessages: Record<string, string> = {
 
 const specialErrors: Record<string, { status: string; title: string; message: string }> = {
 	UNAUTHENTICATED: { status: "401", title: "Sign in required", message: "Sign in to access this page." },
-	FORBIDDEN: { status: "403", title: "Access forbidden", message: "Your account does not have permission to access this page." },
-	SESSION_UNAVAILABLE: {
+	FORBIDDEN: {
+		status: "403",
+		title: "Access forbidden",
+		message: "Your account does not have permission to access this page.",
+	},
+	NETWORK_ERROR: {
+		status: "Connection error",
+		title: "Couldn't reach the server",
+		message:
+			"We couldn't connect to check your session.\nCheck your connection, or the server may be temporarily offline.",
+	},
+	SESSION_CHECK_FAILED: {
 		status: "Session error",
-		title: "Session unavailable",
-		message: "We couldn't check your session. Please try again later.",
+		title: "Couldn't check your session",
+		message: "The server couldn't complete the session check. Please try again.",
 	},
 };
 
 export default function AuthError() {
 	const location = useLocation();
 	const [searchParams] = useSearchParams();
-	const sessionQuery = useSessionQuery(true);
+	const requestedErrorCode = searchParams.get("error") ?? "unknown";
+	const sessionError = ["NETWORK_ERROR", "SESSION_CHECK_FAILED", "SESSION_UNAVAILABLE"].includes(requestedErrorCode);
+	const sessionQuery = useSessionQuery({
+		refetchOnWindowFocus: !sessionError,
+		refetchOnMount: !sessionError,
+		refetchOnReconnect: !sessionError,
+	});
 	const { signIn, busy } = useSignIn();
 	const [countdown, setCountdown] = useState(5);
+	const [retryCountdown, setRetryCountdown] = useState(5);
+	const [retrying, setRetrying] = useState(false);
+	const retryDelay = useRef(5);
+	const retryInFlight = useRef(false);
 	const autoSignInStarted = useRef(false);
-	const errorCode = searchParams.get("error") ?? "unknown";
+	const errorCode =
+		sessionError && sessionQuery.isError
+			? sessionErrorCode(sessionQuery.error)
+			: requestedErrorCode === "SESSION_UNAVAILABLE"
+				? "SESSION_CHECK_FAILED"
+				: requestedErrorCode;
 	const unauthenticated = errorCode === "UNAUTHENTICATED";
 	const forbidden = errorCode === "FORBIDDEN";
-	const sessionUnavailable = errorCode === "SESSION_UNAVAILABLE";
+	const networkError = errorCode === "NETWORK_ERROR";
 	const callbackPath = safeCallbackPath(searchParams.get("callbackURL"), window.location.origin);
 	const state: unknown = location.state;
 	const rejectedSessionId =
@@ -52,15 +77,43 @@ export default function AuthError() {
 	const status = special?.status ?? "Sign-in error";
 	const title = special?.title ?? "We couldn't sign you in";
 	const message =
-		special?.message ?? (authErrorMessages[errorCode] ?? "Discord sign-in couldn't be completed. Please try again later.");
+		special?.message ??
+		authErrorMessages[errorCode] ??
+		"Discord sign-in couldn't be completed. Please try again later.";
 	useDocumentTitle(formatTitle(title));
 
 	const willRedirect =
-		(unauthenticated || sessionUnavailable) &&
-		Boolean(callbackPath) &&
+		(sessionError || (unauthenticated && Boolean(callbackPath))) &&
 		sessionQuery.isSuccess &&
 		Boolean(sessionQuery.data) &&
-		(sessionUnavailable || sessionQuery.data?.session.id !== rejectedSessionId);
+		(sessionError || sessionQuery.data?.session.id !== rejectedSessionId);
+
+	const { refetch } = sessionQuery;
+	const retrySession = useCallback(async () => {
+		if (retryInFlight.current) return;
+		retryInFlight.current = true;
+		setRetrying(true);
+		try {
+			const result = await refetch({ cancelRefetch: false });
+			if (result.isError) {
+				retryDelay.current *= 2;
+				setRetryCountdown(retryDelay.current);
+			}
+		} finally {
+			retryInFlight.current = false;
+			setRetrying(false);
+		}
+	}, [refetch]);
+
+	useEffect(() => {
+		if (!networkError || !sessionQuery.isError || sessionQuery.isFetching || retrying) return;
+		if (retryCountdown <= 0) {
+			void retrySession();
+			return;
+		}
+		const timer = setTimeout(() => setRetryCountdown((c) => c - 1), 1000);
+		return () => clearTimeout(timer);
+	}, [networkError, sessionQuery.isError, sessionQuery.isFetching, retrying, retryCountdown, retrySession]);
 
 	// Auto-start sign-in after a short countdown on the unauthenticated error.
 	useEffect(() => {
@@ -75,8 +128,13 @@ export default function AuthError() {
 		return () => clearTimeout(timer);
 	}, [countdown, unauthenticated, willRedirect, busy, signIn]);
 
-	if (willRedirect && callbackPath) {
-		return <Navigate to={callbackPath} replace />;
+	if (willRedirect) {
+		return <Navigate to={callbackPath ?? "/"} replace />;
+	}
+
+	if (sessionError && sessionQuery.isSuccess && !sessionQuery.data) {
+		const signInURL = new URL(authErrorURL(window.location.origin, callbackPath ?? "/", "UNAUTHENTICATED"));
+		return <Navigate to={`${signInURL.pathname}${signInURL.search}`} replace />;
 	}
 
 	return (
@@ -93,7 +151,7 @@ export default function AuthError() {
 					<h1 id="auth-error-title" className="mt-2 text-2xl font-bold tracking-tight">
 						{title}
 					</h1>
-					<p className="mt-3 text-muted-foreground">{message}</p>
+					<p className="mt-3 whitespace-pre-line text-muted-foreground">{message}</p>
 					{!unauthenticated && !forbidden && (
 						<div className="mt-5 w-full rounded-md border border-border bg-muted px-3 py-2 text-left">
 							<p className="text-xs text-muted-foreground">Error code</p>
@@ -101,8 +159,30 @@ export default function AuthError() {
 						</div>
 					)}
 					<div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+						{sessionError && (
+							<Button
+								variant="outline-primary"
+								disabled={retrying || sessionQuery.isFetching}
+								onClick={() => void retrySession()}
+								className="gap-2"
+								aria-label="Try again"
+							>
+								<FiRefreshCw className="size-4" aria-hidden="true" />
+								{retrying || sessionQuery.isFetching
+									? "Retrying..."
+									: networkError
+										? `Try again (${retryCountdown}s)`
+										: "Try again"}
+							</Button>
+						)}
 						{unauthenticated && (
-							<Button variant="outline-primary" disabled={busy} onClick={() => void signIn()} className="gap-2" aria-label="Sign in">
+							<Button
+								variant="outline-primary"
+								disabled={busy}
+								onClick={() => void signIn()}
+								className="gap-2"
+								aria-label="Sign in"
+							>
 								<FiLogIn className="size-4" aria-hidden="true" />
 								{busy ? "Signing in..." : countdown > 0 ? `Sign in (${countdown}s)` : "Sign in"}
 							</Button>

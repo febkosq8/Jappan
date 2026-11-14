@@ -50,6 +50,8 @@ Required environment values are `DISCORD_TOKEN`, `DB_URL`, `AUTH_SECRET`, `AUTH_
 
 The intended startup order is database readiness first, Discord connection second, and subsystem initialization after both prerequisites are available.
 
+Database migrations are registered in `src/migrations/index.ts` and run in order after connecting, before index synchronization and HTTP or Discord startup. Each migration must have a unique key and an idempotent precondition and operation: preconditions are checked on every startup, including after an interrupted migration. Migration failure stops startup with the `MIGRATION_FAILURE` shutdown reason.
+
 ### Layers
 
 - `src/index.ts` and `src/bot.ts`: bootstrap and lifecycle

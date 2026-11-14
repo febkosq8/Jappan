@@ -26,29 +26,30 @@ import {
 	FiSettings,
 	FiShield,
 	FiSliders,
+	FiTrash2,
 } from "react-icons/fi";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
 import APIHandler, {
 	type AdminGuildInvite,
-	type AdminGuildChannel,
 	type AdminGuildCommandDeploymentResult,
 	type AdminGuildDetails,
 	type AdminGuildMessageResult,
 } from "@jappan/handlers/APIHandler";
 import { AccessRedirect, accessErrorStatus } from "@jappan/components/AdminRoute";
-import ChannelDisplay from "@jappan/components/display/ChannelDisplay";
 import ExternalTextLink from "@jappan/components/ExternalTextLink";
 import GuildPageHeader from "@jappan/components/display/GuildPageHeader";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
-import ServicePreferencesEditor from "@jappan/components/guild/ServicePreferencesEditor";
-import VoiceRegionLockManager from "@jappan/components/guild/VoiceRegionLockManager";
-import WarningManager from "@jappan/components/guild/WarningManager";
-import GuildSectionLink from "@jappan/components/panel/guild-section-link";
-import GuildOverview from "@jappan/components/panel/guild-overview";
-import BotPermissionsPanel from "@jappan/components/panel/bot-permissions-panel";
-import CommandPermissionsPanel from "@jappan/components/panel/command-permissions-panel";
+import GuildChannelsPanel from "@jappan/components/panel/GuildChannelsPanel";
+import GuildServicePreferencesPanel from "@jappan/components/panel/GuildServicePreferencesPanel";
+import GuildVoiceRegionLockManagerPanel from "@jappan/components/panel/GuildVoiceRegionLockManagerPanel";
+import GuildWarningManagerPanel from "@jappan/components/panel/GuildWarningManagerPanel";
+import GuildSectionLink from "@jappan/components/panel/GuildSectionLink";
+import GuildOverviewPanel from "@jappan/components/panel/GuildOverviewPanel";
+import BotPermissionsPanel from "@jappan/components/panel/BotPermissionsPanel";
+import CommandPermissionsPanel from "@jappan/components/panel/CommandPermissionsPanel";
+import PurgeMessagesPanel from "@jappan/components/panel/PurgeMessagesPanel";
 import guildIdPattern from "@jappan/helpers/guildIdPattern";
 import useDocumentTitle, { formatTitle } from "@jappan/helpers/useDocumentTitle";
 import { CONFIRM_CLICK_MS } from "@jappan/helpers/confirmClick";
@@ -62,239 +63,13 @@ const guildSections = [
 	{ id: "voice-region-locks", label: "Voice region locks", icon: FiGlobe },
 	{ id: "bot-permissions", label: "Bot permissions", icon: FiShield },
 	{ id: "command-permissions", label: "Command permissions", icon: FaListCheck },
+	{ id: "purge-messages", label: "Purge messages", icon: FiTrash2 },
 ];
 
 const readSectionFromHash = () => {
 	const id = window.location.hash.slice(1);
 	return guildSections.some((section) => section.id === id) ? id : guildSections[0].id;
 };
-
-function ChannelGroupList({ guildId, channels }: { guildId: string; channels: AdminGuildChannel[] }) {
-	const categoryType = 4;
-	const categories = channels.filter((channel) => channel.type === categoryType);
-	const categoryIds = new Set(categories.map((category) => category.id));
-	const childrenByParent = new Map<string, AdminGuildChannel[]>();
-	const uncategorized: AdminGuildChannel[] = [];
-	for (const channel of channels) {
-		if (channel.type === categoryType) continue;
-		if (!channel.parent) {
-			uncategorized.push(channel);
-		} else {
-			const children = childrenByParent.get(channel.parent.id) ?? [];
-			children.push(channel);
-			childrenByParent.set(channel.parent.id, children);
-		}
-	}
-	const missingCategories = [...childrenByParent.entries()].filter(([id]) => !categoryIds.has(id));
-	const groups = [
-		...(uncategorized.length
-			? [
-					{
-						key: "uncategorized",
-						name: "No parent category",
-						categoryId: null,
-						unavailable: false,
-						createdTimestampMs: null,
-						channels: uncategorized,
-					},
-				]
-			: []),
-		...categories.map((category) => ({
-			key: category.id,
-			name: category.name,
-			categoryId: category.id,
-			unavailable: false,
-			createdTimestampMs: category.createdTimestampMs,
-			channels: childrenByParent.get(category.id) ?? [],
-		})),
-		...missingCategories.map(([id, children]) => ({
-			key: id,
-			name: children[0]?.parent?.name ?? "Unavailable category",
-			categoryId: id,
-			unavailable: true,
-			createdTimestampMs: null,
-			channels: children,
-		})),
-	];
-	return (
-		<div className="mt-4 space-y-4">
-			{groups.map((group) => (
-				<Card
-					key={group.key}
-					hoverable={false}
-					role="region"
-					aria-label={group.name}
-					className="min-w-0 rounded-md border-border p-3"
-				>
-					<div className="flex items-center justify-between gap-2">
-						<h3 className="wrap-break-word font-semibold">{group.name}</h3>
-						<span className="shrink-0 rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">
-							{group.channels.length} {group.channels.length === 1 ? "channel" : "channels"}
-						</span>
-					</div>
-					{group.categoryId && (
-						<p className="break-all text-xs text-muted-foreground">
-							{group.unavailable ? "Category unavailable · " : ""}
-							{group.categoryId}
-						</p>
-					)}
-					{group.createdTimestampMs !== null && (
-						<p className="mt-1 text-sm text-muted-foreground">
-							Created: {DateHandler.getDateTime(group.createdTimestampMs)} (
-							{DateHandler.getRelativeTime(group.createdTimestampMs)})
-						</p>
-					)}
-					{group.channels.length === 0 ? (
-						<p className="mt-2 text-sm text-muted-foreground">No channels in this category.</p>
-					) : (
-						<ul className="mt-3 grid gap-3 sm:grid-cols-2">
-							{group.channels.map((channel) => (
-								<li key={channel.id}>
-									<Card hoverable={false} className="h-full min-w-0 rounded-md border-border p-3">
-										<div className="flex flex-wrap items-start justify-between gap-2">
-											<div className="min-w-0 wrap-break-word">
-												<ChannelDisplay guildId={guildId} id={channel.id} name={channel.name} />
-											</div>
-											{(channel.nsfw ||
-												(channel.rateLimitPerUser != null && channel.rateLimitPerUser > 0) ||
-												(channel.userLimit !== undefined && channel.userLimit > 0)) && (
-												<div className="ml-auto flex flex-wrap justify-end gap-1">
-													{channel.nsfw && (
-														<span className="rounded-md bg-warning/15 px-2 py-1 text-xs font-medium text-foreground">
-															NSFW
-														</span>
-													)}
-													{channel.rateLimitPerUser != null &&
-														channel.rateLimitPerUser > 0 && (
-															<span className="rounded-md bg-muted px-2 py-1 text-xs font-medium text-foreground">
-																Slowmode:{" "}
-																{DateHandler.formatDuration(channel.rateLimitPerUser)}
-															</span>
-														)}
-													{channel.userLimit !== undefined && channel.userLimit > 0 && (
-														<span className="rounded-md bg-muted px-2 py-1 text-xs font-medium text-foreground">
-															User limit: {channel.userLimit}
-														</span>
-													)}
-												</div>
-											)}
-										</div>
-										<p className="break-all text-xs text-muted-foreground">{channel.id}</p>
-										<dl className="mt-2 text-sm">
-											<div className="flex flex-wrap gap-x-1">
-												<dt className="text-muted-foreground">Type:</dt>
-												<dd>{channel.typeName.replace(/([a-z])([A-Z])/g, "$1 $2")}</dd>
-											</div>
-											<div className="flex flex-wrap gap-x-1">
-												<dt className="text-muted-foreground">Can send message:</dt>
-												<dd>{channel.canSendMessage ? "Yes" : "No"}</dd>
-											</div>
-											<div className="flex flex-wrap gap-x-1">
-												<dt className="text-muted-foreground">Created:</dt>
-												<dd>
-													{DateHandler.getDateTime(channel.createdTimestampMs)}{" "}
-													<span className="text-muted-foreground">
-														({DateHandler.getRelativeTime(channel.createdTimestampMs)})
-													</span>
-												</dd>
-											</div>
-											{channel.topic && (
-												<div>
-													<dt className="text-muted-foreground">Topic:</dt>
-													<dd className="wrap-break-word whitespace-pre-wrap">
-														{channel.topic}
-													</dd>
-												</div>
-											)}
-											{channel.rateLimitPerUser === null && (
-												<div className="flex flex-wrap gap-x-1">
-													<dt className="text-muted-foreground">Slowmode:</dt>
-													<dd>Unavailable</dd>
-												</div>
-											)}
-											{channel.bitrate !== undefined && (
-												<div className="flex flex-wrap gap-x-1">
-													<dt className="text-muted-foreground">Bitrate:</dt>
-													<dd>{channel.bitrate.toLocaleString()} bps</dd>
-												</div>
-											)}
-										</dl>
-									</Card>
-								</li>
-							))}
-						</ul>
-					)}
-				</Card>
-			))}
-		</div>
-	);
-}
-
-function GuildChannels({ guild }: { guild: AdminGuildDetails }) {
-	const channelsQuery = useQuery({
-		queryKey: ["user", "guild", guild.id, "channels"],
-		queryFn: () => APIHandler.getGuildChannels(guild.id),
-		enabled: false,
-		retry: false,
-	});
-	const totalChannelCount = channelsQuery.data?.filter((channel) => channel.type !== 4).length;
-	const accessStatus = accessErrorStatus(channelsQuery.error);
-	if (accessStatus) return <AccessRedirect status={accessStatus} />;
-
-	const errorStatus = axios.isAxiosError(channelsQuery.error) ? channelsQuery.error.response?.status : undefined;
-	const errorMessage =
-		errorStatus === 409
-			? "The bot is no longer a member of this guild."
-			: errorStatus === 404
-				? "This guild is no longer registered."
-				: errorStatus === 503
-					? "The guild or a required service is unavailable. Please try again."
-					: "Could not load channels. Please try again.";
-
-	return (
-		<Card id="guild-channels" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
-			<div className="flex items-center justify-between gap-3">
-				<h2 className="flex items-center gap-1 text-lg font-semibold">
-					Channels <GuildSectionLink id="guild-channels" label="channels" />
-				</h2>
-				{totalChannelCount !== undefined && (
-					<span className="shrink-0 rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">
-						Total: {totalChannelCount} {totalChannelCount === 1 ? "channel" : "channels"}
-					</span>
-				)}
-			</div>
-			<p className="mt-1 text-sm text-muted-foreground">
-				Load the current channels and categories from Discord. Threads are not included.
-			</p>
-			<Button
-				type="button"
-				size="sm"
-				variant="outline-primary"
-				className="mt-3"
-				disabled={channelsQuery.isFetching || !guild.isActiveMember}
-				onClick={() => void channelsQuery.refetch()}
-			>
-				{channelsQuery.data ? "Refresh channels" : "Load channels"}
-			</Button>
-			{!guild.isActiveMember && (
-				<p className="mt-3 text-muted-foreground">The bot is not a member of this guild.</p>
-			)}
-			{channelsQuery.isFetching ? (
-				<div className="mt-3">
-					<LoadingIndicator label="Loading channels" inline size={80} rows={1} columns={5} />
-				</div>
-			) : channelsQuery.isError ? (
-				<p role="alert" className="mt-3 text-destructive">
-					{errorMessage}
-				</p>
-			) : channelsQuery.data?.length === 0 ? (
-				<p className="mt-3 text-muted-foreground">No channels found.</p>
-			) : channelsQuery.data ? (
-				<ChannelGroupList guildId={guild.id} channels={channelsQuery.data} />
-			) : null}
-		</Card>
-	);
-}
 
 function getActionErrorMessage(error: unknown, fallback: string): string {
 	if (axios.isAxiosError<{ error?: string }>(error) && typeof error.response?.data?.error === "string") {
@@ -546,7 +321,7 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 											{ key: "", label: "Select a channel", disabled: true },
 											...textChannels.map((channel) => ({
 												key: channel.id,
-												label: `#${channel.name} (${channel.id}) | ${channel.parent?.name ?? "No Category"}`,
+												label: `#${channel.name} (${channel.id}) | ${channel.parent ? (channel.parent.name ?? "Unavailable category") : "Uncategorized"}`,
 											})),
 										]}
 									/>
@@ -745,7 +520,7 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 											{ key: "", label: "No departure message" },
 											...textChannels.map((channel) => ({
 												key: channel.id,
-												label: `#${channel.name} (${channel.id}) | ${channel.parent?.name ?? "No Category"}`,
+												label: `#${channel.name} (${channel.id}) | ${channel.parent ? (channel.parent.name ?? "Unavailable category") : "Uncategorized"}`,
 											})),
 										]}
 									/>
@@ -826,26 +601,26 @@ function GuildDetails({ guild }: { guild: AdminGuildDetails }) {
 				))}
 			</TabsList>
 			<TabsPanel value="guild-overview" keepMounted>
-				<GuildOverview guild={guild} />
+				<GuildOverviewPanel guild={guild} />
 			</TabsPanel>
 			<TabsPanel value="admin-actions" keepMounted>
 				<GuildActions key={guild.id} guild={guild} />
 			</TabsPanel>
 			<TabsPanel value="guild-channels" keepMounted>
-				<GuildChannels guild={guild} />
+				<GuildChannelsPanel guild={guild} />
 			</TabsPanel>
 			<TabsPanel value="service-preferences" keepMounted>
-				<ServicePreferencesEditor guild={guild} active={section === "service-preferences"} />
+				<GuildServicePreferencesPanel guild={guild} active={section === "service-preferences"} />
 			</TabsPanel>
 			<TabsPanel value="warnings" keepMounted>
-				<WarningManager
+				<GuildWarningManagerPanel
 					guildId={guild.id}
 					active={section === "warnings"}
 					isActiveMember={guild.isActiveMember}
 				/>
 			</TabsPanel>
 			<TabsPanel value="voice-region-locks" keepMounted>
-				<VoiceRegionLockManager
+				<GuildVoiceRegionLockManagerPanel
 					key={guild.id}
 					guildId={guild.id}
 					active={section === "voice-region-locks"}
@@ -857,6 +632,9 @@ function GuildDetails({ guild }: { guild: AdminGuildDetails }) {
 			</TabsPanel>
 			<TabsPanel value="command-permissions" keepMounted>
 				<CommandPermissionsPanel permissions={guild.permissions} />
+			</TabsPanel>
+			<TabsPanel value="purge-messages" keepMounted>
+				<PurgeMessagesPanel active={section === "purge-messages"} initialGuildId={guild.id} />
 			</TabsPanel>
 		</Tabs>
 	);

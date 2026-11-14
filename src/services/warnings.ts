@@ -1,9 +1,22 @@
-import { EmbedBuilder, type GuildMember } from "discord.js";
+import mongoose from "mongoose";
+import { EmbedBuilder, PermissionFlagsBits, type GuildMember } from "discord.js";
 
 import type { GuildDocument } from "../models/guild.js";
 import GuildMemberStateModel, { type GuildMemberStateDocument } from "../models/guildMemberState.js";
 import { getOrCreateGuildData } from "../helpers/guild.js";
-import { getGuildMemberState, getOrCreateGuildMemberState } from "./guildMemberState.js";
+import { getGuildMemberState } from "./guildMemberState.js";
+import { logger } from "./logger.js";
+
+export type WarningThresholdAction =
+	"unknown" | "pending" | "none" | "banned" | "timed_out" | "ban_failed" | "timeout_failed";
+
+export interface WarningRecord {
+	readonly id: string;
+	readonly issuedAt: Date | null;
+	readonly reason: string;
+	readonly issuerId: string | null;
+	readonly thresholdAction: WarningThresholdAction;
+}
 
 export interface WarningSettings {
 	readonly guildId: GuildDocument["guildId"];
@@ -59,31 +72,110 @@ export async function getWarningSettings(guildId: string, guildName: string): Pr
 
 export async function getWarningCount(guildId: string, userId: string): Promise<number> {
 	const storedMemberStateData = await getGuildMemberState(guildId, userId);
-	return storedMemberStateData?.warnings.count ?? 0;
+	return storedMemberStateData?.warnings.length ?? 0;
+}
+
+export async function getWarningRecords(guildId: string, userId: string): Promise<WarningRecord[]> {
+	const storedMemberStateData = await getGuildMemberState(guildId, userId);
+	return (
+		storedMemberStateData?.warnings.map((record) => ({
+			id: record._id.toString(),
+			issuedAt: record.issuedAt ?? null,
+			reason: record.reason,
+			issuerId: record.issuerId ?? null,
+			thresholdAction: record.thresholdAction,
+		})) ?? []
+	);
 }
 
 export async function getWarnedMembers(guildId: string) {
-	return GuildMemberStateModel.find({ guildId, "warnings.count": { $gte: 1 } })
-		.select({ _id: 0, userId: 1, username: 1, "warnings.count": 1 })
-		.sort({ "warnings.count": -1, userId: 1 })
-		.lean()
-		.exec();
+	return GuildMemberStateModel.aggregate<{
+		userId: string;
+		username: string;
+		warningCount: number;
+	}>([
+		{ $match: { guildId } },
+		{
+			$project: {
+				_id: 0,
+				userId: 1,
+				username: 1,
+				warningCount: { $size: { $ifNull: ["$warnings", []] } },
+			},
+		},
+		{ $match: { warningCount: { $gte: 1 } } },
+		{ $sort: { warningCount: -1, userId: 1 } },
+	]).exec();
 }
 
-export async function issueWarning({
+async function updateWarningThresholdAction({
+	guildId,
+	userId,
+	warningId,
+	action,
+}: {
+	guildId: string;
+	userId: string;
+	warningId: mongoose.Types.ObjectId;
+	action: WarningThresholdAction;
+}): Promise<void> {
+	const result = await GuildMemberStateModel.updateOne(
+		{ guildId, userId, "warnings._id": warningId },
+		{ $set: { "warnings.$.thresholdAction": action } },
+	).exec();
+	if (result.matchedCount !== 1) {
+		throw new Error("Failed to persist warning threshold action");
+	}
+}
+
+export async function removeWarning({
+	guildId,
+	userId,
+	warningId,
+}: {
+	guildId: string;
+	userId: string;
+	warningId: string;
+}): Promise<boolean> {
+	const storedMemberStateData = await GuildMemberStateModel.findOneAndUpdate(
+		{
+			guildId,
+			userId,
+			warnings: { $elemMatch: { _id: warningId, thresholdAction: { $ne: "pending" } } },
+		},
+		{ $pull: { warnings: { _id: warningId } } },
+		{ returnDocument: "after" },
+	).exec();
+	return storedMemberStateData !== null;
+}
+
+async function issueWarning({
 	guildId,
 	userId,
 	username,
+	issuerId,
+	reason,
 }: {
 	guildId: string;
 	userId: string;
 	username: string;
-}): Promise<GuildMemberStateDocument> {
+	issuerId: string;
+	reason: string;
+}): Promise<{ state: GuildMemberStateDocument; warningId: mongoose.Types.ObjectId }> {
+	const warningId = new mongoose.Types.ObjectId();
 	const storedMemberStateData = await GuildMemberStateModel.findOneAndUpdate(
 		{ guildId, userId },
 		{
 			$set: { username },
-			$inc: { "warnings.count": 1 },
+			$push: {
+				warnings: {
+					_id: warningId,
+					issuedAt: new Date(),
+					reason: reason.slice(0, 500),
+					issuerId,
+					thresholdAction: "pending",
+				},
+			},
 			$setOnInsert: { guildId, userId },
 		},
 		{ returnDocument: "after", upsert: true, setDefaultsOnInsert: true },
@@ -93,7 +185,7 @@ export async function issueWarning({
 		throw new Error("Failed to persist warning");
 	}
 
-	return storedMemberStateData;
+	return { state: storedMemberStateData, warningId };
 }
 
 export async function issueWarningForMember({
@@ -107,13 +199,85 @@ export async function issueWarningForMember({
 	issuerId: string;
 	reason: string;
 }): Promise<WarningIssueResult> {
-	const storedMemberStateData = await issueWarning({
+	const { state, warningId } = await issueWarning({
 		guildId: guild.id,
 		userId: member.id,
 		username: member.user.username,
+		issuerId,
+		reason,
 	});
-	const storedGuildData = await getWarningSettings(guild.id, guild.name);
-	const warningCount = storedMemberStateData.warnings.count;
+	const warningCount = state.warnings.length;
+	const logDetails = {
+		guildId: guild.id,
+		userId: member.id,
+		issuerId,
+		warningId: warningId.toString(),
+		warningCount,
+	};
+
+	const thresholdReason = `Warning threshold reached: ${reason}`.slice(0, 500);
+	let action: WarningIssueResult["action"] = "none";
+	let attemptedAction: "ban" | "timeout" | null = null;
+	let storedGuildData: WarningSettings;
+
+	try {
+		storedGuildData = await getWarningSettings(guild.id, guild.name);
+		if (storedGuildData.warnings.banThreshold && warningCount >= storedGuildData.warnings.banThreshold) {
+			attemptedAction = "ban";
+			if (!member.bannable) {
+				action = "ban_failed";
+			} else {
+				await member.ban({ reason: thresholdReason });
+				action = "banned";
+			}
+		} else if (
+			storedGuildData.warnings.timeoutThreshold &&
+			storedGuildData.warnings.timeoutDurationHours &&
+			warningCount >= storedGuildData.warnings.timeoutThreshold
+		) {
+			attemptedAction = "timeout";
+			if (!member.moderatable) {
+				action = "timeout_failed";
+			} else {
+				await member.timeout(storedGuildData.warnings.timeoutDurationHours * 60 * 60 * 1000, thresholdReason);
+				action = "timed_out";
+			}
+		}
+	} catch (error: unknown) {
+		const failedAction =
+			attemptedAction === null ? "unknown" : attemptedAction === "ban" ? "ban_failed" : "timeout_failed";
+		logger.error("DISCORD", "Warning threshold action failed", {
+			...logDetails,
+			action: failedAction,
+			error,
+		});
+		await updateWarningThresholdAction({
+			guildId: guild.id,
+			userId: member.id,
+			warningId,
+			action: failedAction,
+		});
+		throw error;
+	}
+
+	if (action === "ban_failed" || action === "timeout_failed") {
+		const botMember = guild.members.me;
+		logger.warn("DISCORD", "Warning threshold action blocked by permissions or role hierarchy", {
+			...logDetails,
+			action,
+			isGuildOwner: member.id === guild.ownerId,
+			isAdministrator: member.permissions.has(PermissionFlagsBits.Administrator),
+			manageable: member.manageable,
+			botHighestRoleId: botMember?.roles.highest.id,
+			memberHighestRoleId: member.roles.highest.id,
+			hasRequiredPermission:
+				botMember?.permissions.has(
+					action === "ban_failed" ? PermissionFlagsBits.BanMembers : PermissionFlagsBits.ModerateMembers,
+				) ?? false,
+		});
+	}
+
+	await updateWarningThresholdAction({ guildId: guild.id, userId: member.id, warningId, action });
 
 	if (storedGuildData.warnings.auditChannelId) {
 		const auditChannel = await guild.channels.fetch(storedGuildData.warnings.auditChannelId);
@@ -129,6 +293,12 @@ export async function issueWarningForMember({
 							{ name: "Total Warnings", value: `${warningCount}`, inline: true },
 							{ name: "Reason", value: reason },
 							{ name: "Issued By", value: `<@${issuerId}>` },
+							{
+								name: "Threshold Action",
+								value: action
+									.replace(/_/gu, " ")
+									.replace(/\b\w/gu, (character) => character.toUpperCase()),
+							},
 						)
 						.setTimestamp(),
 				],
@@ -136,40 +306,5 @@ export async function issueWarningForMember({
 		}
 	}
 
-	const thresholdReason = `Warning threshold reached: ${reason}`.slice(0, 500);
-
-	if (storedGuildData.warnings.banThreshold && warningCount >= storedGuildData.warnings.banThreshold) {
-		if (!member.bannable) return { warningCount, action: "ban_failed" };
-		await member.ban({ reason: thresholdReason });
-		return { warningCount, action: "banned" };
-	}
-
-	if (
-		storedGuildData.warnings.timeoutThreshold &&
-		storedGuildData.warnings.timeoutDurationHours &&
-		warningCount >= storedGuildData.warnings.timeoutThreshold
-	) {
-		if (!member.moderatable) return { warningCount, action: "timeout_failed" };
-		await member.timeout(storedGuildData.warnings.timeoutDurationHours * 60 * 60 * 1000, thresholdReason);
-		return { warningCount, action: "timed_out" };
-	}
-
-	return { warningCount, action: "none" };
-}
-
-export async function overrideWarningCount({
-	guildId,
-	userId,
-	username,
-	count,
-}: {
-	guildId: string;
-	userId: string;
-	username: string;
-	count: number;
-}): Promise<GuildMemberStateDocument> {
-	const storedMemberStateData = await getOrCreateGuildMemberState({ guildId, userId, username });
-	storedMemberStateData.warnings.count = count;
-	await storedMemberStateData.save();
-	return storedMemberStateData;
+	return { warningCount, action };
 }

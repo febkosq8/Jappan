@@ -1,5 +1,5 @@
 import type { Interaction } from "discord.js";
-import { ActivityType, Events, PresenceUpdateStatus } from "discord.js";
+import { ActivityType, ApplicationCommandType, Events, PresenceUpdateStatus } from "discord.js";
 import type { Client } from "discord.js";
 
 import { getClient } from "../bot.js";
@@ -31,7 +31,8 @@ import {
 	handleAuditUserUpdate,
 	handleAuditVoiceState,
 } from "../services/auditLog.js";
-import { getCommands, getGlobalCommands, setRegisteredCommandIds } from "../services/commandLoader.js";
+import { getCommands, getGlobalApplicationCommandData, setRegisteredCommandIds } from "../services/commandLoader.js";
+import { purgeMessageJobModalCustomIdPrefix } from "../commands/purge-messages.js";
 import { getConfig } from "../services/config.js";
 import { initializeGuild } from "../services/guild.js";
 import { handleLevelingInteraction, handleLevelingMessage, handleLevelingVoiceState } from "../services/leveling.js";
@@ -41,6 +42,8 @@ import { handleMemberJoinAnnouncement, handleMemberLeaveAnnouncement } from "../
 import { handleVoiceRegionState } from "../services/voiceRegion.js";
 import { handleAutocompleteInteraction } from "./autocomplete.js";
 import { handleButtonInteraction } from "./button.js";
+import { handleContextMenuCommandInteraction } from "./contextMenuCommand.js";
+import { handlePurgeMessageJobModalSubmit } from "./purgeMessageJobModal.js";
 import { handleSlashCommandInteraction } from "./slashCommand.js";
 import { startCronJobs } from "../services/cron.js";
 
@@ -100,13 +103,24 @@ export function registerDiscordHandlers(): void {
 		startCronJobs();
 
 		try {
-			const globalCommands = getGlobalCommands();
-			logger.info("BOT", `Starting to update #${globalCommands.size} global Application (/) commands`);
-			const registeredCommands = await readyClient.application.commands.set(
-				globalCommands.map((command) => command.data.toJSON()),
-			);
+			const globalCommandData = getGlobalApplicationCommandData();
+			const globalSlashCommandCount = globalCommandData.filter(
+				(command) => command.type === ApplicationCommandType.ChatInput,
+			).length;
+			const globalContextMenuCommandCount = globalCommandData.filter(
+				(command) =>
+					command.type === ApplicationCommandType.Message || command.type === ApplicationCommandType.User,
+			).length;
+			logger.info("BOT", "Starting global application command update", {
+				slashCommandCount: globalSlashCommandCount,
+				contextMenuCommandCount: globalContextMenuCommandCount,
+				totalCommandCount: globalCommandData.length,
+			});
+			const registeredCommands = await readyClient.application.commands.set(globalCommandData);
 			setRegisteredCommandIds(registeredCommands);
-			logger.success("BOT", `#${globalCommands.size} global Application (/) commands updated`);
+			logger.success("BOT", "Global application command update completed", {
+				totalCommandCount: registeredCommands.size,
+			});
 		} catch (error: unknown) {
 			logger.error("BOT", "Failed to update Application (/) commands", { error });
 		}
@@ -148,6 +162,11 @@ export function registerDiscordHandlers(): void {
 			return;
 		}
 
+		if (interaction.isModalSubmit() && interaction.customId.startsWith(`${purgeMessageJobModalCustomIdPrefix}:`)) {
+			void handlePurgeMessageJobModalSubmit({ interaction, config });
+			return;
+		}
+
 		if (interaction.isButton()) {
 			void handleButtonInteraction({ interaction, config });
 			return;
@@ -155,6 +174,11 @@ export function registerDiscordHandlers(): void {
 
 		if (interaction.isChatInputCommand()) {
 			void handleSlashCommandInteraction({ interaction, config });
+			return;
+		}
+
+		if (interaction.isMessageContextMenuCommand() || interaction.isUserContextMenuCommand()) {
+			void handleContextMenuCommandInteraction({ interaction, config });
 			return;
 		}
 

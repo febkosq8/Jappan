@@ -7,41 +7,61 @@ import UserDisplay from "@jappan/components/display/UserDisplay";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import APIHandler, { type WarnedMember } from "@jappan/handlers/APIHandler";
 
-const columns: TableColumnDef<WarnedMember>[] = [
-	{
-		accessorKey: "username",
-		header: "User",
-		mobileFullWidth: true,
-		size: 260,
-		filterFn: "includesString",
-		cell: ({ row }) => (
-			<UserDisplay
-				id={row.original.userId}
-				name={row.original.username}
-				avatarUrl={row.original.avatarUrl}
-				size="md"
-			/>
-		),
-	},
-	{
-		accessorKey: "warningCount",
-		header: "Warnings",
-		size: 120,
-		filterFn: "includesString",
-		cell: ({ row }) => (
-			<span className="block text-right tabular-nums">{row.original.warningCount.toLocaleString()}</span>
-		),
-	},
-];
+function getColumns({
+	onSelectMember,
+	disabled,
+}: {
+	onSelectMember: (userId: string) => void;
+	disabled: boolean;
+}): TableColumnDef<WarnedMember>[] {
+	return [
+		{
+			accessorKey: "username",
+			header: "User",
+			mobileFullWidth: true,
+			size: 260,
+			filterFn: "includesString",
+			cell: ({ row }) => (
+				<UserDisplay
+					id={row.original.userId}
+					name={row.original.username}
+					avatarUrl={row.original.avatarUrl}
+					size="md"
+				/>
+			),
+		},
+		{
+			accessorKey: "warningCount",
+			header: "Warnings",
+			size: 120,
+			filterFn: "includesString",
+			cell: ({ row }) => (
+				<button
+					type="button"
+					className="inline-flex items-center rounded-md text-primary tabular-nums underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+					disabled={disabled}
+					aria-label={`View ${row.original.username}'s ${row.original.warningCount} warning(s)`}
+					onClick={() => onSelectMember(row.original.userId)}
+				>
+					{row.original.warningCount.toLocaleString()}
+				</button>
+			),
+		},
+	];
+}
 
 export default function GuildWarningsTable({
 	guildId,
 	active,
 	isActiveMember,
+	onSelectMember,
+	disabled = false,
 }: {
 	guildId: string;
 	active: boolean;
 	isActiveMember: boolean;
+	onSelectMember: (userId: string) => void;
+	disabled?: boolean;
 }) {
 	const [loadedGuildId, setLoadedGuildId] = useState<string | null>(null);
 	const loadRequested = loadedGuildId === guildId;
@@ -67,7 +87,7 @@ export default function GuildWarningsTable({
 				)}
 			</div>
 			<p className="mt-1 text-sm text-muted-foreground">
-				Only users with at least one warning are shown, ordered by warning count.
+				Ordered by warning count. Select a count to review that member's warning history above.
 			</p>
 			{!loadRequested && (
 				<Button
@@ -100,7 +120,10 @@ export default function GuildWarningsTable({
 					</div>
 				) : warningsQuery.isSuccess ? (
 					warningsQuery.data.length > 0 ? (
-						<Table data={warningsQuery.data} columnDef={columns} />
+						<Table
+							data={warningsQuery.data}
+							columnDef={getColumns({ onSelectMember, disabled: disabled || !active || !isActiveMember })}
+						/>
 					) : (
 						<p className="text-sm text-muted-foreground">No users currently have warnings.</p>
 					)

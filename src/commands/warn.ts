@@ -9,12 +9,12 @@ import {
 } from "discord.js";
 
 import type { BotCommand, BotCommandData } from "../helpers/command.js";
+import { createGuildDashboardLink } from "../helpers/dashboard.js";
 import type { Config } from "../services/config.js";
 import {
 	getWarningCount,
 	getWarningSettings,
 	issueWarningForMember,
-	overrideWarningCount,
 	setWarningSettings,
 } from "../services/warnings.js";
 
@@ -25,16 +25,25 @@ const commandData = {
 	defaultMemberPermissions: PermissionFlagsBits.ManageGuild,
 	hasSubCommands: true,
 	subCommands: [
-		{ name: "setup", description: "Configure warning thresholds and audit logging", category: "moderator" },
+		{
+			name: "setup",
+			description: "Configure warning thresholds and audit logging",
+			category: "moderator",
+			usageNotes: [
+				"Select a timeout duration when setting a timeout threshold.",
+				"When both thresholds are set, the ban threshold must be greater than the timeout threshold.",
+			],
+		},
 		{ name: "issue", description: "Issue a warning to a user", category: "moderator" },
 		{ name: "check", description: "Check warning settings or a user's warning count", category: "moderator" },
-		{ name: "override", description: "Override a user's warning count", category: "moderator" },
 	],
 	isDBDependant: true,
 	requiredBotPermissions: [
 		PermissionFlagsBits.ViewChannel,
 		PermissionFlagsBits.SendMessages,
 		PermissionFlagsBits.EmbedLinks,
+		PermissionFlagsBits.ModerateMembers,
+		PermissionFlagsBits.BanMembers,
 	],
 } satisfies BotCommandData;
 
@@ -131,7 +140,11 @@ const command: BotCommand = {
 				.setDescription("Issue a warning to a user")
 				.addUserOption((option) => option.setName("user").setDescription("User to warn").setRequired(true))
 				.addStringOption((option) =>
-					option.setName("reason").setDescription("Reason for the warning").setRequired(false),
+					option
+						.setName("reason")
+						.setDescription("Reason for the warning")
+						.setMaxLength(500)
+						.setRequired(false),
 				),
 		)
 		.addSubcommand((subcommand) =>
@@ -139,15 +152,6 @@ const command: BotCommand = {
 				.setName("check")
 				.setDescription("Check warning settings or a user's warning count")
 				.addUserOption((option) => option.setName("user").setDescription("User to check").setRequired(false)),
-		)
-		.addSubcommand((subcommand) =>
-			subcommand
-				.setName("override")
-				.setDescription("Override a user's warning count")
-				.addUserOption((option) => option.setName("user").setDescription("User to update").setRequired(true))
-				.addIntegerOption((option) =>
-					option.setName("count").setDescription("New warning count").setMinValue(0).setRequired(true),
-				),
 		)
 		.setDefaultMemberPermissions(commandData.defaultMemberPermissions)
 		.setContexts([InteractionContextType.Guild]),
@@ -157,6 +161,22 @@ const command: BotCommand = {
 			await interaction.editReply("⛔ This command can only be used in a guild.");
 			return;
 		}
+		const dashboardLinks = {
+			settings: [
+				createGuildDashboardLink({
+					config,
+					guildId: interaction.guild.id,
+					section: "service-preferences",
+				}),
+			],
+			warnings: [
+				createGuildDashboardLink({
+					config,
+					guildId: interaction.guild.id,
+					section: "warnings",
+				}),
+			],
+		};
 
 		const subcommand = interaction.options.getSubcommand();
 
@@ -209,6 +229,7 @@ const command: BotCommand = {
 						config,
 					}),
 				],
+				components: dashboardLinks.settings,
 			});
 			return;
 		}
@@ -225,27 +246,34 @@ const command: BotCommand = {
 			});
 			switch (result.action) {
 				case "ban_failed":
-					await interaction.editReply(
-						`Warning issued to ${user}, but I could not ban them because their role is higher than mine or they are the server owner. Total warnings: ${result.warningCount}.`,
-					);
+					await interaction.editReply({
+						content: `Warning issued to ${user}, but I could not ban them because their role is higher than mine or they are the server owner. Total warnings: ${result.warningCount}.`,
+						components: dashboardLinks.warnings,
+					});
 					return;
 				case "timeout_failed":
-					await interaction.editReply(
-						`Warning issued to ${user}, but I could not time them out because their role is higher than mine or they are the server owner. Total warnings: ${result.warningCount}.`,
-					);
+					await interaction.editReply({
+						content: `Warning issued to ${user}, but I could not time them out because their role is higher than mine or they are the server owner. Total warnings: ${result.warningCount}.`,
+						components: dashboardLinks.warnings,
+					});
 					return;
 				case "banned":
-					await interaction.editReply(
-						`${user} was warned and banned after reaching ${result.warningCount} warnings.`,
-					);
+					await interaction.editReply({
+						content: `${user} was warned and banned after reaching ${result.warningCount} warnings.`,
+						components: dashboardLinks.warnings,
+					});
 					return;
 				case "timed_out":
-					await interaction.editReply(
-						`${user} was warned and timed out after reaching ${result.warningCount} warnings.`,
-					);
+					await interaction.editReply({
+						content: `${user} was warned and timed out after reaching ${result.warningCount} warnings.`,
+						components: dashboardLinks.warnings,
+					});
 					return;
 				case "none":
-					await interaction.editReply(`Warning issued to ${user}. Total warnings: ${result.warningCount}.`);
+					await interaction.editReply({
+						content: `Warning issued to ${user}. Total warnings: ${result.warningCount}.`,
+						components: dashboardLinks.warnings,
+					});
 					return;
 			}
 		}
@@ -253,9 +281,10 @@ const command: BotCommand = {
 		if (subcommand === "check") {
 			const user = interaction.options.getUser("user");
 			if (user) {
-				await interaction.editReply(
-					`${user} currently has ${await getWarningCount(interaction.guild.id, user.id)} warning(s).`,
-				);
+				await interaction.editReply({
+					content: `${user} currently has ${await getWarningCount(interaction.guild.id, user.id)} warning(s).`,
+					components: dashboardLinks.warnings,
+				});
 				return;
 			}
 			const status = await getWarningSettings(interaction.guild.id, interaction.guild.name);
@@ -270,20 +299,8 @@ const command: BotCommand = {
 						config,
 					}),
 				],
+				components: dashboardLinks.settings,
 			});
-			return;
-		}
-
-		if (subcommand === "override") {
-			const user = interaction.options.getUser("user", true);
-			const count = interaction.options.getInteger("count", true);
-			await overrideWarningCount({
-				guildId: interaction.guild.id,
-				userId: user.id,
-				username: user.username,
-				count,
-			});
-			await interaction.editReply(`Warning count for ${user} is now ${count}.`);
 			return;
 		}
 

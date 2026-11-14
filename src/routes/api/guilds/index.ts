@@ -26,12 +26,13 @@ import {
 } from "../../../helpers/guild.js";
 import { listGuilds } from "../../../services/adminGuild.js";
 import type { AuthSession } from "../../../services/auth.js";
+import { getGuildMemberState } from "../../../services/guildMemberState.js";
 import { getLeaderboard, LEADERBOARD_PAGE_SIZE } from "../../../services/leveling.js";
 import {
 	getWarnedMembers,
-	getWarningCount,
+	getWarningRecords,
 	issueWarningForMember,
-	overrideWarningCount,
+	removeWarning,
 } from "../../../services/warnings.js";
 import {
 	addVoiceRegionLock,
@@ -55,8 +56,7 @@ import {
 	memberAnnouncementsPreferenceSchema,
 	warnedMemberSchema,
 	warningActionResultSchema,
-	warningCountOverrideSchema,
-	warningCountSchema,
+	warningIdSchema,
 	warningIssueSchema,
 	warningMemberDetailsSchema,
 	warningMemberSchema,
@@ -137,6 +137,23 @@ async function resolveGuildMember({ guild, userId, response }: { guild: Guild; u
 	}
 }
 
+async function fetchWarningUser(guild: Guild, userId: string) {
+	return guild.client.users.fetch(userId).catch((error: unknown) => {
+		if (
+			error instanceof DiscordAPIError &&
+			[
+				RESTJSONErrorCodes.UnknownUser,
+				RESTJSONErrorCodes.MissingAccess,
+				RESTJSONErrorCodes.MissingPermissions,
+			].includes(Number(error.code))
+		) {
+			logger.warn("HTTP", "Warning user details are no longer available", { guildId: guild.id, userId, error });
+			return null;
+		}
+		throw error;
+	});
+}
+
 export default defineRouter("/guilds", [
 	{
 		method: "get",
@@ -213,6 +230,8 @@ export default defineRouter("/guilds", [
 						parent: z.object({ id: z.string(), name: z.string().nullable() }).nullable(),
 						position: z.number().int(),
 						canSendMessage: z.boolean(),
+						canReadMessages: z.boolean(),
+						canManageMessages: z.boolean(),
 						topic: z.string().nullable().optional(),
 						nsfw: z.boolean().optional(),
 						rateLimitPerUser: z.number().int().nullable().optional(),
@@ -460,7 +479,7 @@ export default defineRouter("/guilds", [
 				members.map((member) => ({
 					userId: member.userId,
 					username: member.username,
-					warningCount: member.warnings.count,
+					warningCount: member.warningCount,
 					avatarUrl:
 						guild.members.cache.get(member.userId)?.displayAvatarURL({ size: 64 }) ??
 						guild.client.users.cache.get(member.userId)?.displayAvatarURL({ size: 64 }) ??
@@ -519,7 +538,7 @@ export default defineRouter("/guilds", [
 		method: "get",
 		path: "/:guildId/users/:userId/warn",
 		tags,
-		summary: "Get a guild member's warning count",
+		summary: "Get a guild member's warning count and history",
 		errorMessage: "Failed to get member warning count",
 		security,
 		parameters: [
@@ -533,7 +552,10 @@ export default defineRouter("/guilds", [
 			},
 		],
 		responses: {
-			200: { description: "Guild member and current warning count", schema: warningMemberDetailsSchema },
+			200: {
+				description: "Guild member, warning count, and history with issuer details",
+				schema: warningMemberDetailsSchema,
+			},
 			...accessResponses,
 			404: { description: "Guild or member not found", schema: errorResponseSchema },
 			409: { description: "Bot is not a guild member", schema: errorResponseSchema },
@@ -544,14 +566,52 @@ export default defineRouter("/guilds", [
 		handler: async (request, response) => {
 			const guild = await resolveGuild(request.params.guildId, response);
 			if (!guild) return;
-			const member = await resolveGuildMember({ guild, userId: request.params.userId, response });
-			if (!member) return;
+			const userId = request.params.userId;
+			if (typeof userId !== "string" || !/^\d{17,20}$/u.test(userId)) {
+				return response.status(400).json({ error: "Invalid user ID" });
+			}
+			const member = await guild.members.fetch(userId).catch((error: unknown) => {
+				if (error instanceof DiscordAPIError && error.code === RESTJSONErrorCodes.UnknownMember) {
+					return null;
+				}
+				throw error;
+			});
+			const storedMember = !member ? await getGuildMemberState(guild.id, userId) : null;
+			if (!member && !storedMember) {
+				return response.status(404).json({ error: "User has no stored guild warning history" });
+			}
+			const user = member?.user ?? (await fetchWarningUser(guild, userId));
+			const username = user?.username ?? storedMember?.username ?? userId;
+			const warnings = await getWarningRecords(guild.id, userId);
+			const issuers = new Map<string, { userId: string; username?: string; avatarUrl?: string | null }>();
+			await Promise.all(
+				[...new Set(warnings.map((warning) => warning.issuerId).filter((id): id is string => id !== null))].map(
+					async (issuerId) => {
+						const issuer = await fetchWarningUser(guild, issuerId);
+						issuers.set(
+							issuerId,
+							issuer
+								? {
+										userId: issuer.id,
+										username: issuer.username,
+										avatarUrl: issuer.displayAvatarURL({ size: 64 }),
+									}
+								: { userId: issuerId },
+						);
+					},
+				),
+			);
 			return response.status(200).json({
-				id: member.id,
-				username: member.user.username,
-				displayName: member.displayName,
-				avatarUrl: member.displayAvatarURL({ size: 64 }),
-				warningCount: await getWarningCount(guild.id, member.id),
+				id: userId,
+				username,
+				displayName: member?.displayName ?? user?.globalName ?? username,
+				avatarUrl: member?.displayAvatarURL({ size: 64 }) ?? user?.displayAvatarURL({ size: 64 }) ?? null,
+				isGuildMember: member !== null,
+				warningCount: warnings.length,
+				warnings: warnings.map((warning) => ({
+					...warning,
+					issuer: warning.issuerId ? issuers.get(warning.issuerId) : null,
+				})),
 			});
 		},
 	},
@@ -749,11 +809,11 @@ export default defineRouter("/guilds", [
 		},
 	},
 	{
-		method: "patch",
-		path: "/:guildId/users/:userId/warn",
+		method: "delete",
+		path: "/:guildId/users/:userId/warn/:warningId",
 		tags,
-		summary: "Override a guild member's warning count",
-		errorMessage: "Failed to override member warning count",
+		summary: "Delete a warning from a guild member's history",
+		errorMessage: "Failed to delete member warning",
 		security,
 		parameters: [
 			...parameters,
@@ -764,36 +824,44 @@ export default defineRouter("/guilds", [
 				description: "Discord user ID",
 				schema: z.string().regex(/^\d{17,20}$/u),
 			},
+			{
+				name: "warningId",
+				in: "path",
+				required: true,
+				description: "Warning record ID",
+				schema: warningIdSchema,
+			},
 		],
-		requestBody: {
-			required: true,
-			content: { "application/json": { schema: warningCountOverrideSchema } },
-		},
 		responses: {
-			200: { description: "Warning count updated", schema: warningCountSchema },
+			204: { description: "Warning deleted" },
 			...accessResponses,
-			404: { description: "Guild or member not found", schema: errorResponseSchema },
+			400: { description: "Invalid warning ID", schema: errorResponseSchema },
+			404: { description: "Guild, member, or warning not found", schema: errorResponseSchema },
 			409: { description: "Bot is not a guild member", schema: errorResponseSchema },
 			503: { description: "Guild or service unavailable", schema: errorResponseSchema },
-			500: { description: "Failed to override member warning count", schema: errorResponseSchema },
+			500: { description: "Failed to delete member warning", schema: errorResponseSchema },
 		},
 		middleware,
 		handler: async (request, response) => {
 			const guild = await resolveGuild(request.params.guildId, response);
 			if (!guild) return;
-			const body = warningCountOverrideSchema.safeParse(request.body);
-			if (!body.success) {
-				return response.status(400).json({ error: body.error.issues[0]?.message ?? "Invalid request body" });
+			const warningId = warningIdSchema.safeParse(request.params.warningId);
+			if (!warningId.success) {
+				return response.status(400).json({ error: warningId.error.issues[0]?.message ?? "Invalid warning ID" });
 			}
-			const member = await resolveGuildMember({ guild, userId: request.params.userId, response });
-			if (!member) return;
-			const updatedMember = await overrideWarningCount({
+			const userId = request.params.userId;
+			if (typeof userId !== "string" || !/^\d{17,20}$/u.test(userId)) {
+				return response.status(400).json({ error: "Invalid user ID" });
+			}
+			const removed = await removeWarning({
 				guildId: guild.id,
-				userId: member.id,
-				username: member.user.username,
-				count: body.data.count,
+				userId,
+				warningId: warningId.data,
 			});
-			return response.status(200).json({ warningCount: updatedMember.warnings.count });
+			if (!removed) {
+				return response.status(404).json({ error: "Warning not found" });
+			}
+			return response.status(204).end();
 		},
 	},
 	{

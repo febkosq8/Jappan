@@ -9,6 +9,7 @@ import {
 } from "discord.js";
 
 import type { BotCommand, BotCommandData } from "../helpers/command.js";
+import { createGuildDashboardLink } from "../helpers/dashboard.js";
 import type { Config } from "../services/config.js";
 import { getMemberAnnouncementStatus, setMemberAnnouncement } from "../services/memberAnnouncement.js";
 
@@ -19,7 +20,12 @@ const commandData = {
 	defaultMemberPermissions: PermissionFlagsBits.ManageGuild,
 	hasSubCommands: true,
 	subCommands: [
-		{ name: "on", description: "Turn on one member announcement direction", category: "moderator" },
+		{
+			name: "on",
+			description: "Turn on one member announcement direction",
+			category: "moderator",
+			usageNotes: ["Select the channel for each chosen event; both channels are required when event is both."],
+		},
 		{ name: "off", description: "Turn off one member announcement direction", category: "moderator" },
 		{ name: "check", description: "Check member announcement status", category: "moderator" },
 	],
@@ -236,6 +242,13 @@ const command: BotCommand = {
 						leaveEnabled: status.leaveEnabled,
 						leaveChannelId: status.leaveChannelId ?? null,
 						config,
+					}),
+				],
+				components: [
+					createGuildDashboardLink({
+						config,
+						guildId: interaction.guild.id,
+						section: "service-preferences",
 					}),
 				],
 			});

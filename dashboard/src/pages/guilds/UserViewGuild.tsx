@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useEffect, useState, type ReactNode } from "react";
 import { FaListCheck } from "react-icons/fa6";
-import { FiAlertCircle, FiArrowLeft, FiGlobe, FiHome, FiShield, FiSliders } from "react-icons/fi";
+import { FiAlertCircle, FiArrowLeft, FiGlobe, FiHash, FiHome, FiShield, FiSliders, FiTrash2 } from "react-icons/fi";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -11,22 +11,26 @@ import APIHandler, { type UserGuildDetails } from "@jappan/handlers/APIHandler";
 import { AccessRedirect } from "@jappan/components/AdminRoute";
 import GuildPageHeader from "@jappan/components/display/GuildPageHeader";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
-import ServicePreferencesEditor from "@jappan/components/guild/ServicePreferencesEditor";
-import VoiceRegionLockManager from "@jappan/components/guild/VoiceRegionLockManager";
-import WarningManager from "@jappan/components/guild/WarningManager";
-import GuildOverview from "@jappan/components/panel/guild-overview";
-import BotPermissionsPanel from "@jappan/components/panel/bot-permissions-panel";
-import CommandPermissionsPanel from "@jappan/components/panel/command-permissions-panel";
+import GuildChannelsPanel from "@jappan/components/panel/GuildChannelsPanel";
+import GuildServicePreferencesPanel from "@jappan/components/panel/GuildServicePreferencesPanel";
+import GuildVoiceRegionLockManagerPanel from "@jappan/components/panel/GuildVoiceRegionLockManagerPanel";
+import GuildWarningManagerPanel from "@jappan/components/panel/GuildWarningManagerPanel";
+import GuildOverviewPanel from "@jappan/components/panel/GuildOverviewPanel";
+import BotPermissionsPanel from "@jappan/components/panel/BotPermissionsPanel";
+import CommandPermissionsPanel from "@jappan/components/panel/CommandPermissionsPanel";
+import PurgeMessagesPanel from "@jappan/components/panel/PurgeMessagesPanel";
 import guildIdPattern from "@jappan/helpers/guildIdPattern";
 import useDocumentTitle, { formatTitle } from "@jappan/helpers/useDocumentTitle";
 
 const guildSections = [
 	{ id: "guild-overview", label: "Overview", icon: FiHome },
+	{ id: "guild-channels", label: "Channels", icon: FiHash },
 	{ id: "service-preferences", label: "Service Preferences", icon: FiSliders },
 	{ id: "warnings", label: "Warnings", icon: FiAlertCircle },
 	{ id: "voice-region-locks", label: "Voice region locks", icon: FiGlobe },
 	{ id: "bot-permissions", label: "Bot permissions", icon: FiShield },
 	{ id: "command-permissions", label: "Command permissions", icon: FaListCheck },
+	{ id: "purge-messages", label: "Purge messages", icon: FiTrash2 },
 ];
 
 const readSectionFromHash = () => {
@@ -65,20 +69,23 @@ function GuildDetails({ guild }: { guild: UserGuildDetails }) {
 				))}
 			</TabsList>
 			<TabsPanel value="guild-overview" keepMounted>
-				<GuildOverview guild={guild} />
+				<GuildOverviewPanel guild={guild} />
+			</TabsPanel>
+			<TabsPanel value="guild-channels" keepMounted>
+				<GuildChannelsPanel guild={guild} />
 			</TabsPanel>
 			<TabsPanel value="service-preferences" keepMounted>
-				<ServicePreferencesEditor guild={guild} active={section === "service-preferences"} />
+				<GuildServicePreferencesPanel guild={guild} active={section === "service-preferences"} />
 			</TabsPanel>
 			<TabsPanel value="warnings" keepMounted>
-				<WarningManager
+				<GuildWarningManagerPanel
 					guildId={guild.id}
 					active={section === "warnings"}
 					isActiveMember={guild.isActiveMember}
 				/>
 			</TabsPanel>
 			<TabsPanel value="voice-region-locks" keepMounted>
-				<VoiceRegionLockManager
+				<GuildVoiceRegionLockManagerPanel
 					key={guild.id}
 					guildId={guild.id}
 					active={section === "voice-region-locks"}
@@ -90,6 +97,9 @@ function GuildDetails({ guild }: { guild: UserGuildDetails }) {
 			</TabsPanel>
 			<TabsPanel value="command-permissions" keepMounted>
 				<CommandPermissionsPanel permissions={guild.permissions} />
+			</TabsPanel>
+			<TabsPanel value="purge-messages" keepMounted>
+				<PurgeMessagesPanel active={section === "purge-messages"} initialGuildId={guild.id} />
 			</TabsPanel>
 		</Tabs>
 	);

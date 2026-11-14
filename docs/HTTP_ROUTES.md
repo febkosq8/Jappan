@@ -45,7 +45,12 @@ This document records design decisions and behavior that is easy to miss.
   middleware responses are merged into OpenAPI, including alternatives for
   shared status codes.
 - The dashboard redirects 401 and 403 responses to the corresponding auth
-  error pages; session lookup failures remain retryable.
+  error pages. Session connectivity failures use `NETWORK_ERROR` and offer a
+  manual retry plus automatic retries after 5 seconds, doubling the delay after
+  each failed retry (10, 20, 40 seconds, and so on). Other session lookup failures
+  use `SESSION_CHECK_FAILED` with manual retry only. Successful checks return to
+  the requested page, preserving its query and hash, or prompt sign-in if the
+  session has ended. Older `SESSION_UNAVAILABLE` links remain supported.
 - Better Auth uses MongoDB directly; Mongoose models expose the same collections
   internally. Normal Mongoose projections exclude credentials, session tokens,
   and verification values, but aggregation and direct MongoDB queries bypass
@@ -81,6 +86,18 @@ This document records design decisions and behavior that is easy to miss.
   Role assignability reflects bot permissions, hierarchy, and managed roles.
 - Preference updates follow the slash-command validation rules, clear dependent
   values when disabled, and do not post a confirmation message to the guild.
+  Audit logging, member announcements, and warning audit messages also require
+  `Embed Links` in their selected channels because they are sent as embeds.
+- Purge-job requests accept `text`, `regex`, and `ignoreCase`. Both flags default
+  to false, preserving literal, case-sensitive matching. With `regex: true`,
+  supply an RE2 pattern without slash delimiters, such as `^error\b`.
+  The shared bot/web matcher uses a linear-time RE2 engine, limits text to 2000
+  characters and regex programs to 1000 instructions, and rejects empty,
+  invalid, or unsupported patterns (including lookarounds and backreferences)
+  with HTTP 400 before creating a job. `ignoreCase` applies to either mode.
+  Regex whitespace is significant; literal text retains its existing trimming.
+  Only one pending or active purge job can exist per guild. Scanning and explicit
+  confirmation still happen on the job page.
 
 ## Bot actions and player sessions
 

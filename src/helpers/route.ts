@@ -106,11 +106,17 @@ export function defineRouter(
 		const route = entry;
 		routes.push({ ...route, inheritedMiddleware: options.middleware ?? [] });
 		const handleRouteError: ErrorRequestHandler = async (error, request, response, next) => {
-			logger.error("HTTP", route.errorMessage, {
-				method: request.method,
-				url: request.originalUrl,
-				error: error instanceof Error ? error.message : String(error),
-			});
+			const status =
+				typeof error === "object" && error !== null && "status" in error && typeof error.status === "number"
+					? error.status
+					: undefined;
+			if (status === undefined || status < 400 || status >= 500) {
+				logger.error("HTTP", route.errorMessage, {
+					method: request.method,
+					url: request.originalUrl,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
 			if (response.headersSent) {
 				next(error);
 			} else if (route.errorHandler) {

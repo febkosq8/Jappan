@@ -2,6 +2,7 @@ import type { Guild, VoiceChannel, VoiceState } from "discord.js";
 import {
 	ChannelType,
 	DiscordAPIError,
+	EmbedBuilder,
 	PermissionFlagsBits,
 	RESTJSONErrorCodes,
 	channelMention,
@@ -10,10 +11,13 @@ import {
 	userMention,
 } from "discord.js";
 
+import { createGuildDashboardLink } from "../helpers/dashboard.js";
 import { isActiveGuild, sendGuildMessage } from "../helpers/guild.js";
+import { formatVoiceRegion } from "../helpers/voiceRegion.js";
 import type { GuildMemberStateDocument } from "../models/guildMemberState.js";
 import GuildMemberStateModel from "../models/guildMemberState.js";
 import { getCommandId } from "./commandLoader.js";
+import { getConfig } from "./config.js";
 import { getGuildMemberState, getOrCreateGuildMemberState } from "./guildMemberState.js";
 import { logger } from "./logger.js";
 
@@ -138,6 +142,29 @@ function hasOtherLockedMemberInChannel({
 	);
 }
 
+function createVoiceRegionEmbed({
+	userId,
+	previousRegion,
+	nextRegion,
+	event,
+}: {
+	userId: string;
+	previousRegion: string;
+	nextRegion: string;
+	event: "join" | "leave";
+}): EmbedBuilder {
+	const config = getConfig();
+	return new EmbedBuilder()
+		.setColor("Blue")
+		.setAuthor({ name: `${config.BOT_NAME} : VC Region Lock`, iconURL: config.BOT_PFP, url: config.BOT_WEBSITE })
+		.setTitle(event === "join" ? "Voice region updated" : "Voice region restored")
+		.setDescription(
+			`🌐 \`${formatVoiceRegion(previousRegion)}\` → \`${formatVoiceRegion(nextRegion)}\`\n` +
+				`${userMention(userId)} ${event === "join" ? "joined" : "left"} the voice channel.`,
+		)
+		.setTimestamp();
+}
+
 async function handleVoiceRegionLockDisable({
 	guild,
 	userId,
@@ -237,7 +264,21 @@ export async function handleVoiceRegionState(oldState: VoiceState, newState: Voi
 				region: lock.region,
 			});
 			await channel.send({
-				content: `🔊 Voice region 🌐 updated from \`${previousRegion}\` to \`${lock.region}\` because ${userMention(member.id)} joined.`,
+				embeds: [
+					createVoiceRegionEmbed({
+						userId: member.id,
+						previousRegion,
+						nextRegion: lock.region,
+						event: "join",
+					}),
+				],
+				components: [
+					createGuildDashboardLink({
+						config: getConfig(),
+						guildId: newState.guild.id,
+						section: "voice-region-locks",
+					}),
+				],
 				allowedMentions: { parse: [] },
 			});
 			return;
@@ -266,7 +307,21 @@ export async function handleVoiceRegionState(oldState: VoiceState, newState: Voi
 				region: fallbackRegion,
 			});
 			await channel.send({
-				content: `🔊 Voice region 🌐 restored from \`${previousRegion}\` to \`${fallbackRegion}\` because ${userMention(member.id)} left.`,
+				embeds: [
+					createVoiceRegionEmbed({
+						userId: member.id,
+						previousRegion,
+						nextRegion: fallbackRegion,
+						event: "leave",
+					}),
+				],
+				components: [
+					createGuildDashboardLink({
+						config: getConfig(),
+						guildId: newState.guild.id,
+						section: "voice-region-locks",
+					}),
+				],
 				allowedMentions: { parse: [] },
 			});
 		}

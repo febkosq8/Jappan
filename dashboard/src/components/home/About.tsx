@@ -1,4 +1,16 @@
-import { Avatar, Button, Card, DateHandler, PillLink, Tag, TypingAnimation } from "@febkosq8/arc";
+import {
+	Avatar,
+	Button,
+	Card,
+	DateHandler,
+	PillLink,
+	Tabs,
+	TabsList,
+	TabsPanel,
+	TabsTab,
+	Tag,
+	TypingAnimation,
+} from "@febkosq8/arc";
 import { useQuery } from "@tanstack/react-query";
 import {
 	FiAlertTriangle,
@@ -15,13 +27,9 @@ import {
 import { SiDiscord } from "react-icons/si";
 import { toast } from "sonner";
 import APIHandler from "@jappan/handlers/APIHandler";
+import BotStatusOverviewPanel from "@jappan/components/panel/BotStatusOverviewPanel";
+import BotStatusHealthPanel from "@jappan/components/panel/BotStatusHealthPanel";
 import LoadingIndicator from "../LoadingIndicator";
-
-const serviceNames = [
-	{ key: "db", label: "Database" },
-	{ key: "discord", label: "Discord bot" },
-	{ key: "player", label: "Music player" },
-] as const;
 
 const commandCategories = ["General", "Music", "Leveling", "Fun", "Moderation"] as const;
 
@@ -31,11 +39,19 @@ export default function About() {
 		queryFn: APIHandler.getHealth,
 		refetchInterval: 30_000,
 	});
+	const botQuery = useQuery({
+		queryKey: ["public", "bot"],
+		queryFn: APIHandler.getBotStatus,
+		staleTime: Infinity,
+		refetchOnWindowFocus: false,
+		refetchOnReconnect: false,
+	});
+	const fetchingStatus = healthQuery.isFetching || botQuery.isFetching;
 
 	async function refreshStatus() {
 		const id = toast.info("Checking bot status...");
-		const result = await healthQuery.refetch();
-		if (!result.isSuccess) {
+		const [result, botResult] = await Promise.all([healthQuery.refetch(), botQuery.refetch()]);
+		if (!result.isSuccess || !botResult.isSuccess) {
 			toast.error("Could not refresh bot status.", { id });
 		} else if (!result.data.healthy) {
 			toast.warning("A bot service is unavailable.", { id });
@@ -47,9 +63,9 @@ export default function About() {
 	return (
 		<section
 			id="about"
-			className="mx-auto grid min-h-[calc(100dvh-4rem)] max-w-6xl items-center gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[1.2fr_0.8fr] lg:py-24"
+			className="mx-auto grid min-h-[calc(100dvh-4rem)] w-full max-w-6xl items-center gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[1.2fr_0.8fr] lg:py-24"
 		>
-			<div className="max-w-2xl">
+			<div className="min-w-0 w-full max-w-2xl">
 				<Tag
 					variant="outline"
 					className="mb-4 gap-2 bg-card px-3 py-1.5 text-sm font-medium text-muted-foreground"
@@ -131,7 +147,7 @@ export default function About() {
 					<Card.Content className="p-5! sm:p-6!">
 						<div className="flex flex-wrap items-center justify-between gap-3">
 							<div>
-								<h2 className="text-lg font-semibold text-card-foreground">Live bot status</h2>
+								<h2 className="text-lg font-semibold text-card-foreground">Bot status</h2>
 								<p
 									role={healthQuery.isError ? "status" : undefined}
 									className="text-base text-muted-foreground"
@@ -140,7 +156,7 @@ export default function About() {
 										? healthQuery.data
 											? "Could not refresh status."
 											: "Could not load live status."
-										: "Updates every 30 seconds."}
+										: "Health updates every 30 seconds."}
 								</p>
 							</div>
 							<Tag
@@ -193,73 +209,47 @@ export default function About() {
 										: "Checking status"}
 							</Tag>
 						</div>
-						<ul className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1">
-							{serviceNames.map(({ key, label }) => {
-								const healthy = healthQuery.data?.services[key];
-								const unavailable = healthQuery.isError && !healthQuery.data;
-								const StatusIcon =
-									healthy === undefined ? FiAlertTriangle : healthy ? FiCheckCircle : FiXCircle;
-								return (
-									<li
-										key={key}
-										className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2 text-base"
-									>
-										<span className="text-muted-foreground">{label}</span>
-										<Tag
-											variant={
-												healthy === undefined
-													? unavailable
-														? "warning"
-														: "secondary"
-													: healthy
-														? "success"
-														: "destructive"
-											}
-											size="sm"
-										>
-											{healthy === undefined && !unavailable ? (
-												<span className="mr-1 inline-flex items-center justify-center">
-													<LoadingIndicator
-														label={`Checking ${label}`}
-														inline
-														decorative
-														size={40}
-														rows={1}
-														columns={3}
-													/>
-												</span>
-											) : (
-												<StatusIcon
-													className={`mr-1 inline size-4 ${
-														healthy === undefined
-															? "text-warning-foreground"
-															: healthy
-																? "text-success-foreground"
-																: "text-destructive-foreground"
-													}`}
-													aria-hidden="true"
-												/>
-											)}
-											{healthy === undefined
-												? unavailable
-													? "Unavailable"
-													: "Checking"
-												: healthy
-													? "Operational"
-													: "Unavailable"}
-										</Tag>
-									</li>
-								);
-							})}
-						</ul>
+						{botQuery.isError && (
+							<p role="status" className="mt-3 text-sm text-destructive">
+								{botQuery.data
+									? "Could not refresh bot details. Showing the last fetched values."
+									: "Could not load bot details. Try refetching bot status."}
+							</p>
+						)}
+						<Tabs defaultValue="overview" className="mt-4 gap-4">
+							<TabsList aria-label="Bot status sections">
+								<TabsTab value="overview" size="sm">
+									Overview
+								</TabsTab>
+								<TabsTab value="health" size="sm">
+									Health
+								</TabsTab>
+							</TabsList>
+							<TabsPanel value="overview">
+								<BotStatusOverviewPanel
+									bot={botQuery.data}
+									isError={botQuery.isError}
+									updatedAt={botQuery.dataUpdatedAt}
+									healthUpdatedAt={healthQuery.dataUpdatedAt}
+								/>
+							</TabsPanel>
+							<TabsPanel value="health">
+								<BotStatusHealthPanel
+									health={healthQuery.data}
+									healthIsError={healthQuery.isError}
+									bot={botQuery.data}
+									botIsError={botQuery.isError}
+								/>
+							</TabsPanel>
+						</Tabs>
 						<div className="mt-4 flex items-center justify-between gap-4">
 							<div className="min-w-0">
 								<p className="mt-1 min-h-6 text-base text-muted-foreground">
-									{healthQuery.isFetching ? (
+									{fetchingStatus ? (
 										"Fetching latest status…"
 									) : healthQuery.dataUpdatedAt > 0 ? (
 										<>
-											Last fetched:{" "}
+											Last health check:{" "}
 											<time
 												dateTime={new Date(healthQuery.dataUpdatedAt).toISOString()}
 												title={DateHandler.getDateTime(healthQuery.dataUpdatedAt)}
@@ -277,7 +267,7 @@ export default function About() {
 								size="md"
 								className="group/refetch gap-1"
 								onClick={() => void refreshStatus()}
-								disabled={healthQuery.isFetching}
+								disabled={fetchingStatus}
 								aria-label="Refetch bot status"
 							>
 								<FiRefreshCw

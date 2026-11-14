@@ -86,6 +86,83 @@ function CommandDetails({ command }: { command: GlobalCommand }) {
 					</div>
 				)}
 			</dl>
+			{(command.options.length > 0 || command.usageNotes.length > 0) && (
+				<section className="mt-4" aria-label={`${command.name} usage and options`}>
+					{command.options.length > 0 && (
+						<>
+							<h5 className="text-sm font-semibold">Options</h5>
+							<div className="mt-1 flex flex-wrap items-baseline gap-2">
+								<span className="text-xs text-muted-foreground">Usage</span>
+								<pre className="min-w-0 whitespace-pre-wrap break-words rounded-md border border-border bg-muted px-2 py-1 text-xs text-foreground">
+									<code>
+										/{command.name}{" "}
+										{command.options
+											.map((option) =>
+												option.required ? `<${option.name}>` : `[${option.name}]`,
+											)
+											.join(" ")}
+									</code>
+								</pre>
+							</div>
+						</>
+					)}
+					{command.usageNotes.length > 0 && (
+						<div className="mt-2 text-sm">
+							<p className="font-medium">Usage notes</p>
+							<ul className="mt-1 list-disc space-y-1 pl-5 text-muted-foreground">
+								{command.usageNotes.map((note) => (
+									<li key={note}>{note}</li>
+								))}
+							</ul>
+						</div>
+					)}
+					{command.options.length > 0 && (
+						<ul className="mt-2 space-y-2">
+							{command.options.map((option) => {
+								const details = [
+									option.required ? "Required" : "Optional",
+									...(option.autocomplete ? ["Autocomplete"] : []),
+									...(option.minValue !== null ? [`Minimum: ${option.minValue}`] : []),
+									...(option.maxValue !== null ? [`Maximum: ${option.maxValue}`] : []),
+									...(option.minLength !== null ? [`Min length: ${option.minLength}`] : []),
+									...(option.maxLength !== null ? [`Max length: ${option.maxLength}`] : []),
+								];
+								return (
+									<li key={option.name} className="rounded-md border border-border p-3 text-sm">
+										<div className="flex flex-wrap items-start justify-between gap-2">
+											<p className="min-w-0 wrap-break-word font-medium">
+												<code>{option.name}</code>
+											</p>
+											<Tag variant="secondary" size="xs">
+												Type: {option.type}
+											</Tag>
+										</div>
+										<p className="mt-1 text-muted-foreground">{option.description}</p>
+										<div className="mt-2">
+											<ValueTags values={details} />
+										</div>
+										{option.channelTypes.length > 0 && (
+											<p className="mt-2 text-muted-foreground">
+												Channel types: {option.channelTypes.join(", ")}
+											</p>
+										)}
+										{option.choices.length > 0 && (
+											<div className="mt-2">
+												<p className="text-muted-foreground">Choices</p>
+												<ol className="mt-1 list-decimal space-y-1 pl-5">
+													{option.choices.map((choice) => (
+														<li key={String(choice.value)}>{choice.name}</li>
+													))}
+												</ol>
+											</div>
+										)}
+									</li>
+								);
+							})}
+						</ul>
+					)}
+				</section>
+			)}
 		</>
 	);
 }
@@ -107,14 +184,16 @@ function CommandCard({
 						<h2 className="min-w-0 wrap-break-word text-lg font-semibold">/{command.name}</h2>
 						{!hasSubcommands && <CopyCommandButton command={command} />}
 					</div>
-					<Tag
-						variant="secondary"
-						size="sm"
-						className="capitalize"
-						aria-label={`Category: ${command.category}`}
-					>
-						{command.category}
-					</Tag>
+					<div className="flex flex-wrap gap-1">
+						<Tag
+							variant="secondary"
+							size="sm"
+							className="capitalize"
+							aria-label={`Category: ${command.category}`}
+						>
+							{command.category}
+						</Tag>
+					</div>
 				</div>
 				<CommandDetails command={command} />
 				{subcommands.length > 0 && (
@@ -170,7 +249,10 @@ function groupCommands(commands: GlobalCommand[]) {
 		subcommands.set(rootName, siblings);
 	}
 
-	return standalone.map((command) => ({ command, subcommands: subcommands.get(command.name) ?? [] }));
+	return standalone.map((command) => ({
+		command,
+		subcommands: subcommands.get(command.name) ?? [],
+	}));
 }
 
 export default function Commands() {
@@ -194,7 +276,7 @@ export default function Commands() {
 		<main className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6">
 			<h1 className="typography-heading-2 text-3xl font-bold tracking-tight">Commands</h1>
 			<p className="mt-2 text-muted-foreground whitespace-pre-wrap">
-				{`Global commands and their declared permissions.\nServer settings and channel overrides may affect access.`}
+				{`Commands, their options, and declared permissions.\nServer settings and channel overrides may affect access. Use required <options> and optional [options] as indicated.`}
 			</p>
 			<div className="mt-6">
 				<p id="command-category-label" className="mb-2 text-sm font-medium">

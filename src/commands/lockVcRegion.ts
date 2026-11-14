@@ -11,6 +11,8 @@ import {
 } from "discord.js";
 
 import type { BotCommand, BotCommandData } from "../helpers/command.js";
+import { createGuildDashboardLink } from "../helpers/dashboard.js";
+import { formatVoiceRegion } from "../helpers/voiceRegion.js";
 import { getCommandId } from "../services/commandLoader.js";
 import {
 	addVoiceRegionLock,
@@ -85,12 +87,20 @@ const command: BotCommand = {
 			await interaction.editReply("⛔ This command can only be used in a guild.");
 			return;
 		}
+		const dashboardLink = [
+			createGuildDashboardLink({
+				config,
+				guildId: interaction.guild.id,
+				section: "voice-region-locks",
+			}),
+		];
 
 		const subcommand = interaction.options.getSubcommand();
 		if (subcommand === "add") {
 			const channel = interaction.options.getChannel("channel", true);
 			const user = interaction.options.getUser("user", true);
 			const region = interaction.options.getString("region", true);
+			const formattedRegion = formatVoiceRegion(region);
 			try {
 				await addVoiceRegionLock({
 					guild: interaction.guild,
@@ -99,13 +109,18 @@ const command: BotCommand = {
 					channelId: channel.id,
 					region,
 				});
-				await interaction.editReply(
-					`✅ When ${userMention(user.id)} joins ${channelMention(channel.id)}, its voice region will be set to \`${region}\`.`,
-				);
+				await interaction.editReply({
+					content: `✅ When ${userMention(user.id)} joins ${channelMention(channel.id)}, its voice region will be set to \`${formattedRegion}\`.`,
+					components: dashboardLink,
+				});
 			} catch (error: unknown) {
-				await interaction.editReply(
-					error instanceof Error ? `⛔ ${error.message}` : "⛔ I could not create that voice region lock.",
-				);
+				await interaction.editReply({
+					content:
+						error instanceof Error
+							? `⛔ ${error.message}`
+							: "⛔ I could not create that voice region lock.",
+					components: dashboardLink,
+				});
 			}
 			return;
 		}
@@ -113,11 +128,12 @@ const command: BotCommand = {
 		if (subcommand === "delete") {
 			const user = interaction.options.getUser("user", true);
 			const removed = await removeVoiceRegionLock(interaction.guild, user.id);
-			await interaction.editReply(
-				removed
+			await interaction.editReply({
+				content: removed
 					? `✅ Removed the voice region lock for ${userMention(user.id)}.`
 					: `⛔ No lock exists for ${userMention(user.id)}.`,
-			);
+				components: dashboardLink,
+			});
 			return;
 		}
 
@@ -139,12 +155,12 @@ const command: BotCommand = {
 					locks
 						.map(
 							(lock) =>
-								`${userMention(lock.userId)} in ${channelMention(lock.channelId)} -> \`${lock.region}\``,
+								`${userMention(lock.userId)} in ${channelMention(lock.channelId)} -> \`${formatVoiceRegion(lock.region)}\``,
 						)
 						.join("\n"),
 				);
 			}
-			await interaction.editReply({ embeds: [embed] });
+			await interaction.editReply({ embeds: [embed], components: dashboardLink });
 			return;
 		}
 

@@ -33,6 +33,12 @@ export interface AdminBotPlayerSession {
 	playerState: "Playing" | "Paused";
 }
 
+export interface AdminBotAdministrator {
+	id: string;
+	username: string;
+	avatarUrl: string;
+}
+
 export interface BotStatus {
 	botName: string;
 	botAvatarUrl: string;
@@ -96,6 +102,8 @@ export interface AdminGuildChannel {
 	parent: PreferenceEntity | null;
 	position: number;
 	canSendMessage: boolean;
+	canReadMessages: boolean;
+	canManageMessages: boolean;
 	topic?: string | null;
 	nsfw?: boolean;
 	rateLimitPerUser?: number | null;
@@ -107,6 +115,84 @@ export interface AdminGuildMessageResult {
 	channelId: string;
 	channelName: string;
 	messageUrl: string;
+}
+
+export interface GuildPurgeMessagePreview {
+	previewId: string;
+	guild: { id: string; name: string };
+	channel: { id: string; name: string } | null;
+	request: {
+		count: number;
+		targetUser: WarningMember | null;
+		textFilter: string | null;
+		regex: boolean;
+		ignoreCase: boolean;
+	};
+	scannedChannelCount: number;
+	skippedChannelCount: number;
+	scannedCount: number;
+	matchedCount: number;
+	deleteCount: number;
+	scanStoppedAtLimit: boolean;
+	bulkDeleteCount: number;
+	individualDeleteCount: number;
+	olderThanBulkDeleteLimit: number;
+	expiresAt: number;
+	messages: {
+		id: string;
+		channelId: string;
+		channelName: string;
+		author: { id: string; username: string; displayName: string; avatarUrl: string };
+		content: string;
+		embedContent?: (string | null)[];
+		createdTimestampMs: number;
+		jumpUrl: string;
+	}[];
+}
+
+export interface PurgeMessageJobState {
+	jobId: string;
+	version: number;
+	guildId: string;
+	guildName: string;
+	guildIcon: string | null;
+	channelName: string;
+	selectedChannelId: string | null;
+	targetUserId: string | null;
+	textFilter: string | null;
+	regex: boolean;
+	ignoreCase: boolean;
+	status:
+		| "awaiting_preview"
+		| "previewing"
+		| "awaiting_confirmation"
+		| "running"
+		| "complete"
+		| "stopped"
+		| "failed"
+		| "cancelled";
+	preview: GuildPurgeMessagePreview | null;
+	startedAtMs: number;
+	requestExpiresAtMs: number;
+	finishedAtMs: number | null;
+	serverTimestampMs: number;
+	messageLimit: number;
+	channelCount: number;
+	completedChannels: number;
+	currentChannelId: string | null;
+	currentChannelName: string | null;
+	scannedMessages: number;
+	matchedMessages: number;
+	messagesToDelete: number;
+	messagesProcessed: number;
+	messageStatuses: Record<string, "pending" | "deleting" | "deleted" | "failed">;
+	deletedMessages: number;
+	failedMessages: number;
+	unprocessedMessages: number;
+	progressPercentage: number;
+	timeLimitReached: boolean;
+	errors: string[];
+	error?: string;
 }
 
 export interface AdminGuildKickResult {
@@ -191,8 +277,19 @@ export interface WarningMember {
 	avatarUrl: string | null;
 }
 
+export interface WarningRecord {
+	id: string;
+	issuedAt: string | null;
+	reason: string;
+	issuerId: string | null;
+	issuer: { userId: string; username?: string; avatarUrl?: string | null } | null;
+	thresholdAction: "unknown" | "pending" | "none" | "banned" | "timed_out" | "ban_failed" | "timeout_failed";
+}
+
 export interface WarningMemberDetails extends WarningMember {
+	isGuildMember: boolean;
 	warningCount: number;
+	warnings: WarningRecord[];
 }
 
 export interface WarnedMember {
@@ -225,6 +322,7 @@ export interface VoiceRegionLocks {
 export interface ServicePreferencesEditorGuild {
 	id: string;
 	isActiveMember: boolean;
+	permissions?: string[];
 	servicePreferences: ServicePreferences;
 }
 
@@ -270,6 +368,20 @@ export interface GlobalCommand {
 	category: "general" | "music" | "level" | "fun" | "moderator" | "admin";
 	requiredBotPermissions: string[];
 	requiredUserPermissions: string[];
+	usageNotes: string[];
+	options: {
+		name: string;
+		description: string;
+		type: string;
+		required: boolean;
+		autocomplete: boolean;
+		choices: { name: string; value: string | number }[];
+		channelTypes: string[];
+		minValue: number | null;
+		maxValue: number | null;
+		minLength: number | null;
+		maxLength: number | null;
+	}[];
 }
 
 export interface PlayerTrack {
@@ -435,13 +547,11 @@ class APIHandler {
 		return data;
 	}
 
-	static async overrideGuildMemberWarnings(guildId: string, userId: string, count: number): Promise<number> {
-		const { data } = await apiClient.patch<{ warningCount: number }>(
-			`/api/v1/guilds/${encodeURIComponent(guildId)}/users/${encodeURIComponent(userId)}/warn`,
-			{ count },
+	static async deleteGuildMemberWarning(guildId: string, userId: string, warningId: string): Promise<void> {
+		await apiClient.delete(
+			`/api/v1/guilds/${encodeURIComponent(guildId)}/users/${encodeURIComponent(userId)}/warn/${encodeURIComponent(warningId)}`,
 			{ withCredentials: true },
 		);
-		return data.warningCount;
 	}
 
 	static async getGuildVoiceRegionLocks(guildId: string): Promise<VoiceRegionLocks> {
@@ -473,6 +583,13 @@ class APIHandler {
 
 	static async getBotStatus(): Promise<BotStatus> {
 		const { data } = await apiClient.get<BotStatus>("/api/v1/public/bot");
+		return data;
+	}
+
+	static async getAdminBotAdministrators(): Promise<AdminBotAdministrator[]> {
+		const { data } = await apiClient.get<AdminBotAdministrator[]>("/api/v1/admin/bot/administrators", {
+			withCredentials: true,
+		});
 		return data;
 	}
 
@@ -527,6 +644,59 @@ class APIHandler {
 			`/api/v1/guilds/${encodeURIComponent(guildId)}/channels`,
 			{ withCredentials: true },
 		);
+		return data;
+	}
+
+	static async createGuildMessagePurgeJob(
+		guildId: string,
+		filters: {
+			channelId?: string;
+			count: number;
+			userId?: string;
+			text?: string;
+			regex?: boolean;
+			ignoreCase?: boolean;
+		},
+	): Promise<{ jobId: string }> {
+		const { data } = await apiClient.post<{ jobId: string }>(
+			`/api/v1/guilds/${encodeURIComponent(guildId)}/messages/purge`,
+			filters,
+			{ withCredentials: true },
+		);
+		return data;
+	}
+
+	static async preparePurgeMessageJob(jobId: string): Promise<PurgeMessageJobState> {
+		const { data } = await apiClient.post<PurgeMessageJobState>(
+			`/api/v1/purge-jobs/${encodeURIComponent(jobId)}/preview`,
+			{},
+			{ withCredentials: true },
+		);
+		return data;
+	}
+
+	static async confirmPurgeMessageJob(jobId: string, previewId: string): Promise<PurgeMessageJobState> {
+		const { data } = await apiClient.post<PurgeMessageJobState>(
+			`/api/v1/purge-jobs/${encodeURIComponent(jobId)}/confirm`,
+			{ previewId, confirm: true },
+			{ withCredentials: true },
+		);
+		return data;
+	}
+
+	static async cancelPurgeMessageJob(jobId: string): Promise<PurgeMessageJobState> {
+		const { data } = await apiClient.post<PurgeMessageJobState>(
+			`/api/v1/purge-jobs/${encodeURIComponent(jobId)}/cancel`,
+			{},
+			{ withCredentials: true },
+		);
+		return data;
+	}
+
+	static async getPurgeMessageJob(jobId: string): Promise<PurgeMessageJobState> {
+		const { data } = await apiClient.get<PurgeMessageJobState>(`/api/v1/purge-jobs/${encodeURIComponent(jobId)}`, {
+			withCredentials: true,
+		});
 		return data;
 	}
 

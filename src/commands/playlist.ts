@@ -1,6 +1,7 @@
 import { EmbedBuilder, InteractionContextType, MessageFlags, SlashCommandBuilder } from "discord.js";
 
 import { formatUser } from "../helpers/discord.js";
+import { createPlaylistDashboardLink } from "../helpers/dashboard.js";
 import { isValidPlaylistQuery } from "../helpers/playlist.js";
 import { createPlayerEmbed } from "../helpers/player.js";
 import type { BotCommand, BotCommandData } from "../services/commandLoader.js";
@@ -59,8 +60,9 @@ const command: BotCommand = {
 		)
 		.addSubcommand((subcommand) => subcommand.setName("check").setDescription("List your saved playlists"))
 		.setContexts([InteractionContextType.Guild]),
-	execute: async ({ interaction }) => {
+	execute: async ({ interaction, config }) => {
 		await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+		const dashboardLink = [createPlaylistDashboardLink({ config })];
 		const subcommand = interaction.options.getSubcommand();
 		if (subcommand === "add") {
 			const listname = interaction.options.getString("listname", true).trim();
@@ -105,6 +107,7 @@ const command: BotCommand = {
 			);
 			await interaction.editReply({
 				embeds: [savedPlaylistEmbed],
+				components: dashboardLink,
 			});
 			return;
 		}
@@ -133,6 +136,7 @@ const command: BotCommand = {
 			}
 			await interaction.editReply({
 				embeds: playlistEmbeds,
+				components: dashboardLink,
 			});
 			return;
 		}
@@ -141,7 +145,10 @@ const command: BotCommand = {
 			const listname = interaction.options.getString("listname", true);
 			const removed = await removeUserPlaylist({ userId: interaction.user.id, listname });
 			if (!removed) {
-				await interaction.editReply(`⛔ No saved playlist matched **${listname}**.`);
+				await interaction.editReply({
+					content: `⛔ No saved playlist matched **${listname}**.`,
+					components: dashboardLink,
+				});
 				return;
 			}
 			const removedPlaylistEmbed = createPlayerEmbed({
@@ -149,7 +156,7 @@ const command: BotCommand = {
 				description: `Removed saved playlist **${listname}**.`,
 				color: "Green",
 			});
-			await interaction.editReply({ embeds: [removedPlaylistEmbed] });
+			await interaction.editReply({ embeds: [removedPlaylistEmbed], components: dashboardLink });
 			return;
 		}
 

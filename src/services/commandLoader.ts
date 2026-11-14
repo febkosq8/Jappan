@@ -1,13 +1,15 @@
 import type { ApplicationCommand } from "discord.js";
 import { Collection, PermissionsBitField } from "discord.js";
 
-import type { BotCommand, BotCommandData } from "../helpers/command.js";
-import { isBotCommand } from "../helpers/command.js";
+import type { BotCommand, BotCommandData, BotContextMenuCommand } from "../helpers/command.js";
+import { isBotCommand, isBotContextMenuCommand } from "../helpers/command.js";
 import about from "../commands/about.js";
 import auditlog from "../commands/auditlog.js";
-import clear from "../commands/clear.js";
+import createPurgeJob from "../commands/create-purge-job.js";
+import purgeMessages from "../commands/purge-messages.js";
 import doppelganger from "../commands/doppelganger.js";
 import admin from "../commands/guildCommands/admin.js";
+import generateMessages from "../commands/guildCommands/generateMessages.js";
 import help from "../commands/help.js";
 import leaderboard from "../commands/leaderboard.js";
 import level from "../commands/level.js";
@@ -18,12 +20,19 @@ import play from "../commands/play.js";
 import playlist from "../commands/playlist.js";
 import soundboard from "../commands/soundboard.js";
 import warn from "../commands/warn.js";
-export type { BotCommand, BotCommandContext, BotCommandData, CommandCategory } from "../helpers/command.js";
+export type {
+	BotCommand,
+	BotCommandContext,
+	BotCommandData,
+	BotContextMenuCommand,
+	BotContextMenuCommandContext,
+	CommandCategory,
+} from "../helpers/command.js";
 
 const globalCommandModules: readonly unknown[] = [
 	about,
 	auditlog,
-	clear,
+	purgeMessages,
 	doppelganger,
 	help,
 	leaderboard,
@@ -36,11 +45,13 @@ const globalCommandModules: readonly unknown[] = [
 	soundboard,
 	warn,
 ];
-const guildCommandModules: readonly unknown[] = [admin];
+const guildCommandModules: readonly unknown[] = [admin, generateMessages];
+const globalContextMenuCommandModules: readonly unknown[] = [createPurgeJob];
 
 let loadedCommands: Collection<string, BotCommand> | undefined;
 let loadedGlobalCommands: Collection<string, BotCommand> | undefined;
 let loadedGuildCommands: Collection<string, BotCommand> | undefined;
+let loadedGlobalContextMenuCommands: Collection<string, BotContextMenuCommand> | undefined;
 let registeredCommandIds: Collection<string, string> | undefined;
 
 async function loadCommandModules(modules: readonly unknown[]): Promise<Collection<string, BotCommand>> {
@@ -61,9 +72,30 @@ async function loadCommandModules(modules: readonly unknown[]): Promise<Collecti
 	return commands;
 }
 
+async function loadContextMenuCommandModules(
+	modules: readonly unknown[],
+): Promise<Collection<string, BotContextMenuCommand>> {
+	const commands = new Collection<string, BotContextMenuCommand>();
+
+	for (const commandModule of modules) {
+		if (!isBotContextMenuCommand(commandModule)) {
+			throw new Error("Invalid context menu command module");
+		}
+
+		if (commands.has(commandModule.data.name)) {
+			throw new Error(`Duplicate context menu command: ${commandModule.data.name}`);
+		}
+
+		commands.set(commandModule.data.name, commandModule);
+	}
+
+	return commands;
+}
+
 export async function loadCommands(): Promise<Collection<string, BotCommand>> {
 	loadedGlobalCommands = await loadCommandModules(globalCommandModules);
 	loadedGuildCommands = await loadCommandModules(guildCommandModules);
+	loadedGlobalContextMenuCommands = await loadContextMenuCommandModules(globalContextMenuCommandModules);
 	loadedCommands = new Collection([...loadedGlobalCommands, ...loadedGuildCommands]);
 	return loadedCommands;
 }
@@ -86,6 +118,25 @@ export function getGlobalCommands(): Collection<string, BotCommand> {
 	}
 
 	return loadedGlobalCommands;
+}
+
+export function getGlobalContextMenuCommands(): Collection<string, BotContextMenuCommand> {
+	if (!loadedGlobalContextMenuCommands) {
+		throw new Error("Context menu commands have not been loaded");
+	}
+
+	return loadedGlobalContextMenuCommands;
+}
+
+export function getContextMenuCommand(name: string): BotContextMenuCommand | undefined {
+	return getGlobalContextMenuCommands().get(name);
+}
+
+export function getGlobalApplicationCommandData() {
+	return [
+		...getGlobalCommands().map((command) => command.data.toJSON()),
+		...getGlobalContextMenuCommands().map((command) => command.data.toJSON()),
+	];
 }
 
 export function getRequiredGlobalBotPermissions(): PermissionsBitField {

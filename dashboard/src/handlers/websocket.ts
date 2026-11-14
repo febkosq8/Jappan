@@ -1,5 +1,11 @@
 import { io, type Socket } from "socket.io-client";
-import { apiBaseURL, type PlayerControlAction, type PlayerSession, type PlayerSuggestion } from "./APIHandler";
+import {
+	apiBaseURL,
+	type PurgeMessageJobState,
+	type PlayerControlAction,
+	type PlayerSession,
+	type PlayerSuggestion,
+} from "./APIHandler";
 
 /** Must match `WEBSOCKET_PATH` on the server. */
 const WEBSOCKET_PATH = "/api/v1/websocket";
@@ -16,6 +22,8 @@ interface ServerToClientEvents {
 	"player:ended": (payload: { sessionId: string }) => void;
 	"player:revoked": (payload: { sessionId: string; status: number; error: string }) => void;
 	"player:replaced": (payload: { sessionId: string }) => void;
+	"purge-job:state": (state: PurgeMessageJobState) => void;
+	"purge-job:revoked": (payload: { jobId: string; status: number; error: string }) => void;
 }
 
 interface ClientToServerEvents {
@@ -29,6 +37,8 @@ interface ClientToServerEvents {
 		payload: { sessionId: string; query: string },
 		ack: Ack<{ suggestions: PlayerSuggestion[] }>,
 	) => void;
+	"purge-job:subscribe": (payload: { jobId: string }, ack: Ack<{ state: PurgeMessageJobState }>) => void;
+	"purge-job:unsubscribe": (payload: { jobId: string }, ack: Ack) => void;
 }
 
 export type WebsocketClient = Socket<ServerToClientEvents, ClientToServerEvents>;
@@ -147,4 +157,19 @@ export async function fetchPlayerSuggestions({
 		run: () => socket.timeout(REQUEST_TIMEOUT_MS).emitWithAck("player:suggestions", { sessionId, query }),
 	});
 	return suggestions;
+}
+
+export async function subscribeToPurgeMessageJob({
+	socket,
+	jobId,
+}: {
+	socket: WebsocketClient;
+	jobId: string;
+}): Promise<PurgeMessageJobState> {
+	const { state } = await request({
+		socket,
+		event: "purge-job:subscribe",
+		run: () => socket.timeout(REQUEST_TIMEOUT_MS).emitWithAck("purge-job:subscribe", { jobId }),
+	});
+	return state;
 }

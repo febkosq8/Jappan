@@ -10,12 +10,16 @@ const levelingStateSchema = new Schema(
 	{ _id: false },
 );
 
-const warningStateSchema = new Schema(
-	{
-		count: { type: Number, required: true, min: 0, default: 0 },
+const warningRecordSchema = new Schema({
+	issuedAt: { type: Date, default: null },
+	reason: { type: String, required: true, trim: true, maxlength: 500 },
+	issuerId: { type: String, default: null },
+	thresholdAction: {
+		type: String,
+		enum: ["unknown", "pending", "none", "banned", "timed_out", "ban_failed", "timeout_failed"],
+		required: true,
 	},
-	{ _id: false },
-);
+});
 
 const voiceRegionLockSchema = new Schema(
 	{
@@ -33,7 +37,7 @@ const guildMemberStateSchema = new Schema(
 		userId: { type: String, required: true, immutable: true },
 		username: { type: String, required: true, trim: true },
 		leveling: { type: levelingStateSchema, required: true, default: () => ({}) },
-		warnings: { type: warningStateSchema, required: true, default: () => ({}) },
+		warnings: { type: [warningRecordSchema], required: true, default: [] },
 		voiceRegionLock: { type: voiceRegionLockSchema, default: null },
 	},
 	{
@@ -46,8 +50,6 @@ const guildMemberStateSchema = new Schema(
 guildMemberStateSchema.index({ guildId: 1, userId: 1 }, { unique: true });
 
 guildMemberStateSchema.index({ guildId: 1, "leveling.points": -1 });
-
-guildMemberStateSchema.index({ guildId: 1, "warnings.count": -1 });
 
 guildMemberStateSchema.index({ guildId: 1, "voiceRegionLock.channelId": 1 });
 

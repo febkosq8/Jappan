@@ -9,6 +9,7 @@ import "../models/guildMemberState.js";
 import "../models/userPlaylist.js";
 import { getConfig } from "./config.js";
 import { logger } from "./logger.js";
+import { runMigrations } from "./migrations.js";
 
 const authModelNames = new Set([
 	AuthAccountModel.modelName,
@@ -78,6 +79,15 @@ class DatabaseManager {
 		}
 	}
 
+	private static async initializeDatabase(): Promise<void> {
+		const database = mongoose.connection.db;
+		if (!database) {
+			throw new Error("MongoDB database handle is unavailable");
+		}
+		await runMigrations(database);
+		await this.syncIndexes();
+	}
+
 	static getDatabaseStatus(): boolean {
 		return mongoose.connection.readyState === 1;
 	}
@@ -95,7 +105,7 @@ class DatabaseManager {
 		this.registerConnectionListeners();
 
 		if (mongoose.connection.readyState === 1) {
-			await this.syncIndexes();
+			await this.initializeDatabase();
 			this.hasConnected = true;
 			if (successCallback) {
 				await successCallback();
@@ -107,10 +117,11 @@ class DatabaseManager {
 			logger.info("DATABASE", "Connecting to MongoDB");
 			this.connectionPromise = mongoose
 				.connect(getConfig("DB_URL"), {
+					autoIndex: false,
 					serverSelectionTimeoutMS: 10000,
 				})
 				.then(async (connection) => {
-					await this.syncIndexes();
+					await this.initializeDatabase();
 					this.hasConnected = true;
 					if (successCallback) {
 						await successCallback();
