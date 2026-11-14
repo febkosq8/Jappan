@@ -10,7 +10,8 @@ import { logger } from "../services/logger.js";
 import { getBotVersion } from "../helpers/utils.js";
 
 const REQUEST_TIMEOUT_MS = 5 * 60 * 1000;
-const QUIET_ROUTES = ["/api/v1/public/health"];
+const QUIET_ROUTES_STARTSWITH = ["/api/v1/public/health"];
+const QUIET_ROUTES_EXACT = ["/api/v1/auth/get-session"];
 const QUIET_METHODS = ["OPTIONS"];
 const AUTH_ROUTE_PREFIX = "/api/v1/auth/";
 const CSP_BASE =
@@ -48,7 +49,11 @@ function processRequest(request: Request, response: Response, next: NextFunction
 			});
 		}
 	});
-	if (!QUIET_ROUTES.some((route) => request.path.startsWith(route)) && !QUIET_METHODS.includes(request.method)) {
+	if (
+		!QUIET_ROUTES_STARTSWITH.some((route) => request.path.startsWith(route)) &&
+		!QUIET_ROUTES_EXACT.includes(request.path) &&
+		!QUIET_METHODS.includes(request.method)
+	) {
 		logger.info("HTTP", "HTTP request received", {
 			method: request.method,
 			url: requestUrl,
