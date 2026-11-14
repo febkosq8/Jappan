@@ -540,7 +540,9 @@ export default function WebPlayer() {
 							sessionId={sessionId}
 							disabled={controlMutation.isPending || !connected}
 							adding={controlMutation.isPending && controlMutation.variables?.path === "queue/add"}
-							onAdd={(query) => controlMutation.mutate({ path: "queue/add", body: { query } })}
+							onAdd={(query, onSuccess) =>
+								controlMutation.mutate({ path: "queue/add", body: { query } }, { onSuccess })
+							}
 							loadSuggestions={websocket.suggestions}
 						/>
 					)}

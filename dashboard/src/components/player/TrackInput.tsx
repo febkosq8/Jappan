@@ -36,7 +36,7 @@ export default function TrackInput({
 	disabled: boolean;
 	submitDisabled?: boolean;
 	adding: boolean;
-	onAdd: (query: string) => void;
+	onAdd: (query: string, onSuccess: () => void) => void;
 	onSavedPlaylistChange?: (isSavedPlaylist: boolean) => void;
 	loadSuggestions: (query: string) => Promise<PlayerSuggestion[]>;
 	title?: string;
@@ -102,11 +102,12 @@ export default function TrackInput({
 		if (!trimmed || disabled || submitDisabled) {
 			return;
 		}
-		onAdd(trimmed);
-		setText("");
-		updateSelectedSuggestion(null);
-		setDebouncedText("");
-		setOpen(false);
+		onAdd(trimmed, () => {
+			setText("");
+			updateSelectedSuggestion(null);
+			setDebouncedText("");
+			setOpen(false);
+		});
 	};
 
 	return (

@@ -149,16 +149,21 @@ export default function PlayerLanding() {
 					submitDisabled={!guildId}
 					adding={startMutation.isPending}
 					onSavedPlaylistChange={setSavedPlaylistSelected}
-					onAdd={(query) => {
+					onAdd={(query, onSuccess) => {
 						if (guildId && !trackInputDisabled) {
-							startMutation.mutate({
-								guildId,
-								query,
-								...(savedPlaylistSelected && shuffleMode === "default"
-									? {}
-									: { shuffle: shuffleMode === "on" }),
-								...(savedPlaylistSelected && loopMode === "default" ? {} : { loop: loopMode === "on" }),
-							});
+							startMutation.mutate(
+								{
+									guildId,
+									query,
+									...(savedPlaylistSelected && shuffleMode === "default"
+										? {}
+										: { shuffle: shuffleMode === "on" }),
+									...(savedPlaylistSelected && loopMode === "default"
+										? {}
+										: { loop: loopMode === "on" }),
+								},
+								{ onSuccess },
+							);
 						}
 					}}
 					loadSuggestions={APIHandler.getPlayerSuggestions}
