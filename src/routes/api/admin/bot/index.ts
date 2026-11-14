@@ -38,6 +38,7 @@ const activePlayerSessionSchema = z.object({
 		.nullable(),
 	playerState: z.enum(["Playing", "Paused"]),
 });
+const administratorSchema = z.object({ id: z.string(), username: z.string(), avatarUrl: z.string().url() });
 
 const stopBotRequestSchema = z.object({ confirm: z.literal(true) });
 const stopBotResponseSchema = z.object({
@@ -83,9 +84,7 @@ export default defineRouter("/bot", [
 		responses: {
 			200: {
 				description: "Configured bot administrators",
-				schema: paginatedListSchema(
-					z.object({ id: z.string(), username: z.string(), avatarUrl: z.string().url() }),
-				),
+				schema: paginatedListSchema(administratorSchema),
 			},
 			400: { description: "Invalid list query", schema: errorResponseSchema },
 			401: { description: "Authentication required", schema: errorResponseSchema },
@@ -108,6 +107,7 @@ export default defineRouter("/bot", [
 				items: administrators,
 				query: query.query,
 				fieldFilters: query.fieldFilters,
+				itemSchema: administratorSchema,
 				searchableFields: {
 					id: (administrator) => administrator.id,
 					username: (administrator) => administrator.username,
@@ -149,6 +149,7 @@ export default defineRouter("/bot", [
 				items: sessions,
 				query: query.query,
 				fieldFilters: query.fieldFilters,
+				itemSchema: activePlayerSessionSchema,
 				searchableFields: {
 					sessionId: (session) => session.sessionId,
 					playerState: (session) => session.playerState,

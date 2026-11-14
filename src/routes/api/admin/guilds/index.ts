@@ -443,6 +443,7 @@ export default defineRouter("/guilds", [
 				items: guilds,
 				query: query.query,
 				fieldFilters: query.fieldFilters,
+				itemSchema: adminGuildSchema,
 				searchableFields: {
 					id: (guild) => guild.id,
 					name: (guild) => guild.name,

@@ -65,6 +65,14 @@ export const guildDetailsSchema = guildSchema.extend({
 	permissions: z.array(z.string()).optional(),
 });
 
+export const guildLeaderboardEntrySchema = z.object({
+	rank: z.number().int().positive(),
+	userId: z.string(),
+	username: z.string(),
+	avatarUrl: z.string().url().nullable(),
+	points: z.number().int().nonnegative(),
+});
+
 export const guildLeaderboardSchema = z.object({
 	guildName: z.string(),
 	guildIcon: z.string().url().nullable(),
@@ -75,15 +83,7 @@ export const guildLeaderboardSchema = z.object({
 			role: z.object({ id: z.string(), name: z.string().nullable() }),
 		})
 		.nullable(),
-	items: z.array(
-		z.object({
-			rank: z.number().int().positive(),
-			userId: z.string(),
-			username: z.string(),
-			avatarUrl: z.string().url().nullable(),
-			points: z.number().int().nonnegative(),
-		}),
-	),
+	items: z.array(guildLeaderboardEntrySchema),
 	pagination: z.object({
 		page: z.number().int().positive(),
 		perPageLimit: z.number().int().min(0).max(1000),

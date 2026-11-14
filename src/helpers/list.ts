@@ -6,6 +6,60 @@ import type { RouteParameter } from "./route.js";
 export const DEFAULT_PER_PAGE_LIMIT = 25;
 export const MAX_PER_PAGE_LIMIT = 1000;
 
+type ListFilterFieldType = "boolean" | "number";
+type AnyZodSchema = z.core.$ZodType;
+
+function unwrapSchema(schema: AnyZodSchema): AnyZodSchema {
+	if (schema instanceof z.ZodOptional || schema instanceof z.ZodNullable) {
+		return unwrapSchema(schema.unwrap());
+	}
+	return schema;
+}
+
+function getPropertySchemas(schema: AnyZodSchema, property: string): AnyZodSchema[] {
+	const unwrappedSchema = unwrapSchema(schema);
+	if (unwrappedSchema instanceof z.ZodArray) {
+		return getPropertySchemas(unwrappedSchema.element, property);
+	}
+	if (unwrappedSchema instanceof z.ZodUnion) {
+		return unwrappedSchema.options.flatMap((option) => getPropertySchemas(option, property));
+	}
+	if (unwrappedSchema instanceof z.ZodObject) {
+		const propertySchema = unwrappedSchema.shape[property];
+		return propertySchema ? [propertySchema] : [];
+	}
+	return [];
+}
+
+function getSchemaValueTypes(schema: AnyZodSchema): Array<ListFilterFieldType | "other"> {
+	const unwrappedSchema = unwrapSchema(schema);
+	if (unwrappedSchema instanceof z.ZodArray) {
+		return getSchemaValueTypes(unwrappedSchema.element);
+	}
+	if (unwrappedSchema instanceof z.ZodUnion) {
+		return unwrappedSchema.options.flatMap(getSchemaValueTypes);
+	}
+	if (unwrappedSchema instanceof z.ZodBoolean) return ["boolean"];
+	if (unwrappedSchema instanceof z.ZodNumber) return ["number"];
+	return ["other"];
+}
+
+function getFilterFieldType(schema: AnyZodSchema, field: string): ListFilterFieldType | undefined {
+	const fieldSchemas = field
+		.split(".")
+		.reduce<AnyZodSchema[]>(
+			(schemas, property) => schemas.flatMap((currentSchema) => getPropertySchemas(currentSchema, property)),
+			[schema],
+		);
+	if (fieldSchemas.length === 0) {
+		throw new Error(`List filter field is missing from its response schema: ${field}`);
+	}
+	const valueTypes = new Set(fieldSchemas.flatMap(getSchemaValueTypes));
+	if (valueTypes.size !== 1) return;
+	const [valueType] = valueTypes;
+	return valueType === "boolean" || valueType === "number" ? valueType : undefined;
+}
+
 export function queryIntegerSchema({ min, max }: { min: number; max: number }) {
 	return z.string().regex(/^\d+$/).transform(Number).pipe(z.number().int().min(min).max(max));
 }
@@ -52,7 +106,7 @@ export const listQueryParameters = [
 		in: "query",
 		required: false,
 		description:
-			"Field-specific case-insensitive substring filters, e.g. filter[name]=Febkosq8. If present, these override query; multiple filters are combined with AND.",
+			"Field-specific case-insensitive substring filters, e.g. filter[name]=Febkosq8. Boolean fields accept true or false; numeric fields require numeric values. If present, filters override query and combine with AND.",
 		schema: listFieldFilterSchema,
 		style: "deepObject",
 		explode: true,
@@ -194,17 +248,28 @@ export function filterListByQuery<T>({
 	query,
 	fieldFilters,
 	searchableFields,
+	itemSchema,
 	response,
 }: {
 	items: readonly T[];
 	query: string | undefined;
 	fieldFilters: Readonly<Record<string, string>>;
 	searchableFields: Readonly<Record<string, (item: T) => string | number | boolean | null | undefined>>;
+	itemSchema: AnyZodSchema;
 	response: Response;
 }): T[] | undefined {
 	const selectors = new Map(Object.entries(searchableFields));
 	const fieldNames = [...selectors.keys()];
-	if (!validateListFieldFilters({ fieldFilters, fields: fieldNames, response })) return;
+	if (
+		!validateListFieldFilters({
+			fieldFilters,
+			fields: fieldNames,
+			itemSchema,
+			response,
+		})
+	) {
+		return;
+	}
 
 	const matches = (value: string | number | boolean | null | undefined, search: string) =>
 		String(value ?? "")
@@ -226,16 +291,31 @@ export function filterListByQuery<T>({
 export function validateListFieldFilters({
 	fieldFilters,
 	fields,
+	itemSchema,
 	response,
 }: {
 	fieldFilters: Readonly<Record<string, string>>;
 	fields: readonly string[];
+	itemSchema: AnyZodSchema;
 	response: Response;
 }): boolean {
 	const unsupportedField = Object.keys(fieldFilters).find((field) => !fields.includes(field));
 	if (unsupportedField) {
 		response.status(400).json({ error: `Unsupported list filter field: ${unsupportedField}` });
 		return false;
+	}
+	for (const [field, value] of Object.entries(fieldFilters)) {
+		const fieldType = getFilterFieldType(itemSchema, field);
+		const isValid =
+			fieldType === "boolean"
+				? /^(true|false)$/iu.test(value)
+				: fieldType === "number"
+					? Number.isFinite(Number(value))
+					: true;
+		if (!isValid) {
+			response.status(400).json({ error: `Invalid list filter value for ${field}; expected ${fieldType}` });
+			return false;
+		}
 	}
 	return true;
 }

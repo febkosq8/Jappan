@@ -67,6 +67,7 @@ export default defineRouter("/playlists", [
 				items: playlists,
 				query: query.query,
 				fieldFilters: query.fieldFilters,
+				itemSchema: playlistSchema,
 				searchableFields: {
 					listname: (playlist) => playlist.listname,
 					query: (playlist) => playlist.query,

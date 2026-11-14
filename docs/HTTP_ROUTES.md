@@ -82,8 +82,9 @@ This document records design decisions and behavior that is easy to miss.
   combine with AND. For example,
   `/guilds/manager?filter[name]=Jappan&filter[owner.username]=Febkosq8` requires
   both matches. Filters use the endpoint's supported field names; nested fields
-  use dot notation. Unknown fields return HTTP 400. Combine filters with
-  pagination using `&`, e.g.
+  use dot notation. Boolean filters accept `true` or `false`; numeric filters
+  require numeric values. Unknown fields or invalid values return HTTP 400.
+  Combine filters with pagination using `&`, e.g.
   `/guilds/manager?filter[name]=Jappan&perPageLimit=25`.
   Supported filter fields are endpoint-specific and are defined by each list's
   searchable data; this document does not enumerate them.

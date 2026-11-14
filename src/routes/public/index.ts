@@ -206,6 +206,7 @@ const publicRoutes: RouteDefinition[] = [
 				items: entries,
 				query: query.query,
 				fieldFilters: query.fieldFilters,
+				itemSchema: detailedCommandSchema,
 				searchableFields: {
 					id: (entry) => entry.id,
 					type: (entry) => entry.type,

@@ -60,6 +60,7 @@ import {
 import {
 	auditLogPreferenceSchema,
 	guildDetailsSchema,
+	guildLeaderboardEntrySchema,
 	guildLeaderboardSchema,
 	guildSchema,
 	levelingPreferenceSchema,
@@ -106,6 +107,30 @@ const accessResponses = {
 	401: { description: "Authentication required", schema: errorResponseSchema },
 	403: { description: "Manage Server access required", schema: errorResponseSchema },
 } as const;
+const guildChannelSchema = z.object({
+	id: z.string(),
+	name: z.string(),
+	type: z.number().int(),
+	typeName: z.string(),
+	createdTimestampMs: z.number().int(),
+	parent: z.object({ id: z.string(), name: z.string().nullable() }).nullable(),
+	position: z.number().int(),
+	canSendMessage: z.boolean(),
+	canReadMessages: z.boolean(),
+	canManageMessages: z.boolean(),
+	topic: z.string().nullable().optional(),
+	nsfw: z.boolean().optional(),
+	rateLimitPerUser: z.number().int().nullable().optional(),
+	bitrate: z.number().int().optional(),
+	userLimit: z.number().int().optional(),
+});
+const guildRoleSchema = z.object({
+	id: z.string(),
+	name: z.string(),
+	position: z.number().int(),
+	managed: z.boolean(),
+	assignable: z.boolean(),
+});
 
 async function resolveGuild(guildId: unknown, response: Response): Promise<Guild | null> {
 	if (typeof guildId !== "string" || !guildIdPattern.test(guildId)) {
@@ -211,6 +236,7 @@ export default defineRouter("/guilds", [
 				items: guilds,
 				query: query.query,
 				fieldFilters: query.fieldFilters,
+				itemSchema: guildSchema,
 				searchableFields: {
 					id: (guild) => guild.id,
 					name: (guild) => guild.name,
@@ -261,6 +287,7 @@ export default defineRouter("/guilds", [
 				items: guilds,
 				query: query.query,
 				fieldFilters: query.fieldFilters,
+				itemSchema: guildSchema,
 				searchableFields: {
 					id: (guild) => guild.id,
 					name: (guild) => guild.name,
@@ -285,25 +312,7 @@ export default defineRouter("/guilds", [
 		responses: {
 			200: {
 				description: "Guild channels and categories, excluding threads",
-				schema: paginatedListSchema(
-					z.object({
-						id: z.string(),
-						name: z.string(),
-						type: z.number().int(),
-						typeName: z.string(),
-						createdTimestampMs: z.number().int(),
-						parent: z.object({ id: z.string(), name: z.string().nullable() }).nullable(),
-						position: z.number().int(),
-						canSendMessage: z.boolean(),
-						canReadMessages: z.boolean(),
-						canManageMessages: z.boolean(),
-						topic: z.string().nullable().optional(),
-						nsfw: z.boolean().optional(),
-						rateLimitPerUser: z.number().int().nullable().optional(),
-						bitrate: z.number().int().optional(),
-						userLimit: z.number().int().optional(),
-					}),
-				),
+				schema: paginatedListSchema(guildChannelSchema),
 			},
 			...accessResponses,
 			404: { description: "Guild not found", schema: errorResponseSchema },
@@ -332,6 +341,7 @@ export default defineRouter("/guilds", [
 						items: result.channels,
 						query: query.query,
 						fieldFilters: query.fieldFilters,
+						itemSchema: guildChannelSchema,
 						searchableFields: {
 							id: (channel) => channel.id,
 							name: (channel) => channel.name,
@@ -371,15 +381,7 @@ export default defineRouter("/guilds", [
 		responses: {
 			200: {
 				description: "Guild roles, highest first, with whether the bot can assign each",
-				schema: paginatedListSchema(
-					z.object({
-						id: z.string(),
-						name: z.string(),
-						position: z.number().int(),
-						managed: z.boolean(),
-						assignable: z.boolean(),
-					}),
-				),
+				schema: paginatedListSchema(guildRoleSchema),
 			},
 			...accessResponses,
 			404: { description: "Guild not found", schema: errorResponseSchema },
@@ -408,6 +410,7 @@ export default defineRouter("/guilds", [
 						items: result.roles,
 						query: query.query,
 						fieldFilters: query.fieldFilters,
+						itemSchema: guildRoleSchema,
 						searchableFields: {
 							id: (role) => role.id,
 							name: (role) => role.name,
@@ -594,6 +597,7 @@ export default defineRouter("/guilds", [
 				!validateListFieldFilters({
 					fieldFilters: query.fieldFilters,
 					fields: ["userId", "username", "warningCount"],
+					itemSchema: warnedMemberSchema,
 					response,
 				})
 			) {
@@ -658,6 +662,7 @@ export default defineRouter("/guilds", [
 				items: mappedMembers,
 				query: query.query,
 				fieldFilters: query.fieldFilters,
+				itemSchema: warningMemberSchema,
 				searchableFields: {
 					id: (member) => member.id,
 					username: (member) => member.username,
@@ -807,6 +812,7 @@ export default defineRouter("/guilds", [
 				items: displayLocks,
 				query: query.query,
 				fieldFilters: query.fieldFilters,
+				itemSchema: voiceRegionLockSchema,
 				searchableFields: {
 					userId: (lock) => lock.userId,
 					userName: (lock) => lock.userName,
@@ -1056,6 +1062,7 @@ export default defineRouter("/guilds", [
 				!validateListFieldFilters({
 					fieldFilters: query.fieldFilters,
 					fields: ["userId", "username", "points"],
+					itemSchema: guildLeaderboardEntrySchema,
 					response,
 				})
 			) {
