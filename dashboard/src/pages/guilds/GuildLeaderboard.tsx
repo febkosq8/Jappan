@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { FiArrowLeft, FiGift, FiHome, FiList } from "react-icons/fi";
 import { Link, useParams } from "react-router-dom";
 
-import { AccessRedirect } from "@jappan/components/AdminRoute";
+import { AccessRedirect } from "@jappan/components/AuthRoute";
 import GuildPageHeader from "@jappan/components/display/GuildPageHeader";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import GuildLeaderboardListPanel from "@jappan/components/panel/GuildLeaderboardListPanel";

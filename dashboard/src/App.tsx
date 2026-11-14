@@ -1,5 +1,5 @@
 import Header from "@jappan/components/Header";
-import AdminRoute, { AuthRoute } from "@jappan/components/AdminRoute";
+import AdminRoute, { AuthRoute } from "@jappan/components/AuthRoute";
 import Home from "@jappan/pages/Home";
 import Commands from "@jappan/pages/Commands";
 import AuthError from "@jappan/pages/auth/AuthError";

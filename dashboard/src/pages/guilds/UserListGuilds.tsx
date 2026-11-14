@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 
 import APIHandler, { type UserGuild } from "@jappan/handlers/APIHandler";
-import { AccessRedirect } from "@jappan/components/AdminRoute";
+import { AccessRedirect } from "@jappan/components/AuthRoute";
 import UserDisplay from "@jappan/components/display/UserDisplay";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import useDocumentTitle, { formatTitle } from "@jappan/helpers/useDocumentTitle";

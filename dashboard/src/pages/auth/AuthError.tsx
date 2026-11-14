@@ -1,7 +1,7 @@
 import { Button, PillLink } from "@febkosq8/arc";
 import ErrorPage from "@jappan/components/ErrorPage";
 import { sessionErrorCode, useSessionQuery, useSignIn } from "@jappan/handlers/auth";
-import { authErrorURL, safeCallbackPath } from "@jappan/handlers/authRedirect";
+import { authErrorURL, safeCallbackPath } from "@jappan/helpers/authRedirect";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FiArrowLeft, FiLogIn, FiRefreshCw } from "react-icons/fi";
 import { Navigate, useLocation, useSearchParams } from "react-router-dom";

@@ -20,7 +20,7 @@ import {
 } from "react-icons/fi";
 
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
-import { AccessRedirect } from "@jappan/components/AdminRoute";
+import { AccessRedirect } from "@jappan/components/AuthRoute";
 import ErrorPage from "@jappan/components/ErrorPage";
 import ChannelDisplay from "@jappan/components/display/ChannelDisplay";
 import GuildPageHeader from "@jappan/components/display/GuildPageHeader";

@@ -8,7 +8,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
 import APIHandler, { type UserGuildDetails } from "@jappan/handlers/APIHandler";
-import { AccessRedirect } from "@jappan/components/AdminRoute";
+import { AccessRedirect } from "@jappan/components/AuthRoute";
 import GuildPageHeader from "@jappan/components/display/GuildPageHeader";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import GuildChannelsPanel from "@jappan/components/panel/GuildChannelsPanel";

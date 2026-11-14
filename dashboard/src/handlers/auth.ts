@@ -5,7 +5,7 @@ import { useCallback, useState } from "react";
 import { toast } from "sonner";
 
 import { apiBaseURL } from "./APIHandler";
-import { authErrorURL, safeCallbackPath } from "./authRedirect";
+import { authErrorURL, safeCallbackPath } from "../helpers/authRedirect";
 
 export const authClient = createAuthClient({
 	baseURL: `${apiBaseURL}/api/v1/auth`,

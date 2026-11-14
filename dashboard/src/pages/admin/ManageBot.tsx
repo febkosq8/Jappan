@@ -19,7 +19,7 @@ import { useEffect, useState } from "react";
 import { FiCheckCircle, FiHome, FiMusic, FiPower, FiRefreshCw, FiSettings, FiShield, FiXCircle } from "react-icons/fi";
 import { toast } from "sonner";
 
-import { AccessRedirect, accessErrorStatus } from "@jappan/components/AdminRoute";
+import { AccessRedirect, accessErrorStatus } from "@jappan/components/AuthRoute";
 import ChannelDisplay from "@jappan/components/display/ChannelDisplay";
 import UserDisplay from "@jappan/components/display/UserDisplay";
 import ExternalTextLink from "@jappan/components/ExternalTextLink";

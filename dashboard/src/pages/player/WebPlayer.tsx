@@ -20,7 +20,7 @@ import type { IconType } from "react-icons";
 import { RiSignalWifiErrorLine } from "react-icons/ri";
 import { useParams } from "react-router-dom";
 import { toast } from "sonner";
-import { AccessRedirect, accessErrorStatus } from "@jappan/components/AdminRoute";
+import { AccessRedirect, accessErrorStatus } from "@jappan/components/AuthRoute";
 import ErrorPage from "@jappan/components/ErrorPage";
 import ChannelDisplay from "@jappan/components/display/ChannelDisplay";
 import UserDisplay from "@jappan/components/display/UserDisplay";

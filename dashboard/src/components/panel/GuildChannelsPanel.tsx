@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 
 import APIHandler, { type AdminGuildChannel } from "@jappan/handlers/APIHandler";
-import { AccessRedirect, accessErrorStatus } from "@jappan/components/AdminRoute";
+import { AccessRedirect, accessErrorStatus } from "@jappan/components/AuthRoute";
 import ChannelDisplay from "@jappan/components/display/ChannelDisplay";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import GuildSectionLink from "@jappan/components/panel/GuildSectionLink";

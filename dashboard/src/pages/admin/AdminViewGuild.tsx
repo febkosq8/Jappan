@@ -37,7 +37,7 @@ import APIHandler, {
 	type AdminGuildDetails,
 	type AdminGuildMessageResult,
 } from "@jappan/handlers/APIHandler";
-import { AccessRedirect, accessErrorStatus } from "@jappan/components/AdminRoute";
+import { AccessRedirect, accessErrorStatus } from "@jappan/components/AuthRoute";
 import ExternalTextLink from "@jappan/components/ExternalTextLink";
 import GuildPageHeader from "@jappan/components/display/GuildPageHeader";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
