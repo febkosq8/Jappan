@@ -87,7 +87,15 @@ export default function PlayerLanding() {
 		serverLoading || sessionQuery.isError || !signedIn || guildsQuery.isError || guilds.length === 0;
 	const serverOptions =
 		guilds.length > 0
-			? guilds.map((guild) => ({ key: guild.id, label: guild.name }))
+			? guilds.map((guild) => ({
+					key: guild.id,
+					label: (
+						<span className="flex min-w-0 items-center gap-2">
+							<Avatar name={guild.name} image={guild.icon} size="xs" aria-hidden="true" />
+							<span className="min-w-0 truncate">{guild.name}</span>
+						</span>
+					),
+				}))
 			: [
 					{
 						key: "",
@@ -187,16 +195,6 @@ export default function PlayerLanding() {
 								return guild ? (
 									<Avatar name={guild.name} image={guild.icon} size="xs" aria-hidden="true" />
 								) : null;
-							}}
-							renderItem={(item) => {
-								const guild = guilds.find((entry) => entry.id === String(item.key));
-								if (!guild) return item.label;
-								return (
-									<span className="flex min-w-0 items-center gap-2">
-										<Avatar name={guild.name} image={guild.icon} size="xs" aria-hidden="true" />
-										<span className="min-w-0 truncate">{guild.name}</span>
-									</span>
-								);
 							}}
 							disabled={serverSelectDisabled || startMutation.isPending}
 							className="w-full"

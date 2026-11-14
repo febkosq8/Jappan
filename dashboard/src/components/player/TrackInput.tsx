@@ -78,22 +78,23 @@ export default function TrackInput({
 		selectedSuggestion && !suggestions.some((suggestion) => suggestion.value === selectedSuggestion.value)
 			? [...suggestions, selectedSuggestion]
 			: suggestions;
-	const suggestionItems = dropdownSuggestions.map((suggestion) => ({
-		key: `${suggestion.kind}:${suggestion.value}`,
-		label: suggestion.title,
-	}));
-	const suggestionsByKey = new Map<string, PlayerSuggestion>(
-		dropdownSuggestions.map((suggestion) => [`${suggestion.kind}:${suggestion.value}`, suggestion] as const),
-	);
 	const renderSuggestion = (suggestion: PlayerSuggestion) => (
 		<span className="flex min-w-0 items-center gap-2">
 			<span title={suggestion.title} className="min-w-0 flex-1 truncate">
 				{suggestion.title}
 			</span>
-			<Tag variant={suggestion.kind === "savedPlaylist" ? "primary" : "secondary"} size="xs">
+			<Tag variant={suggestion.kind === "savedPlaylist" ? "primary" : "secondary"} size="xs" className="shrink-0">
 				{kindLabels[suggestion.kind]}
 			</Tag>
 		</span>
+	);
+	const suggestionItems = dropdownSuggestions.map((suggestion) => ({
+		key: `${suggestion.kind}:${suggestion.value}`,
+		label: renderSuggestion(suggestion),
+		labelTextValue: suggestion.title,
+	}));
+	const suggestionsByKey = new Map<string, PlayerSuggestion>(
+		dropdownSuggestions.map((suggestion) => [`${suggestion.kind}:${suggestion.value}`, suggestion] as const),
 	);
 
 	const submit = (query: string) => {
@@ -184,15 +185,6 @@ export default function TrackInput({
 								disabled={disabled}
 								loading={suggestionsQuery.isFetching && suggestions.length === 0}
 								loadingLabel="Loading suggestions…"
-								selectedValueFillsSpace
-								renderValue={(item) => {
-									const suggestion = suggestionsByKey.get(String(item.key));
-									return suggestion ? renderSuggestion(suggestion) : item.label;
-								}}
-								renderItem={(item) => {
-									const suggestion = suggestionsByKey.get(String(item.key));
-									return suggestion ? renderSuggestion(suggestion) : item.label;
-								}}
 								onChange={(item) => {
 									const suggestion = item && suggestionsByKey.get(String(item.key));
 									setText("");
