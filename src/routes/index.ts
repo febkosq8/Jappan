@@ -25,11 +25,10 @@ export const routers: RouterDefinition[] = [v1, base];
 export const documentedRouters: RouterDefinition[] = [authRouter, ...routers];
 export const openApiOptions: OpenApiOptions = {
 	securitySchemes: {
-		sessionCookie: {
-			type: "apiKey",
-			in: "cookie",
-			name: "jappan.session_token",
-			description: "Better Auth session cookie; HTTPS uses the __Secure- prefix.",
+		sessionBearer: {
+			type: "http",
+			scheme: "bearer",
+			description: "Better Auth bearer token from the set-auth-token response header.",
 		},
 	},
 };

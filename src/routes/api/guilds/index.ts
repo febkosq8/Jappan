@@ -1,4 +1,4 @@
-import { DiscordAPIError, PermissionFlagsBits, RESTJSONErrorCodes, type Guild } from "discord.js";
+import { DiscordAPIError, PermissionFlagsBits, RESTJSONErrorCodes, type Guild, type GuildMember } from "discord.js";
 import type { Response } from "express";
 import { z } from "zod";
 
@@ -15,6 +15,15 @@ import {
 	requireValidGuildId,
 } from "../../../handlers/auth.js";
 import { requireDatabase, requireDiscord } from "../../../handlers/availability.js";
+import {
+	filterListByQuery,
+	createPaginatedList,
+	listQueryParameters,
+	listQuerySchema,
+	paginateList,
+	paginatedListSchema,
+	parseListQuery,
+} from "../../../helpers/list.js";
 import { defineRouter, errorResponseSchema } from "../../../helpers/route.js";
 import { listAdminGuildChannels, listAdminGuildRoles } from "../../../helpers/adminGuild.js";
 import {
@@ -27,7 +36,7 @@ import {
 import { listGuilds } from "../../../services/adminGuild.js";
 import type { AuthSession } from "../../../services/auth.js";
 import { getGuildMemberState } from "../../../services/guildMemberState.js";
-import { getLeaderboard, LEADERBOARD_PAGE_SIZE } from "../../../services/leveling.js";
+import { getLeaderboard } from "../../../services/leveling.js";
 import {
 	getWarnedMembers,
 	getWarningRecords,
@@ -60,15 +69,13 @@ import {
 	warningIssueSchema,
 	warningMemberDetailsSchema,
 	warningMemberSchema,
-	warningMemberSearchSchema,
 	warningsPreferenceSchema,
 	voiceRegionLockInputSchema,
 	voiceRegionLockSchema,
-	voiceRegionLocksSchema,
 } from "./schemas.js";
 
 const tags = ["Guild"];
-const security = [{ sessionCookie: [] }];
+const security = [{ sessionBearer: [] }];
 const middleware = [
 	requireDatabase,
 	requireDiscord,
@@ -84,7 +91,6 @@ const leaderboardMiddleware = [
 	requireAnyAuthorization([isGuildMember, isBotAdmin], "Guild membership required"),
 ];
 const guildIdPattern = /^\d{17,20}$/u;
-const leaderboardPageSchema = z.coerce.number().int().min(1).max(Number.MAX_SAFE_INTEGER);
 const parameters = [
 	{
 		name: "guildId",
@@ -137,6 +143,22 @@ async function resolveGuildMember({ guild, userId, response }: { guild: Guild; u
 	}
 }
 
+async function listGuildMembers(guild: Guild): Promise<GuildMember[]> {
+	const members: GuildMember[] = [];
+	let after: string | undefined;
+	while (true) {
+		const page = await guild.members.list({ limit: 1000, ...(after ? { after } : {}) });
+		members.push(...page.values());
+		if (page.size < 1000) return members;
+		const lastMember = [...page.values()].at(-1);
+		if (!lastMember) return members;
+		if (lastMember.id === after) {
+			throw new Error(`Guild member pagination did not advance for guild ${guild.id}`);
+		}
+		after = lastMember.id;
+	}
+}
+
 async function fetchWarningUser(guild: Guild, userId: string) {
 	return guild.client.users.fetch(userId).catch((error: unknown) => {
 		if (
@@ -162,26 +184,44 @@ export default defineRouter("/guilds", [
 		summary: "List guilds the user can manage",
 		errorMessage: "Failed to list guilds",
 		security,
+		parameters: listQueryParameters,
 		responses: {
 			200: {
 				description: "Registered guilds the user can manage",
-				schema: z.array(guildSchema),
+				schema: paginatedListSchema(guildSchema),
 			},
+			400: { description: "Invalid list query", schema: errorResponseSchema },
 			401: { description: "Authentication required", schema: errorResponseSchema },
 			403: { description: "Active account and linked Discord account required", schema: errorResponseSchema },
 			500: { description: "Failed to list guilds", schema: errorResponseSchema },
 		},
 		middleware: [requireDatabase, requireDiscord, requireSession],
-		handler: async (_request, response) => {
+		handler: async (request, response) => {
+			const query = parseListQuery(request.query, listQuerySchema, response);
+			if (!query) return;
 			const session: AuthSession = response.locals.authSession;
 			const discordAccountId = await getLinkedDiscordAccountId(session, response);
 			if (!discordAccountId) return;
-			return response.status(200).json(
-				await listGuilds({
-					userFilter: { userId: discordAccountId, permissions: [PermissionFlagsBits.ManageGuild] },
-					keys: extendedGuildKeys,
-				}),
-			);
+			const guilds = await listGuilds({
+				userFilter: { userId: discordAccountId, permissions: [PermissionFlagsBits.ManageGuild] },
+				keys: extendedGuildKeys,
+			});
+			const filtered = filterListByQuery({
+				items: guilds,
+				query: query.query,
+				searchableFields: (guild) => [
+					guild.id,
+					guild.name,
+					guild.icon,
+					guild.hasRequiredPermissions,
+					guild.owner?.userId,
+					guild.owner?.avatarUrl,
+					guild.owner?.username,
+				],
+			});
+			return response
+				.status(200)
+				.json(paginateList({ items: filtered, page: query.page, perPageLimit: query.perPageLimit }));
 		},
 	},
 	{
@@ -191,14 +231,21 @@ export default defineRouter("/guilds", [
 		summary: "List bot guilds the user is a member of",
 		errorMessage: "Failed to list guild memberships",
 		security,
+		parameters: listQueryParameters,
 		responses: {
-			200: { description: "Bot guilds where the current user is a member", schema: z.array(guildSchema) },
+			200: {
+				description: "Bot guilds where the current user is a member",
+				schema: paginatedListSchema(guildSchema),
+			},
+			400: { description: "Invalid list query", schema: errorResponseSchema },
 			401: { description: "Authentication required", schema: errorResponseSchema },
 			403: { description: "Active account and linked Discord account required", schema: errorResponseSchema },
 			500: { description: "Failed to list guild memberships", schema: errorResponseSchema },
 		},
 		middleware: [requireDatabase, requireDiscord, requireSession],
-		handler: async (_request, response) => {
+		handler: async (request, response) => {
+			const query = parseListQuery(request.query, listQuerySchema, response);
+			if (!query) return;
 			const session: AuthSession = response.locals.authSession;
 			const discordAccountId = await getLinkedDiscordAccountId(session, response);
 			if (!discordAccountId) return;
@@ -206,7 +253,14 @@ export default defineRouter("/guilds", [
 				userFilter: { userId: discordAccountId },
 				keys: baseGuildKeys,
 			});
-			return response.status(200).json(guilds);
+			const filtered = filterListByQuery({
+				items: guilds,
+				query: query.query,
+				searchableFields: (guild) => [guild.id, guild.name, guild.icon],
+			});
+			return response
+				.status(200)
+				.json(paginateList({ items: filtered, page: query.page, perPageLimit: query.perPageLimit }));
 		},
 	},
 	{
@@ -216,11 +270,11 @@ export default defineRouter("/guilds", [
 		summary: "List channels in a registered guild",
 		errorMessage: "Failed to list guild channels",
 		security,
-		parameters,
+		parameters: [...parameters, ...listQueryParameters],
 		responses: {
 			200: {
 				description: "Guild channels and categories, excluding threads",
-				schema: z.array(
+				schema: paginatedListSchema(
 					z.object({
 						id: z.string(),
 						name: z.string(),
@@ -248,6 +302,8 @@ export default defineRouter("/guilds", [
 		},
 		middleware,
 		handler: async (request, response) => {
+			const query = parseListQuery(request.query, listQuerySchema, response);
+			if (!query) return;
 			const guildId = request.params.guildId;
 			if (typeof guildId !== "string" || !guildIdPattern.test(guildId)) {
 				return response.status(400).json({ error: "Invalid guild ID" });
@@ -260,8 +316,33 @@ export default defineRouter("/guilds", [
 					return response.status(409).json({ error: "Bot is not a guild member" });
 				case "unavailable":
 					return response.status(503).json({ error: "Guild is unavailable" });
-				case "ok":
-					return response.status(200).json(result.channels);
+				case "ok": {
+					const filtered = filterListByQuery({
+						items: result.channels,
+						query: query.query,
+						searchableFields: (channel) => [
+							channel.id,
+							channel.name,
+							channel.type,
+							channel.typeName,
+							channel.createdTimestampMs,
+							channel.parent?.id,
+							channel.parent?.name,
+							channel.position,
+							channel.canSendMessage,
+							channel.canReadMessages,
+							channel.canManageMessages,
+							channel.topic,
+							channel.nsfw,
+							channel.rateLimitPerUser,
+							channel.bitrate,
+							channel.userLimit,
+						],
+					});
+					return response
+						.status(200)
+						.json(paginateList({ items: filtered, page: query.page, perPageLimit: query.perPageLimit }));
+				}
 			}
 		},
 	},
@@ -272,11 +353,11 @@ export default defineRouter("/guilds", [
 		summary: "List roles in a registered guild",
 		errorMessage: "Failed to list guild roles",
 		security,
-		parameters,
+		parameters: [...parameters, ...listQueryParameters],
 		responses: {
 			200: {
 				description: "Guild roles, highest first, with whether the bot can assign each",
-				schema: z.array(
+				schema: paginatedListSchema(
 					z.object({
 						id: z.string(),
 						name: z.string(),
@@ -294,6 +375,8 @@ export default defineRouter("/guilds", [
 		},
 		middleware,
 		handler: async (request, response) => {
+			const query = parseListQuery(request.query, listQuerySchema, response);
+			if (!query) return;
 			const guildId = request.params.guildId;
 			if (typeof guildId !== "string" || !guildIdPattern.test(guildId)) {
 				return response.status(400).json({ error: "Invalid guild ID" });
@@ -306,8 +389,16 @@ export default defineRouter("/guilds", [
 					return response.status(409).json({ error: "Bot is not a guild member" });
 				case "unavailable":
 					return response.status(503).json({ error: "Guild is unavailable" });
-				case "ok":
-					return response.status(200).json(result.roles);
+				case "ok": {
+					const filtered = filterListByQuery({
+						items: result.roles,
+						query: query.query,
+						searchableFields: (role) => [role.id, role.name, role.position, role.managed, role.assignable],
+					});
+					return response
+						.status(200)
+						.json(paginateList({ items: filtered, page: query.page, perPageLimit: query.perPageLimit }));
+				}
 			}
 		},
 	},
@@ -458,11 +549,11 @@ export default defineRouter("/guilds", [
 		summary: "List users with at least one warning in a guild",
 		errorMessage: "Failed to list warned users",
 		security,
-		parameters,
+		parameters: [...parameters, ...listQueryParameters],
 		responses: {
 			200: {
 				description: "Users with positive warning counts, highest count first",
-				schema: z.array(warnedMemberSchema),
+				schema: paginatedListSchema(warnedMemberSchema),
 			},
 			...accessResponses,
 			404: { description: "Guild not found", schema: errorResponseSchema },
@@ -472,19 +563,32 @@ export default defineRouter("/guilds", [
 		},
 		middleware,
 		handler: async (request, response) => {
+			const query = parseListQuery(request.query, listQuerySchema, response);
+			if (!query) return;
 			const guild = await resolveGuild(request.params.guildId, response);
 			if (!guild) return;
-			const members = await getWarnedMembers(guild.id);
+			const { items: members, total } = await getWarnedMembers({
+				guildId: guild.id,
+				page: query.page,
+				perPageLimit: query.perPageLimit,
+				...(query.query ? { query: query.query } : {}),
+			});
+			const enrichedMembers = members.map((member) => ({
+				userId: member.userId,
+				username: member.username,
+				warningCount: member.warningCount,
+				avatarUrl:
+					guild.members.cache.get(member.userId)?.displayAvatarURL({ size: 64 }) ??
+					guild.client.users.cache.get(member.userId)?.displayAvatarURL({ size: 64 }) ??
+					null,
+			}));
 			return response.status(200).json(
-				members.map((member) => ({
-					userId: member.userId,
-					username: member.username,
-					warningCount: member.warningCount,
-					avatarUrl:
-						guild.members.cache.get(member.userId)?.displayAvatarURL({ size: 64 }) ??
-						guild.client.users.cache.get(member.userId)?.displayAvatarURL({ size: 64 }) ??
-						null,
-				})),
+				createPaginatedList({
+					items: enrichedMembers,
+					total,
+					page: query.page,
+					perPageLimit: query.perPageLimit,
+				}),
 			);
 		},
 	},
@@ -495,18 +599,9 @@ export default defineRouter("/guilds", [
 		summary: "List or search guild members",
 		errorMessage: "Failed to list or search guild members",
 		security,
-		parameters: [
-			...parameters,
-			{
-				name: "query",
-				in: "query",
-				required: false,
-				description: "Optional username or server nickname search (at least two characters)",
-				schema: warningMemberSearchSchema,
-			},
-		],
+		parameters: [...parameters, ...listQueryParameters],
 		responses: {
-			200: { description: "Matching guild members", schema: z.array(warningMemberSchema) },
+			200: { description: "Matching guild members", schema: paginatedListSchema(warningMemberSchema) },
 			...accessResponses,
 			404: { description: "Guild not found", schema: errorResponseSchema },
 			409: { description: "Bot is not a guild member", schema: errorResponseSchema },
@@ -515,23 +610,25 @@ export default defineRouter("/guilds", [
 		},
 		middleware,
 		handler: async (request, response) => {
+			const query = parseListQuery(request.query, listQuerySchema, response);
+			if (!query) return;
 			const guild = await resolveGuild(request.params.guildId, response);
 			if (!guild) return;
-			const query = warningMemberSearchSchema.safeParse(request.query.query);
-			if (!query.success) {
-				return response.status(400).json({ error: query.error.issues[0]?.message ?? "Invalid search query" });
-			}
-			const members = query.data
-				? await guild.members.search({ query: query.data, limit: 25 })
-				: await guild.members.list({ limit: 100 });
-			return response.status(200).json(
-				[...members.values()].map((member) => ({
-					id: member.id,
-					username: member.user.username,
-					displayName: member.displayName,
-					avatarUrl: member.displayAvatarURL({ size: 64 }),
-				})),
-			);
+			const members = await listGuildMembers(guild);
+			const mappedMembers = members.map((member) => ({
+				id: member.id,
+				username: member.user.username,
+				displayName: member.displayName,
+				avatarUrl: member.displayAvatarURL({ size: 64 }),
+			}));
+			const filtered = filterListByQuery({
+				items: mappedMembers,
+				query: query.query,
+				searchableFields: (member) => [member.id, member.username, member.displayName, member.avatarUrl],
+			});
+			return response
+				.status(200)
+				.json(paginateList({ items: filtered, page: query.page, perPageLimit: query.perPageLimit }));
 		},
 	},
 	{
@@ -622,11 +719,11 @@ export default defineRouter("/guilds", [
 		summary: "List voice region locks and available regions",
 		errorMessage: "Failed to list voice region locks",
 		security,
-		parameters,
+		parameters: [...parameters, ...listQueryParameters],
 		responses: {
 			200: {
 				description: "Voice region locks and available Discord voice regions",
-				schema: voiceRegionLocksSchema,
+				schema: paginatedListSchema(voiceRegionLockSchema).extend({ regions: z.array(z.string()) }),
 			},
 			...accessResponses,
 			404: { description: "Guild not found", schema: errorResponseSchema },
@@ -636,6 +733,8 @@ export default defineRouter("/guilds", [
 		},
 		middleware,
 		handler: async (request, response) => {
+			const query = parseListQuery(request.query, listQuerySchema, response);
+			if (!query) return;
 			const guild = await resolveGuild(request.params.guildId, response);
 			if (!guild) return;
 			const [locks, regions] = await Promise.all([getVoiceRegionLocks(guild), getVoiceRegionIds(guild)]);
@@ -663,7 +762,23 @@ export default defineRouter("/guilds", [
 					};
 				}),
 			);
-			return response.status(200).json({ locks: displayLocks, regions });
+			const filtered = filterListByQuery({
+				items: displayLocks,
+				query: query.query,
+				searchableFields: (lock) => [
+					lock.userId,
+					lock.userName,
+					lock.avatarUrl,
+					lock.channelId,
+					lock.channelName,
+					lock.region,
+					lock.fallbackRegion,
+				],
+			});
+			return response.status(200).json({
+				...paginateList({ items: filtered, page: query.page, perPageLimit: query.perPageLimit }),
+				regions,
+			});
 		},
 	},
 	{
@@ -871,16 +986,7 @@ export default defineRouter("/guilds", [
 		summary: "Get a guild's leveling leaderboard",
 		errorMessage: "Failed to get guild leaderboard",
 		security,
-		parameters: [
-			...parameters,
-			{
-				name: "page",
-				in: "query",
-				required: false,
-				description: "Leaderboard page number (20 entries per page)",
-				schema: z.number().int().min(1),
-			},
-		],
+		parameters: [...parameters, ...listQueryParameters],
 		responses: {
 			200: { description: "Guild leaderboard and leveling reward", schema: guildLeaderboardSchema },
 			...accessResponses,
@@ -892,12 +998,10 @@ export default defineRouter("/guilds", [
 		},
 		middleware: leaderboardMiddleware,
 		handler: async (request, response) => {
+			const query = parseListQuery(request.query, listQuerySchema, response);
+			if (!query) return;
 			const guild = await resolveGuild(request.params.guildId, response);
 			if (!guild) return;
-			const pageResult = leaderboardPageSchema.safeParse(request.query.page ?? 1);
-			if (!pageResult.success) {
-				return response.status(400).json({ error: "Invalid leaderboard page" });
-			}
 
 			const guildData = await getOrCreateGuildData({ guild });
 			const guildState = await getGuildState({ guildData, keys: ["servicePreferences"] });
@@ -906,8 +1010,14 @@ export default defineRouter("/guilds", [
 			}
 			const { leveling } = guildState.servicePreferences;
 			const leaderboard = leveling.enabled
-				? await getLeaderboard({ guildId: guild.id, page: pageResult.data, pageSize: LEADERBOARD_PAGE_SIZE })
-				: { entries: [], page: 1, pageCount: 1 };
+				? await getLeaderboard({
+						guildId: guild.id,
+						page: query.page,
+						pageSize: query.perPageLimit,
+						clampPage: false,
+						...(query.query ? { query: query.query } : {}),
+					})
+				: { entries: [], page: query.page, pageCount: 0, total: 0 };
 			const uncachedMemberIds = leaderboard.entries
 				.filter((entry) => !guild.members.cache.has(entry.userId))
 				.map((entry) => entry.userId);
@@ -923,8 +1033,8 @@ export default defineRouter("/guilds", [
 					leveling.threshold !== null && leveling.role
 						? { threshold: leveling.threshold, role: leveling.role }
 						: null,
-				entries: leaderboard.entries.map((entry, index) => ({
-					rank: (leaderboard.page - 1) * LEADERBOARD_PAGE_SIZE + index + 1,
+				items: leaderboard.entries.map((entry, index) => ({
+					rank: (leaderboard.page - 1) * query.perPageLimit + index + 1,
 					userId: entry.userId,
 					username: entry.username,
 					avatarUrl:
@@ -933,8 +1043,15 @@ export default defineRouter("/guilds", [
 						null,
 					points: entry.leveling.points,
 				})),
-				page: leaderboard.page,
-				pageCount: leaderboard.pageCount,
+				pagination: {
+					page: leaderboard.page,
+					perPageLimit: query.perPageLimit,
+					total: leaderboard.total,
+					totalPages:
+						query.perPageLimit === 0
+							? Number(leaderboard.total > 0)
+							: Math.ceil(leaderboard.total / query.perPageLimit),
+				},
 			});
 		},
 	},

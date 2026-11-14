@@ -2,6 +2,14 @@ import { z } from "zod";
 
 import { getLinkedDiscordAccountId, requireActiveUser, requireSession } from "../../../handlers/auth.js";
 import { requireDatabase } from "../../../handlers/availability.js";
+import {
+	filterListByQuery,
+	listQueryParameters,
+	listQuerySchema,
+	paginateList,
+	paginatedListSchema,
+	parseListQuery,
+} from "../../../helpers/list.js";
 import { isValidPlaylistQuery } from "../../../helpers/playlist.js";
 import { defineRouter, errorResponseSchema } from "../../../helpers/route.js";
 import type { AuthSession } from "../../../services/auth.js";
@@ -9,7 +17,7 @@ import { searchPlayer } from "../../../services/player.js";
 import { listUserPlaylists, removeUserPlaylist, saveUserPlaylist } from "../../../services/userPlaylist.js";
 
 const tags = ["Playlist"];
-const security = [{ sessionCookie: [] }];
+const security = [{ sessionBearer: [] }];
 const middleware = [requireDatabase, requireSession, requireActiveUser];
 const playlistSchema = z.object({
 	listname: z.string(),
@@ -38,19 +46,31 @@ export default defineRouter("/playlists", [
 		summary: "List the signed-in user's saved playlists",
 		errorMessage: "Failed to list saved playlists",
 		security,
+		parameters: listQueryParameters,
 		responses: {
-			200: { description: "The user's saved playlists", schema: z.array(playlistSchema) },
+			200: { description: "The user's saved playlists", schema: paginatedListSchema(playlistSchema) },
+			400: { description: "Invalid list query", schema: errorResponseSchema },
 			401: { description: "Authentication required", schema: errorResponseSchema },
 			403: { description: "Active account and linked Discord account required", schema: errorResponseSchema },
 			503: { description: "Database unavailable", schema: errorResponseSchema },
 			500: { description: "Failed to list saved playlists", schema: errorResponseSchema },
 		},
 		middleware,
-		handler: async (_request, response) => {
+		handler: async (request, response) => {
+			const query = parseListQuery(request.query, listQuerySchema, response);
+			if (!query) return;
 			const session: AuthSession = response.locals.authSession;
 			const userId = await getLinkedDiscordAccountId(session, response);
 			if (!userId) return;
-			return response.status(200).json(await listUserPlaylists(userId));
+			const playlists = await listUserPlaylists(userId);
+			const filtered = filterListByQuery({
+				items: playlists,
+				query: query.query,
+				searchableFields: (playlist) => [playlist.listname, playlist.query, playlist.shuffle, playlist.loop],
+			});
+			return response
+				.status(200)
+				.json(paginateList({ items: filtered, page: query.page, perPageLimit: query.perPageLimit }));
 		},
 	},
 	{

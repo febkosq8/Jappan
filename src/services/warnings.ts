@@ -88,11 +88,21 @@ export async function getWarningRecords(guildId: string, userId: string): Promis
 	);
 }
 
-export async function getWarnedMembers(guildId: string) {
-	return GuildMemberStateModel.aggregate<{
-		userId: string;
-		username: string;
-		warningCount: number;
+export async function getWarnedMembers({
+	guildId,
+	page,
+	perPageLimit,
+	query,
+}: {
+	guildId: string;
+	page: number;
+	perPageLimit: number;
+	query?: string;
+}) {
+	const escapedQuery = query?.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+	const [result] = await GuildMemberStateModel.aggregate<{
+		items: { userId: string; username: string; warningCount: number }[];
+		metadata: { total: number }[];
 	}>([
 		{ $match: { guildId } },
 		{
@@ -103,9 +113,39 @@ export async function getWarnedMembers(guildId: string) {
 				warningCount: { $size: { $ifNull: ["$warnings", []] } },
 			},
 		},
-		{ $match: { warningCount: { $gte: 1 } } },
-		{ $sort: { warningCount: -1, userId: 1 } },
+		{
+			$match: {
+				warningCount: { $gte: 1 },
+				...(escapedQuery
+					? {
+							$or: [
+								{ userId: { $regex: escapedQuery, $options: "i" } },
+								{ username: { $regex: escapedQuery, $options: "i" } },
+								{
+									$expr: {
+										$regexMatch: {
+											input: { $toString: "$warningCount" },
+											regex: escapedQuery,
+											options: "i",
+										},
+									},
+								},
+							],
+						}
+					: {}),
+			},
+		},
+		{
+			$facet: {
+				metadata: [{ $count: "total" }],
+				items: [
+					{ $sort: { warningCount: -1, userId: 1 } },
+					...(perPageLimit === 0 ? [] : [{ $skip: (page - 1) * perPageLimit }, { $limit: perPageLimit }]),
+				],
+			},
+		},
 	]).exec();
+	return { items: result?.items ?? [], total: result?.metadata[0]?.total ?? 0 };
 }
 
 async function updateWarningThresholdAction({

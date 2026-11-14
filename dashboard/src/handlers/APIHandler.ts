@@ -10,6 +10,16 @@ const apiClient = axios.create({
 	timeout: 0,
 });
 
+interface PaginatedListResponse<T> {
+	items: T[];
+	pagination: {
+		page: number;
+		perPageLimit: number;
+		total: number;
+		totalPages: number;
+	};
+}
+
 export interface HealthResponse {
 	healthy: boolean;
 	services: {
@@ -459,14 +469,24 @@ export type PlayerControlAction =
 	| { path: "queue/remove" | "queue/skip-to"; body: { index: number } }
 	| { path: "queue/add"; body: { query: string } };
 class APIHandler {
+	private static async getAllListItems<T>(
+		path: string,
+		options: { params?: Record<string, string | number | boolean>; withCredentials?: boolean } = {},
+	): Promise<T[]> {
+		const { data } = await apiClient.get<PaginatedListResponse<T>>(path, {
+			...(options.withCredentials === undefined ? {} : { withCredentials: options.withCredentials }),
+			params: { ...options.params, page: 1, perPageLimit: 0 },
+		});
+		return data.items;
+	}
+
 	static async getHealth(): Promise<HealthResponse> {
 		const { data } = await apiClient.get<HealthResponse>("/api/v1/public/health/", { timeout: HEALTH_TIMEOUT_MS });
 		return data;
 	}
 
 	static async getGlobalCommands(): Promise<GlobalCommand[]> {
-		const { data } = await apiClient.get<GlobalCommand[]>("/api/v1/public/commands");
-		return data;
+		return APIHandler.getAllListItems<GlobalCommand>("/api/v1/public/commands");
 	}
 
 	static async getPlayerSession(sessionId: string): Promise<PlayerSession> {
@@ -493,8 +513,7 @@ class APIHandler {
 	}
 
 	static async getUserPlaylists(): Promise<UserPlaylist[]> {
-		const { data } = await apiClient.get<UserPlaylist[]>("/api/v1/playlists", { withCredentials: true });
-		return data;
+		return APIHandler.getAllListItems<UserPlaylist>("/api/v1/playlists", { withCredentials: true });
 	}
 
 	static async saveUserPlaylist(playlist: UserPlaylist): Promise<void> {
@@ -506,18 +525,15 @@ class APIHandler {
 	}
 
 	static async getAdminGuilds(): Promise<AdminGuild[]> {
-		const { data } = await apiClient.get<AdminGuild[]>("/api/v1/admin/guilds", { withCredentials: true });
-		return data;
+		return APIHandler.getAllListItems<AdminGuild>("/api/v1/admin/guilds", { withCredentials: true });
 	}
 
 	static async getManagedGuilds(): Promise<UserGuild[]> {
-		const { data } = await apiClient.get<UserGuild[]>("/api/v1/guilds/manager", { withCredentials: true });
-		return data;
+		return APIHandler.getAllListItems<UserGuild>("/api/v1/guilds/manager", { withCredentials: true });
 	}
 
 	static async getUserMemberGuilds(): Promise<UserGuild[]> {
-		const { data } = await apiClient.get<UserGuild[]>("/api/v1/guilds/member", { withCredentials: true });
-		return data;
+		return APIHandler.getAllListItems<UserGuild>("/api/v1/guilds/member", { withCredentials: true });
 	}
 
 	static async getUserGuild(guildId: string): Promise<UserGuildDetails> {
@@ -528,26 +544,35 @@ class APIHandler {
 	}
 
 	static async getGuildLeaderboard(guildId: string, page: number): Promise<GuildLeaderboard> {
-		const { data } = await apiClient.get<GuildLeaderboard>(
-			`/api/v1/guilds/${encodeURIComponent(guildId)}/leaderboard`,
-			{ params: { page }, withCredentials: true },
-		);
-		return data;
+		const { data } = await apiClient.get<
+			Omit<GuildLeaderboard, "entries" | "page" | "pageCount"> &
+				PaginatedListResponse<GuildLeaderboard["entries"][number]>
+		>(`/api/v1/guilds/${encodeURIComponent(guildId)}/leaderboard`, {
+			params: { page, perPageLimit: 20 },
+			withCredentials: true,
+		});
+		return {
+			guildName: data.guildName,
+			guildIcon: data.guildIcon,
+			enabled: data.enabled,
+			reward: data.reward,
+			entries: data.items,
+			page: data.pagination.page,
+			pageCount: Math.max(1, data.pagination.totalPages),
+		};
 	}
 
 	static async searchGuildMembers(guildId: string, query?: string): Promise<WarningMember[]> {
-		const { data } = await apiClient.get<WarningMember[]>(`/api/v1/guilds/${encodeURIComponent(guildId)}/members`, {
+		return APIHandler.getAllListItems<WarningMember>(`/api/v1/guilds/${encodeURIComponent(guildId)}/members`, {
 			...(query ? { params: { query } } : {}),
 			withCredentials: true,
 		});
-		return data;
 	}
 
 	static async getGuildWarnedMembers(guildId: string): Promise<WarnedMember[]> {
-		const { data } = await apiClient.get<WarnedMember[]>(`/api/v1/guilds/${encodeURIComponent(guildId)}/warnings`, {
+		return APIHandler.getAllListItems<WarnedMember>(`/api/v1/guilds/${encodeURIComponent(guildId)}/warnings`, {
 			withCredentials: true,
 		});
-		return data;
 	}
 
 	static async getGuildMemberWarnings(guildId: string, userId: string): Promise<WarningMemberDetails> {
@@ -575,11 +600,11 @@ class APIHandler {
 	}
 
 	static async getGuildVoiceRegionLocks(guildId: string): Promise<VoiceRegionLocks> {
-		const { data } = await apiClient.get<VoiceRegionLocks>(
+		const { data } = await apiClient.get<PaginatedListResponse<VoiceRegionLock> & { regions: string[] }>(
 			`/api/v1/guilds/${encodeURIComponent(guildId)}/voice-region-locks`,
-			{ withCredentials: true },
+			{ params: { page: 1, perPageLimit: 0 }, withCredentials: true },
 		);
-		return data;
+		return { locks: data.items, regions: data.regions };
 	}
 
 	static async addGuildVoiceRegionLock(
@@ -607,17 +632,15 @@ class APIHandler {
 	}
 
 	static async getAdminBotAdministrators(): Promise<AdminBotAdministrator[]> {
-		const { data } = await apiClient.get<AdminBotAdministrator[]>("/api/v1/admin/bot/administrators", {
+		return APIHandler.getAllListItems<AdminBotAdministrator>("/api/v1/admin/bot/administrators", {
 			withCredentials: true,
 		});
-		return data;
 	}
 
 	static async getAdminBotPlayerState(): Promise<AdminBotPlayerSession[]> {
-		const { data } = await apiClient.get<AdminBotPlayerSession[]>("/api/v1/admin/bot/player-sessions", {
+		return APIHandler.getAllListItems<AdminBotPlayerSession>("/api/v1/admin/bot/player-sessions", {
 			withCredentials: true,
 		});
-		return data;
 	}
 
 	static async refreshAdminBotPlayerHealth(): Promise<{ healthy: boolean }> {
@@ -660,11 +683,9 @@ class APIHandler {
 	}
 
 	static async getGuildChannels(guildId: string): Promise<AdminGuildChannel[]> {
-		const { data } = await apiClient.get<AdminGuildChannel[]>(
-			`/api/v1/guilds/${encodeURIComponent(guildId)}/channels`,
-			{ withCredentials: true },
-		);
-		return data;
+		return APIHandler.getAllListItems<AdminGuildChannel>(`/api/v1/guilds/${encodeURIComponent(guildId)}/channels`, {
+			withCredentials: true,
+		});
 	}
 
 	static async createGuildMessagePurgeJob(
@@ -721,10 +742,9 @@ class APIHandler {
 	}
 
 	static async getGuildRoles(guildId: string): Promise<GuildRole[]> {
-		const { data } = await apiClient.get<GuildRole[]>(`/api/v1/guilds/${encodeURIComponent(guildId)}/roles`, {
+		return APIHandler.getAllListItems<GuildRole>(`/api/v1/guilds/${encodeURIComponent(guildId)}/roles`, {
 			withCredentials: true,
 		});
-		return data;
 	}
 
 	private static async updateServicePreference<Input>(guildId: string, action: string, input: Input): Promise<void> {

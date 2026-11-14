@@ -33,8 +33,11 @@ This document records design decisions and behavior that is easy to miss.
 ## Authentication and availability
 
 - Better Auth is mounted before body parsing. Only its session endpoint is
-  documented in OpenAPI. Swagger uses the API origin's session cookie; session
-  responses contain sensitive tokens.
+  documented in OpenAPI. Protected API routes accept either the Better Auth
+  session cookie or a Bearer token from the `set-auth-token` response header.
+  Swagger documents Bearer authentication; browser JavaScript cannot set a
+  `Cookie` header, though an existing browser cookie is sent automatically.
+  Session responses contain sensitive tokens.
 - OpenAPI security schemes are documentation only. `requireSession` authenticates;
   protected routes must also enforce their own authorization. `requireAdmin`
   checks the active admin role. Guild routes allow admins or guild members with
@@ -64,6 +67,35 @@ This document records design decisions and behavior that is easy to miss.
 
 ## Public commands and guild data
 
+- Collection GET endpoints use the same paginated response: `{ items, pagination }`,
+  where `pagination` contains `page`, `perPageLimit`, `total`, and `totalPages`.
+  `page` defaults to 1; `perPageLimit` defaults to 25 and values 1-1000 bound
+  each response. `perPageLimit=0` returns all matching results in one response
+  and reports page 1. `totalPages` is 0 for an empty result. Invalid pagination,
+  filter, search values, or unknown list parameters return HTTP 400. `query` is
+  a trimmed, case-insensitive substring search across the endpoint's searchable
+  fields, including numeric and boolean values. Pass only the text to find, not
+  a field expression: use `?query=Febkosq8`, not `?query=name=Febkosq8`. Combine
+  it with other parameters using `&`, such as
+  `/guilds/manager?query=Febkosq8&perPageLimit=0`.
+- List search fields include:
+    - `/public/commands`: command details, category, permissions, options, and usage notes.
+    - `/playlists`: name, saved query, shuffle, and loop settings.
+    - `/guilds/manager`, `/guilds/member`, `/admin/bot/administrators`: the fields
+      returned by each endpoint.
+    - `/guilds/:guildId/channels`: channel details, including type and permission flags.
+    - `/guilds/:guildId/roles`: role name, ID, position, managed, and assignable state.
+    - `/guilds/:guildId/warnings`: user ID, username, and warning count.
+    - `/guilds/:guildId/members`: user ID, username, display name, and avatar URL.
+    - `/guilds/:guildId/voice-region-locks`: user, channel, region, and fallback-region details.
+      Available regions remain in `regions`, while locks use `items` and `pagination`.
+    - `/guilds/:guildId/leaderboard`: username, user ID, and points. Guild metadata
+      accompanies `items` and `pagination`.
+    - `/admin/guilds`: guild details, membership and permission state, and owner details.
+    - `/admin/bot/player-sessions`: session, player state, guild, channel, owner,
+      queue, and current-track details.
+- The dashboard requests `perPageLimit=0` for lists displayed in client-side tables,
+  returning them in one API call. Other clients can request bounded pages.
 - Numeric bot, guild, channel, and invite timestamps use `*TimestampMs` field names
   and represent milliseconds since the Unix epoch. These replace the previous
   `createdAt`, `joinedTimestamp`, `discoveredAt`, `createdTimestamp`,
