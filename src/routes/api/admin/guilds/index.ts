@@ -48,7 +48,7 @@ async function updateGuildCommands(request: Request, response: Response, action:
 			return response.status(503).json({ error: "Guild is unavailable" });
 	}
 
-	const commandCount = await setGuildCommands(adminGuild.guild, action === "deploy");
+	const commandCount = await setGuildCommands({ guild: adminGuild.guild, mode: action });
 	return response.status(200).json({ action, commandCount });
 }
 

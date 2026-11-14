@@ -5,7 +5,7 @@ import type { Client } from "discord.js";
 import { getClient } from "../bot.js";
 import { formatInteractionLogDetails, formatUser } from "../helpers/discord.js";
 import { isActiveGuild } from "../helpers/guild.js";
-import { getPrefixCommand, handlePrefixMessage } from "../services/adminDeployment.js";
+import { getPrefixCommand, handlePrefixMessage, syncDeployedGuildCommands } from "../services/adminDeployment.js";
 import { validateAdminUsers } from "../services/adminGuild.js";
 import {
 	handleAuditChannelCreate,
@@ -123,6 +123,21 @@ export function registerDiscordHandlers(): void {
 			});
 		} catch (error: unknown) {
 			logger.error("BOT", "Failed to update Application (/) commands", { error });
+		}
+
+		try {
+			const result = await syncDeployedGuildCommands(readyClient);
+			const { failures, ...summary } = result;
+			if (failures.length > 0) {
+				logger.error("BOT", "Startup guild command sync completed with failures", {
+					...summary,
+					failures,
+				});
+			} else {
+				logger.success("BOT", "Startup guild command sync completed", summary);
+			}
+		} catch (error: unknown) {
+			logger.error("BOT", "Startup guild command sync failed", { error });
 		}
 	});
 
