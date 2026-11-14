@@ -5,6 +5,19 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.5] - 2026-11-14
+
+### Added
+
+- Added dashboard message-purge jobs with configurable filters, message previews, live progress updates, and job results; added the `/purge-messages` command.
+- Added dashboard playback startup for tracks, playlists, and saved playlists, including voice-channel validation and a player message in the voice channel.
+- Added optional YouTube player token configuration and documented the environment variable.
+
+### Changed
+
+- Improved the player track input with explicit selection and loading states, Backspace-to-clear behavior, and alphabetically sorted saved playlists.
+- Improved guild and bot administration views, including channel organization and bot health/latency status.
+
 ## [2.1.2] - 2026-11-11
 
 ### Added

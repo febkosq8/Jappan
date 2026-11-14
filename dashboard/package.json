@@ -1,7 +1,7 @@
 {
 	"name": "jappan-dashboard",
 	"private": false,
-	"version": "2.1.2",
+	"version": "2.1.5",
 	"description": "Jappan - Dashboard",
 	"type": "module",
 	"author": {
