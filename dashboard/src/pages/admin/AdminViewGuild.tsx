@@ -634,7 +634,7 @@ function GuildDetails({ guild }: { guild: AdminGuildDetails }) {
 				<CommandPermissionsPanel permissions={guild.permissions} />
 			</TabsPanel>
 			<TabsPanel value="purge-messages" keepMounted>
-				<PurgeMessagesPanel active={section === "purge-messages"} initialGuildId={guild.id} />
+				<PurgeMessagesPanel active={section === "purge-messages"} guildId={guild.id} />
 			</TabsPanel>
 		</Tabs>
 	);

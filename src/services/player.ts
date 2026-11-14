@@ -5,6 +5,7 @@ import { Player, type PlayerNodeInitializerOptions, type SearchOptions, type Sea
 import type { APIInteractionGuildMember, Client, GuildMember, Message } from "discord.js";
 
 import { registerPlayerHandlers } from "../handlers/player.js";
+import { getClientGuild } from "../helpers/guild.js";
 import { MAX_QUEUE_SIZE } from "../helpers/playerLimits.js";
 import {
 	checkPlayerHealth,
@@ -251,6 +252,7 @@ export async function playSearchResult({
 	searchResult,
 	statusMessage,
 	previousStatusMessage,
+	source = "discord",
 	shuffle = false,
 	repeatMode = 0,
 	playNodeOptions,
@@ -258,12 +260,13 @@ export async function playSearchResult({
 	channel: string;
 	member: GuildMember | APIInteractionGuildMember;
 	searchResult: SearchResult;
-	statusMessage: Message;
+	statusMessage?: Message;
 	previousStatusMessage?: Message;
+	source?: "discord" | "web";
 	shuffle?: boolean;
 	repeatMode?: 0 | 1 | 2 | 3;
 	playNodeOptions?: Omit<NonNullable<PlayerNodeInitializerOptions<PlayerQueueMetadata>["nodeOptions"]>, "metadata">;
-}): Promise<PlayerResult<{ readonly skippedTracks: number }, PlayerPlayErrorCode>> {
+}): Promise<PlayerResult<{ readonly sessionId: string; readonly skippedTracks: number }, PlayerPlayErrorCode>> {
 	const errorCode = getPlayerErrorCode();
 	if (errorCode) {
 		return { success: false, error_code: errorCode };
@@ -298,7 +301,7 @@ export async function playSearchResult({
 		owner: { id: member.user.id, username: member.user.username },
 		locked: false,
 		shuffle,
-		statusMessage,
+		...(statusMessage ? { statusMessage } : {}),
 	};
 	const { queue } = await getPlayer().play<PlayerQueueMetadata>(channel, searchResult, {
 		nodeOptions: {
@@ -317,7 +320,7 @@ export async function playSearchResult({
 		},
 		requestedBy: member.user.id,
 	});
-	if (previousStatusMessage && previousStatusMessage.id !== statusMessage.id) {
+	if (statusMessage && previousStatusMessage && previousStatusMessage.id !== statusMessage.id) {
 		await markPlayerStatusMessageReplaced({
 			message: previousStatusMessage,
 			requestedById: member.user.id,
@@ -325,9 +328,11 @@ export async function playSearchResult({
 	}
 	// An existing session with shuffle on keeps its queue shuffled when more is added
 	shuffleQueueIfEnabled(queue);
-	recordPlayerChange(queue, { id: member.user.id, username: member.user.username, source: "discord" });
-	queue.metadata.statusMessage = statusMessage;
+	recordPlayerChange(queue, { id: member.user.id, username: member.user.username, source });
+	if (statusMessage) {
+		queue.metadata.statusMessage = statusMessage;
+	}
 	notifyPlayerChanged(queue);
 	await updatePlayerQueueMessage({ queue, content: "" });
-	return { success: true, data: { skippedTracks } };
+	return { success: true, data: { sessionId: queue.metadata.sessionId, skippedTracks } };
 }

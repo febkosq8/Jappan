@@ -1,7 +1,7 @@
 import { InteractionContextType, MessageFlags, PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
 
-import { formatGuild, formatUser } from "../helpers/discord.js";
-import { createPlayerEmbed, getValidatedPlayerVoiceChannel } from "../helpers/player.js";
+import { formatGuild } from "../helpers/discord.js";
+import { createPlayerEmbed, createPlayerLoadingEmbed, getValidatedPlayerVoiceChannel } from "../helpers/player.js";
 import type { QueueRepeatMode } from "discord-player";
 import type { BotCommand, BotCommandData } from "../services/commandLoader.js";
 import { logger } from "../services/logger.js";
@@ -108,15 +108,7 @@ const command: BotCommand = {
 			}
 
 			const statusMessage = await interaction.editReply({
-				embeds: [
-					createPlayerEmbed({
-						title: "⏳ Loading playback",
-						description: `Waiting for your ${searchResult.playlist ? "playlist" : "track"} to start.`,
-						color: "Blue",
-						requestedBy: formatUser(member.user),
-						...(searchResult.tracks[0]?.thumbnail ? { thumbnail: searchResult.tracks[0].thumbnail } : {}),
-					}),
-				],
+				embeds: [createPlayerLoadingEmbed({ searchResult, member })],
 			});
 			const previousStatusMessage = getPlayer().queues.get(interaction.guildId!)?.metadata.statusMessage;
 			const playResponse = await playSearchResult({
