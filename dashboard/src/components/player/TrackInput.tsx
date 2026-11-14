@@ -1,6 +1,6 @@
 import { Button, Card, Dropdown, Tag } from "@febkosq8/arc";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { FiPlus } from "react-icons/fi";
 import type { ReactNode } from "react";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
@@ -22,6 +22,7 @@ export default function TrackInput({
 	submitDisabled = false,
 	adding,
 	onAdd,
+	onSavedPlaylistChange,
 	loadSuggestions,
 	title = "Add to queue",
 	submitLabel = "Add",
@@ -36,6 +37,7 @@ export default function TrackInput({
 	submitDisabled?: boolean;
 	adding: boolean;
 	onAdd: (query: string) => void;
+	onSavedPlaylistChange?: (isSavedPlaylist: boolean) => void;
 	loadSuggestions: (query: string) => Promise<PlayerSuggestion[]>;
 	title?: string;
 	submitLabel?: string;
@@ -48,8 +50,14 @@ export default function TrackInput({
 	const listboxId = useId();
 	const [text, setText] = useState("");
 	const [selectedSuggestion, setSelectedSuggestion] = useState<PlayerSuggestion | null>(null);
+	const selectedSuggestionRef = useRef<PlayerSuggestion | null>(null);
 	const [debouncedText, setDebouncedText] = useState("");
 	const [open, setOpen] = useState(false);
+	const updateSelectedSuggestion = (suggestion: PlayerSuggestion | null) => {
+		selectedSuggestionRef.current = suggestion;
+		setSelectedSuggestion(suggestion);
+		onSavedPlaylistChange?.(suggestion?.kind === "savedPlaylist");
+	};
 
 	useEffect(() => {
 		const timer = window.setTimeout(() => setDebouncedText(text.trim()), SUGGESTION_DEBOUNCE_MS);
@@ -77,6 +85,16 @@ export default function TrackInput({
 	const suggestionsByKey = new Map<string, PlayerSuggestion>(
 		dropdownSuggestions.map((suggestion) => [`${suggestion.kind}:${suggestion.value}`, suggestion] as const),
 	);
+	const renderSuggestion = (suggestion: PlayerSuggestion) => (
+		<span className="flex min-w-0 items-center gap-2">
+			<span title={suggestion.title} className="min-w-0 flex-1 truncate">
+				{suggestion.title}
+			</span>
+			<Tag variant={suggestion.kind === "savedPlaylist" ? "primary" : "secondary"} size="xs">
+				{kindLabels[suggestion.kind]}
+			</Tag>
+		</span>
+	);
 
 	const submit = (query: string) => {
 		const trimmed = query.trim();
@@ -85,7 +103,7 @@ export default function TrackInput({
 		}
 		onAdd(trimmed);
 		setText("");
-		setSelectedSuggestion(null);
+		updateSelectedSuggestion(null);
 		setDebouncedText("");
 		setOpen(false);
 	};
@@ -136,20 +154,25 @@ export default function TrackInput({
 								id={`${listboxId}-input`}
 								className="w-full"
 								items={suggestionItems}
-								value={selectedSuggestion ? `${selectedSuggestion.kind}:${selectedSuggestion.value}` : ""}
+								value={
+									selectedSuggestion ? `${selectedSuggestion.kind}:${selectedSuggestion.value}` : ""
+								}
 								inputValue={selectedSuggestion ? "" : text}
 								onInputValueChange={(inputValue) => {
 									const nextText = inputValue.slice(0, MAX_QUERY_LENGTH);
+									const currentSelection = selectedSuggestionRef.current;
+									const nextSelection =
+										currentSelection && (nextText === "" || currentSelection.title === nextText)
+											? currentSelection
+											: null;
 									setText(nextText);
-									setSelectedSuggestion((current) =>
-										current && (nextText === "" || current.title === nextText) ? current : null,
-									);
+									updateSelectedSuggestion(nextSelection);
 								}}
 								onKeyDown={(event) => {
 									if (event.key === "Backspace" && selectedSuggestion) {
 										event.preventDefault();
 										event.stopPropagation();
-										setSelectedSuggestion(null);
+										updateSelectedSuggestion(null);
 										setText("");
 										setDebouncedText("");
 										setOpen(false);
@@ -161,30 +184,19 @@ export default function TrackInput({
 								disabled={disabled}
 								loading={suggestionsQuery.isFetching && suggestions.length === 0}
 								loadingLabel="Loading suggestions…"
-								renderValue={(item) => suggestionsByKey.get(String(item.key))?.title ?? item.label}
+								selectedValueFillsSpace
+								renderValue={(item) => {
+									const suggestion = suggestionsByKey.get(String(item.key));
+									return suggestion ? renderSuggestion(suggestion) : item.label;
+								}}
 								renderItem={(item) => {
 									const suggestion = suggestionsByKey.get(String(item.key));
-									if (!suggestion) {
-										return item.label;
-									}
-									return (
-										<>
-											<span title={suggestion.title} className="min-w-0 flex-1 truncate">
-												{suggestion.title}
-											</span>
-											<Tag
-												variant={suggestion.kind === "savedPlaylist" ? "primary" : "secondary"}
-												size="xs"
-											>
-												{kindLabels[suggestion.kind]}
-											</Tag>
-										</>
-									);
+									return suggestion ? renderSuggestion(suggestion) : item.label;
 								}}
 								onChange={(item) => {
 									const suggestion = item && suggestionsByKey.get(String(item.key));
 									setText("");
-									setSelectedSuggestion(suggestion ?? null);
+									updateSelectedSuggestion(suggestion ?? null);
 									setOpen(false);
 								}}
 							/>

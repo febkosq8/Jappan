@@ -370,9 +370,9 @@ export interface WarningsPreferenceInput {
 	auditChannelId: string | null;
 }
 
-export interface GlobalCommand {
+export interface PublicCommand {
 	id: string | null;
-	type: "command" | "sub-command";
+	type: "command" | "sub-command" | "context-menu";
 	name: string;
 	description: string;
 	category: "general" | "music" | "level" | "fun" | "moderator" | "admin";
@@ -485,8 +485,8 @@ class APIHandler {
 		return data;
 	}
 
-	static async getGlobalCommands(): Promise<GlobalCommand[]> {
-		return APIHandler.getAllListItems<GlobalCommand>("/api/v1/public/commands");
+	static async getPublicCommands(): Promise<PublicCommand[]> {
+		return APIHandler.getAllListItems<PublicCommand>("/api/v1/public/commands");
 	}
 
 	static async getPlayerSession(sessionId: string): Promise<PlayerSession> {
@@ -496,7 +496,12 @@ class APIHandler {
 		return data;
 	}
 
-	static async startPlayerSession(input: { guildId: string; query: string }): Promise<PlayerSessionStartResult> {
+	static async startPlayerSession(input: {
+		guildId: string;
+		query: string;
+		shuffle?: boolean;
+		loop?: boolean;
+	}): Promise<PlayerSessionStartResult> {
 		const { data } = await apiClient.post<PlayerSessionStartResult>("/api/v1/player/start", input, {
 			withCredentials: true,
 		});

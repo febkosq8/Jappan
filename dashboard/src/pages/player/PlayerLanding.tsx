@@ -1,4 +1,4 @@
-import { Avatar, Button, Card, Dropdown, PillLink, Tag } from "@febkosq8/arc";
+import { Avatar, Button, Card, Dropdown, LabelField, PillLink, Select, Tag } from "@febkosq8/arc";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { FiExternalLink, FiHeadphones, FiLink, FiPlay, FiRadio } from "react-icons/fi";
@@ -13,6 +13,18 @@ import getErrorMessage from "@jappan/helpers/getErrorMessage";
 import useDocumentTitle, { formatTitle } from "@jappan/helpers/useDocumentTitle";
 
 const guildsQueryKey = ["user", "guilds", "member"] as const;
+type PlaybackOptionMode = "default" | "on" | "off";
+
+const playbackOptionModes = [
+	{ key: "default", label: "Use saved playlist setting" },
+	{ key: "on", label: "On" },
+	{ key: "off", label: "Off" },
+] satisfies { key: PlaybackOptionMode; label: string }[];
+const queryPlaybackOptionModes = playbackOptionModes.filter(({ key }) => key !== "default");
+
+function isPlaybackOptionMode(value: string): value is PlaybackOptionMode {
+	return value === "default" || value === "on" || value === "off";
+}
 
 const steps = [
 	{
@@ -40,6 +52,9 @@ export default function PlayerLanding() {
 	const sessionQuery = useSessionQuery();
 	const { signIn, busy: signingIn } = useSignIn();
 	const [guildId, setGuildId] = useState("");
+	const [shuffleMode, setShuffleMode] = useState<PlaybackOptionMode>("default");
+	const [loopMode, setLoopMode] = useState<PlaybackOptionMode>("default");
+	const [savedPlaylistSelected, setSavedPlaylistSelected] = useState(false);
 	const signedIn = Boolean(sessionQuery.data);
 	const guildsQuery = useQuery({
 		queryKey: guildsQueryKey,
@@ -48,7 +63,7 @@ export default function PlayerLanding() {
 		retry: false,
 	});
 	const startMutation = useMutation({
-		mutationFn: (input: { guildId: string; query: string }) => {
+		mutationFn: (input: { guildId: string; query: string; shuffle?: boolean; loop?: boolean }) => {
 			const promise = APIHandler.startPlayerSession(input);
 			toast.promise(promise, {
 				loading: "Starting playback…",
@@ -125,9 +140,17 @@ export default function PlayerLanding() {
 					disabled={trackInputDisabled}
 					submitDisabled={!guildId}
 					adding={startMutation.isPending}
+					onSavedPlaylistChange={setSavedPlaylistSelected}
 					onAdd={(query) => {
 						if (guildId && !trackInputDisabled) {
-							startMutation.mutate({ guildId, query });
+							startMutation.mutate({
+								guildId,
+								query,
+								...(savedPlaylistSelected && shuffleMode === "default"
+									? {}
+									: { shuffle: shuffleMode === "on" }),
+								...(savedPlaylistSelected && loopMode === "default" ? {} : { loop: loopMode === "on" }),
+							});
 						}
 					}}
 					loadSuggestions={APIHandler.getPlayerSuggestions}
@@ -138,7 +161,7 @@ export default function PlayerLanding() {
 					inputLabel="Track or playlist"
 					inputPlaceholder="Search tracks, playlists, or saved playlists"
 				>
-					<div>
+					<div className="space-y-4">
 						<div className="mb-1 flex h-5 items-center gap-2">
 							<label htmlFor="player-start-guild" className="block text-sm font-medium text-foreground">
 								Server
@@ -203,6 +226,34 @@ export default function PlayerLanding() {
 								There are no servers available where both you and Jappan are members.
 							</p>
 						)}
+						<div className="grid gap-3 sm:grid-cols-2">
+							<div>
+								<LabelField id="player-start-shuffle" label="Shuffle queue" className="mb-1" />
+								<Select
+									id="player-start-shuffle"
+									value={savedPlaylistSelected || shuffleMode !== "default" ? shuffleMode : "off"}
+									onChange={(value) => {
+										if (isPlaybackOptionMode(value)) setShuffleMode(value);
+									}}
+									data={savedPlaylistSelected ? playbackOptionModes : queryPlaybackOptionModes}
+									disabled={startMutation.isPending}
+									className="h-10"
+								/>
+							</div>
+							<div>
+								<LabelField id="player-start-loop" label="Loop queue" className="mb-1" />
+								<Select
+									id="player-start-loop"
+									value={savedPlaylistSelected || loopMode !== "default" ? loopMode : "off"}
+									onChange={(value) => {
+										if (isPlaybackOptionMode(value)) setLoopMode(value);
+									}}
+									data={savedPlaylistSelected ? playbackOptionModes : queryPlaybackOptionModes}
+									disabled={startMutation.isPending}
+									className="h-10"
+								/>
+							</div>
+						</div>
 					</div>
 				</TrackInput>
 			</section>
@@ -212,14 +263,16 @@ export default function PlayerLanding() {
 					<li key={number}>
 						<Card className="h-full p-5 sm:p-6">
 							<div className="flex items-center justify-between gap-3">
-								<span className="grid size-10 place-items-center rounded-md bg-primary/10 text-primary">
-									<Icon className="size-5" aria-hidden="true" />
-								</span>
+								<div className="flex min-w-0 items-center gap-3">
+									<span className="grid size-10 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
+										<Icon className="size-5" aria-hidden="true" />
+									</span>
+									<h2 className="min-w-0 text-lg font-semibold">{title}</h2>
+								</div>
 								<span className="text-sm font-semibold tabular-nums text-muted-foreground">
 									{number}
 								</span>
 							</div>
-							<h2 className="mt-5 text-lg font-semibold">{title}</h2>
 							<p className="mt-2 leading-6 text-muted-foreground">{description}</p>
 						</Card>
 					</li>

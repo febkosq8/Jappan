@@ -48,6 +48,7 @@ export interface BotContextMenuCommandContext {
 }
 
 export interface BotContextMenuCommand {
+	readonly commandData: BotCommandData;
 	readonly data: ContextMenuCommandBuilder;
 	readonly execute: (context: BotContextMenuCommandContext) => Promise<void>;
 }
@@ -68,8 +69,13 @@ export function isBotContextMenuCommand(value: unknown): value is BotContextMenu
 
 	const command = value as Partial<BotContextMenuCommand>;
 	const commandType = command.data instanceof ContextMenuCommandBuilderClass ? command.data.toJSON().type : null;
+	const commandData = command.commandData;
 	return (
 		(commandType === ApplicationCommandType.Message || commandType === ApplicationCommandType.User) &&
-		typeof command.execute === "function"
+		typeof command.execute === "function" &&
+		!!commandData &&
+		typeof commandData.name === "string" &&
+		typeof commandData.description === "string" &&
+		typeof commandData.category === "string"
 	);
 }

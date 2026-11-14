@@ -5,10 +5,10 @@ import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
-import APIHandler, { type GlobalCommand } from "@jappan/handlers/APIHandler";
+import APIHandler, { type PublicCommand } from "@jappan/handlers/APIHandler";
 import useDocumentTitle, { formatTitle } from "@jappan/helpers/useDocumentTitle";
 
-function CopyCommandButton({ command }: { command: GlobalCommand }) {
+function CopyCommandButton({ command }: { command: PublicCommand }) {
 	const copyCommand = async () => {
 		if (!command.id) {
 			toast.error("Command ID is unavailable.");
@@ -52,7 +52,7 @@ function ValueTags({ values }: { values: string[] }) {
 	);
 }
 
-function CommandDetails({ command }: { command: GlobalCommand }) {
+function CommandDetails({ command }: { command: PublicCommand }) {
 	return (
 		<>
 			<p className="mt-2 text-muted-foreground">{command.description}</p>
@@ -172,8 +172,8 @@ function CommandCard({
 	subcommands,
 	hasSubcommands,
 }: {
-	command: GlobalCommand;
-	subcommands: GlobalCommand[];
+	command: PublicCommand;
+	subcommands: PublicCommand[];
 	hasSubcommands: boolean;
 }) {
 	return (
@@ -181,10 +181,17 @@ function CommandCard({
 			<Card hoverable={true} hoverLift={false} className="p-5">
 				<div className="flex flex-wrap items-center justify-between gap-2">
 					<div className="flex min-w-0 items-center gap-1">
-						<h2 className="min-w-0 wrap-break-word text-lg font-semibold">/{command.name}</h2>
-						{!hasSubcommands && <CopyCommandButton command={command} />}
+						<h2 className="min-w-0 wrap-break-word text-lg font-semibold">
+							{command.type === "context-menu" ? command.name : `/${command.name}`}
+						</h2>
+						{!hasSubcommands && command.type !== "context-menu" && <CopyCommandButton command={command} />}
 					</div>
 					<div className="flex flex-wrap gap-1">
+						{command.type === "context-menu" && (
+							<Tag variant="outline" size="sm">
+								Message context menu
+							</Tag>
+						)}
 						<Tag
 							variant="secondary"
 							size="sm"
@@ -227,15 +234,15 @@ function CommandCard({
 	);
 }
 
-function groupCommands(commands: GlobalCommand[]) {
+function groupCommands(commands: PublicCommand[]) {
 	const roots = new Map(
 		commands.filter((command) => command.type === "command").map((command) => [command.name, command]),
 	);
-	const subcommands = new Map<string, GlobalCommand[]>();
-	const standalone: GlobalCommand[] = [];
+	const subcommands = new Map<string, PublicCommand[]>();
+	const standalone: PublicCommand[] = [];
 
 	for (const command of commands) {
-		if (command.type === "command") {
+		if (command.type !== "sub-command") {
 			standalone.push(command);
 			continue;
 		}
@@ -259,7 +266,7 @@ export default function Commands() {
 	useDocumentTitle(formatTitle("Commands"));
 	const [searchParams, setSearchParams] = useSearchParams();
 	const category = searchParams.get("category") || "all";
-	const commandsQuery = useQuery({ queryKey: ["public", "commands"], queryFn: APIHandler.getGlobalCommands });
+	const commandsQuery = useQuery({ queryKey: ["public", "commands"], queryFn: APIHandler.getPublicCommands });
 	const categories = [...new Set((commandsQuery.data ?? []).map((command) => command.category))].sort();
 	const groups = groupCommands(commandsQuery.data ?? [])
 		.map(({ command, subcommands }) => ({

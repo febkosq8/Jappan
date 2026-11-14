@@ -19,10 +19,14 @@ export type StartPlayerSessionResult =
 export async function startPlayerSession({
 	guildId,
 	query,
+	shuffle: shuffleOverride,
+	loop: loopOverride,
 	user,
 }: {
 	guildId: string;
 	query: string;
+	shuffle?: boolean;
+	loop?: boolean;
 	user: PlayerWebUser;
 }): Promise<StartPlayerSessionResult> {
 	const guild = getClientGuild(guildId);
@@ -119,7 +123,8 @@ export async function startPlayerSession({
 	if (!searchResult.hasTracks()) {
 		return { success: false, status: 422, error: "No tracks were found for that query." };
 	}
-	const shuffle = savedPlaylist?.shuffle ?? false;
+	const shuffle = shuffleOverride ?? savedPlaylist?.shuffle ?? false;
+	const loop = loopOverride ?? savedPlaylist?.loop ?? false;
 	if (shuffle) {
 		searchResult.setTracks([...searchResult.tracks].sort(() => Math.random() - 0.5));
 	}
@@ -140,7 +145,7 @@ export async function startPlayerSession({
 			previousStatusMessage,
 			source: "web",
 			shuffle,
-			repeatMode: savedPlaylist?.loop ? 2 : 0,
+			repeatMode: loop ? 2 : 0,
 		});
 	} catch (error: unknown) {
 		if (createdStatusMessage) {

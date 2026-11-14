@@ -105,6 +105,8 @@ const playerSessionSchema = z.object({
 const startPlayerSessionSchema = z.strictObject({
 	guildId: z.string().regex(/^\d{17,20}$/u),
 	query: z.string().trim().min(1).max(MAX_PLAY_QUERY_LENGTH),
+	shuffle: z.boolean().optional(),
+	loop: z.boolean().optional(),
 });
 const playerSuggestionsSchema = z.strictObject({
 	query: z.string().trim().max(MAX_PLAY_QUERY_LENGTH),
@@ -190,7 +192,14 @@ const playerRoutes: RouteDefinition[] = [
 			}
 			const session: AuthSession = response.locals.authSession;
 			const user = await getPlayerWebUser(session);
-			const result = await startPlayerSession({ ...body.data, user });
+			const { guildId, query, shuffle, loop } = body.data;
+			const result = await startPlayerSession({
+				guildId,
+				query,
+				user,
+				...(shuffle === undefined ? {} : { shuffle }),
+				...(loop === undefined ? {} : { loop }),
+			});
 			if (!result.success) {
 				return response.status(result.status).json({ error: result.error });
 			}
