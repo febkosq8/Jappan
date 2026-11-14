@@ -4,6 +4,14 @@ import type { Request, Response } from "express";
 
 import { requireAdmin, requireSession } from "../../../../handlers/auth.js";
 import { requireDatabase, requireDiscord } from "../../../../handlers/availability.js";
+import {
+	filterListByQuery,
+	listQueryParameters,
+	listQuerySchema,
+	paginateList,
+	paginatedListSchema,
+	parseListQuery,
+} from "../../../../helpers/list.js";
 import { defineRouter, errorResponseSchema } from "../../../../helpers/route.js";
 import { getGuildInvite, kickGuild, sendGuildAdminMessage } from "../../../../helpers/adminGuild.js";
 import {
@@ -84,7 +92,7 @@ export default defineRouter("/guilds", [
 		tags: ["Admin Guilds"],
 		summary: "Deploy commands in a registered guild",
 		errorMessage: "Failed to deploy guild commands",
-		security: [{ sessionCookie: [] }],
+		security: [{ sessionBearer: [] }],
 		parameters: [
 			{
 				name: "guildId",
@@ -111,7 +119,7 @@ export default defineRouter("/guilds", [
 		tags: ["Admin Guilds"],
 		summary: "Undeploy commands from a registered guild",
 		errorMessage: "Failed to undeploy guild commands",
-		security: [{ sessionCookie: [] }],
+		security: [{ sessionBearer: [] }],
 		parameters: [
 			{
 				name: "guildId",
@@ -138,7 +146,7 @@ export default defineRouter("/guilds", [
 		tags: ["Admin Guilds"],
 		summary: "Remove the bot from a registered guild",
 		errorMessage: "Failed to leave guild",
-		security: [{ sessionCookie: [] }],
+		security: [{ sessionBearer: [] }],
 		parameters: [
 			{
 				name: "guildId",
@@ -257,7 +265,7 @@ export default defineRouter("/guilds", [
 		tags: ["Admin Guilds"],
 		summary: "Send an admin message to a registered guild",
 		errorMessage: "Failed to send admin guild message",
-		security: [{ sessionCookie: [] }],
+		security: [{ sessionBearer: [] }],
 		parameters: [
 			{
 				name: "guildId",
@@ -353,7 +361,7 @@ export default defineRouter("/guilds", [
 		tags: ["Admin Guilds"],
 		summary: "Get or create an invite for a registered guild",
 		errorMessage: "Failed to get admin guild invite",
-		security: [{ sessionCookie: [] }],
+		security: [{ sessionBearer: [] }],
 		parameters: [
 			{
 				name: "guildId",
@@ -408,16 +416,20 @@ export default defineRouter("/guilds", [
 		tags: ["Admin Guilds"],
 		summary: "List registered guilds",
 		errorMessage: "Failed to list guilds",
-		security: [{ sessionCookie: [] }],
+		security: [{ sessionBearer: [] }],
+		parameters: listQueryParameters(adminGuildSchema),
 		responses: {
 			200: {
 				description: "Registered guilds with current Discord membership and available details",
-				schema: z.array(adminGuildSchema),
+				schema: paginatedListSchema(adminGuildSchema),
 			},
+			400: { description: "Invalid list query", schema: errorResponseSchema },
 			500: { description: "Failed to list guilds", schema: errorResponseSchema },
 		},
 		middleware: [requireDatabase, requireDiscord, requireSession, requireAdmin],
-		handler: async (_request, response) => {
+		handler: async (request, response) => {
+			const query = parseListQuery(request.query, listQuerySchema, response);
+			if (!query) return;
 			const guilds = await listGuilds({
 				keys: [
 					...extendedGuildKeys,
@@ -427,7 +439,17 @@ export default defineRouter("/guilds", [
 					"guildCommandDeploymentState",
 				],
 			});
-			return response.status(200).json(guilds);
+			const filtered = filterListByQuery({
+				items: guilds,
+				query: query.query,
+				fieldFilters: query.fieldFilters,
+				itemSchema: adminGuildSchema,
+				response,
+			});
+			if (!filtered) return;
+			return response
+				.status(200)
+				.json(paginateList({ items: filtered, page: query.page, perPageLimit: query.perPageLimit }));
 		},
 	},
 	{
@@ -436,7 +458,7 @@ export default defineRouter("/guilds", [
 		tags: ["Admin Guilds"],
 		summary: "Get a registered guild as an admin",
 		errorMessage: "Failed to get guild",
-		security: [{ sessionCookie: [] }],
+		security: [{ sessionBearer: [] }],
 		parameters: [
 			{
 				name: "guildId",

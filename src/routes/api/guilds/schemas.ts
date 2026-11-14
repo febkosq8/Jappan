@@ -65,6 +65,14 @@ export const guildDetailsSchema = guildSchema.extend({
 	permissions: z.array(z.string()).optional(),
 });
 
+export const guildLeaderboardEntrySchema = z.object({
+	rank: z.number().int().positive(),
+	userId: z.string(),
+	username: z.string(),
+	avatarUrl: z.string().url().nullable(),
+	points: z.number().int().nonnegative(),
+});
+
 export const guildLeaderboardSchema = z.object({
 	guildName: z.string(),
 	guildIcon: z.string().url().nullable(),
@@ -75,17 +83,13 @@ export const guildLeaderboardSchema = z.object({
 			role: z.object({ id: z.string(), name: z.string().nullable() }),
 		})
 		.nullable(),
-	entries: z.array(
-		z.object({
-			rank: z.number().int().positive(),
-			userId: z.string(),
-			username: z.string(),
-			avatarUrl: z.string().url().nullable(),
-			points: z.number().int().nonnegative(),
-		}),
-	),
-	page: z.number().int().positive(),
-	pageCount: z.number().int().positive(),
+	items: z.array(guildLeaderboardEntrySchema),
+	pagination: z.object({
+		page: z.number().int().positive(),
+		perPageLimit: z.number().int().min(0).max(1000),
+		total: z.number().int().nonnegative(),
+		totalPages: z.number().int().nonnegative(),
+	}),
 });
 
 export const adminGuildDetailsSchema = adminGuildSchema.extend({
@@ -126,8 +130,6 @@ export const warningsPreferenceSchema = z.object({
 	banThreshold: threshold.nullable(),
 	auditChannelId: snowflake("channel").nullable(),
 });
-
-export const warningMemberSearchSchema = z.string().trim().min(2).max(32).optional();
 
 export const warningMemberSchema = z.object({
 	id: snowflake("user"),

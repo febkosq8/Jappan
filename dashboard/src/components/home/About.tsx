@@ -63,7 +63,7 @@ export default function About() {
 	return (
 		<section
 			id="about"
-			className="mx-auto grid min-h-[calc(100dvh-4rem)] w-full max-w-6xl items-center gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[1.2fr_0.8fr] lg:py-24"
+			className="app-page-min-height mx-auto grid w-full max-w-6xl items-center gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[1.2fr_0.8fr] lg:py-24"
 		>
 			<div className="min-w-0 w-full max-w-2xl">
 				<Tag

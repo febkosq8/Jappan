@@ -33,8 +33,11 @@ This document records design decisions and behavior that is easy to miss.
 ## Authentication and availability
 
 - Better Auth is mounted before body parsing. Only its session endpoint is
-  documented in OpenAPI. Swagger uses the API origin's session cookie; session
-  responses contain sensitive tokens.
+  documented in OpenAPI. Protected API routes accept either the Better Auth
+  session cookie or a Bearer token from the `set-auth-token` response header.
+  Swagger documents Bearer authentication; browser JavaScript cannot set a
+  `Cookie` header, though an existing browser cookie is sent automatically.
+  Session responses contain sensitive tokens.
 - OpenAPI security schemes are documentation only. `requireSession` authenticates;
   protected routes must also enforce their own authorization. `requireAdmin`
   checks the active admin role. Guild routes allow admins or guild members with
@@ -64,6 +67,29 @@ This document records design decisions and behavior that is easy to miss.
 
 ## Public commands and guild data
 
+- Collection GET endpoints use the same paginated response: `{ items, pagination }`,
+  where `pagination` contains `page`, `perPageLimit`, `total`, and `totalPages`.
+  `page` defaults to 1; `perPageLimit` defaults to 25 and values 1-1000 bound
+  each response. `perPageLimit=0` returns all matching results in one response
+  and reports page 1. `totalPages` is 0 for an empty result. Invalid pagination,
+  filter values, unsupported filter fields, or unknown list parameters return
+  HTTP 400. `query` is a trimmed, case-insensitive substring search across the
+  endpoint's searchable fields, including numeric and boolean values. Pass only
+  the text to find, e.g. `?query=Febkosq8`.
+- Use `filter[field]=value` for a case-insensitive substring search on one
+  supported field, e.g. `/guilds/manager?filter[name]=Febkosq8`. A filter field
+  overrides the global `query`; when several field filters are supplied, they
+  combine with AND. For example,
+  `/guilds/manager?filter[name]=Jappan&filter[owner.username]=Febkosq8` requires
+  both matches. Filters use the endpoint's supported field names; nested fields
+  use dot notation. Boolean filters accept `true` or `false`; numeric filters
+  require numeric values. Unknown fields or invalid values return HTTP 400.
+  Combine filters with pagination using `&`, e.g.
+  `/guilds/manager?filter[name]=Jappan&perPageLimit=25`.
+  Supported filter fields are endpoint-specific and are defined by each list's
+  searchable data; this document does not enumerate them.
+- The dashboard requests `perPageLimit=0` for lists displayed in client-side tables,
+  returning them in one API call. Other clients can request bounded pages.
 - Numeric bot, guild, channel, and invite timestamps use `*TimestampMs` field names
   and represent milliseconds since the Unix epoch. These replace the previous
   `createdAt`, `joinedTimestamp`, `discoveredAt`, `createdTimestamp`,

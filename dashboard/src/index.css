@@ -1,5 +1,9 @@
 @import "@febkosq8/arc/styles.css";
 
+@utility app-page-min-height {
+	min-height: calc(100dvh - 4.125rem);
+}
+
 @layer base {
 	html {
 		scroll-behavior: smooth;

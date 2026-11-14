@@ -5,6 +5,14 @@ import { getClient } from "../../bot.js";
 import { getClientGuilds } from "../../helpers/guild.js";
 import { defineRouter, errorResponseSchema } from "../../helpers/route.js";
 import type { RouteDefinition } from "../../helpers/route.js";
+import {
+	filterListByQuery,
+	listQueryParameters,
+	listQuerySchema,
+	paginateList,
+	paginatedListSchema,
+	parseListQuery,
+} from "../../helpers/list.js";
 import { getBotVersion } from "../../helpers/utils.js";
 import { getCommandId, getGlobalCommands, type BotCommand, type BotCommandData } from "../../services/commandLoader.js";
 import healthRouter from "./health.js";
@@ -181,15 +189,31 @@ const publicRoutes: RouteDefinition[] = [
 		tags: ["Public"],
 		summary: "List global slash commands and subcommands",
 		errorMessage: "Failed to list commands",
+		parameters: listQueryParameters(detailedCommandSchema),
 		responses: {
 			200: {
 				description: "Global command definitions, options, and declared permissions",
-				schema: z.array(detailedCommandSchema),
+				schema: paginatedListSchema(detailedCommandSchema),
 			},
+			400: { description: "Invalid list query", schema: errorResponseSchema },
 			500: { description: "Failed to list commands", schema: errorResponseSchema },
 		},
-		handler: (_request, response) =>
-			response.status(200).json(Array.from(getGlobalCommands().values()).flatMap(getPublicCommandEntries)),
+		handler: (request, response) => {
+			const query = parseListQuery(request.query, listQuerySchema, response);
+			if (!query) return;
+			const entries = Array.from(getGlobalCommands().values()).flatMap(getPublicCommandEntries);
+			const filtered = filterListByQuery({
+				items: entries,
+				query: query.query,
+				fieldFilters: query.fieldFilters,
+				itemSchema: detailedCommandSchema,
+				response,
+			});
+			if (!filtered) return;
+			return response
+				.status(200)
+				.json(paginateList({ items: filtered, page: query.page, perPageLimit: query.perPageLimit }));
+		},
 	},
 ];
 

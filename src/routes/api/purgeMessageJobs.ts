@@ -75,7 +75,7 @@ const actionRoutes: RouteDefinition[] = (["preview", "confirm", "cancel"] as con
 				? "Confirm the reviewed job preview"
 				: "Cancel a purge job before deletion",
 	errorMessage: `Failed to ${action} message purge job`,
-	security: [{ sessionCookie: [] }],
+	security: [{ sessionBearer: [] }],
 	parameters: [{ name: "jobId", in: "path", required: true, schema: jobIdSchema }],
 	...(action === "confirm"
 		? { requestBody: { required: true, content: { "application/json": { schema: confirmSchema } } } }
@@ -139,7 +139,7 @@ export default defineRouter("/purge-jobs", [
 		tags: ["Guild"],
 		summary: "Get message purge job progress",
 		errorMessage: "Failed to get message purge job",
-		security: [{ sessionCookie: [] }],
+		security: [{ sessionBearer: [] }],
 		parameters: [
 			{
 				name: "jobId",

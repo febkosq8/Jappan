@@ -15,7 +15,7 @@ import { getPlayerSuggestions } from "../../../services/playerSearch.js";
 import { startPlayerSession } from "../../../services/playerSessionStart.js";
 import { getPlayerSessionViewerCount } from "../../../services/playerWebsocket.js";
 const tags = ["Player"];
-const security = [{ sessionCookie: [] }];
+const security = [{ sessionBearer: [] }];
 // Authenticate before resolving the session so unauthenticated callers cannot probe session IDs.
 // Viewing only needs guild membership; changing the session happens over the WebSocket, which enforces the
 // voice channel, ownership and the lock.

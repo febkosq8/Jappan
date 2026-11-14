@@ -19,6 +19,8 @@ export interface RouteParameter {
 	description?: string;
 	required?: boolean;
 	schema: z.ZodType;
+	style?: "deepObject";
+	explode?: boolean;
 }
 
 export interface RouteMediaType {

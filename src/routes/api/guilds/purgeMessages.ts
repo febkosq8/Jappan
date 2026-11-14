@@ -151,7 +151,7 @@ export default defineRouter("/guilds", [
 		tags: ["Guild"],
 		summary: "Create a purge request without scanning or deleting messages",
 		errorMessage: "Failed to create message purge job",
-		security: [{ sessionCookie: [] }],
+		security: [{ sessionBearer: [] }],
 		parameters: [{ name: "guildId", in: "path", required: true, schema: z.string().regex(/^\d{17,20}$/u) }],
 		requestBody: { required: true, content: { "application/json": { schema: guildPurgeRequestSchema } } },
 		responses: {

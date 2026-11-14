@@ -375,28 +375,84 @@ interface GetLeaderboardOptions {
 	guildId: string;
 	page: number;
 	pageSize?: number;
+	query?: string;
+	fieldFilters?: Readonly<Record<string, string>>;
+	clampPage?: boolean;
 }
 
 export async function getLeaderboard({
 	guildId,
 	page,
 	pageSize = LEADERBOARD_PAGE_SIZE,
+	query,
+	fieldFilters = {},
+	clampPage = true,
 }: GetLeaderboardOptions): Promise<{
 	entries: GuildMemberStateDocument[];
 	page: number;
 	pageCount: number;
+	total: number;
 }> {
-	const total = await GuildMemberStateModel.countDocuments({ guildId }).exec();
-	const pageCount = Math.max(1, Math.ceil(total / pageSize));
-	const currentPage = Math.min(Math.max(page, 1), pageCount);
-	const entries = await GuildMemberStateModel.find({ guildId })
+	const escapedQuery = query?.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+	const filters = Object.entries(fieldFilters);
+	const fieldFilterConditions = filters.map(([field, value]) => {
+		const escapedValue = value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+		switch (field) {
+			case "userId":
+				return { userId: { $regex: escapedValue, $options: "i" } };
+			case "username":
+				return { username: { $regex: escapedValue, $options: "i" } };
+			case "points":
+				return {
+					$expr: {
+						$regexMatch: {
+							input: { $toString: "$leveling.points" },
+							regex: escapedValue,
+							options: "i",
+						},
+					},
+				};
+			default:
+				throw new Error(`Unsupported leaderboard filter field: ${field}`);
+		}
+	});
+	const filter = {
+		guildId,
+		...(filters.length > 0
+			? { $and: fieldFilterConditions }
+			: escapedQuery
+				? {
+						$or: [
+							{ userId: { $regex: escapedQuery, $options: "i" } },
+							{ username: { $regex: escapedQuery, $options: "i" } },
+							{
+								$expr: {
+									$regexMatch: {
+										input: { $toString: "$leveling.points" },
+										regex: escapedQuery,
+										options: "i",
+									},
+								},
+							},
+						],
+					}
+				: {}),
+	};
+	const total = await GuildMemberStateModel.countDocuments(filter).exec();
+	const pageCount = pageSize === 0 ? Number(total > 0) : Math.max(1, Math.ceil(total / pageSize));
+	const currentPage = pageSize === 0 ? 1 : clampPage ? Math.min(Math.max(page, 1), pageCount) : page;
+	if (pageSize > 0 && !clampPage && currentPage > pageCount) {
+		return { entries: [], page: currentPage, pageCount, total };
+	}
+	const entriesQuery = GuildMemberStateModel.find(filter)
 		.sort({ "leveling.points": -1, userId: 1 })
-		.skip((currentPage - 1) * pageSize)
-		.limit(pageSize)
-		.select({ userId: 1, username: 1, "leveling.points": 1 })
-		.exec();
+		.select({ userId: 1, username: 1, "leveling.points": 1 });
+	if (pageSize > 0) {
+		entriesQuery.skip((currentPage - 1) * pageSize).limit(pageSize);
+	}
+	const entries = await entriesQuery.exec();
 
-	return { entries, page: currentPage, pageCount };
+	return { entries, page: currentPage, pageCount, total };
 }
 
 interface GetLeaderboardPreviewOptions {
