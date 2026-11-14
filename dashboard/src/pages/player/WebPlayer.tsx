@@ -199,8 +199,8 @@ export default function WebPlayer() {
 	if (replaced) {
 		return (
 			<ErrorPage
-				status="Session conflict"
-				title="This session is open in another tab"
+				status="Player session conflict"
+				title="This player session is open in another tab"
 				message="You opened this player session in another tab. Only the most recently opened tab can control it.\n\nContinue playback in that tab, or return home."
 				actions={
 					<PillLink variant="outline-secondary" href="/" className="gap-2">
@@ -218,8 +218,8 @@ export default function WebPlayer() {
 		return (
 			<ErrorPage
 				status="403"
-				title="You can't view this player"
-				message={`${getErrorMessage(sessionQuery.error, "You don't have access to this player.")}\nJoin the server in Discord, then try again.`}
+				title="You can't view this player session"
+				message={"You don't have access to this player session.\nJoin the server in Discord, then try again."}
 				actions={<Button onClick={() => void sessionQuery.refetch()}>Try again</Button>}
 			/>
 		);
@@ -229,8 +229,8 @@ export default function WebPlayer() {
 		return (
 			<ErrorPage
 				status={status === 400 ? "400" : "404"}
-				title="No session found"
-				message="This can happen for a few reasons:"
+				title="Player session not found"
+				message="This player session may be unavailable for a few reasons:"
 				actions={
 					<PillLink variant="outline-secondary" href="/" className="gap-2">
 						<FiArrowLeft aria-hidden="true" />
@@ -239,11 +239,13 @@ export default function WebPlayer() {
 				}
 			>
 				<ul className="list-disc space-y-1 pl-5 text-left text-muted-foreground">
-					<li>The session ended because playback stopped or the bot left the voice channel.</li>
+					<li>The player session ended because playback stopped or the bot left the voice channel.</li>
 					<li>The link is invalid or incomplete.</li>
 					<li>The bot restarted, which clears active sessions.</li>
 				</ul>
-				<p className="mt-3 text-muted-foreground">Start playback again in Discord to get a new session.</p>
+				<p className="mt-3 text-muted-foreground">
+					Start playback again in Discord to get a new player session.
+				</p>
 			</ErrorPage>
 		);
 	}
@@ -252,9 +254,9 @@ export default function WebPlayer() {
 	if (!session) {
 		return sessionQuery.isError ? (
 			<ErrorPage
-				status={status ? String(status) : "Player error"}
-				title="Player unavailable"
-				message={getErrorMessage(sessionQuery.error, "Could not reach the player.")}
+				status={status ? String(status) : "Player session error"}
+				title="Player session unavailable"
+				message="Could not reach the player session."
 				actions={<Button onClick={() => void sessionQuery.refetch()}>Try again</Button>}
 			/>
 		) : (

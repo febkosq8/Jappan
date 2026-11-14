@@ -20,6 +20,7 @@ import {
 } from "react-icons/fi";
 
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
+import { AccessRedirect } from "@jappan/components/AdminRoute";
 import ErrorPage from "@jappan/components/ErrorPage";
 import ChannelDisplay from "@jappan/components/display/ChannelDisplay";
 import GuildPageHeader from "@jappan/components/display/GuildPageHeader";
@@ -389,6 +390,7 @@ export default function PurgeMessageJob() {
 
 	if (!isValidJobId || accessProblem || jobQuery.isError || clockUnavailable) {
 		const status = axios.isAxiosError(jobQuery.error) ? jobQuery.error.response?.status : undefined;
+		if (status === 401) return <AccessRedirect status={401} />;
 		const notFound = !isValidJobId || status === 400 || status === 404;
 		const denied = status === 403;
 		const title = notFound ? "No purge job found" : denied ? "You can't view this job" : "Purge job unavailable";
