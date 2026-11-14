@@ -53,7 +53,6 @@ const button: ButtonModule = {
 			await interaction.reply({ content: "⛔ There is no active player queue.", flags: MessageFlags.Ephemeral });
 			return;
 		}
-
 		const actor: PlayerActor = {
 			id: interaction.user.id,
 			username: interaction.user.username,
