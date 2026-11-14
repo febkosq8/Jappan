@@ -114,6 +114,10 @@ export interface AdminGuildChannel {
 	canSendMessage: boolean;
 	canReadMessages: boolean;
 	canManageMessages: boolean;
+	canManageWebhooks: boolean;
+	canManageChannels: boolean;
+	canConnect?: boolean;
+	canSpeak?: boolean;
 	topic?: string | null;
 	nsfw?: boolean;
 	rateLimitPerUser?: number | null;

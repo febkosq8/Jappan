@@ -106,13 +106,11 @@ function ChannelGroupList({ guildId, channels }: { guildId: string; channels: Ad
 														NSFW
 													</Tag>
 												)}
-												{channel.rateLimitPerUser != null &&
-													channel.rateLimitPerUser > 0 && (
-														<Tag variant="secondary" size="xs">
-															Slowmode:{" "}
-															{DateHandler.formatDuration(channel.rateLimitPerUser)}
-														</Tag>
-													)}
+												{channel.rateLimitPerUser != null && channel.rateLimitPerUser > 0 && (
+													<Tag variant="secondary" size="xs">
+														Slowmode: {DateHandler.formatDuration(channel.rateLimitPerUser)}
+													</Tag>
+												)}
 												{channel.userLimit !== undefined && channel.userLimit > 0 && (
 													<Tag variant="secondary" size="xs">
 														User limit: {channel.userLimit}
@@ -140,42 +138,32 @@ function ChannelGroupList({ guildId, channels }: { guildId: string; channels: Ad
 													</div>
 												)}
 											</div>
-											<div className="flex min-w-0 flex-wrap gap-x-1">
-												<dt className="text-muted-foreground">Can send message:</dt>
-												<dd
-													className={
-														channel.canSendMessage
-															? "font-medium text-success"
-															: "font-medium text-destructive"
-													}
-												>
-													{channel.canSendMessage ? "Yes" : "No"}
-												</dd>
-											</div>
-											<div className="flex min-w-0 flex-wrap gap-x-1">
-												<dt className="text-muted-foreground">Can read messages:</dt>
-												<dd
-													className={
-														channel.canReadMessages
-															? "font-medium text-success"
-															: "font-medium text-destructive"
-													}
-												>
-													{channel.canReadMessages ? "Yes" : "No"}
-												</dd>
-											</div>
-											<div className="flex min-w-0 flex-wrap gap-x-1">
-												<dt className="text-muted-foreground">Can manage messages:</dt>
-												<dd
-													className={
-														channel.canManageMessages
-															? "font-medium text-success"
-															: "font-medium text-destructive"
-													}
-												>
-													{channel.canManageMessages ? "Yes" : "No"}
-												</dd>
-											</div>
+											{(
+												[
+													["Can send message", channel.canSendMessage],
+													["Can read messages", channel.canReadMessages],
+													["Can manage messages", channel.canManageMessages],
+													["Can manage webhooks", channel.canManageWebhooks],
+													["Can manage channels", channel.canManageChannels],
+													["Can connect", channel.canConnect],
+													["Can speak", channel.canSpeak],
+												] as const
+											).map(([label, granted]) =>
+												granted === undefined ? null : (
+													<div key={label} className="flex min-w-0 flex-wrap gap-x-1">
+														<dt className="text-muted-foreground">{label}:</dt>
+														<dd
+															className={
+																granted
+																	? "font-medium text-success"
+																	: "font-medium text-destructive"
+															}
+														>
+															{granted ? "Yes" : "No"}
+														</dd>
+													</div>
+												),
+											)}
 											{channel.topic && (
 												<div className="col-span-2 min-w-0">
 													<dt className="text-muted-foreground">Topic:</dt>

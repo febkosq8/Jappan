@@ -62,6 +62,24 @@ export async function listAdminGuildChannels(guildId: string) {
 				canManageMessages:
 					isTextBased &&
 					(permissions?.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ManageMessages]) ?? false),
+				canManageWebhooks:
+					isTextBased &&
+					(permissions?.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ManageWebhooks]) ?? false),
+				canManageChannels:
+					permissions?.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ManageChannels]) ?? false,
+				...(channel.isVoiceBased()
+					? {
+							canConnect:
+								permissions?.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect]) ??
+								false,
+							canSpeak:
+								permissions?.has([
+									PermissionFlagsBits.ViewChannel,
+									PermissionFlagsBits.Connect,
+									PermissionFlagsBits.Speak,
+								]) ?? false,
+						}
+					: {}),
 				...("topic" in channel ? { topic: channel.topic } : {}),
 				...("nsfw" in channel ? { nsfw: channel.nsfw } : {}),
 				...("rateLimitPerUser" in channel ? { rateLimitPerUser: channel.rateLimitPerUser } : {}),
