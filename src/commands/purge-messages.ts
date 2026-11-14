@@ -36,6 +36,7 @@ import {
 } from "../services/purgeMessageJobs.js";
 import {
 	getPurgeChannelPermissionError,
+	getPurgeMessageEmbedContent,
 	isPurgeableGuildChannel,
 	purgeableChannelTypes,
 } from "../services/purgeMessagePreviews.js";
@@ -158,7 +159,9 @@ async function createPurgeJob({
 		const updateMessage = (state: PurgeMessageJobState) => {
 			if (state.jobId !== job.jobId || finalized) return;
 			const terminal = isPurgeMessageJobTerminal(state.status);
-			if (!terminal && (state.status !== "running" || started)) return;
+			if (!terminal && state.status !== "awaiting_confirmation" && (state.status !== "running" || started)) {
+				return;
+			}
 			started ||= state.status === "running";
 			finalized = terminal;
 			if (terminal) stopListening();
@@ -382,8 +385,13 @@ export async function showPurgeMessageJobModal({
 		.setStyle(TextInputStyle.Paragraph)
 		.setRequired(false)
 		.setMaxLength(purgeMessageTextFilterMaxLength);
-	if (targetMessage.content) {
-		textInput.setValue(targetMessage.content);
+	const targetContent =
+		targetMessage.content ||
+		getPurgeMessageEmbedContent(targetMessage)
+			.filter((content): content is string => content !== null)
+			.join("\n");
+	if (targetContent) {
+		textInput.setValue(targetContent.slice(0, purgeMessageTextFilterMaxLength));
 	}
 	const countInput = new TextInputBuilder()
 		.setCustomId(purgeJobModalInputIds.count)

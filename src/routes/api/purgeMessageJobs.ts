@@ -53,6 +53,7 @@ const purgeMessageJobSchema = z.object({
 	matchedMessages: z.number().int().nonnegative(),
 	messagesToDelete: z.number().int().nonnegative(),
 	messagesProcessed: z.number().int().nonnegative(),
+	messageStatuses: z.record(z.string(), z.enum(["pending", "deleting", "deleted", "failed"])),
 	deletedMessages: z.number().int().nonnegative(),
 	failedMessages: z.number().int().nonnegative(),
 	unprocessedMessages: z.number().int().nonnegative(),

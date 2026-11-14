@@ -185,6 +185,7 @@ export interface PurgeMessageJobState {
 	matchedMessages: number;
 	messagesToDelete: number;
 	messagesProcessed: number;
+	messageStatuses: Record<string, "pending" | "deleting" | "deleted" | "failed">;
 	deletedMessages: number;
 	failedMessages: number;
 	unprocessedMessages: number;

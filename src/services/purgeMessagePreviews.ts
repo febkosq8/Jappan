@@ -103,7 +103,7 @@ export function isPurgeableGuildChannel(channel: GuildBasedChannel | null): chan
 	);
 }
 
-function getEmbedContent(message: Message): (string | null)[] {
+export function getPurgeMessageEmbedContent(message: Pick<Message, "embeds">): (string | null)[] {
 	return message.embeds.map((embed) => {
 		const content = [
 			embed.author?.name,
@@ -201,7 +201,16 @@ export async function createPurgeMessagePreview({
 		if (cachedResult !== undefined) return cachedResult;
 		const isEligible =
 			(!targetUserId || message.author.id === targetUserId) &&
-			textFilter.matches(message.content) &&
+			textFilter.matches(
+				textFilter.text === null
+					? message.content
+					: [
+							message.content,
+							...getPurgeMessageEmbedContent(message).filter(
+								(content): content is string => content !== null,
+							),
+						].join("\n"),
+			) &&
 			(!excludedInteractionId || message.interactionMetadata?.id !== excludedInteractionId);
 		evaluatedMessages.set(message.id, isEligible);
 		scannedCount += 1;
@@ -367,7 +376,7 @@ export async function createPurgeMessagePreview({
 				avatarUrl: message.author.displayAvatarURL(),
 			},
 			content: message.content,
-			embedContent: getEmbedContent(message),
+			embedContent: getPurgeMessageEmbedContent(message),
 			createdTimestampMs: message.createdTimestamp,
 			jumpUrl: message.url,
 		})),

@@ -4,7 +4,7 @@ import { DiscordAPIError, PermissionFlagsBits, RESTJSONErrorCodes } from "discor
 
 import { DISCORD_INTERACTION_TIME_LIMIT_MS } from "../helpers/interaction.js";
 import { getClientGuild } from "../helpers/guild.js";
-import { deleteMessages } from "./purgeMessages.js";
+import { deleteMessages, type DeleteMessageStatus } from "./purgeMessages.js";
 import { logger } from "./logger.js";
 import { createPurgeMessageTextFilter } from "./purgeMessageTextFilter.js";
 import {
@@ -56,6 +56,7 @@ export interface PurgeMessageJobState {
 	matchedMessages: number;
 	messagesToDelete: number;
 	messagesProcessed: number;
+	messageStatuses: Record<string, DeleteMessageStatus>;
 	deletedMessages: number;
 	failedMessages: number;
 	unprocessedMessages: number;
@@ -232,6 +233,12 @@ async function runPurgeMessageJob(
 					);
 					publish(record);
 				},
+				onMessageStatus: (updates) => {
+					for (const update of updates) {
+						record.state.messageStatuses[update.messageId] = update.status;
+					}
+					publish(record);
+				},
 			});
 			record.state.deletedMessages = deletedBeforeChannel + result.deleted;
 			record.state.failedMessages = failedBeforeChannel + result.failed;
@@ -322,6 +329,7 @@ export function createPurgeMessageJob(options: CreatePurgeMessageJobOptions): Pu
 		matchedMessages: 0,
 		messagesToDelete: 0,
 		messagesProcessed: 0,
+		messageStatuses: {},
 		deletedMessages: 0,
 		failedMessages: 0,
 		unprocessedMessages: 0,
@@ -572,7 +580,7 @@ export async function confirmPurgeMessageJob({
 	record.state.status = "running";
 	if (record.expiryTimer) clearTimeout(record.expiryTimer);
 	record.expiryTimer = null;
-	record.state.preview = null;
+	record.state.messageStatuses = Object.fromEntries(preview.messages.map((message) => [message.id, "pending"]));
 	record.state.completedChannels = 0;
 	record.state.channelCount = channels.length;
 	record.state.progressPercentage = 0;

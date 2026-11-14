@@ -81,6 +81,175 @@ function groupPreviewMessages(messages: NonNullable<PurgeMessageJobState["previe
 	return [...groups.values()];
 }
 
+type MessageDeletionStatus = PurgeMessageJobState["messageStatuses"][string];
+type MessageStatusCounts = Record<MessageDeletionStatus, number>;
+
+const messageStatusOrder: MessageDeletionStatus[] = ["pending", "deleting", "deleted", "failed"];
+
+function countMessageStatuses(
+	messages: NonNullable<PurgeMessageJobState["preview"]>["messages"],
+	statuses: PurgeMessageJobState["messageStatuses"],
+): MessageStatusCounts {
+	return messages.reduce<MessageStatusCounts>(
+		(counts, message) => {
+			counts[statuses[message.id] ?? "pending"] += 1;
+			return counts;
+		},
+		{ pending: 0, deleting: 0, deleted: 0, failed: 0 },
+	);
+}
+
+function messageStatusLabel(status: MessageDeletionStatus): string {
+	return status === "deleting" ? "Deleting" : status[0]!.toUpperCase() + status.slice(1);
+}
+
+function messageStatusVariant(status: MessageDeletionStatus): "secondary" | "warning" | "success" | "destructive" {
+	if (status === "deleting") return "warning";
+	if (status === "deleted") return "success";
+	if (status === "failed") return "destructive";
+	return "secondary";
+}
+
+function MessageStatusTag({ status }: { status: MessageDeletionStatus }) {
+	return (
+		<Tag variant={messageStatusVariant(status)} size="xs">
+			{messageStatusLabel(status)}
+		</Tag>
+	);
+}
+
+function PurgeMessageList({
+	guildId,
+	messages,
+	messageStatuses,
+	showStatuses,
+	expandedChannelId,
+	onToggleChannel,
+}: {
+	guildId: string;
+	messages: NonNullable<PurgeMessageJobState["preview"]>["messages"];
+	messageStatuses: PurgeMessageJobState["messageStatuses"];
+	showStatuses: boolean;
+	expandedChannelId: string | null;
+	onToggleChannel: (channelId: string) => void;
+}) {
+	return (
+		<div className="max-h-96 space-y-3 overflow-y-auto">
+			{groupPreviewMessages(messages).map((group) => {
+				const counts = countMessageStatuses(group.messages, messageStatuses);
+				return (
+					<Card key={group.channelId} hoverable={false} className="min-w-0 border-border">
+						<Card.Content className="space-y-3 p-4">
+							<div className="flex flex-wrap items-center justify-between gap-3">
+								<ChannelDisplay
+									guildId={guildId}
+									id={group.channelId}
+									name={`#${group.channelName}`}
+									showId
+								/>
+								<Tag variant="secondary" size="sm">
+									{group.messages.length} total
+								</Tag>
+								{showStatuses && (
+									<div className="flex flex-wrap gap-1">
+										{messageStatusOrder.map((status) => (
+											<Tag key={status} variant={messageStatusVariant(status)} size="xs">
+												{counts[status]} {messageStatusLabel(status).toLowerCase()}
+											</Tag>
+										))}
+									</div>
+								)}
+								<Button
+									type="button"
+									variant="outline-secondary"
+									size="sm"
+									aria-expanded={expandedChannelId === group.channelId}
+									aria-controls={`purge-job-channel-${group.channelId}-messages`}
+									onClick={() => onToggleChannel(group.channelId)}
+								>
+									{expandedChannelId === group.channelId ? "Hide" : "Show"} {group.messages.length}{" "}
+									message{group.messages.length === 1 ? "" : "s"}
+								</Button>
+							</div>
+							<ul
+								id={`purge-job-channel-${group.channelId}-messages`}
+								hidden={expandedChannelId !== group.channelId}
+								className="space-y-2"
+							>
+								{group.messages.map((message) => {
+									const textContent =
+										message.embedContent === undefined && message.content === "(No text content)"
+											? ""
+											: message.content;
+									const embedContent = message.embedContent ?? [];
+									const supportedEmbedContent = embedContent.filter(
+										(content): content is string => content !== null,
+									);
+
+									return (
+										<li key={message.id} className="rounded-md border border-border p-3">
+											<div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+												<UserDisplay
+													id={message.author.id}
+													name={`${message.author.displayName} (@${message.author.username})`}
+													avatarUrl={message.author.avatarUrl}
+													size="sm"
+													showId
+												/>
+												{showStatuses && (
+													<MessageStatusTag
+														status={messageStatuses[message.id] ?? "pending"}
+													/>
+												)}
+												<a
+													href={message.jumpUrl}
+													target="_blank"
+													rel="noreferrer"
+													className="min-w-0 break-all text-center text-muted-foreground underline hover:text-primary"
+												>
+													Message ID: {message.id}
+												</a>
+												<span className="whitespace-nowrap text-center text-muted-foreground">
+													{DateHandler.getDateTime(message.createdTimestampMs)}
+												</span>
+											</div>
+											{(textContent || embedContent.length > 0) && (
+												<div className="mt-2 space-y-2 wrap-break-word whitespace-pre-wrap text-sm">
+													{textContent && (
+														<p>
+															<span className="font-medium">Text:</span> {textContent}
+														</p>
+													)}
+													{supportedEmbedContent.length > 0 ? (
+														<p>
+															<span className="font-medium">Embed:</span>{" "}
+															{supportedEmbedContent.join("\n\n")}
+														</p>
+													) : (
+														!textContent &&
+														embedContent.length > 0 && (
+															<p
+																role="status"
+																className="rounded-md border border-warning bg-warning/10 p-3 font-medium text-warning"
+															>
+																No supported content to preview
+															</p>
+														)
+													)}
+												</div>
+											)}
+										</li>
+									);
+								})}
+							</ul>
+						</Card.Content>
+					</Card>
+				);
+			})}
+		</div>
+	);
+}
+
 function WarningBanner({ children }: { children: ReactNode }) {
 	return (
 		<Card hoverable={false} className="rounded-md border-warning">
@@ -264,8 +433,11 @@ export default function PurgeMessageJob() {
 	const job = jobQuery.data;
 	const now = job.serverTimestampMs + Math.max(0, monotonicNow - receivedAt);
 	const beforeDeletion = ["awaiting_preview", "previewing", "awaiting_confirmation"].includes(job.status);
-	const preview = job.status === "awaiting_confirmation" ? job.preview : null;
-	const previewExpired = Boolean(preview && preview.expiresAt <= now);
+	const preview = job.preview;
+	const messageStatusCounts = preview
+		? countMessageStatuses(preview.messages, job.messageStatuses)
+		: { pending: 0, deleting: 0, deleted: 0, failed: 0 };
+	const previewExpired = Boolean(beforeDeletion && preview && preview.expiresAt <= now);
 	const requestExpired = job.requestExpiresAtMs <= now;
 	const actionBusy = prepareMutation.isPending || confirmMutation.isPending || cancelMutation.isPending;
 	const StatusIcon =
@@ -449,261 +621,6 @@ export default function PurgeMessageJob() {
 							</div>
 						)}
 
-						{beforeDeletion && (
-							<div className="mt-5 space-y-4 border-t border-border pt-4">
-								<p className="text-sm text-muted-foreground">
-									{job.status === "previewing"
-										? "Preparing the preview. No messages have been deleted."
-										: preview
-											? "Review these messages before confirming deletion."
-											: "The preview will be prepared here. No messages have been deleted."}
-								</p>
-								{preview && (
-									<Card hoverable={false} className="min-w-0 border-border">
-										<Card.Content className="space-y-4 p-4">
-											<div className="flex flex-wrap items-center justify-between gap-2">
-												<h3 className="font-semibold">Message preview</h3>
-												<Tag variant="secondary" size="sm">
-													{preview.deleteCount} message{preview.deleteCount === 1 ? "" : "s"}{" "}
-													loaded
-												</Tag>
-											</div>
-											{preview.skippedChannelCount > 0 && (
-												<WarningBanner>
-													<div className="flex w-full items-center justify-between gap-3">
-														<span>
-															{preview.skippedChannelCount} channel
-															{preview.skippedChannelCount === 1 ? " was" : "s were"}{" "}
-															skipped due to missing permissions.
-														</span>
-														<PillLink
-															href={`/guild/${encodeURIComponent(job.guildId)}#guild-channels`}
-															variant="outline-secondary"
-															size="sm"
-															className="shrink-0 whitespace-nowrap"
-															target="_blank"
-															rel="noreferrer"
-														>
-															Review
-														</PillLink>
-													</div>
-												</WarningBanner>
-											)}
-											{preview.messages.length > 0 ? (
-												<div className="max-h-96 space-y-3 overflow-y-auto">
-													{groupPreviewMessages(preview.messages).map((group) => (
-														<Card
-															key={group.channelId}
-															hoverable={false}
-															className="min-w-0 border-border"
-														>
-															<Card.Content className="space-y-3 p-4">
-																<div className="flex flex-wrap items-center justify-between gap-3">
-																	<ChannelDisplay
-																		guildId={job.guildId}
-																		id={group.channelId}
-																		name={`#${group.channelName}`}
-																		showId
-																	/>
-																	<Button
-																		type="button"
-																		variant="outline-secondary"
-																		size="sm"
-																		aria-expanded={
-																			expandedChannelId === group.channelId
-																		}
-																		aria-controls={`purge-job-channel-${group.channelId}-messages`}
-																		onClick={() =>
-																			setExpandedChannelId(
-																				expandedChannelId === group.channelId
-																					? null
-																					: group.channelId,
-																			)
-																		}
-																	>
-																		{expandedChannelId === group.channelId
-																			? "Hide"
-																			: "Show"}{" "}
-																		{group.messages.length} message
-																		{group.messages.length === 1 ? "" : "s"}
-																	</Button>
-																</div>
-																<ul
-																	id={`purge-job-channel-${group.channelId}-messages`}
-																	hidden={expandedChannelId !== group.channelId}
-																	className="space-y-2"
-																>
-																	{group.messages.map((message) => {
-																		const textContent =
-																			message.embedContent === undefined &&
-																			message.content === "(No text content)"
-																				? ""
-																				: message.content;
-																		const embedContent = message.embedContent ?? [];
-																		const supportedEmbedContent =
-																			embedContent.filter(
-																				(content): content is string =>
-																					content !== null,
-																			);
-
-																		return (
-																			<li
-																				key={message.id}
-																				className="rounded-md border border-border p-3"
-																			>
-																				<div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-																					<UserDisplay
-																						id={message.author.id}
-																						name={`${message.author.displayName} (@${message.author.username})`}
-																						avatarUrl={
-																							message.author.avatarUrl
-																						}
-																						size="sm"
-																						showId
-																					/>
-																					<a
-																						href={message.jumpUrl}
-																						target="_blank"
-																						rel="noreferrer"
-																						className="min-w-0 break-all text-center text-muted-foreground underline hover:text-primary"
-																					>
-																						Message ID: {message.id}
-																					</a>
-																					<span className="whitespace-nowrap text-center text-muted-foreground">
-																						{DateHandler.getDateTime(
-																							message.createdTimestampMs,
-																						)}
-																					</span>
-																				</div>
-																				{(textContent ||
-																					embedContent.length > 0) && (
-																					<div className="mt-2 space-y-2 wrap-break-word whitespace-pre-wrap text-sm">
-																						{textContent && (
-																							<p>
-																								<span className="font-medium">
-																									Text:
-																								</span>{" "}
-																								{textContent}
-																							</p>
-																						)}
-																						{supportedEmbedContent.length >
-																						0 ? (
-																							<p>
-																								<span className="font-medium">
-																									Embed:
-																								</span>{" "}
-																								{supportedEmbedContent.join(
-																									"\n\n",
-																								)}
-																							</p>
-																						) : (
-																							!textContent &&
-																							embedContent.length > 0 && (
-																								<p
-																									role="status"
-																									className="rounded-md border border-warning bg-warning/10 p-3 font-medium text-warning"
-																								>
-																									No supported content
-																									to preview
-																								</p>
-																							)
-																						)}
-																					</div>
-																				)}
-																			</li>
-																		);
-																	})}
-																</ul>
-															</Card.Content>
-														</Card>
-													))}
-												</div>
-											) : (
-												<p className="text-sm text-muted-foreground">
-													No messages match this request.
-												</p>
-											)}
-											{preview.matchedCount > preview.deleteCount && (
-												<p className="text-xs text-muted-foreground">
-													Only the newest {preview.deleteCount} of {preview.matchedCount}{" "}
-													matches will be deleted.
-												</p>
-											)}
-											{previewExpired ? (
-												<WarningBanner>
-													This preview expired. Refresh it before confirming.
-												</WarningBanner>
-											) : (
-												<p className="text-xs text-muted-foreground">
-													Preview expires {DateHandler.getDateTime(preview.expiresAt)}.
-												</p>
-											)}
-											{preview.deleteCount > 0 && (
-												<label className="flex items-start gap-2 text-sm">
-													<input
-														type="checkbox"
-														checked={confirmationPreviewId === preview.previewId}
-														onChange={(event) =>
-															setConfirmationPreviewId(
-																event.target.checked ? preview.previewId : null,
-															)
-														}
-														disabled={actionBusy || previewExpired}
-														className="mt-1 size-4 accent-primary focus-visible:ring-2 focus-visible:ring-ring"
-													/>
-													<span>
-														I reviewed the preview and understand that {preview.deleteCount}{" "}
-														message
-														{preview.deleteCount === 1 ? "" : "s"} will be permanently
-														deleted.
-													</span>
-												</label>
-											)}
-										</Card.Content>
-									</Card>
-								)}
-								<div className="flex flex-wrap items-center gap-3">
-									{preview && preview.deleteCount > 0 && (
-										<Button
-											variant="destructive"
-											disabled={
-												confirmationPreviewId !== preview.previewId ||
-												actionBusy ||
-												previewExpired
-											}
-											onClick={() => confirmMutation.mutate()}
-										>
-											{confirmMutation.isPending
-												? "Starting deletion..."
-												: `Delete ${preview.deleteCount} message${preview.deleteCount === 1 ? "" : "s"}`}
-										</Button>
-									)}
-									{job.status !== "previewing" && (
-										<Button
-											variant="outline-primary"
-											disabled={actionBusy}
-											onClick={() => {
-												confirmMutation.reset();
-												prepareMutation.mutate();
-											}}
-										>
-											{prepareMutation.isPending
-												? "Preparing preview..."
-												: preview
-													? "Refresh preview"
-													: "Prepare preview"}
-										</Button>
-									)}
-									<Button
-										variant="outline-secondary"
-										disabled={actionBusy}
-										onClick={() => cancelMutation.mutate()}
-									>
-										Cancel job
-									</Button>
-								</div>
-							</div>
-						)}
 						<div className="mt-5 rounded-md border border-border bg-muted/30 p-4">
 							<div className="flex items-end justify-between gap-3">
 								<div>
@@ -741,27 +658,180 @@ export default function PurgeMessageJob() {
 							</p>
 						</div>
 
-						<dl className="mt-4 grid gap-3 sm:grid-cols-3">
-							<GuildDetail label={beforeDeletion || job.status === "running" ? "Pending" : "Remaining"}>
-								<span
-									className={`text-2xl font-bold tabular-nums ${job.unprocessedMessages > 0 ? "text-warning" : "text-foreground"}`}
-								>
-									{job.unprocessedMessages.toLocaleString()}
+						<dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+							<GuildDetail label="Total">
+								{(preview?.deleteCount ?? job.messagesToDelete).toLocaleString()}
+							</GuildDetail>
+							<GuildDetail label="Pending">
+								<span className="text-2xl font-bold tabular-nums text-warning">
+									{beforeDeletion ? job.unprocessedMessages : messageStatusCounts.pending}
+								</span>
+							</GuildDetail>
+							<GuildDetail label="Deleting">
+								<span className="text-2xl font-bold tabular-nums text-primary">
+									{messageStatusCounts.deleting}
+								</span>
+							</GuildDetail>
+							<GuildDetail label="Deleted">
+								<span className="text-2xl font-bold tabular-nums text-success">
+									{job.deletedMessages}
 								</span>
 							</GuildDetail>
 							<GuildDetail label="Failed">
 								<span
 									className={`text-2xl font-bold tabular-nums ${job.failedMessages > 0 ? "text-destructive" : "text-foreground"}`}
 								>
-									{job.failedMessages.toLocaleString()}
-								</span>
-							</GuildDetail>
-							<GuildDetail label="Deleted">
-								<span className="text-2xl font-bold tabular-nums text-success">
-									{job.deletedMessages.toLocaleString()}
+									{job.failedMessages}
 								</span>
 							</GuildDetail>
 						</dl>
+
+						{(beforeDeletion || preview) && (
+							<div className="mt-5 space-y-4 border-t border-border pt-4">
+								<p className="text-sm text-muted-foreground">
+									{job.status === "previewing"
+										? "Preparing the preview. No messages have been deleted."
+										: preview
+											? beforeDeletion
+												? "Review these messages before confirming deletion."
+												: "Message deletion results update live."
+											: "The preview will be prepared here. No messages have been deleted."}
+								</p>
+								{preview && (
+									<Card hoverable={false} className="min-w-0 border-border">
+										<Card.Content className="space-y-4 p-4">
+											<div className="flex flex-wrap items-center justify-between gap-2">
+												<h3 className="font-semibold">
+													{beforeDeletion ? "Message preview" : "Message results"}
+												</h3>
+												<Tag variant="secondary" size="sm">
+													{preview.deleteCount} message{preview.deleteCount === 1 ? "" : "s"}{" "}
+													loaded
+												</Tag>
+											</div>
+											{preview.skippedChannelCount > 0 && (
+												<WarningBanner>
+													<div className="flex w-full items-center justify-between gap-3">
+														<span>
+															{preview.skippedChannelCount} channel
+															{preview.skippedChannelCount === 1 ? " was" : "s were"}{" "}
+															skipped due to missing permissions.
+														</span>
+														<PillLink
+															href={`/guild/${encodeURIComponent(job.guildId)}#guild-channels`}
+															variant="outline-secondary"
+															size="sm"
+															className="shrink-0 whitespace-nowrap"
+															target="_blank"
+															rel="noreferrer"
+														>
+															Review
+														</PillLink>
+													</div>
+												</WarningBanner>
+											)}
+											{preview.messages.length > 0 ? (
+												<PurgeMessageList
+													guildId={job.guildId}
+													messages={preview.messages}
+													messageStatuses={job.messageStatuses}
+													showStatuses={!beforeDeletion}
+													expandedChannelId={expandedChannelId}
+													onToggleChannel={(channelId) =>
+														setExpandedChannelId(
+															expandedChannelId === channelId ? null : channelId,
+														)
+													}
+												/>
+											) : (
+												<p className="text-sm text-muted-foreground">
+													No messages match this request.
+												</p>
+											)}
+											{preview.matchedCount > preview.deleteCount && (
+												<p className="text-xs text-muted-foreground">
+													Only the newest {preview.deleteCount} of {preview.matchedCount}{" "}
+													matches will be deleted.
+												</p>
+											)}
+											{beforeDeletion &&
+												(previewExpired ? (
+													<WarningBanner>
+														This preview expired. Refresh it before confirming.
+													</WarningBanner>
+												) : (
+													<p className="text-xs text-muted-foreground">
+														Preview expires {DateHandler.getDateTime(preview.expiresAt)}.
+													</p>
+												))}
+											{beforeDeletion && preview.deleteCount > 0 && (
+												<label className="flex items-start gap-2 text-sm">
+													<input
+														type="checkbox"
+														checked={confirmationPreviewId === preview.previewId}
+														onChange={(event) =>
+															setConfirmationPreviewId(
+																event.target.checked ? preview.previewId : null,
+															)
+														}
+														disabled={actionBusy || previewExpired}
+														className="mt-1 size-4 accent-primary focus-visible:ring-2 focus-visible:ring-ring"
+													/>
+													<span>
+														I reviewed the preview and understand that {preview.deleteCount}{" "}
+														message
+														{preview.deleteCount === 1 ? "" : "s"} will be permanently
+														deleted.
+													</span>
+												</label>
+											)}
+										</Card.Content>
+									</Card>
+								)}
+								{beforeDeletion && (
+									<div className="flex flex-wrap items-center gap-3">
+										{preview && preview.deleteCount > 0 && (
+											<Button
+												variant="destructive"
+												disabled={
+													confirmationPreviewId !== preview.previewId ||
+													actionBusy ||
+													previewExpired
+												}
+												onClick={() => confirmMutation.mutate()}
+											>
+												{confirmMutation.isPending
+													? "Starting deletion..."
+													: `Delete ${preview.deleteCount} message${preview.deleteCount === 1 ? "" : "s"}`}
+											</Button>
+										)}
+										{job.status !== "previewing" && (
+											<Button
+												variant="outline-primary"
+												disabled={actionBusy}
+												onClick={() => {
+													confirmMutation.reset();
+													prepareMutation.mutate();
+												}}
+											>
+												{prepareMutation.isPending
+													? "Preparing preview..."
+													: preview
+														? "Refresh preview"
+														: "Prepare preview"}
+											</Button>
+										)}
+										<Button
+											variant="outline-secondary"
+											disabled={actionBusy}
+											onClick={() => cancelMutation.mutate()}
+										>
+											Cancel job
+										</Button>
+									</div>
+								)}
+							</div>
+						)}
 
 						{job.timeLimitReached && (
 							<div className="mt-4">
