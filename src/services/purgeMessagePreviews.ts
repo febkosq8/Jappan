@@ -15,11 +15,12 @@ import { createPurgeMessageTextFilter } from "./purgeMessageTextFilter.js";
 const messageBatchSize = 100;
 const initialMessageBatchSize = 1;
 const bulkDeleteAgeMs = 14 * 24 * 60 * 60 * 1000;
-const purgeableChannelTypes = new Set<number>([
+export const purgeableChannelTypes = [
 	ChannelType.GuildText,
 	ChannelType.GuildAnnouncement,
 	ChannelType.GuildVoice,
-]);
+] as const;
+const purgeableChannelTypeSet = new Set<number>(purgeableChannelTypes);
 
 export const purgeMessagePreviewSchema = z.object({
 	previewId: z.string().uuid(),
@@ -94,7 +95,7 @@ interface PurgeMessageChannelScan {
 export function isPurgeableGuildChannel(channel: GuildBasedChannel | null): channel is PurgeableGuildChannel {
 	return (
 		channel !== null &&
-		purgeableChannelTypes.has(channel.type) &&
+		purgeableChannelTypeSet.has(channel.type) &&
 		channel.isTextBased() &&
 		"messages" in channel &&
 		typeof channel.messages.fetch === "function" &&
