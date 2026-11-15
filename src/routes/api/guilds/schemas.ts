@@ -199,7 +199,9 @@ export const guildMemberAccessSchema = z.object({
 			overrides: z.array(
 				z.object({
 					targetType: z.enum(["member", "role"]),
+					targetId: snowflake("override target"),
 					targetName: z.string(),
+					targetColor: z.string().nullable(),
 					allow: z.array(z.string()),
 					deny: z.array(z.string()),
 				}),

@@ -800,16 +800,22 @@ export default defineRouter("/guilds", [
 								(overwrite.type === OverwriteType.Role &&
 									(overwrite.id === guild.id || member.roles.cache.has(overwrite.id))),
 						)
-						.map((overwrite) => ({
-							targetType:
-								overwrite.type === OverwriteType.Member ? ("member" as const) : ("role" as const),
-							targetName:
-								overwrite.type === OverwriteType.Member
-									? member.displayName
-									: (guild.roles.cache.get(overwrite.id)?.name ?? "Unknown role"),
-							allow: overwrite.allow.toArray(),
-							deny: overwrite.deny.toArray(),
-						}));
+						.map((overwrite) => {
+							const targetRole =
+								overwrite.type === OverwriteType.Role ? guild.roles.cache.get(overwrite.id) : null;
+							return {
+								targetType:
+									overwrite.type === OverwriteType.Member ? ("member" as const) : ("role" as const),
+								targetId: overwrite.id,
+								targetName:
+									overwrite.type === OverwriteType.Member
+										? member.displayName
+										: (targetRole?.name ?? "Unknown role"),
+								targetColor: targetRole?.color === 0 ? null : (targetRole?.hexColor ?? null),
+								allow: overwrite.allow.toArray(),
+								deny: overwrite.deny.toArray(),
+							};
+						});
 					return {
 						id: channel.id,
 						name: channel.name,

@@ -2,10 +2,11 @@ import { Button, Card, DateHandler, PreviewCard, Tabs, TabsList, TabsPanel, Tabs
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useState } from "react";
-import { FiUser } from "react-icons/fi";
+import { FiLock, FiUser } from "react-icons/fi";
 
 import APIHandler, {
 	type GuildMemberAccessDetails,
+	type GuildMemberChannelAccess,
 	type GuildMemberPermissionSource,
 	type GuildMemberRoleAccess,
 } from "@jappan/handlers/APIHandler";
@@ -34,12 +35,16 @@ function PermissionList({
 	permissions,
 	emptyLabel,
 	permissionSources,
+	channelOverrides,
+	member,
 	isOwner = false,
 	onSelectRole,
 }: {
 	permissions: string[];
 	emptyLabel: string;
 	permissionSources?: GuildMemberPermissionSource[];
+	channelOverrides?: GuildMemberChannelAccess["overrides"];
+	member?: GuildMemberAccessDetails["member"];
 	isOwner?: boolean;
 	onSelectRole?: (roleId: string) => void;
 }) {
@@ -51,6 +56,8 @@ function PermissionList({
 			{permissions.map((permission) => {
 				const label = formatPermission(permission);
 				const source = permissionSources?.find((item) => item.permission === permission);
+				const overrideSources =
+					channelOverrides?.filter((override) => override.allow.includes(permission)) ?? [];
 				const tag = (
 					<Tag variant="secondary" size="xs">
 						{label}
@@ -81,24 +88,66 @@ function PermissionList({
 											<Tag variant="primary" size="sm">
 												Server owner
 											</Tag>
-										) : source?.roles.length ? (
-											<div className="space-y-2">
-												<ul className="flex flex-col gap-2">
-													{source.roles.map((role) => (
-														<li key={role.id}>
-															<RoleDisplay
-																id={role.id}
-																name={role.name}
-																color={role.color}
-																showId={false}
-																onSelect={() => onSelectRole?.(role.id)}
-															/>
-														</li>
-													))}
-												</ul>
-											</div>
 										) : (
-											<p className="text-sm text-muted-foreground">No source role identified.</p>
+											<div className="space-y-3">
+												{source?.roles.length ? (
+													<div className="space-y-1">
+														<p className="text-xs text-muted-foreground">Roles</p>
+														<ul className="flex flex-col gap-2">
+															{source.roles.map((role) => (
+																<li key={role.id}>
+																	<RoleDisplay
+																		id={role.id}
+																		name={role.name}
+																		color={role.color}
+																		showId={false}
+																		onSelect={() => onSelectRole?.(role.id)}
+																	/>
+																</li>
+															))}
+														</ul>
+													</div>
+												) : null}
+												{overrideSources.length > 0 ? (
+													<div className="space-y-1">
+														<p className="text-xs text-muted-foreground">
+															Channel overrides
+														</p>
+														<ul className="flex flex-col gap-2">
+															{overrideSources.map((override) => (
+																<li key={`${override.targetType}-${override.targetId}`}>
+																	{override.targetType === "role" ? (
+																		<RoleDisplay
+																			id={override.targetId}
+																			name={override.targetName}
+																			color={override.targetColor}
+																			showId={false}
+																			onSelect={() =>
+																				onSelectRole?.(override.targetId)
+																			}
+																		/>
+																	) : member ? (
+																		<UserDisplay
+																			user={member}
+																			size="sm"
+																			showId={false}
+																		/>
+																	) : (
+																		<span className="text-sm">
+																			{override.targetName}
+																		</span>
+																	)}
+																</li>
+															))}
+														</ul>
+													</div>
+												) : null}
+												{!source?.roles.length && overrideSources.length === 0 && (
+													<p className="text-sm text-muted-foreground">
+														No source role or channel override identified.
+													</p>
+												)}
+											</div>
 										)}
 									</div>
 								}
@@ -125,22 +174,32 @@ function RoleList({
 	onSelectRole: (roleId: string) => void;
 }) {
 	if (roles.length === 0) {
-		return <p className="text-sm text-muted-foreground">{emptyLabel}</p>;
+		return (
+			<div
+				role="status"
+				className="flex items-center gap-2 rounded-md border border-dashed border-border bg-muted/30 px-3 py-2"
+			>
+				<FiLock className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+				<p className="text-sm font-medium text-foreground">{emptyLabel}</p>
+			</div>
+		);
 	}
 	return (
-		<ul className="flex flex-wrap gap-2">
-			{roles.map((role) => (
-				<li key={role.id}>
-					<RoleDisplay
-						id={role.id}
-						name={role.name}
-						color={role.color}
-						showId={false}
-						onSelect={() => onSelectRole(role.id)}
-					/>
-				</li>
-			))}
-		</ul>
+		<div className="rounded-md border border-dashed border-border bg-muted/30 p-3">
+			<ul className="flex flex-wrap gap-2">
+				{roles.map((role) => (
+					<li key={role.id}>
+						<RoleDisplay
+							id={role.id}
+							name={role.name}
+							color={role.color}
+							showId={false}
+							onSelect={() => onSelectRole(role.id)}
+						/>
+					</li>
+				))}
+			</ul>
+		</div>
 	);
 }
 
@@ -186,7 +245,7 @@ function AccessDetails({ access, guildId }: { access: GuildMemberAccessDetails; 
 					</TabsTab>
 				</TabsList>
 				<TabsPanel value="overview">
-					<section className="space-y-3">
+					<Card hoverable={false} className="min-w-0 space-y-3 rounded-md border-border p-3">
 						<div>
 							<h4 className="font-semibold">Server permissions</h4>
 							<p className="mt-1 text-sm text-muted-foreground">Select a permission to see its source.</p>
@@ -198,7 +257,7 @@ function AccessDetails({ access, guildId }: { access: GuildMemberAccessDetails; 
 							isOwner={access.member.isOwner}
 							onSelectRole={setSelectedRoleId}
 						/>
-					</section>
+					</Card>
 				</TabsPanel>
 				<TabsPanel value="roles">
 					<div className="space-y-3">
@@ -242,7 +301,7 @@ function AccessDetails({ access, guildId }: { access: GuildMemberAccessDetails; 
 					</div>
 				</TabsPanel>
 				<TabsPanel value="channels">
-					<section className="space-y-3">
+					<Card hoverable={false} className="min-w-0 space-y-3 rounded-md border-border p-3">
 						<div>
 							<h4 className="font-semibold">Channel access and permissions</h4>
 							<p className="mt-1 text-sm text-muted-foreground">
@@ -252,9 +311,9 @@ function AccessDetails({ access, guildId }: { access: GuildMemberAccessDetails; 
 						{access.channels.length === 0 ? (
 							<p className="text-sm text-muted-foreground">No guild channels were found.</p>
 						) : (
-							<ul className="mt-3 grid items-start gap-3 sm:grid-cols-2">
+							<ul className="mt-3 columns-1 gap-3 sm:columns-2">
 								{access.channels.map((channel) => (
-									<li key={channel.id}>
+									<li key={channel.id} className="mb-3 inline-block w-full break-inside-avoid">
 										<Card hoverable={false} className="min-w-0 rounded-md border-border p-3">
 											<div className="flex flex-wrap items-start justify-between gap-2">
 												<div className="min-w-0 wrap-break-word">
@@ -263,11 +322,6 @@ function AccessDetails({ access, guildId }: { access: GuildMemberAccessDetails; 
 														id={channel.id}
 														name={channel.name}
 													/>
-													{channel.parentName && (
-														<p className="mt-1 text-xs text-muted-foreground">
-															Category: {channel.parentName}
-														</p>
-													)}
 												</div>
 												<div className="ml-auto flex flex-wrap justify-end gap-1">
 													<Tag variant="secondary" size="xs">
@@ -291,57 +345,112 @@ function AccessDetails({ access, guildId }: { access: GuildMemberAccessDetails; 
 													</Tag>
 												</div>
 											</div>
-											<dl className="mt-3 space-y-3 text-sm">
+											<div className="mt-3 space-y-3">
 												{channel.canAccess && channel.permissions && (
-													<div>
-														<dt className="text-muted-foreground">
-															Effective permissions:
-														</dt>
-														<dd className="mt-1">
-															<PermissionList
-																permissions={channel.permissions}
-																emptyLabel="No effective permissions."
-															/>
-														</dd>
-													</div>
+													<Card
+														hoverable={false}
+														className="min-w-0 space-y-2 rounded-md border-border p-3"
+													>
+														<h5 className="font-semibold">Effective permissions</h5>
+														<PermissionList
+															permissions={channel.permissions}
+															emptyLabel="No effective permissions."
+															permissionSources={access.permissionSources}
+															channelOverrides={channel.overrides}
+															member={access.member}
+															isOwner={access.member.isOwner}
+															onSelectRole={setSelectedRoleId}
+														/>
+													</Card>
 												)}
 												{channel.overrides.length > 0 && (
-													<div>
-														<dt className="text-muted-foreground">
-															Applicable channel overrides:
-														</dt>
-														<dd>
-															<ul className="mt-1 space-y-1 text-xs text-muted-foreground">
-																{channel.overrides.map((override) => (
-																	<li
-																		key={`${override.targetType}-${override.targetName}`}
-																	>
-																		{override.targetName}:{" "}
-																		{[
-																			...(override.allow.length > 0
-																				? [
-																						`allows ${override.allow.map(formatPermission).join(", ")}`,
-																					]
-																				: []),
-																			...(override.deny.length > 0
-																				? [
-																						`denies ${override.deny.map(formatPermission).join(", ")}`,
-																					]
-																				: []),
-																		].join("; ")}
-																	</li>
-																))}
-															</ul>
-														</dd>
-													</div>
+													<Card
+														hoverable={false}
+														className="min-w-0 space-y-2 rounded-md border-border p-3"
+													>
+														<h5 className="font-semibold">Applicable channel overrides</h5>
+														<ul className="space-y-2">
+															{channel.overrides.map((override) => (
+																<li
+																	key={`${override.targetType}-${override.targetId}`}
+																	className="rounded-md border border-dashed border-border bg-muted/30 p-2"
+																>
+																	{override.targetType === "role" ? (
+																		<RoleDisplay
+																			id={override.targetId}
+																			name={override.targetName}
+																			color={override.targetColor}
+																		/>
+																	) : (
+																		<UserDisplay
+																			user={access.member}
+																			size="sm"
+																			showId={false}
+																		/>
+																	)}
+																	{(override.allow.length > 0 ||
+																		override.deny.length > 0) && (
+																		<div className="mt-2 grid w-full gap-2">
+																			{override.allow.length > 0 && (
+																				<div className="rounded-md border border-dashed border-success/40 bg-success/5 p-2">
+																					<p className="text-xs font-semibold text-success">
+																						Allows
+																					</p>
+																					<ul className="mt-1 flex flex-wrap gap-1.5">
+																						{override.allow.map(
+																							(permission) => (
+																								<li key={permission}>
+																									<Tag
+																										variant="success"
+																										size="xs"
+																									>
+																										{formatPermission(
+																											permission,
+																										)}
+																									</Tag>
+																								</li>
+																							),
+																						)}
+																					</ul>
+																				</div>
+																			)}
+																			{override.deny.length > 0 && (
+																				<div className="rounded-md border border-dashed border-destructive/40 bg-destructive/5 p-2">
+																					<p className="text-xs font-semibold text-destructive">
+																						Denies
+																					</p>
+																					<ul className="mt-1 flex flex-wrap gap-1.5">
+																						{override.deny.map(
+																							(permission) => (
+																								<li key={permission}>
+																									<Tag
+																										variant="destructive"
+																										size="xs"
+																									>
+																										{formatPermission(
+																											permission,
+																										)}
+																									</Tag>
+																								</li>
+																							),
+																						)}
+																					</ul>
+																				</div>
+																			)}
+																		</div>
+																	)}
+																</li>
+															))}
+														</ul>
+													</Card>
 												)}
-											</dl>
+											</div>
 										</Card>
 									</li>
 								))}
 							</ul>
 						)}
-					</section>
+					</Card>
 				</TabsPanel>
 			</Tabs>
 			<GuildRoleDetailsModal guildId={guildId} roleId={selectedRoleId} onClose={() => setSelectedRoleId(null)} />

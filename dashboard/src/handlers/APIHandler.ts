@@ -334,7 +334,9 @@ export interface GuildMemberChannelAccess {
 	permissions: string[] | null;
 	overrides: {
 		targetType: "member" | "role";
+		targetId: string;
 		targetName: string;
+		targetColor: string | null;
 		allow: string[];
 		deny: string[];
 	}[];
