@@ -1,4 +1,4 @@
-import { ApplicationCommandOptionType, ChannelType, PermissionsBitField } from "discord.js";
+import { ApplicationCommandOptionType, ApplicationCommandType, ChannelType, PermissionsBitField } from "discord.js";
 import { z } from "zod";
 
 import { getClient } from "../../bot.js";
@@ -27,6 +27,7 @@ import healthRouter from "./health.js";
 const commandSchema = z.object({
 	id: z.string().nullable(),
 	type: z.enum(["command", "sub-command", "context-menu"]),
+	applicationCommandType: z.enum(["chat-input", "message-context-menu", "user-context-menu"]),
 	name: z.string(),
 	description: z.string(),
 	category: z.enum(["general", "music", "level", "fun", "moderator", "admin"]),
@@ -83,6 +84,7 @@ function getPublicCommandEntries(command: BotCommand): z.infer<typeof detailedCo
 		entries.push({
 			id,
 			type: prefix ? "sub-command" : "command",
+			applicationCommandType: "chat-input",
 			name,
 			description: metadata.description,
 			category: metadata.category,
@@ -155,6 +157,8 @@ function getPublicContextMenuCommandEntry(command: BotContextMenuCommand): z.inf
 	return {
 		id: getCommandId(definition.name) ?? null,
 		type: "context-menu",
+		applicationCommandType:
+			definition.type === ApplicationCommandType.Message ? "message-context-menu" : "user-context-menu",
 		name: definition.name,
 		description: command.commandData.description,
 		category: command.commandData.category,

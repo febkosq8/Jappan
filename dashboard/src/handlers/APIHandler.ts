@@ -431,6 +431,7 @@ export interface WarningsPreferenceInput {
 export interface PublicCommand {
 	id: string | null;
 	type: "command" | "sub-command" | "context-menu";
+	applicationCommandType: "chat-input" | "message-context-menu" | "user-context-menu";
 	name: string;
 	description: string;
 	category: "general" | "music" | "level" | "fun" | "moderator" | "admin";

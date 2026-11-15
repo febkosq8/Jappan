@@ -97,7 +97,7 @@ function CommandDetails({ command }: { command: PublicCommand }) {
 							<h5 className="text-sm font-semibold">Options</h5>
 							<div className="mt-1 flex flex-wrap items-baseline gap-2">
 								<span className="text-xs text-muted-foreground">Usage</span>
-								<pre className="min-w-0 whitespace-pre-wrap break-words rounded-md border border-border bg-muted px-2 py-1 text-xs text-foreground">
+								<pre className="min-w-0 whitespace-pre-wrap wrap-break-word rounded-md border border-border bg-muted px-2 py-1 text-xs text-foreground">
 									<code>
 										/{command.name}{" "}
 										{command.options
@@ -186,16 +186,18 @@ function CommandCard({
 				<div className="flex flex-wrap items-center justify-between gap-2">
 					<div className="flex min-w-0 items-center gap-1">
 						<h2 className="min-w-0 wrap-break-word text-lg font-semibold">
-							{command.type === "context-menu" ? command.name : `/${command.name}`}
+							{command.type === "context-menu" ? <>&gt;{command.name}</> : `/${command.name}`}
 						</h2>
 						{!hasSubcommands && command.type !== "context-menu" && <CopyCommandButton command={command} />}
 					</div>
 					<div className="flex flex-wrap gap-1">
-						{command.type === "context-menu" && (
-							<Tag variant="outline" size="sm">
-								Message context menu
-							</Tag>
-						)}
+						<Tag variant="outline" size="sm">
+							{command.applicationCommandType === "chat-input"
+								? "Slash command"
+								: command.applicationCommandType === "message-context-menu"
+									? "Message context menu"
+									: "User context menu"}
+						</Tag>
 						<Tag
 							variant="secondary"
 							size="sm"

@@ -22,9 +22,8 @@ const commandData = {
 		PermissionFlagsBits.ManageMessages,
 	],
 	usageNotes: [
-		"In Discord, right-click a message, choose Apps, then Create purge job.",
-		"The form is prefilled with the message author and content; choose a message limit and channel scope.",
-		"Preview the purge job and confirm it on its dashboard page before messages are deleted.",
+		"Right-click a message and choose Apps → Create purge job.",
+		"Set the scope and limit, then review and confirm the purge from the dashboard.",
 	],
 } satisfies BotCommandData;
 

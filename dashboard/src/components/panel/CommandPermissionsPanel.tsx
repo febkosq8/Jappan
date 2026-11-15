@@ -45,18 +45,22 @@ export default function CommandPermissionsPanel({ permissions }: { permissions?:
 				<p className="mt-3 text-muted-foreground">No commands available</p>
 			) : (
 				<ul className="mt-3 grid gap-3 sm:grid-cols-2">
-					{commands.map(({ name, type, requiredBotPermissions }) => {
+					{commands.map(({ name, applicationCommandType, requiredBotPermissions }) => {
 						const permChecks = requiredBotPermissions.map(
 							(permission) =>
 								[permission, isAdministrator || grantedPermissions.has(permission)] as const,
 						);
 						const missing = permChecks.some(([, granted]) => !granted);
+						const commandLabel =
+							applicationCommandType === "chat-input"
+								? `/${name}`
+								: applicationCommandType === "message-context-menu"
+									? `Message action: ${name}`
+									: `User action: ${name}`;
 						return (
 							<li key={name} className="min-w-0 rounded-md border border-border p-3">
 								<div className="flex flex-wrap items-center justify-between gap-2">
-									<h3 className="wrap-break-word font-medium">
-										{type === "context-menu" ? `Message action: ${name}` : `/${name}`}
-									</h3>
+									<h3 className="wrap-break-word font-medium">{commandLabel}</h3>
 									<span className={missing ? "text-destructive" : "text-success"}>
 										{missing
 											? "Some required permissions missing"
