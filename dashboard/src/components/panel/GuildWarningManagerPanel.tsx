@@ -76,7 +76,7 @@ export default function GuildWarningManagerPanel({
 	}, [active, memberId]);
 
 	const memberQuery = useQuery({
-		queryKey: ["user", "guild", guildId, "warnings", memberId],
+		queryKey: ["user", "guild", guildId, "warnings", ...(memberId ? [memberId] : [])],
 		queryFn: () => APIHandler.getGuildMemberWarnings(guildId, memberId),
 		enabled: active && isActiveMember && memberId !== "",
 		retry: false,

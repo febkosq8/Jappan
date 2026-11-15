@@ -35,7 +35,7 @@ export default function GuildMemberPicker({
 	}, [searchInput]);
 
 	const membersQuery = useQuery({
-		queryKey: ["user", "guild", guildId, "members", searchQuery],
+		queryKey: ["user", "guild", guildId, "members", ...(searchQuery ? [searchQuery] : [])],
 		queryFn: () => APIHandler.searchGuildMembers(guildId, searchQuery || undefined),
 		enabled: enabled && (searchQuery.length === 0 || searchQuery.length >= 2),
 		retry: false,
