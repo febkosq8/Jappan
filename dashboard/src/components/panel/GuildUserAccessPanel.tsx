@@ -482,7 +482,10 @@ function AccessDetails({
 																						<p className="text-xs font-semibold text-success">
 																							Allows
 																						</p>
-																						<Tag variant="secondary" size="xs">
+																						<Tag
+																							variant="secondary"
+																							size="xs"
+																						>
 																							{override.allow.length}{" "}
 																							permission
 																							{override.allow.length === 1
@@ -514,7 +517,10 @@ function AccessDetails({
 																						<p className="text-xs font-semibold text-destructive">
 																							Denies
 																						</p>
-																						<Tag variant="secondary" size="xs">
+																						<Tag
+																							variant="secondary"
+																							size="xs"
+																						>
 																							{override.deny.length}{" "}
 																							permission
 																							{override.deny.length === 1
