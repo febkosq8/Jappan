@@ -46,22 +46,21 @@ function getMemberIdFromUrl(): string {
 
 function getAccessSectionFromUrl(): AccessSection {
 	if (!isAccessPanelActiveInUrl()) return "overview";
-	const section = new URLSearchParams(window.location.search).get("userAccessTab");
+	const searchParams = new URLSearchParams(window.location.search);
+	const section = searchParams.get("evaluateUser") ?? searchParams.get("userAccessTab");
 	return section && isAccessSection(section) ? section : "overview";
 }
 
 function updateUserAccessUrl(memberId: string, section: AccessSection) {
 	const url = new URL(window.location.href);
 	url.searchParams.delete("userAccessMemberId");
+	url.searchParams.delete("userAccessTab");
 	if (memberId) {
 		url.searchParams.set("userId", memberId);
+		url.searchParams.set("evaluateUser", section);
 	} else {
 		url.searchParams.delete("userId");
-	}
-	if (memberId) {
-		url.searchParams.set("userAccessTab", section);
-	} else {
-		url.searchParams.delete("userAccessTab");
+		url.searchParams.delete("evaluateUser");
 	}
 	window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
 }

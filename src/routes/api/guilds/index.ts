@@ -706,7 +706,7 @@ export default defineRouter("/guilds", [
 	},
 	{
 		method: "get",
-		path: "/:guildId/users/:userId/access",
+		path: "/:guildId/users/:userId/evaluate",
 		tags: guildTags,
 		summary: "Evaluate a guild member's roles, channel access, and permissions",
 		errorMessage: "Failed to evaluate guild member access",

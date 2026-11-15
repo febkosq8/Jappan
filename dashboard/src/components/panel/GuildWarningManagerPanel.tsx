@@ -44,6 +44,7 @@ function updateWarningsUrl(memberId: string) {
 	const url = new URL(window.location.href);
 	url.searchParams.delete("userAccessMemberId");
 	url.searchParams.delete("userAccessTab");
+	url.searchParams.delete("evaluateUser");
 	if (memberId) {
 		url.searchParams.set("userId", memberId);
 	} else {

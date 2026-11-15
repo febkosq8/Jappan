@@ -20,7 +20,7 @@ interface CreateGuildDashboardUrlOptions {
 	guildId: string;
 	section?: GuildDashboardSection;
 	userId?: string;
-	userAccessTab?: "overview" | "roles" | "channels";
+	evaluateUser?: "overview" | "roles" | "channels";
 }
 
 interface CreateDashboardLinkActionRowOptions {
@@ -39,12 +39,12 @@ export function createGuildDashboardUrl({
 	guildId,
 	section,
 	userId,
-	userAccessTab,
+	evaluateUser,
 }: CreateGuildDashboardUrlOptions): string {
 	const url = new URL(`/guild/${encodeURIComponent(guildId)}`, config.BOT_WEBSITE);
 	if (userId) {
 		url.searchParams.set("userId", userId);
-		if (userAccessTab) url.searchParams.set("userAccessTab", userAccessTab);
+		if (evaluateUser) url.searchParams.set("evaluateUser", evaluateUser);
 	}
 	if (section) url.hash = section;
 	return url.href;

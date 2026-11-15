@@ -41,7 +41,7 @@ const command: BotCommand = {
 					guildId: interaction.guild.id,
 					section: "evaluate-user",
 					userId: user.id,
-					userAccessTab: "overview",
+					evaluateUser: "overview",
 				}),
 			],
 			allowedMentions: { parse: [] },

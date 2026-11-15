@@ -648,7 +648,7 @@ class APIHandler {
 
 	static async getGuildMemberAccess(guildId: string, userId: string): Promise<GuildMemberAccessDetails> {
 		const { data } = await apiClient.get<GuildMemberAccessDetails>(
-			`/api/v1/guilds/${encodeURIComponent(guildId)}/users/${encodeURIComponent(userId)}/access`,
+			`/api/v1/guilds/${encodeURIComponent(guildId)}/users/${encodeURIComponent(userId)}/evaluate`,
 			{ withCredentials: true },
 		);
 		return data;
