@@ -58,7 +58,7 @@ function updateUserAccessUrl(memberId: string, section: AccessSection) {
 	} else {
 		url.searchParams.delete("userId");
 	}
-	if (memberId && section !== "overview") {
+	if (memberId) {
 		url.searchParams.set("userAccessTab", section);
 	} else {
 		url.searchParams.delete("userAccessTab");
@@ -281,11 +281,6 @@ function AccessDetails({
 					</div>
 				)}
 				<div className="ml-auto flex items-center gap-2">
-					{access.member.joinedTimestampMs !== null && (
-						<p className="text-sm text-muted-foreground">
-							Joined {DateHandler.getDateTime(access.member.joinedTimestampMs)}
-						</p>
-					)}
 					<Button
 						type="button"
 						size="icon-sm"
@@ -297,6 +292,11 @@ function AccessDetails({
 					>
 						<FiRefreshCw className="size-4 group-hover/refetch:animate-spin" aria-hidden="true" />
 					</Button>
+					{access.member.joinedTimestampMs !== null && (
+						<p className="text-sm text-muted-foreground">
+							Joined {DateHandler.getDateTime(access.member.joinedTimestampMs)}
+						</p>
+					)}
 				</div>
 			</div>
 
@@ -538,7 +538,12 @@ export default function GuildUserAccessPanel({
 	const [memberId, setMemberId] = useState(getMemberIdFromUrl);
 	const [accessSection, setAccessSection] = useState(getAccessSectionFromUrl);
 	useEffect(() => {
-		if (active) updateUserAccessUrl(memberId, accessSection);
+		if (!active) {
+			if (memberId) setMemberId("");
+			if (accessSection !== "overview") setAccessSection("overview");
+			return;
+		}
+		updateUserAccessUrl(memberId, accessSection);
 	}, [active, accessSection, memberId]);
 
 	const memberQuery = useQuery({
