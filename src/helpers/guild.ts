@@ -333,6 +333,7 @@ export interface SendGuildMessageOptions {
 	content: string | MessageCreateOptions;
 	failureMessage: string;
 	channelId?: string;
+	preferTextChannel?: boolean;
 	details?: LogDetails;
 }
 
@@ -348,12 +349,19 @@ export async function sendGuildMessage({
 	content,
 	failureMessage,
 	channelId,
+	preferTextChannel = false,
 	details,
 }: SendGuildMessageOptions): Promise<SentGuildMessage | null> {
 	const botMember = await guild.members.fetchMe().catch(() => null);
-	const channels = channelId
+	const candidateChannels = channelId
 		? [await guild.channels.fetch(channelId).catch(() => null)]
 		: [guild.systemChannel, ...guild.channels.cache.values()];
+	const channels = preferTextChannel
+		? [
+				...candidateChannels.filter((channel) => channel?.isTextBased() && !channel.isVoiceBased()),
+				...candidateChannels.filter((channel) => channel?.isTextBased() && channel.isVoiceBased()),
+			]
+		: candidateChannels;
 	const requiresEmbedLinks = typeof content !== "string" && Boolean(content.embeds?.length);
 	const messageType = requiresEmbedLinks ? "embed" : "normal";
 	const requiredPermissions = [

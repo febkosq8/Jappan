@@ -56,6 +56,7 @@ export async function initializeGuild(guild: DiscordGuild): Promise<void> {
 				components: [createGuildDashboardLinkActionRow({ config, guildId: guild.id })],
 			},
 			failureMessage: "Failed to send guild initialization embed",
+			preferTextChannel: true,
 			details: { guildName: guild.name },
 		});
 		if (!delivered) {
@@ -63,6 +64,7 @@ export async function initializeGuild(guild: DiscordGuild): Promise<void> {
 				guild,
 				content: welcomeContent,
 				failureMessage: "Failed to send guild initialization fallback message",
+				preferTextChannel: true,
 				details: { guildName: guild.name },
 			});
 		}
