@@ -5,6 +5,7 @@ import axios from "axios";
 import APIHandler, { type UserGuild } from "@jappan/handlers/APIHandler";
 import { AccessRedirect } from "@jappan/components/AuthRoute";
 import UserDisplay from "@jappan/components/display/UserDisplay";
+import CopyIdButton from "@jappan/components/display/CopyIdButton";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import useDocumentTitle, { formatTitle } from "@jappan/helpers/useDocumentTitle";
 
@@ -39,7 +40,10 @@ const columns: TableColumnDef<UserGuild>[] = [
 							target="_self"
 							className="block truncate font-medium"
 						/>
-						<span className="block text-xs text-muted-foreground">{guild.id}</span>
+						<span className="flex items-center gap-1 text-xs text-muted-foreground">
+							<span className="min-w-0 break-all">{guild.id}</span>
+							<CopyIdButton id={guild.id} label="Guild ID" />
+						</span>
 					</span>
 				</div>
 			);

@@ -11,6 +11,7 @@ import APIHandler, {
 	type GuildRole,
 	type PreferenceEntity,
 } from "@jappan/handlers/APIHandler";
+import CopyIdButton from "@jappan/components/display/CopyIdButton";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 
 const textChannelTypes = ["GuildText", "GuildAnnouncement"];
@@ -82,6 +83,8 @@ function SelectField({
 	id,
 	label,
 	value,
+	copyId,
+	copyLabel,
 	onChange,
 	data,
 	disabled,
@@ -90,6 +93,8 @@ function SelectField({
 	id: string;
 	label: string;
 	value: string;
+	copyId?: string;
+	copyLabel: "Channel ID" | "Role ID";
 	onChange: (value: string) => void;
 	data: { key: string; label: string; disabled?: boolean }[];
 	disabled: boolean;
@@ -103,14 +108,17 @@ function SelectField({
 					<LoadingIndicator label={`Loading options for ${label}`} inline size={60} rows={1} columns={5} />
 				)}
 			</div>
-			<Select
-				id={id}
-				value={value}
-				onChange={onChange}
-				data={data}
-				disabled={disabled || loading}
-				className="h-10"
-			/>
+			<div className="flex items-center gap-1">
+				<Select
+					id={id}
+					value={value}
+					onChange={onChange}
+					data={data}
+					disabled={disabled || loading}
+					className="h-10 min-w-0 flex-1"
+				/>
+				{copyId && <CopyIdButton id={copyId} label={copyLabel} />}
+			</div>
 		</div>
 	);
 }
@@ -299,6 +307,8 @@ function AuditLogSection({ guild, channels, channelsLoading, channelsError, read
 				id="audit-channel"
 				label="Channel"
 				value={channelId}
+				copyId={channelId || undefined}
+				copyLabel="Channel ID"
 				onChange={setChannelId}
 				data={channelOptions({ channels, current: auditLog.channel })}
 				loading={channelsLoading}
@@ -349,6 +359,8 @@ function LevelingSection({ guild, roles, rolesLoading, readOnly, onSaved }: Sect
 				id="leveling-role"
 				label="Reward role"
 				value={roleId}
+				copyId={roleId || undefined}
+				copyLabel="Role ID"
 				onChange={setRoleId}
 				data={roleOptions(roles, leveling.role)}
 				loading={rolesLoading}
@@ -401,6 +413,8 @@ function MemberAnnouncementsSection({ guild, channels, channelsLoading, readOnly
 				id="announcement-join-channel"
 				label="Join channel"
 				value={joinChannelId}
+				copyId={joinChannelId || undefined}
+				copyLabel="Channel ID"
 				onChange={setJoinChannelId}
 				data={channelOptions({ channels, current: memberAnnouncements.joinChannel })}
 				loading={channelsLoading}
@@ -416,6 +430,8 @@ function MemberAnnouncementsSection({ guild, channels, channelsLoading, readOnly
 				id="announcement-leave-channel"
 				label="Leave channel"
 				value={leaveChannelId}
+				copyId={leaveChannelId || undefined}
+				copyLabel="Channel ID"
 				onChange={setLeaveChannelId}
 				data={channelOptions({ channels, current: memberAnnouncements.leaveChannel })}
 				loading={channelsLoading}
@@ -490,6 +506,8 @@ function WarningsSection({ guild, channels, channelsLoading, readOnly, onSaved }
 				id="warning-audit-channel"
 				label="Audit channel"
 				value={auditChannelId}
+				copyId={auditChannelId || undefined}
+				copyLabel="Channel ID"
 				onChange={setAuditChannelId}
 				data={channelOptions({ channels, current: warnings.auditChannel })}
 				loading={channelsLoading}

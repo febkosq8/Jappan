@@ -1,5 +1,7 @@
 import { FiShield } from "react-icons/fi";
 
+import CopyIdButton from "@jappan/components/display/CopyIdButton";
+
 interface RoleDisplayProps {
 	id: string;
 	name: string | null;
@@ -11,7 +13,10 @@ export default function RoleDisplay({ id, name }: RoleDisplayProps) {
 			<FiShield className="mt-1 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
 			<span className="min-w-0">
 				<span className="block wrap-break-word font-medium">{name ?? "Unavailable role"}</span>
-				<span className="block break-all text-xs text-muted-foreground">{id}</span>
+				<span className="flex items-center gap-1">
+					<span className="min-w-0 break-all text-xs text-muted-foreground">{id}</span>
+					<CopyIdButton id={id} label="Role ID" />
+				</span>
 			</span>
 		</span>
 	);

@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import UserDisplay from "@jappan/components/display/UserDisplay";
 import ChannelDisplay from "@jappan/components/display/ChannelDisplay";
+import CopyIdButton from "@jappan/components/display/CopyIdButton";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import GuildMemberPicker from "@jappan/components/panel/GuildMemberPicker";
 import APIHandler, { type VoiceRegionLock, type WarningMember } from "@jappan/handlers/APIHandler";
@@ -247,20 +248,23 @@ export default function GuildVoiceRegionLockManagerPanel({
 							</div>
 							<div>
 								<LabelField id="voice-region-lock-channel" label="Voice channel" className="mb-1" />
-								<Select
-									id="voice-region-lock-channel"
-									value={channelId}
-									onChange={setChannelId}
-									data={[
-										{ key: "", label: "Select a voice channel" },
-										...voiceChannels.map((channel) => ({
-											key: channel.id,
-											label: `#${channel.name} (${channel.id})`,
-										})),
-									]}
-									disabled={!active || busy || channelsQuery.isFetching || channelsQuery.isError}
-									className="h-10"
-								/>
+								<div className="flex items-center gap-1">
+									<Select
+										id="voice-region-lock-channel"
+										value={channelId}
+										onChange={setChannelId}
+										data={[
+											{ key: "", label: "Select a voice channel" },
+											...voiceChannels.map((channel) => ({
+												key: channel.id,
+												label: `#${channel.name} (${channel.id})`,
+											})),
+										]}
+										disabled={!active || busy || channelsQuery.isFetching || channelsQuery.isError}
+										className="h-10 min-w-0 flex-1"
+									/>
+									{channelId && <CopyIdButton id={channelId} label="Channel ID" />}
+								</div>
 								{channelsQuery.isSuccess && voiceChannels.length === 0 && (
 									<p className="mt-1 text-xs text-muted-foreground">
 										No voice channels are available.

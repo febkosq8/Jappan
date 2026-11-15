@@ -23,6 +23,7 @@ import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import { AccessRedirect } from "@jappan/components/AuthRoute";
 import ErrorPage from "@jappan/components/ErrorPage";
 import ChannelDisplay from "@jappan/components/display/ChannelDisplay";
+import CopyIdButton from "@jappan/components/display/CopyIdButton";
 import GuildPageHeader from "@jappan/components/display/GuildPageHeader";
 import UserDisplay from "@jappan/components/display/UserDisplay";
 import GuildDetail from "@jappan/components/panel/GuildDetail";
@@ -205,14 +206,17 @@ function PurgeMessageList({
 														status={messageStatuses[message.id] ?? "pending"}
 													/>
 												)}
-												<a
-													href={message.jumpUrl}
-													target="_blank"
-													rel="noreferrer"
-													className="min-w-0 break-all text-center text-muted-foreground underline hover:text-primary"
-												>
-													Message ID: {message.id}
-												</a>
+												<span className="flex min-w-0 items-center gap-1">
+													<a
+														href={message.jumpUrl}
+														target="_blank"
+														rel="noreferrer"
+														className="min-w-0 break-all text-center text-muted-foreground underline hover:text-primary"
+													>
+														Message ID: {message.id}
+													</a>
+													<CopyIdButton id={message.id} label="Message ID" />
+												</span>
 												<span className="whitespace-nowrap text-center text-muted-foreground">
 													{DateHandler.getDateTime(message.createdTimestampMs)}
 												</span>

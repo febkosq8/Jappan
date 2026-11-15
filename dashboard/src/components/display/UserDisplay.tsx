@@ -1,6 +1,7 @@
 import { Avatar } from "@febkosq8/arc";
 
 import ExternalTextLink from "@jappan/components/ExternalTextLink";
+import CopyIdButton from "@jappan/components/display/CopyIdButton";
 
 interface UserDisplayProps {
 	id?: string;
@@ -22,7 +23,12 @@ export default function UserDisplay({ id, name, avatarUrl, size = "lg", showId =
 						name
 					)}
 				</p>
-				{showId && id && <p className="break-all text-xs text-muted-foreground">{id}</p>}
+				{showId && id && (
+					<p className="flex items-center gap-1">
+						<span className="min-w-0 break-all text-xs text-muted-foreground">{id}</span>
+						<CopyIdButton id={id} label="User ID" />
+					</p>
+				)}
 			</div>
 		</div>
 	);

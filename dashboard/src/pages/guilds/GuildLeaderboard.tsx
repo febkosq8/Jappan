@@ -8,6 +8,7 @@ import { Link, useParams } from "react-router-dom";
 
 import { AccessRedirect } from "@jappan/components/AuthRoute";
 import GuildPageHeader from "@jappan/components/display/GuildPageHeader";
+import CopyIdButton from "@jappan/components/display/CopyIdButton";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import GuildLeaderboardListPanel from "@jappan/components/panel/GuildLeaderboardListPanel";
 import GuildLeaderboardOverviewPanel from "@jappan/components/panel/GuildLeaderboardOverviewPanel";
@@ -141,16 +142,19 @@ export default function GuildLeaderboard() {
 				<ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 					{guilds.map((item) => (
 						<li key={item.id}>
-							<Link
-								to={`/guild/${encodeURIComponent(item.id)}/leaderboard`}
-								className="flex min-w-0 items-center gap-3 rounded-md border border-border p-3 transition-colors hover:bg-accent hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-opacity-75"
-							>
-								<Avatar name={item.name} image={item.icon} size="md" aria-hidden="true" />
-								<span className="min-w-0">
-									<span className="block truncate font-medium">{item.name}</span>
-									<span className="block truncate text-xs text-muted-foreground">{item.id}</span>
-								</span>
-							</Link>
+							<div className="flex min-w-0 items-center gap-2 rounded-md border border-border p-3">
+								<Link
+									to={`/guild/${encodeURIComponent(item.id)}/leaderboard`}
+									className="flex min-w-0 flex-1 items-center gap-3 transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-opacity-75"
+								>
+									<Avatar name={item.name} image={item.icon} size="md" aria-hidden="true" />
+									<span className="min-w-0">
+										<span className="block truncate font-medium">{item.name}</span>
+										<span className="block truncate text-xs text-muted-foreground">{item.id}</span>
+									</span>
+								</Link>
+								<CopyIdButton id={item.id} label="Guild ID" />
+							</div>
 						</li>
 					))}
 				</ul>
