@@ -41,6 +41,7 @@ import APIHandler, {
 import { AccessRedirect, accessErrorStatus } from "@jappan/components/AuthRoute";
 import ErrorPage from "@jappan/components/ErrorPage";
 import ExternalTextLink from "@jappan/components/ExternalTextLink";
+import CopyIdButton from "@jappan/components/display/CopyIdButton";
 import GuildPageHeader from "@jappan/components/display/GuildPageHeader";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import GuildChannelsPanel from "@jappan/components/panel/GuildChannelsPanel";
@@ -315,20 +316,23 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 							<form onSubmit={submitMessage} className="mt-4 space-y-3">
 								<div>
 									<LabelField id="admin-message-channel" label="Channel" className="mb-1" />
-									<Select
-										id="admin-message-channel"
-										value={selectedChannelId}
-										onChange={setChannelId}
-										disabled={textChannels.length === 0 || sendMessageMutation.isPending}
-										className="h-10"
-										data={[
-											{ key: "", label: "Select a channel", disabled: true },
-											...textChannels.map((channel) => ({
-												key: channel.id,
-												label: `#${channel.name} (${channel.id}) | ${channel.parent ? (channel.parent.name ?? "Unavailable category") : "Uncategorized"}`,
-											})),
-										]}
-									/>
+									<div className="flex items-center gap-1">
+										<Select
+											id="admin-message-channel"
+											value={selectedChannelId}
+											onChange={setChannelId}
+											disabled={textChannels.length === 0 || sendMessageMutation.isPending}
+											className="h-10 min-w-0 flex-1"
+											data={[
+												{ key: "", label: "Select a channel", disabled: true },
+												...textChannels.map((channel) => ({
+													key: channel.id,
+													label: `#${channel.name} (${channel.id}) | ${channel.parent ? (channel.parent.name ?? "Unavailable category") : "Uncategorized"}`,
+												})),
+											]}
+										/>
+										{selectedChannelId && <CopyIdButton id={selectedChannelId} label="Channel ID" />}
+									</div>
 								</div>
 								<div>
 									<LabelField id="admin-message-content" label="Message" className="mb-1" />
@@ -431,8 +435,12 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 										<dd>
 											{inviteMutation.data.channel?.name ?? "Unknown"}
 											{inviteMutation.data.channel && (
-												<span className="ml-1 break-all text-xs text-muted-foreground">
-													({inviteMutation.data.channel.id})
+												<span className="ml-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
+													<span className="break-all">({inviteMutation.data.channel.id})</span>
+													<CopyIdButton
+														id={inviteMutation.data.channel.id}
+														label="Channel ID"
+													/>
 												</span>
 											)}
 										</dd>
@@ -510,24 +518,29 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 							{channelsQuery.data && !channelsQuery.isError && (
 								<div>
 									<LabelField id="guild-kick-channel" label="Departure channel" className="mb-1" />
-									<Select
-										id="guild-kick-channel"
-										value={selectedKickChannelId}
-										onChange={setKickChannelId}
-										disabled={
-											textChannels.length === 0 ||
-											channelsQuery.isFetching ||
-											kickMutation.isPending
-										}
-										className="h-10"
-										data={[
-											{ key: "", label: "No departure message" },
-											...textChannels.map((channel) => ({
-												key: channel.id,
-												label: `#${channel.name} (${channel.id}) | ${channel.parent ? (channel.parent.name ?? "Unavailable category") : "Uncategorized"}`,
-											})),
-										]}
-									/>
+									<div className="flex items-center gap-1">
+										<Select
+											id="guild-kick-channel"
+											value={selectedKickChannelId}
+											onChange={setKickChannelId}
+											disabled={
+												textChannels.length === 0 ||
+												channelsQuery.isFetching ||
+												kickMutation.isPending
+											}
+											className="h-10 min-w-0 flex-1"
+											data={[
+												{ key: "", label: "No departure message" },
+												...textChannels.map((channel) => ({
+													key: channel.id,
+													label: `#${channel.name} (${channel.id}) | ${channel.parent ? (channel.parent.name ?? "Unavailable category") : "Uncategorized"}`,
+												})),
+											]}
+										/>
+										{selectedKickChannelId && (
+											<CopyIdButton id={selectedKickChannelId} label="Channel ID" />
+										)}
+									</div>
 									{textChannels.length === 0 && (
 										<p className="mt-1 text-sm text-muted-foreground">
 											No sendable channels are available. The bot will leave without sending a

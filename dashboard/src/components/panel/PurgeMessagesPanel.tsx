@@ -5,6 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import GuildMemberPicker from "@jappan/components/panel/GuildMemberPicker";
+import CopyIdButton from "@jappan/components/display/CopyIdButton";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import APIHandler, { type WarningMember } from "@jappan/handlers/APIHandler";
 
@@ -103,20 +104,23 @@ export default function PurgeMessagesPanel({ active, guildId }: { active: boolea
 									<LoadingIndicator label="Loading channels" inline size={60} rows={1} columns={5} />
 								)}
 							</div>
-							<Select
-								id="purge-messages-channel"
-								value={channelId}
-								onChange={(value) => updateFilter(() => setChannelId(value))}
-								data={[
-									{ key: "", label: "All channels" },
-									...channels.map((channel) => ({
-										key: channel.id,
-										label: `#${channel.name} (${channel.id}) | ${channel.parent ? (channel.parent.name ?? "Unavailable category") : "Uncategorized"}`,
-									})),
-								]}
-								disabled={!active || isBusy || channelsQuery.isFetching || channelsQuery.isError}
-								className="h-10"
-							/>
+							<div className="flex items-center gap-1">
+								<Select
+									id="purge-messages-channel"
+									value={channelId}
+									onChange={(value) => updateFilter(() => setChannelId(value))}
+									data={[
+										{ key: "", label: "All channels" },
+										...channels.map((channel) => ({
+											key: channel.id,
+											label: `#${channel.name} (${channel.id}) | ${channel.parent ? (channel.parent.name ?? "Unavailable category") : "Uncategorized"}`,
+										})),
+									]}
+									disabled={!active || isBusy || channelsQuery.isFetching || channelsQuery.isError}
+									className="h-10 min-w-0 flex-1"
+								/>
+								{channelId && <CopyIdButton id={channelId} label="Channel ID" />}
+							</div>
 							{channelsQuery.isError && (
 								<p role="alert" className="mt-1 text-sm text-destructive">
 									{getErrorMessage(channelsQuery.error, "Could not load channels.")}

@@ -1,6 +1,7 @@
 import { Avatar, DateHandler } from "@febkosq8/arc";
 
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
+import CopyIdButton from "@jappan/components/display/CopyIdButton";
 import type { BotStatus } from "@jappan/handlers/APIHandler";
 
 export default function BotStatusOverviewPanel({
@@ -21,7 +22,10 @@ export default function BotStatusOverviewPanel({
 					<Avatar name={bot.botName} image={bot.botAvatarUrl} size="lg" aria-hidden="true" />
 					<div className="min-w-0">
 						<p className="truncate font-semibold">{bot.botName}</p>
-						<p className="break-all text-sm text-muted-foreground">Bot ID: {bot.botId ?? "Unavailable"}</p>
+						<p className="flex items-center gap-1 text-sm text-muted-foreground">
+							<span className="min-w-0 break-all">Bot ID: {bot.botId ?? "Unavailable"}</span>
+							<CopyIdButton id={bot.botId} label="Bot ID" />
+						</p>
 					</div>
 				</div>
 			)}

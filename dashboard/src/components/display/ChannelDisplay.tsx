@@ -1,4 +1,5 @@
 import ExternalTextLink from "@jappan/components/ExternalTextLink";
+import CopyIdButton from "@jappan/components/display/CopyIdButton";
 
 interface ChannelDisplayProps {
 	guildId: string;
@@ -16,7 +17,12 @@ export default function ChannelDisplay({ guildId, id, name, showId = true }: Cha
 					text={name}
 				/>
 			</span>
-			{showId && <span className="break-all text-xs text-muted-foreground">{id}</span>}
+			{showId && (
+				<span className="inline-flex max-w-full items-center gap-1 text-xs text-muted-foreground">
+					<span className="min-w-0 break-all">{id}</span>
+					<CopyIdButton id={id} label="Channel ID" />
+				</span>
+			)}
 		</span>
 	);
 }

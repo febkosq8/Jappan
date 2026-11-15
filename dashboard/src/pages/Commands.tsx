@@ -5,6 +5,7 @@ import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
+import CopyIdButton from "@jappan/components/display/CopyIdButton";
 import APIHandler, { type PublicCommand } from "@jappan/handlers/APIHandler";
 import useDocumentTitle, { formatTitle } from "@jappan/helpers/useDocumentTitle";
 
@@ -61,7 +62,10 @@ function CommandDetails({ command }: { command: PublicCommand }) {
 					<div>
 						<dt className="text-muted-foreground">Command ID</dt>
 						<dd className="mt-1 wrap-break-word font-medium">
-							<ValueTags values={[command.id ?? "Unavailable"]} />
+							<div className="flex flex-wrap items-center gap-1">
+								<ValueTags values={[command.id ?? "Unavailable"]} />
+								<CopyIdButton id={command.id} label="Command ID" />
+							</div>
 						</dd>
 					</div>
 				)}
