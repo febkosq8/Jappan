@@ -21,7 +21,7 @@ export default function RoleDisplay({ id, name, color, showId = true, onSelect }
 					variant="outline-secondary"
 					aria-haspopup="dialog"
 					onClick={onSelect}
-					className="min-w-0 gap-2 whitespace-normal text-left"
+					className="min-w-0 gap-2 whitespace-normal text-left leading-tight"
 				>
 					<FiTag
 						className="size-4 shrink-0 text-muted-foreground"
@@ -31,7 +31,7 @@ export default function RoleDisplay({ id, name, color, showId = true, onSelect }
 					<span className="wrap-break-word">{name ?? "Unavailable role"}</span>
 				</Button>
 				{showId && (
-					<span className="inline-flex max-w-full items-center gap-1 text-xs text-muted-foreground">
+					<span className="inline-flex max-w-full items-center gap-1 text-xs leading-tight text-muted-foreground">
 						<span className="min-w-0 break-all">{id}</span>
 						<CopyIdButton id={id} label="Role ID" />
 					</span>
@@ -48,10 +48,10 @@ export default function RoleDisplay({ id, name, color, showId = true, onSelect }
 				aria-hidden="true"
 			/>
 			<span className="min-w-0">
-				<span className="block wrap-break-word font-medium">{name ?? "Unavailable role"}</span>
+				<span className="block wrap-break-word font-medium leading-tight">{name ?? "Unavailable role"}</span>
 				{showId && (
-					<span className="flex items-center gap-1">
-						<span className="min-w-0 break-all text-xs text-muted-foreground">{id}</span>
+					<span className="flex items-center gap-1 text-xs leading-tight">
+						<span className="min-w-0 break-all text-muted-foreground">{id}</span>
 						<CopyIdButton id={id} label="Role ID" />
 					</span>
 				)}

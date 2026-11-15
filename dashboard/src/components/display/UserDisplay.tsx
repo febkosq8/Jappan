@@ -41,7 +41,7 @@ export default function UserDisplay(props: UserDisplayProps) {
 		<div className="flex min-w-0 items-center gap-2">
 			<Avatar name={avatarName} image={identity.avatarUrl} size={size} aria-hidden="true" />
 			<div className="min-w-0">
-				<p className="flex min-w-0 items-center gap-1 font-medium">
+				<p className="flex min-w-0 items-center gap-1 font-medium leading-tight">
 					{identity.displayName !== null && (
 						<span className="min-w-0 truncate">
 							{identity.id && !identity.username && linkUsername ? (
@@ -70,8 +70,8 @@ export default function UserDisplay(props: UserDisplayProps) {
 					)}
 				</p>
 				{showId && identity.id && (
-					<p className="flex items-center gap-1">
-						<span className="min-w-0 break-all text-xs text-muted-foreground">{identity.id}</span>
+					<p className="flex items-center gap-1 text-xs leading-tight">
+						<span className="min-w-0 break-all text-muted-foreground">{identity.id}</span>
 						{keepFocusOnCopy ? (
 							<span
 								className="shrink-0"
