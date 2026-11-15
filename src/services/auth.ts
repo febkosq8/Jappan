@@ -43,6 +43,17 @@ function createAuth() {
 		trustedOrigins: [...config.ALLOWED_ORIGINS],
 		onAPIError: { errorURL: new URL("/auth/error", config.BOT_WEBSITE).href },
 		database: mongodbAdapter(DatabaseManager.getDatabaseInstance()),
+		rateLimit: {
+			enabled: true,
+			storage: "database",
+			window: 60,
+			max: 60,
+			customRules: {
+				"/sign-in/social": { window: 60, max: 3 },
+				"/callback/*": { window: 60, max: 10 },
+				"/get-session": { window: 60, max: 30 },
+			},
+		},
 		plugins: [bearer()],
 		hooks: {
 			after: createAuthMiddleware(async (ctx) => {
