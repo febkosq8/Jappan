@@ -27,6 +27,9 @@ const authorizationStatusScript = String.raw`
 	}
 
 	function getStatusElement() {
+		const swaggerUi = document.querySelector(".swagger-ui");
+		if (swaggerUi) swaggerUi.dataset.authState = currentStatus.state;
+
 		const wrapper = document.querySelector(".auth-wrapper");
 		if (!wrapper) return null;
 		let status = wrapper.querySelector(".swagger-auth-status");
@@ -221,6 +224,11 @@ const setupSwagger: RequestHandler = (request, response, next) => {
 			.swagger-auth-status[data-state="authenticated"] { color: #237a3b; }
 			.swagger-auth-status[data-state="checking"], .swagger-auth-feedback[data-state="checking"] { color: #8a6500; }
 			.swagger-auth-status[data-state="error"], .swagger-auth-status[data-state="unauthenticated"], .swagger-auth-feedback[data-state="error"] { color: #b42318; }
+			.swagger-ui .opblock .authorization__btn { color: #b42318; }
+			.swagger-ui .opblock .authorization__btn svg { color: inherit; }
+			html.dark-mode .swagger-ui .opblock .authorization__btn svg { color: inherit; }
+			.swagger-ui .opblock .authorization__btn svg path { fill: currentColor; }
+			.swagger-ui[data-auth-state="authenticated"] .opblock .authorization__btn { color: #237a3b; }
 			.modal-ux .auth-container h6 { display: none; }
 			.swagger-auth-feedback { margin: 0 0 12px; font-size: 13px; }
 			@media (max-width: 600px) { .auth-wrapper { flex-wrap: wrap; } }
