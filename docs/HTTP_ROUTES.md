@@ -177,6 +177,15 @@ It accepts the WebSocket transport only.
 - The server is a single instance. Rooms live in memory, like the player
   queues themselves. A reverse proxy must pass WebSocket upgrades through.
 
+## Direct message inbox
+
+The admin inbox loads its initial conversation list and message history over
+HTTP. Afterwards, the authenticated WebSocket carries updates, history and
+replies; reconnecting refreshes the current view. Subscription and data
+operations require a bot administrator, and data operations also require an
+active subscription. Conversation records are scoped to the connected bot;
+message content remains on Discord.
+
 ## FebGoServe compatibility
 
 The route contract does not automatically reproduce FebGoServe's middleware or

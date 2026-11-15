@@ -4,7 +4,7 @@ import { acquireWebsocket, releaseWebsocket, subscribeToDirectMessages, Websocke
 
 type Status = "connecting" | "connected" | "disconnected";
 type Callbacks = {
-	onChange: (userId?: string) => Promise<void>;
+	onChange: (userIds?: string[]) => Promise<void>;
 	onAccessProblem: (status: 401 | 403) => void;
 };
 
@@ -24,6 +24,7 @@ export default function useDirectMessageWebsocket({ enabled, ...callbacks }: Cal
 		let refreshTimer: number | undefined;
 		let refreshing = false;
 		let pending = false;
+		let resyncAll = false;
 		const changedUsers = new Set<string>();
 
 		const refresh = async () => {
@@ -34,8 +35,9 @@ export default function useDirectMessageWebsocket({ enabled, ...callbacks }: Cal
 					pending = false;
 					const users = [...changedUsers];
 					changedUsers.clear();
-					if (users.length === 0) await callbacksRef.current.onChange();
-					else for (const userId of users) await callbacksRef.current.onChange(userId);
+					const all = resyncAll;
+					resyncAll = false;
+					await callbacksRef.current.onChange(all ? undefined : users);
 				}
 			} finally {
 				refreshing = false;
@@ -44,6 +46,7 @@ export default function useDirectMessageWebsocket({ enabled, ...callbacks }: Cal
 		const scheduleRefresh = (userId?: string) => {
 			pending = true;
 			if (userId) changedUsers.add(userId);
+			else resyncAll = true;
 			window.clearTimeout(refreshTimer);
 			refreshTimer = window.setTimeout(() => void refresh(), 150);
 		};

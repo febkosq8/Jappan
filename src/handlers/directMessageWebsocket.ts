@@ -31,18 +31,20 @@ async function respond<Data extends object>({
 	event,
 	ack,
 	work,
+	allowCleanup = false,
 }: {
 	socket: WebsocketSocket;
 	event: string;
 	ack: WebsocketAck<Data> | undefined;
 	work: () => Promise<WebsocketResult<Data>>;
+	allowCleanup?: boolean;
 }): Promise<void> {
 	let result: WebsocketResult<Data>;
 	if (consumeSocketRateLimit(socket)) {
 		result = { ok: false, status: 429, error: "Too many requests, slow down" };
-	} else if (!socket.data.user.isAdmin) {
+	} else if (!allowCleanup && !socket.data.user.isAdmin) {
 		result = { ok: false, status: 403, error: "Bot administrator access required" };
-	} else if (!isDatabaseConnected() || !isBotConnected()) {
+	} else if (!allowCleanup && (!isDatabaseConnected() || !isBotConnected())) {
 		result = { ok: false, status: 503, error: "Database or Discord is unavailable" };
 	} else {
 		try {
@@ -81,6 +83,7 @@ export function registerDirectMessageSocketHandlers(socket: WebsocketSocket): vo
 			socket,
 			event: "direct-messages:unsubscribe",
 			ack,
+			allowCleanup: true,
 			work: async () => {
 				if (!emptySchema.safeParse(payload).success) return invalidPayload;
 				await unsubscribeFromDirectMessages(socket);

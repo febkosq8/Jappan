@@ -8,13 +8,28 @@ import UserDisplay from "@jappan/components/display/UserDisplay";
 import ExternalTextLink from "@jappan/components/ExternalTextLink";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import APIHandler, { type User } from "@jappan/handlers/APIHandler";
+import useDirectMessageWebsocket from "@jappan/handlers/useDirectMessageWebsocket";
+import {
+	fetchDirectMessageConversations,
+	fetchDirectMessageHistory,
+	getWebsocket,
+	sendDirectMessage,
+	WebsocketRequestError,
+} from "@jappan/handlers/websocket";
 import useDocumentTitle, { formatTitle } from "@jappan/helpers/useDocumentTitle";
 
 function errorMessage(error: unknown, fallback: string): string {
+	if (error instanceof WebsocketRequestError) return error.message;
 	if (axios.isAxiosError<{ error?: string }>(error) && typeof error.response?.data?.error === "string") {
 		return error.response.data.error;
 	}
 	return fallback;
+}
+
+function inboxSocket() {
+	const socket = getWebsocket();
+	if (!socket?.connected) throw new WebsocketRequestError(503, "Not connected to the inbox. Reconnecting…");
+	return socket;
 }
 
 export default function DirectMessages() {
@@ -24,26 +39,50 @@ export default function DirectMessages() {
 	const [selectedUser, setSelectedUser] = useState<User | null>(null);
 	const [cursors, setCursors] = useState<string[]>([]);
 	const [draft, setDraft] = useState("");
+	const [socketAccessError, setSocketAccessError] = useState<401 | 403 | null>(null);
 	const before = cursors[cursors.length - 1];
+	const conversationKey = ["admin", "direct-messages", "conversations", page];
+	const messageKey = ["admin", "direct-messages", "messages", selectedUser?.id, before];
 	const conversations = useQuery({
-		queryKey: ["admin", "direct-messages", "conversations", page],
-		queryFn: () => APIHandler.getAdminDirectMessageConversations(page),
-		refetchInterval: 20_000,
+		queryKey: conversationKey,
+		queryFn: () =>
+			page === 1 && !queryClient.getQueryData(conversationKey)
+				? APIHandler.getAdminDirectMessageConversations(page)
+				: fetchDirectMessageConversations(inboxSocket(), page),
+		refetchOnWindowFocus: false,
+		refetchOnReconnect: false,
+		refetchOnMount: false,
 		retry: false,
 	});
 	const messages = useQuery({
-		queryKey: ["admin", "direct-messages", "messages", selectedUser?.id, before],
+		queryKey: messageKey,
 		queryFn: () => {
 			if (!selectedUser) throw new Error("No conversation selected");
-			return APIHandler.getAdminDirectMessages(selectedUser.id, before);
+			if (!before && !queryClient.getQueryData(messageKey)) {
+				return APIHandler.getAdminDirectMessages(selectedUser.id);
+			}
+			return fetchDirectMessageHistory({ socket: inboxSocket(), userId: selectedUser.id, before });
 		},
 		enabled: selectedUser !== null,
-		refetchInterval: before ? false : 15_000,
+		refetchOnWindowFocus: false,
+		refetchOnReconnect: false,
+		refetchOnMount: false,
 		retry: false,
+	});
+	const websocketStatus = useDirectMessageWebsocket({
+		enabled: conversations.data !== undefined && socketAccessError === null,
+		onChange: async (userIds) => {
+			const refreshes = [queryClient.invalidateQueries({ queryKey: conversationKey, exact: true })];
+			if (selectedUser && (!userIds || userIds.includes(selectedUser.id))) {
+				refreshes.push(queryClient.invalidateQueries({ queryKey: messageKey, exact: true }));
+			}
+			await Promise.all(refreshes);
+		},
+		onAccessProblem: setSocketAccessError,
 	});
 	const send = useMutation({
 		mutationFn: ({ userId, content }: { userId: string; content: string }) =>
-			APIHandler.sendAdminDirectMessage(userId, content),
+			sendDirectMessage({ socket: inboxSocket(), userId, content }),
 		onSuccess: async (_message, { userId }) => {
 			setDraft("");
 			setCursors([]);
@@ -51,7 +90,10 @@ export default function DirectMessages() {
 		},
 	});
 	const accessStatus =
-		accessErrorStatus(conversations.error) ?? accessErrorStatus(messages.error) ?? accessErrorStatus(send.error);
+		socketAccessError ??
+		accessErrorStatus(conversations.error) ??
+		accessErrorStatus(messages.error) ??
+		accessErrorStatus(send.error);
 	if (accessStatus) return <AccessRedirect status={accessStatus} />;
 
 	function selectUser(user: User) {
@@ -63,7 +105,7 @@ export default function DirectMessages() {
 
 	function submit(event: SubmitEvent<HTMLFormElement>) {
 		event.preventDefault();
-		if (!selectedUser || !draft.trim() || send.isPending) return;
+		if (!selectedUser || !draft.trim() || send.isPending || websocketStatus !== "connected") return;
 		send.mutate({ userId: selectedUser.id, content: draft });
 	}
 
@@ -73,6 +115,13 @@ export default function DirectMessages() {
 			<p className="mt-2 text-sm text-muted-foreground">
 				Only bot administrators can access this inbox. Conversations appear when the bot receives a DM after
 				this feature is enabled. Message history is fetched from Discord, not stored in Jappan.
+			</p>
+			<p role="status" className="mt-2 text-sm text-muted-foreground">
+				{websocketStatus === "connected"
+					? "Live inbox connected."
+					: websocketStatus === "connecting"
+						? "Connecting to the live inbox…"
+						: "Live inbox disconnected. Reconnecting…"}
 			</p>
 			<div className="mt-6 grid gap-4 md:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
 				<Card hoverable={false} className="min-w-0 rounded-md border-border">
@@ -125,7 +174,7 @@ export default function DirectMessages() {
 								type="button"
 								size="sm"
 								variant="outline-primary"
-								disabled={page === 1}
+								disabled={page === 1 || websocketStatus !== "connected"}
 								onClick={() => setPage(page - 1)}
 							>
 								Previous
@@ -135,7 +184,7 @@ export default function DirectMessages() {
 								type="button"
 								size="sm"
 								variant="outline-primary"
-								disabled={!conversations.data?.hasMore}
+								disabled={!conversations.data?.hasMore || websocketStatus !== "connected"}
 								onClick={() => setPage(page + 1)}
 							>
 								Next
@@ -167,7 +216,7 @@ export default function DirectMessages() {
 												type="button"
 												size="sm"
 												variant="outline-primary"
-												disabled={!messages.data.nextBefore}
+												disabled={!messages.data.nextBefore || websocketStatus !== "connected"}
 												onClick={() => {
 													if (messages.data.nextBefore)
 														setCursors([...cursors, messages.data.nextBefore]);
@@ -179,7 +228,7 @@ export default function DirectMessages() {
 												type="button"
 												size="sm"
 												variant="outline-primary"
-												disabled={cursors.length === 0}
+												disabled={cursors.length === 0 || websocketStatus !== "connected"}
 												onClick={() => setCursors(cursors.slice(0, -1))}
 											>
 												Newer messages
@@ -188,6 +237,7 @@ export default function DirectMessages() {
 												type="button"
 												size="sm"
 												variant="outline-primary"
+												disabled={websocketStatus !== "connected"}
 												onClick={() => void messages.refetch()}
 											>
 												Refresh
@@ -286,7 +336,12 @@ export default function DirectMessages() {
 									/>
 									<div className="flex items-center justify-between gap-2">
 										<span className="text-xs text-muted-foreground">{draft.length}/2000</span>
-										<Button type="submit" disabled={!draft.trim() || send.isPending}>
+										<Button
+											type="submit"
+											disabled={
+												!draft.trim() || send.isPending || websocketStatus !== "connected"
+											}
+										>
 											{send.isPending ? "Sending..." : "Send message"}
 										</Button>
 									</div>
