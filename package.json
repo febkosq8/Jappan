@@ -37,7 +37,7 @@
 		"type": "git",
 		"url": "https://github.com/febkosq8/Jappan.git"
 	},
-	"packageManager": "pnpm@12.18.0",
+	"packageManager": "pnpm@12.21.0",
 	"devDependencies": {
 		"@types/cors": "2.8.19",
 		"@types/express": "5.0.6",
