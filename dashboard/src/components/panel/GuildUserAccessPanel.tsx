@@ -2,7 +2,7 @@ import { Button, Card, DateHandler, PreviewCard, Tabs, TabsList, TabsPanel, Tabs
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useEffect, useState } from "react";
-import { FiLock, FiUser } from "react-icons/fi";
+import { FiLock, FiRefreshCw, FiUser } from "react-icons/fi";
 
 import APIHandler, {
 	type GuildMemberAccessDetails,
@@ -243,11 +243,15 @@ function AccessDetails({
 	guildId,
 	initialSection,
 	onSectionChange,
+	onRefresh,
+	refreshDisabled,
 }: {
 	access: GuildMemberAccessDetails;
 	guildId: string;
 	initialSection: AccessSection;
 	onSectionChange: (section: AccessSection) => void;
+	onRefresh: () => void;
+	refreshDisabled: boolean;
 }) {
 	const [section, setSection] = useState(initialSection);
 	const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
@@ -276,11 +280,24 @@ function AccessDetails({
 						)}
 					</div>
 				)}
-				{access.member.joinedTimestampMs !== null && (
-					<p className="ml-auto text-sm text-muted-foreground">
-						Joined {DateHandler.getDateTime(access.member.joinedTimestampMs)}
-					</p>
-				)}
+				<div className="ml-auto flex items-center gap-2">
+					{access.member.joinedTimestampMs !== null && (
+						<p className="text-sm text-muted-foreground">
+							Joined {DateHandler.getDateTime(access.member.joinedTimestampMs)}
+						</p>
+					)}
+					<Button
+						type="button"
+						size="icon-sm"
+						variant="outline-primary"
+						className="group/refetch"
+						aria-label="Refresh member access"
+						disabled={refreshDisabled}
+						onClick={onRefresh}
+					>
+						<FiRefreshCw className="size-4 group-hover/refetch:animate-spin" aria-hidden="true" />
+					</Button>
+				</div>
 			</div>
 
 			<Tabs value={section} onValueChange={changeSection} className="gap-4">
@@ -600,6 +617,8 @@ export default function GuildUserAccessPanel({
 							guildId={guildId}
 							initialSection={accessSection}
 							onSectionChange={setAccessSection}
+							onRefresh={() => void memberQuery.refetch()}
+							refreshDisabled={!active || !isActiveMember || memberQuery.isFetching}
 						/>
 					)}
 				</div>

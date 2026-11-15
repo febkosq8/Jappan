@@ -2,7 +2,7 @@ import { Button, Card, PreviewCard, Table, type TableColumnDef } from "@febkosq8
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useState } from "react";
-import { FiInfo } from "react-icons/fi";
+import { FiInfo, FiRefreshCw } from "react-icons/fi";
 
 import APIHandler, { type GuildRole } from "@jappan/handlers/APIHandler";
 import { AccessRedirect, accessErrorStatus } from "@jappan/components/AuthRoute";
@@ -119,29 +119,43 @@ export default function GuildRolesPanel({ guild }: { guild: { id: string; isActi
 	return (
 		<>
 			<Card id="roles" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
-				<div className="flex items-center justify-between gap-3">
+				<div className="flex flex-wrap items-center justify-between gap-3">
 					<h2 className="flex items-center gap-1 text-lg font-semibold">
 						Roles <GuildSectionLink id="roles" label="roles" />
 					</h2>
-					{roles && (
-						<span className="shrink-0 rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">
-							Total: {roles.length} {roles.length === 1 ? "role" : "roles"}
-						</span>
-					)}
+					<div className="flex shrink-0 items-center gap-2">
+						{rolesQuery.data && (
+							<Button
+								type="button"
+								size="icon-sm"
+								variant="outline-primary"
+								className="group/refetch"
+								aria-label="Refresh roles"
+								disabled={rolesQuery.isFetching || !guild.isActiveMember}
+								onClick={() => void rolesQuery.refetch()}
+							>
+								<FiRefreshCw className="size-4 group-hover/refetch:animate-spin" aria-hidden="true" />
+							</Button>
+						)}
+						{roles && (
+							<span className="shrink-0 rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">
+								Total: {roles.length} {roles.length === 1 ? "role" : "roles"}
+							</span>
+						)}
+						{!rolesQuery.data && !rolesQuery.isError && (
+							<Button
+								type="button"
+								size="sm"
+								variant="outline-primary"
+								disabled={rolesQuery.isFetching || !guild.isActiveMember}
+								onClick={() => void rolesQuery.refetch()}
+							>
+								Load roles
+							</Button>
+						)}
+					</div>
 				</div>
 				<p className="mt-1 text-sm text-muted-foreground">Load the current roles in this guild.</p>
-				{!rolesQuery.isError && (
-					<Button
-						type="button"
-						size="sm"
-						variant="outline-primary"
-						className="mt-3"
-						disabled={rolesQuery.isFetching || !guild.isActiveMember}
-						onClick={() => void rolesQuery.refetch()}
-					>
-						{rolesQuery.data ? "Refresh roles" : "Load roles"}
-					</Button>
-				)}
 				{!guild.isActiveMember && (
 					<p className="mt-3 text-muted-foreground">The bot is not a member of this guild.</p>
 				)}
