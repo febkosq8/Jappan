@@ -133,7 +133,10 @@ function CommandDetails({ command }: { command: PublicCommand }) {
 									...(option.maxLength !== null ? [`Max length: ${option.maxLength}`] : []),
 								];
 								return (
-									<li key={option.name} className="rounded-md border border-border p-3 text-sm">
+									<li
+										key={option.name}
+										className="command-option-dotted-border rounded-md p-3 text-sm"
+									>
 										<div className="flex flex-wrap items-start justify-between gap-2">
 											<p className="min-w-0 wrap-break-word font-medium">
 												<code>{option.name}</code>
