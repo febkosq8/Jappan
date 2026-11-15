@@ -50,11 +50,9 @@ export class MigrationError extends Error {
 	}
 }
 
-export async function runMigrations(
-	database: mongoose.mongo.Db,
-	migrations: readonly DatabaseMigration[] = registeredMigrations,
-): Promise<void> {
+export async function runMigrations(database: mongoose.mongo.Db): Promise<void> {
 	const keys = new Set<string>();
+	const migrations = registeredMigrations;
 	for (const migration of migrations) {
 		if (!migration.key.trim() || keys.has(migration.key)) {
 			throw new MigrationError(migration.key, new Error("Migration keys must be nonempty and unique"));
