@@ -45,6 +45,26 @@ export interface AdminBotPlayerSession {
 
 export type AdminBotAdministrator = User;
 
+export interface AdminDirectMessage {
+	id: string;
+	content: string;
+	author: User;
+	createdTimestampMs: number;
+	attachments: { name: string; url: string }[];
+	embeds: { title: string | null; description: string | null; fields: { name: string; value: string }[] }[];
+	stickers: { name: string; url: string }[];
+}
+
+export interface AdminDirectMessageConversations {
+	items: { user: User; lastReceivedAt: string }[];
+	hasMore: boolean;
+}
+
+export interface AdminDirectMessagePage {
+	messages: AdminDirectMessage[];
+	nextBefore: string | null;
+}
+
 export interface BotStatus {
 	botName: string;
 	botAvatarUrl: string;
@@ -700,6 +720,22 @@ class APIHandler {
 
 	static async getBotStatus(): Promise<BotStatus> {
 		const { data } = await apiClient.get<BotStatus>("/api/v1/public/bot");
+		return data;
+	}
+
+	static async getAdminDirectMessageConversations(page: number): Promise<AdminDirectMessageConversations> {
+		const { data } = await apiClient.get<AdminDirectMessageConversations>("/api/v1/admin/direct-messages", {
+			params: { page },
+			withCredentials: true,
+		});
+		return data;
+	}
+
+	static async getAdminDirectMessages(userId: string, before?: string): Promise<AdminDirectMessagePage> {
+		const { data } = await apiClient.get<AdminDirectMessagePage>(
+			`/api/v1/admin/direct-messages/${encodeURIComponent(userId)}/messages`,
+			{ params: { before }, withCredentials: true },
+		);
 		return data;
 	}
 

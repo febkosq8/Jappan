@@ -6,6 +6,7 @@ import AuthUserModel from "../models/authUser.js";
 import AuthVerificationModel from "../models/authVerification.js";
 import "../models/guild.js";
 import "../models/guildMemberState.js";
+import "../models/directMessageConversation.js";
 import "../models/userPlaylist.js";
 import { getConfig } from "./config.js";
 import { logger } from "./logger.js";

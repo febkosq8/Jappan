@@ -2,6 +2,7 @@ import type { Server, Socket } from "socket.io";
 import type { AuthSession } from "../services/auth.js";
 import type { PurgeMessageJobState } from "../services/purgeMessageJobs.js";
 import type { PlayerWebUser } from "../services/playerAccess.js";
+import type { DirectMessage, DirectMessageConversations, DirectMessagePage } from "../services/directMessages.js";
 import type { PlayerSessionState } from "./playerSessionState.js";
 
 /** Path the Socket.IO server is mounted on, under the same API prefix as the HTTP routes. */
@@ -37,6 +38,14 @@ export interface ClientToServerEvents {
 	) => void;
 	"purge-job:subscribe": (payload: unknown, ack?: WebsocketAck<{ state: PurgeMessageJobState }>) => void;
 	"purge-job:unsubscribe": (payload: unknown, ack?: WebsocketAck) => void;
+	"direct-messages:subscribe": (payload: unknown, ack?: WebsocketAck) => void;
+	"direct-messages:unsubscribe": (payload: unknown, ack?: WebsocketAck) => void;
+	"direct-messages:list": (
+		payload: unknown,
+		ack?: WebsocketAck<{ conversations: DirectMessageConversations }>,
+	) => void;
+	"direct-messages:history": (payload: unknown, ack?: WebsocketAck<{ page: DirectMessagePage }>) => void;
+	"direct-messages:send": (payload: unknown, ack?: WebsocketAck<{ message: DirectMessage }>) => void;
 }
 
 export interface ServerToClientEvents {
@@ -56,6 +65,8 @@ export interface ServerToClientEvents {
 	"purge-job:state": (state: PurgeMessageJobState) => void;
 	/** The user can no longer view the job. */
 	"purge-job:revoked": (payload: { readonly jobId: string; readonly status: number; readonly error: string }) => void;
+	"direct-messages:changed": (payload: { readonly userId: string }) => void;
+	"direct-messages:revoked": (payload: { readonly status: number; readonly error: string }) => void;
 }
 
 export interface WebsocketSocketData {

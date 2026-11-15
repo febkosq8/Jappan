@@ -6,6 +6,7 @@ import AuthError from "@jappan/pages/auth/AuthError";
 import AdminListGuilds from "@jappan/pages/admin/AdminListGuilds";
 import AdminViewGuild from "@jappan/pages/admin/AdminViewGuild";
 import ManageBot from "@jappan/pages/admin/ManageBot";
+import DirectMessages from "@jappan/pages/admin/DirectMessages";
 import UserListGuilds from "@jappan/pages/guilds/UserListGuilds";
 import UserViewGuild from "@jappan/pages/guilds/UserViewGuild";
 import GuildLeaderboard from "@jappan/pages/guilds/GuildLeaderboard";
@@ -72,6 +73,7 @@ function App() {
 						<Route path="/admin/leaderboard" element={<Navigate to="/leaderboards" replace />} />
 						<Route path="/admin/leaderboard/:guildId" element={<LeaderboardRedirect />} />
 						<Route path="/admin/bot" element={<ManageBot />} />
+						<Route path="/admin/direct-messages" element={<DirectMessages />} />
 					</Route>
 					<Route path="/playlists" element={<PlaylistManager />} />
 					<Route path="/guilds" element={<UserListGuilds />} />

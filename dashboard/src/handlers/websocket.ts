@@ -5,6 +5,9 @@ import {
 	type PlayerControlAction,
 	type PlayerSession,
 	type PlayerSuggestion,
+	type AdminDirectMessage,
+	type AdminDirectMessageConversations,
+	type AdminDirectMessagePage,
 } from "./APIHandler";
 
 /** Must match `WEBSOCKET_PATH` on the server. */
@@ -24,6 +27,8 @@ interface ServerToClientEvents {
 	"player:replaced": (payload: { sessionId: string }) => void;
 	"purge-job:state": (state: PurgeMessageJobState) => void;
 	"purge-job:revoked": (payload: { jobId: string; status: number; error: string }) => void;
+	"direct-messages:changed": (payload: { userId: string }) => void;
+	"direct-messages:revoked": (payload: { status: number; error: string }) => void;
 }
 
 interface ClientToServerEvents {
@@ -39,6 +44,20 @@ interface ClientToServerEvents {
 	) => void;
 	"purge-job:subscribe": (payload: { jobId: string }, ack: Ack<{ state: PurgeMessageJobState }>) => void;
 	"purge-job:unsubscribe": (payload: { jobId: string }, ack: Ack) => void;
+	"direct-messages:subscribe": (payload: Record<string, never>, ack: Ack) => void;
+	"direct-messages:unsubscribe": (payload: Record<string, never>, ack: Ack) => void;
+	"direct-messages:list": (
+		payload: { page: number },
+		ack: Ack<{ conversations: AdminDirectMessageConversations }>,
+	) => void;
+	"direct-messages:history": (
+		payload: { userId: string; before?: string },
+		ack: Ack<{ page: AdminDirectMessagePage }>,
+	) => void;
+	"direct-messages:send": (
+		payload: { userId: string; content: string },
+		ack: Ack<{ message: AdminDirectMessage }>,
+	) => void;
 }
 
 export type WebsocketClient = Socket<ServerToClientEvents, ClientToServerEvents>;
@@ -90,19 +109,23 @@ export function releaseWebsocket(): void {
 async function request<Event extends keyof ClientToServerEvents, Data extends object>({
 	socket,
 	run,
+	unavailableMessage = "Not connected to the player. Reconnecting…",
+	timeoutMessage = "The player did not answer in time.",
 }: {
 	socket: WebsocketClient;
 	event: Event;
 	run: () => Promise<WebsocketResult<Data>>;
+	unavailableMessage?: string;
+	timeoutMessage?: string;
 }): Promise<Data> {
 	if (!socket.connected) {
-		throw new WebsocketRequestError(503, "Not connected to the player. Reconnecting…");
+		throw new WebsocketRequestError(503, unavailableMessage);
 	}
 	let result: WebsocketResult<Data>;
 	try {
 		result = await run();
 	} catch {
-		throw new WebsocketRequestError(504, "The player did not answer in time.");
+		throw new WebsocketRequestError(504, timeoutMessage);
 	}
 	if (!result.ok) {
 		throw new WebsocketRequestError(result.status, result.error);
@@ -172,4 +195,72 @@ export async function subscribeToPurgeMessageJob({
 		run: () => socket.timeout(REQUEST_TIMEOUT_MS).emitWithAck("purge-job:subscribe", { jobId }),
 	});
 	return state;
+}
+
+const directMessageUnavailable = "Not connected to the inbox. Reconnecting…";
+
+export async function subscribeToDirectMessages(socket: WebsocketClient): Promise<void> {
+	await request({
+		socket,
+		event: "direct-messages:subscribe",
+		unavailableMessage: directMessageUnavailable,
+		timeoutMessage: "The inbox did not answer in time.",
+		run: () => socket.timeout(REQUEST_TIMEOUT_MS).emitWithAck("direct-messages:subscribe", {}),
+	});
+}
+
+export async function fetchDirectMessageConversations(
+	socket: WebsocketClient,
+	page: number,
+): Promise<AdminDirectMessageConversations> {
+	const result = await request({
+		socket,
+		event: "direct-messages:list",
+		unavailableMessage: directMessageUnavailable,
+		timeoutMessage: "The inbox did not answer in time.",
+		run: () => socket.timeout(REQUEST_TIMEOUT_MS).emitWithAck("direct-messages:list", { page }),
+	});
+	return result.conversations;
+}
+
+export async function fetchDirectMessageHistory({
+	socket,
+	userId,
+	before,
+}: {
+	socket: WebsocketClient;
+	userId: string;
+	before?: string;
+}): Promise<AdminDirectMessagePage> {
+	const result = await request({
+		socket,
+		event: "direct-messages:history",
+		unavailableMessage: directMessageUnavailable,
+		timeoutMessage: "The inbox did not answer in time.",
+		run: () =>
+			socket.timeout(REQUEST_TIMEOUT_MS).emitWithAck("direct-messages:history", {
+				userId,
+				...(before ? { before } : {}),
+			}),
+	});
+	return result.page;
+}
+
+export async function sendDirectMessage({
+	socket,
+	userId,
+	content,
+}: {
+	socket: WebsocketClient;
+	userId: string;
+	content: string;
+}): Promise<AdminDirectMessage> {
+	const result = await request({
+		socket,
+		event: "direct-messages:send",
+		unavailableMessage: directMessageUnavailable,
+		timeoutMessage: "Delivery status is unknown. Check the conversation before retrying.",
+		run: () => socket.timeout(REQUEST_TIMEOUT_MS).emitWithAck("direct-messages:send", { userId, content }),
+	});
+	return result.message;
 }

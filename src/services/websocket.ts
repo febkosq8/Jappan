@@ -13,6 +13,7 @@ import { logger } from "./logger.js";
 import { toPlayerWebUser } from "./playerAccess.js";
 import { stopPurgeMessageJobWebsocket } from "./purgeMessageJobWebsocket.js";
 import { stopPlayerWebsocket } from "./playerWebsocket.js";
+import { stopDirectMessageWebsocket } from "./directMessageWebsocket.js";
 
 /** How often connected sessions are checked again, so signing out or suspending an account ends open sockets. */
 const SESSION_REVALIDATION_INTERVAL_MS = 60_000;
@@ -168,6 +169,7 @@ export function stopWebsocket(): void {
 	stopListeningForEndedSessions = undefined;
 	stopPurgeMessageJobWebsocket();
 	stopPlayerWebsocket();
+	stopDirectMessageWebsocket();
 	if (!server) {
 		return;
 	}

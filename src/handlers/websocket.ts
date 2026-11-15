@@ -8,16 +8,20 @@ import {
 } from "../services/purgeMessageJobWebsocket.js";
 import { handlePlayerSocketDisconnecting, startPlayerWebsocket } from "../services/playerWebsocket.js";
 import { registerPlayerSocketHandlers } from "./playerWebsocket.js";
+import { registerDirectMessageSocketHandlers } from "./directMessageWebsocket.js";
+import { startDirectMessageWebsocket } from "../services/directMessageWebsocket.js";
 
 /** Wires every websocket feature onto a new connection. Add a feature's `register...SocketHandlers` call here. */
 export function registerWebsocketHandlers(server: WebsocketServer): void {
 	startPlayerWebsocket(server);
 	startPurgeMessageJobWebsocket(server);
+	startDirectMessageWebsocket(server);
 	server.on("connection", (socket) => {
 		const user = formatUser(socket.data.user);
 		logger.info("WEBSOCKET", "Client connected", { socket: socket.id, user });
 		registerPlayerSocketHandlers(socket);
 		registerPurgeMessageJobSocketHandlers(socket);
+		registerDirectMessageSocketHandlers(socket);
 		socket.on("disconnecting", () => {
 			handlePlayerSocketDisconnecting(socket);
 			handlePurgeMessageSocketDisconnecting(socket);

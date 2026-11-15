@@ -34,6 +34,7 @@ import {
 import { getCommands, getGlobalApplicationCommandData, setRegisteredCommandIds } from "../services/commandLoader.js";
 import { purgeMessageJobModalCustomIdPrefix } from "../commands/purge-messages.js";
 import { getConfig } from "../services/config.js";
+import { notifyDirectMessageChannelChanged, recordDirectMessage } from "../services/directMessages.js";
 import { initializeGuild } from "../services/guild.js";
 import { handleLevelingInteraction, handleLevelingMessage, handleLevelingVoiceState } from "../services/leveling.js";
 import { logger } from "../services/logger.js";
@@ -351,6 +352,7 @@ export function registerExtendedDiscordHandlers(): void {
 	});
 
 	client.on(Events.MessageCreate, (message) => {
+		void recordDirectMessage(message);
 		const prefixCommand = getPrefixCommand(message.content);
 		if (prefixCommand) {
 			void handlePrefixMessage({ message, config, command: prefixCommand });
@@ -373,10 +375,12 @@ export function registerExtendedDiscordHandlers(): void {
 	});
 
 	client.on(Events.MessageDelete, (message) => {
+		void notifyDirectMessageChannelChanged(message);
 		void handleAuditMessageDelete(message);
 	});
 
 	client.on(Events.MessageUpdate, (oldMessage, newMessage) => {
+		void notifyDirectMessageChannelChanged(newMessage);
 		void handleAuditMessageUpdate(oldMessage, newMessage);
 	});
 
