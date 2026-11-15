@@ -116,7 +116,7 @@ function getLastChangeInfo(queue: PlayerQueue): PlayerSessionState["lastChangedB
 		...toApiUser({
 			id: change.id,
 			username: changer?.username ?? change.username,
-			displayName: changer?.globalName ?? change.username,
+			displayName: changer?.globalName,
 			avatarUrl: changer?.displayAvatarURL({ size: 64 }) ?? null,
 		}),
 		source: change.source,
@@ -164,7 +164,7 @@ export function getPlayerSessionState({
 		owner: toApiUser({
 			id: owner.id,
 			username: ownerUser?.username ?? owner.username,
-			displayName: ownerUser?.globalName ?? owner.username,
+			displayName: ownerUser?.globalName,
 			avatarUrl: ownerUser?.displayAvatarURL({ size: 64 }) ?? null,
 		}),
 		locked: queue.metadata.locked,

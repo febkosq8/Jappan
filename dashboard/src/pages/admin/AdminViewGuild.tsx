@@ -483,7 +483,12 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 									</div>
 									<div>
 										<dt className="text-muted-foreground">Inviter</dt>
-										<dd>{inviteMutation.data.inviter?.username ?? "Unknown"}</dd>
+										<dd>
+											{inviteMutation.data.inviter?.displayName ??
+												(inviteMutation.data.inviter
+													? `@${inviteMutation.data.inviter.username}`
+													: "Unknown")}
+										</dd>
 									</div>
 								</dl>
 							</div>

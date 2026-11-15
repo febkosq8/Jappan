@@ -162,7 +162,7 @@ export default function GuildMemberPicker({
 									index === activeMemberIndex ? "bg-accent text-primary" : ""
 								}`}
 							>
-								<UserDisplay user={member} size="sm" linkName={false} keepFocusOnCopy />
+								<UserDisplay user={member} size="sm" linkUsername={false} keepFocusOnCopy />
 							</li>
 						))}
 					</ul>

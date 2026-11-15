@@ -7,7 +7,6 @@ import {
 import { getLinkedDiscordAccountId, requireActiveUser, requireSession } from "../../../handlers/auth.js";
 import { requireDatabase, requireDiscord } from "../../../handlers/availability.js";
 import { defineRouter, errorResponseSchema, type RouteDefinition } from "../../../helpers/route.js";
-import { apiUserSchema } from "../schemas.js";
 import { MAX_PLAY_QUERY_LENGTH } from "../../../helpers/playerLimits.js";
 import { getPlayerSessionState } from "../../../helpers/playerSessionState.js";
 import type { AuthSession } from "../../../services/auth.js";
@@ -15,6 +14,7 @@ import { getPlayerWebUser } from "../../../services/playerAccess.js";
 import { getPlayerSuggestions } from "../../../services/playerSearch.js";
 import { startPlayerSession } from "../../../services/playerSessionStart.js";
 import { getPlayerSessionViewerCount } from "../../../services/playerWebsocket.js";
+import { apiUserSchema } from "../schemas.js";
 const tags = ["Player"];
 const security = [{ sessionBearer: [] }];
 // Authenticate before resolving the session so unauthenticated callers cannot probe session IDs.

@@ -183,7 +183,7 @@ export function getActivePlayerSessions(): ActivePlayerSession[] {
 			channel: queue.channel ? { id: queue.channel.id, name: queue.channel.name } : null,
 			owner: toApiUser({
 				id: owner.id,
-				displayName: ownerUser?.globalName ?? owner.username,
+				displayName: ownerUser?.globalName,
 				username: ownerUser?.username ?? owner.username,
 				avatarUrl: ownerUser?.displayAvatarURL({ size: 64 }) ?? null,
 			}),

@@ -7,7 +7,7 @@ import type { User } from "@jappan/handlers/APIHandler";
 type UserDisplayProps = {
 	size?: "sm" | "md" | "lg" | "xl";
 	showId?: boolean;
-	linkName?: boolean;
+	linkUsername?: boolean;
 	keepFocusOnCopy?: boolean;
 } & (
 	| { user: User }
@@ -21,38 +21,52 @@ type UserDisplayProps = {
 );
 
 export default function UserDisplay(props: UserDisplayProps) {
-	const { size = "lg", showId = true, linkName = true, keepFocusOnCopy = false } = props;
+	const { size = "lg", showId = true, linkUsername = true, keepFocusOnCopy = false } = props;
 	const identity = props.user
 		? {
 				id: props.user.id,
-				name: props.user.displayName,
+				displayName: props.user.displayName,
 				username: props.user.username,
 				avatarUrl: props.user.avatarUrl,
 			}
 		: {
 				id: props.id,
-				name: props.name,
+				displayName: props.name,
 				username: props.username,
 				avatarUrl: props.avatarUrl,
 			};
+	const avatarName = identity.displayName ?? `@${identity.username}`;
 
 	return (
 		<div className="flex min-w-0 items-center gap-2">
-			<Avatar name={identity.name} image={identity.avatarUrl} size={size} aria-hidden="true" />
+			<Avatar name={avatarName} image={identity.avatarUrl} size={size} aria-hidden="true" />
 			<div className="min-w-0">
 				<p className="flex min-w-0 items-center gap-1 font-medium">
-					<span className="min-w-0 truncate">
-						{identity.id && linkName ? (
-							<ExternalTextLink
-								href={`https://discord.com/users/${encodeURIComponent(identity.id)}`}
-								text={identity.name}
-							/>
-						) : (
-							identity.name
-						)}
-					</span>
+					{identity.displayName !== null && (
+						<span className="min-w-0 truncate">
+							{identity.id && !identity.username && linkUsername ? (
+								<ExternalTextLink
+									href={`https://discord.com/users/${encodeURIComponent(identity.id)}`}
+									text={identity.displayName}
+								/>
+							) : (
+								identity.displayName
+							)}
+						</span>
+					)}
 					{identity.username && (
-						<span className="shrink-0 font-normal text-muted-foreground">(@{identity.username})</span>
+						<span className="shrink-0 font-normal text-muted-foreground">
+							{identity.displayName !== null && "("}
+							{identity.id && linkUsername ? (
+								<ExternalTextLink
+									href={`https://discord.com/users/${encodeURIComponent(identity.id)}`}
+									text={`@${identity.username}`}
+								/>
+							) : (
+								`@${identity.username}`
+							)}
+							{identity.displayName !== null && ")"}
+						</span>
 					)}
 				</p>
 				{showId && identity.id && (

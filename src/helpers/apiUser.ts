@@ -1,6 +1,6 @@
 export interface ApiUser {
 	id: string;
-	displayName: string;
+	displayName: string | null;
 	username: string;
 	avatarUrl: string | null;
 }
@@ -18,7 +18,7 @@ export function toApiUser({
 }): ApiUser {
 	return {
 		id,
-		displayName: displayName ?? username,
+		displayName: displayName ?? null,
 		username,
 		avatarUrl: avatarUrl ?? null,
 	};

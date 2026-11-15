@@ -282,7 +282,7 @@ export interface GuildLeaderboard {
 
 export interface User {
 	id: string;
-	displayName: string;
+	displayName: string | null;
 	username: string;
 	avatarUrl: string | null;
 }

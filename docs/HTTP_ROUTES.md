@@ -90,6 +90,10 @@ This document records design decisions and behavior that is easy to miss.
   searchable data; this document does not enumerate them.
 - The dashboard requests `perPageLimit=0` for lists displayed in client-side tables,
   returning them in one API call. Other clients can request bounded pages.
+- Discord user objects in API responses use the same `id`, `displayName`,
+  `username`, and `avatarUrl` fields. `displayName` is `null` when Discord does
+  not provide one; the dashboard then displays `@username`. Unavailable avatars
+  are `null`.
 - Numeric bot, guild, channel, and invite timestamps use `*TimestampMs` field names
   and represent milliseconds since the Unix epoch. These replace the previous
   `createdAt`, `joinedTimestamp`, `discoveredAt`, `createdTimestamp`,

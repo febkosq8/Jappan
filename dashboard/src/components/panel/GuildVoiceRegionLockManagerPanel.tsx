@@ -139,7 +139,9 @@ export default function GuildVoiceRegionLockManagerPanel({
 					size="sm"
 					variant="outline-secondary"
 					disabled={busy || !active}
-					aria-label={`Remove voice region lock for ${row.original.displayName}`}
+					aria-label={`Remove voice region lock for ${
+						row.original.displayName ?? `@${row.original.username}`
+					}`}
 					onClick={() => removeMutation.mutate(row.original.id)}
 				>
 					{removeMutation.isPending && removeMutation.variables === row.original.id

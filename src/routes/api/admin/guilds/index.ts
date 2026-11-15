@@ -14,7 +14,6 @@ import {
 } from "../../../../helpers/list.js";
 import { defineRouter, errorResponseSchema } from "../../../../helpers/route.js";
 import { toApiUser } from "../../../../helpers/apiUser.js";
-import { apiUserSchema } from "../../schemas.js";
 import { getGuildInvite, kickGuild, sendGuildAdminMessage } from "../../../../helpers/adminGuild.js";
 import {
 	allGuildKeys,
@@ -25,6 +24,7 @@ import {
 } from "../../../../helpers/guild.js";
 import { listGuilds } from "../../../../services/adminGuild.js";
 import { setGuildCommands } from "../../../../services/adminDeployment.js";
+import { apiUserSchema } from "../../schemas.js";
 import type { AuthSession } from "../../../../services/auth.js";
 import { getConfig } from "../../../../services/config.js";
 import { adminGuildDetailsSchema, adminGuildSchema } from "../../guilds/schemas.js";
