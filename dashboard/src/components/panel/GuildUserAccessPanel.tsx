@@ -430,7 +430,13 @@ function AccessDetails({
 														hoverable={false}
 														className="min-w-0 space-y-2 rounded-md border-border p-3"
 													>
-														<h5 className="font-semibold">Effective permissions</h5>
+														<div className="flex flex-wrap items-center justify-between gap-2">
+															<h5 className="font-semibold">Effective permissions</h5>
+															<Tag variant="secondary" size="xs">
+																{channel.permissions.length} permission
+																{channel.permissions.length === 1 ? "" : "s"}
+															</Tag>
+														</div>
 														<PermissionList
 															permissions={channel.permissions}
 															emptyLabel="No effective permissions."
@@ -472,9 +478,18 @@ function AccessDetails({
 																		<div className="mt-2 grid w-full gap-2">
 																			{override.allow.length > 0 && (
 																				<div className="rounded-md border border-dashed border-success/40 bg-success/5 p-2">
-																					<p className="text-xs font-semibold text-success">
-																						Allows
-																					</p>
+																					<div className="flex flex-wrap items-center justify-between gap-2">
+																						<p className="text-xs font-semibold text-success">
+																							Allows
+																						</p>
+																						<Tag variant="secondary" size="xs">
+																							{override.allow.length}{" "}
+																							permission
+																							{override.allow.length === 1
+																								? ""
+																								: "s"}
+																						</Tag>
+																					</div>
 																					<ul className="mt-1 flex flex-wrap gap-1.5">
 																						{override.allow.map(
 																							(permission) => (
@@ -495,9 +510,18 @@ function AccessDetails({
 																			)}
 																			{override.deny.length > 0 && (
 																				<div className="rounded-md border border-dashed border-destructive/40 bg-destructive/5 p-2">
-																					<p className="text-xs font-semibold text-destructive">
-																						Denies
-																					</p>
+																					<div className="flex flex-wrap items-center justify-between gap-2">
+																						<p className="text-xs font-semibold text-destructive">
+																							Denies
+																						</p>
+																						<Tag variant="secondary" size="xs">
+																							{override.deny.length}{" "}
+																							permission
+																							{override.deny.length === 1
+																								? ""
+																								: "s"}
+																						</Tag>
+																					</div>
 																					<ul className="mt-1 flex flex-wrap gap-1.5">
 																						{override.deny.map(
 																							(permission) => (
