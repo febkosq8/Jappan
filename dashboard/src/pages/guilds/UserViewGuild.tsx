@@ -3,17 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useEffect, useState } from "react";
 import { FaListCheck } from "react-icons/fa6";
-import {
-	FiAlertCircle,
-	FiArrowLeft,
-	FiGlobe,
-	FiHash,
-	FiHome,
-	FiShield,
-	FiSliders,
-	FiTrash2,
-	FiUsers,
-} from "react-icons/fi";
+import { FiAlertCircle, FiArrowLeft, FiGlobe, FiHash, FiHome, FiKey, FiSliders, FiTag, FiTrash2 } from "react-icons/fi";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -37,11 +27,11 @@ import useDocumentTitle, { formatTitle } from "@jappan/helpers/useDocumentTitle"
 const guildSections = [
 	{ id: "guild-overview", label: "Overview", icon: FiHome },
 	{ id: "guild-channels", label: "Channels", icon: FiHash },
-	{ id: "guild-roles", label: "Roles", icon: FiUsers },
+	{ id: "guild-roles", label: "Roles", icon: FiTag },
 	{ id: "service-preferences", label: "Service Preferences", icon: FiSliders },
 	{ id: "warnings", label: "Warnings", icon: FiAlertCircle },
 	{ id: "voice-region-locks", label: "Voice region locks", icon: FiGlobe },
-	{ id: "bot-permissions", label: "Bot permissions", icon: FiShield },
+	{ id: "bot-permissions", label: "Bot permissions", icon: FiKey },
 	{ id: "command-permissions", label: "Command permissions", icon: FaListCheck },
 	{ id: "purge-messages", label: "Purge messages", icon: FiTrash2 },
 ];

@@ -24,10 +24,10 @@ import {
 	FiHash,
 	FiHome,
 	FiSettings,
-	FiShield,
+	FiKey,
 	FiSliders,
+	FiTag,
 	FiTrash2,
-	FiUsers,
 } from "react-icons/fi";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -61,11 +61,11 @@ const guildSections = [
 	{ id: "guild-overview", label: "Overview", icon: FiHome },
 	{ id: "admin-actions", label: "Admin actions", icon: FiSettings },
 	{ id: "guild-channels", label: "Channels", icon: FiHash },
-	{ id: "guild-roles", label: "Roles", icon: FiUsers },
+	{ id: "guild-roles", label: "Roles", icon: FiTag },
 	{ id: "service-preferences", label: "Service Preferences", icon: FiSliders },
 	{ id: "warnings", label: "Warnings", icon: FiAlertCircle },
 	{ id: "voice-region-locks", label: "Voice region locks", icon: FiGlobe },
-	{ id: "bot-permissions", label: "Bot permissions", icon: FiShield },
+	{ id: "bot-permissions", label: "Bot permissions", icon: FiKey },
 	{ id: "command-permissions", label: "Command permissions", icon: FaListCheck },
 	{ id: "purge-messages", label: "Purge messages", icon: FiTrash2 },
 ];
