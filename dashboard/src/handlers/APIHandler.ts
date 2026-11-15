@@ -344,15 +344,15 @@ export interface GuildRole {
 	id: string;
 	name: string;
 	position: number;
-	managed: boolean;
-	isBotRole: boolean;
 	assignable: boolean;
-	color: string | null;
-	iconUrl: string | null;
-	unicodeEmoji: string | null;
 }
 
 export interface GuildRoleDetails extends GuildRole {
+	managed: boolean;
+	isBotRole: boolean;
+	color: string | null;
+	iconUrl: string | null;
+	unicodeEmoji: string | null;
 	permissions: string[];
 	hoisted: boolean;
 	mentionable: boolean;

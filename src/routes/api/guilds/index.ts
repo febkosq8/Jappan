@@ -133,14 +133,14 @@ const guildRoleSchema = z.object({
 	id: z.string(),
 	name: z.string(),
 	position: z.number().int(),
+	assignable: z.boolean(),
+});
+const guildRoleDetailsSchema = guildRoleSchema.extend({
 	managed: z.boolean(),
 	isBotRole: z.boolean(),
-	assignable: z.boolean(),
 	color: z.string().nullable(),
 	iconUrl: z.string().nullable(),
 	unicodeEmoji: z.string().nullable(),
-});
-const guildRoleDetailsSchema = guildRoleSchema.extend({
 	permissions: z.array(z.string()),
 	hoisted: z.boolean(),
 	mentionable: z.boolean(),

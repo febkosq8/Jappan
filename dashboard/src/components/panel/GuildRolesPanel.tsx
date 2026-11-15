@@ -1,17 +1,78 @@
-import { Button, Card, DateHandler, Modal, Tag } from "@febkosq8/arc";
+import { Button, Card, DateHandler, Modal, Table, Tag, type TableColumnDef } from "@febkosq8/arc";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useState } from "react";
 
-import APIHandler, { type GuildRoleDetails } from "@jappan/handlers/APIHandler";
+import APIHandler, { type GuildRole, type GuildRoleDetails } from "@jappan/handlers/APIHandler";
 import { AccessRedirect, accessErrorStatus } from "@jappan/components/AuthRoute";
 import ErrorPage from "@jappan/components/ErrorPage";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
+import RoleDisplay from "@jappan/components/display/RoleDisplay";
 import GuildSectionLink from "@jappan/components/panel/GuildSectionLink";
+
+function getRoleColumns(onSelectRole: (roleId: string) => void): TableColumnDef<GuildRole>[] {
+	return [
+		{
+			accessorKey: "name",
+			header: "Role",
+			mobileFullWidth: true,
+			size: 280,
+			filterFn: "includesString",
+			cell: ({ row }) => {
+				const role = row.original;
+				return <RoleDisplay id={role.id} name={role.name} />;
+			},
+		},
+		{
+			accessorKey: "position",
+			header: "Position",
+			size: 100,
+			enableColumnFilter: false,
+			sortingFn: "basic",
+		},
+		{
+			id: "assignable",
+			accessorFn: (role) => (role.assignable ? "Yes" : "No"),
+			header: "Can assign",
+			size: 120,
+			filterSelectOptions: [
+				{ value: "Yes", label: "Yes" },
+				{ value: "No", label: "No" },
+			],
+			cell: ({ row }) => (
+				<span className={row.original.assignable ? "font-medium text-success" : "font-medium text-destructive"}>
+					{row.original.assignable ? "Yes" : "No"}
+				</span>
+			),
+		},
+		{
+			id: "details",
+			accessorKey: "id",
+			header: "Details",
+			size: 140,
+			enableColumnFilter: false,
+			enableSorting: false,
+			cell: ({ row }) => (
+				<Button
+					type="button"
+					size="xs"
+					variant="outline-primary"
+					aria-haspopup="dialog"
+					onClick={() => onSelectRole(row.original.id)}
+				>
+					View details
+				</Button>
+			),
+		},
+	];
+}
 
 function RoleDetails({ role }: { role: GuildRoleDetails }) {
 	return (
 		<>
+			<div className="mb-3">
+				<RoleDisplay id={role.id} name={role.name} />
+			</div>
 			<div className="mb-3 flex flex-wrap items-center justify-between gap-2">
 				<div className="flex min-w-0 items-center gap-2">
 					{role.iconUrl ? (
@@ -21,26 +82,20 @@ function RoleDetails({ role }: { role: GuildRoleDetails }) {
 							{role.unicodeEmoji}
 						</span>
 					) : null}
-					{role.color && (
-						<span
-							aria-hidden="true"
-							className="size-3 shrink-0 rounded-full border border-border"
-							style={{ backgroundColor: role.color }}
-						/>
-					)}
 				</div>
-				<div className="ml-auto flex flex-wrap justify-end gap-1">
-					{role.isBotRole && (
+				{role.isBotRole && (
+					<div className="ml-auto flex flex-wrap justify-end gap-1">
 						<Tag variant="warning" size="xs">
 							Bot role
 						</Tag>
-					)}
-					<Tag variant="secondary" size="xs">
-						Position: {role.position}
-					</Tag>
-				</div>
+					</div>
+				)}
 			</div>
 			<dl className="grid gap-x-3 gap-y-2 text-sm sm:grid-cols-2">
+				<div className="flex min-w-0 flex-wrap gap-x-1">
+					<dt className="text-muted-foreground">Position:</dt>
+					<dd>{role.position}</dd>
+				</div>
 				<div className="flex min-w-0 flex-wrap gap-x-1">
 					<dt className="text-muted-foreground">Color:</dt>
 					<dd className="inline-flex items-center gap-1">
@@ -53,6 +108,10 @@ function RoleDetails({ role }: { role: GuildRoleDetails }) {
 						)}
 						{role.color ?? "Default"}
 					</dd>
+				</div>
+				<div className="flex min-w-0 flex-wrap gap-x-1">
+					<dt className="text-muted-foreground">Created:</dt>
+					<dd>{DateHandler.getDateTime(role.createdTimestampMs)}</dd>
 				</div>
 				<div className="flex min-w-0 flex-wrap gap-x-1">
 					<dt className="text-muted-foreground">Members:</dt>
@@ -76,33 +135,25 @@ function RoleDetails({ role }: { role: GuildRoleDetails }) {
 					<dt className="text-muted-foreground">Mentionable:</dt>
 					<dd>{role.mentionable ? "Yes" : "No"}</dd>
 				</div>
-				<div className="flex min-w-0 flex-wrap gap-x-1 sm:col-span-2">
-					<dt className="text-muted-foreground">Created:</dt>
-					<dd>{DateHandler.getDateTime(role.createdTimestampMs)}</dd>
-				</div>
-				<div className="flex min-w-0 flex-wrap gap-x-1 sm:col-span-2">
-					<dt className="text-muted-foreground">Role ID:</dt>
-					<dd className="break-all">{role.id}</dd>
-				</div>
 			</dl>
-			<details className="mt-3 min-w-0 text-sm">
-				<summary className="cursor-pointer font-medium text-foreground">
-					Permissions ({role.permissions.length})
-				</summary>
-				{role.permissions.length > 0 ? (
-					<ul className="mt-2 flex flex-wrap gap-1">
-						{role.permissions.map((permission) => (
-							<li key={permission}>
-								<Tag variant="secondary" size="xs">
-									{permission.replace(/([a-z])([A-Z])/g, "$1 $2")}
-								</Tag>
-							</li>
-						))}
-					</ul>
-				) : (
-					<p className="mt-2 text-muted-foreground">No permissions.</p>
-				)}
-			</details>
+			<Card hoverable={false} className="mt-3 p-3">
+				<h3 className="font-semibold">Permissions ({role.permissions.length})</h3>
+				<div className="mt-2">
+					{role.permissions.length > 0 ? (
+						<ul className="flex flex-wrap gap-1">
+							{role.permissions.map((permission) => (
+								<li key={permission}>
+									<Tag variant="secondary" size="xs">
+										{permission.replace(/([a-z])([A-Z])/g, "$1 $2")}
+									</Tag>
+								</li>
+							))}
+						</ul>
+					) : (
+						<p className="text-muted-foreground">No permissions.</p>
+					)}
+				</div>
+			</Card>
 		</>
 	);
 }
@@ -206,72 +257,9 @@ export default function GuildRolesPanel({ guild }: { guild: { id: string; isActi
 				) : roles?.length === 0 ? (
 					<p className="mt-3 text-muted-foreground">No roles found.</p>
 				) : roles ? (
-					<ul className="mt-4 grid items-start gap-3 sm:grid-cols-2">
-						{roles.map((role) => (
-							<li key={role.id}>
-								<Card hoverable={false} className="min-w-0 rounded-md border-border p-3">
-									<div className="flex flex-wrap items-start justify-between gap-2">
-										<div className="flex min-w-0 items-center gap-2">
-											{role.iconUrl ? (
-												<img src={role.iconUrl} alt="" className="size-5 shrink-0 rounded-sm" />
-											) : role.unicodeEmoji ? (
-												<span aria-hidden="true" className="shrink-0">
-													{role.unicodeEmoji}
-												</span>
-											) : null}
-											{role.color && (
-												<span
-													aria-hidden="true"
-													className="size-3 shrink-0 rounded-full border border-border"
-													style={{ backgroundColor: role.color }}
-												/>
-											)}
-											<h3 className="min-w-0 wrap-break-word font-semibold">{role.name}</h3>
-										</div>
-										<div className="ml-auto flex flex-wrap justify-end gap-1">
-											{role.isBotRole && (
-												<Tag variant="warning" size="xs">
-													Bot role
-												</Tag>
-											)}
-											<Tag variant="secondary" size="xs">
-												Position: {role.position}
-											</Tag>
-										</div>
-									</div>
-									<dl className="mt-2 grid gap-x-3 gap-y-1 text-sm sm:grid-cols-2">
-										<div className="flex min-w-0 flex-wrap gap-x-1">
-											<dt className="text-muted-foreground">Managed:</dt>
-											<dd>{role.managed ? "Yes" : "No"}</dd>
-										</div>
-										<div className="flex min-w-0 flex-wrap gap-x-1">
-											<dt className="text-muted-foreground">Can assign:</dt>
-											<dd
-												className={
-													role.assignable
-														? "font-medium text-success"
-														: "font-medium text-destructive"
-												}
-											>
-												{role.assignable ? "Yes" : "No"}
-											</dd>
-										</div>
-									</dl>
-									<div className="mt-3 flex justify-end">
-										<Button
-											type="button"
-											size="sm"
-											variant="outline-primary"
-											aria-haspopup="dialog"
-											onClick={() => setSelectedRoleId(role.id)}
-										>
-											View details
-										</Button>
-									</div>
-								</Card>
-							</li>
-						))}
-					</ul>
+					<div className="mt-4">
+						<Table data={roles} columnDef={getRoleColumns((roleId) => setSelectedRoleId(roleId))} />
+					</div>
 				) : null}
 			</Card>
 			<Modal
@@ -279,9 +267,9 @@ export default function GuildRolesPanel({ guild }: { guild: { id: string; isActi
 				setOpen={(open) => {
 					if (!open) setSelectedRoleId(null);
 				}}
-				headerContent={roles?.find((role) => role.id === selectedRoleId)?.name ?? "Role details"}
-				footerContent={
-					<div className="flex justify-end">
+				headerContent={
+					<span className="flex items-center justify-between gap-3">
+						<span>Role details</span>
 						<Button
 							type="button"
 							size="sm"
@@ -290,7 +278,7 @@ export default function GuildRolesPanel({ guild }: { guild: { id: string; isActi
 						>
 							Close
 						</Button>
-					</div>
+					</span>
 				}
 				className="w-full max-w-2xl"
 			>

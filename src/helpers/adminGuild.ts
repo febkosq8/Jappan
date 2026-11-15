@@ -142,12 +142,7 @@ function getGuildRoleSummary({
 		id: role.id,
 		name: role.name,
 		position: role.position,
-		managed: role.managed,
-		isBotRole: role.tags?.botId === botMember.id,
 		assignable: canAssignRole(role, botMember, canManageRoles),
-		color: role.color === 0 ? null : role.hexColor,
-		iconUrl: role.iconURL({ size: 64 }),
-		unicodeEmoji: role.unicodeEmoji,
 	};
 }
 
@@ -167,6 +162,10 @@ export async function getAdminGuildRoleDetails(guildId: string, roleId: string) 
 		role: {
 			...getGuildRoleSummary({ role, botMember, canManageRoles }),
 			managed: role.managed,
+			isBotRole: role.tags?.botId === botMember.id,
+			color: role.color === 0 ? null : role.hexColor,
+			iconUrl: role.iconURL({ size: 64 }),
+			unicodeEmoji: role.unicodeEmoji,
 			permissions: role.permissions.toArray(),
 			hoisted: role.hoist,
 			mentionable: role.mentionable,
