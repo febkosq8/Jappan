@@ -47,7 +47,7 @@ function createAuth() {
 		hooks: {
 			after: createAuthMiddleware(async (ctx) => {
 				if (ctx.path === "/callback/:id" && ctx.context.newSession) {
-					logger.info("HTTP", "Dashboard user signed in", {
+					logger.info("AUTH", "User signed in", {
 						user: formatUser({
 							id: ctx.context.newSession.user.id,
 							username: ctx.context.newSession.user.username ?? ctx.context.newSession.user.name,
@@ -153,7 +153,7 @@ function createAuth() {
 				delete: {
 					after: async (session, context) => {
 						if (context?.path === "/sign-out") {
-							logger.info("HTTP", "Dashboard user signed out", { userId: session.userId });
+							logger.info("AUTH", "User signed out", { userId: session.userId });
 						}
 						notifySessionsEnded({ userId: session.userId });
 						if (context?.path !== "/sign-out") return;
