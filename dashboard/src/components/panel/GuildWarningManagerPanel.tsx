@@ -1,4 +1,4 @@
-import { Avatar, Button, Card, DateHandler, Input, Table, type TableColumnDef } from "@febkosq8/arc";
+import { Button, Card, DateHandler, Input, Table, type TableColumnDef } from "@febkosq8/arc";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { useRef, useState } from "react";
@@ -223,18 +223,13 @@ export default function GuildWarningManagerPanel({
 						{selectedMember && (
 							<>
 								<div className="flex flex-wrap items-center gap-3 border-y border-border py-4">
-									<Avatar
+									<UserDisplay
+										id={selectedMember.id}
 										name={selectedMember.displayName}
-										image={selectedMember.avatarUrl}
+										username={selectedMember.username}
+										avatarUrl={selectedMember.avatarUrl}
 										size="md"
-										aria-hidden="true"
 									/>
-									<div className="min-w-0">
-										<h3 className="truncate font-semibold">{selectedMember.displayName}</h3>
-										<p className="truncate text-sm text-muted-foreground">
-											@{selectedMember.username}
-										</p>
-									</div>
 									<span className="ml-auto inline-flex items-center gap-2 rounded-md bg-accent px-3 py-2 font-medium text-primary">
 										<FiAlertCircle aria-hidden="true" />
 										{selectedMember.warningCount} warning(s)

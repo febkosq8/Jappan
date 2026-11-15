@@ -219,6 +219,7 @@ export default function GuildVoiceRegionLockManagerPanel({
 											<UserDisplay
 												id={selectedMember.id}
 												name={selectedMember.displayName}
+												username={selectedMember.username}
 												avatarUrl={selectedMember.avatarUrl}
 												size="sm"
 											/>

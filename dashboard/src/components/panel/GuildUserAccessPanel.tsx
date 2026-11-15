@@ -1,4 +1,4 @@
-import { Avatar, Button, Card, DateHandler, PreviewCard, Tabs, TabsList, TabsPanel, TabsTab, Tag } from "@febkosq8/arc";
+import { Button, Card, DateHandler, PreviewCard, Tabs, TabsList, TabsPanel, TabsTab, Tag } from "@febkosq8/arc";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useState } from "react";
@@ -12,6 +12,7 @@ import APIHandler, {
 import { AccessRedirect, accessErrorStatus } from "@jappan/components/AuthRoute";
 import ChannelDisplay from "@jappan/components/display/ChannelDisplay";
 import RoleDisplay from "@jappan/components/display/RoleDisplay";
+import UserDisplay from "@jappan/components/display/UserDisplay";
 import ErrorPage from "@jappan/components/ErrorPage";
 import GuildRoleDetailsModal from "@jappan/components/panel/GuildRoleDetailsModal";
 import GuildSectionLink from "@jappan/components/panel/GuildSectionLink";
@@ -150,11 +151,13 @@ function AccessDetails({ access, guildId }: { access: GuildMemberAccessDetails; 
 	return (
 		<div className="space-y-5">
 			<div className="flex flex-wrap items-center gap-3 border-y border-border py-4">
-				<Avatar name={access.member.displayName} image={access.member.avatarUrl} size="md" aria-hidden="true" />
-				<div className="min-w-0">
-					<h3 className="truncate font-semibold">{access.member.displayName}</h3>
-					<p className="truncate text-sm text-muted-foreground">@{access.member.username}</p>
-				</div>
+				<UserDisplay
+					id={access.member.id}
+					name={access.member.displayName}
+					username={access.member.username}
+					avatarUrl={access.member.avatarUrl}
+					size="md"
+				/>
 				{(access.member.bot || access.member.isOwner) && (
 					<div className="flex min-w-0 flex-1 flex-wrap items-center justify-center gap-1">
 						{access.member.bot && (

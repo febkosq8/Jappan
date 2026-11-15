@@ -1,10 +1,11 @@
-import { Avatar, Input } from "@febkosq8/arc";
+import { Input } from "@febkosq8/arc";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useEffect, useId, useState, type KeyboardEvent } from "react";
 import { FiSearch } from "react-icons/fi";
 
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
+import UserDisplay from "@jappan/components/display/UserDisplay";
 import APIHandler, { type WarningMember } from "@jappan/handlers/APIHandler";
 
 export default function GuildMemberPicker({
@@ -161,18 +162,15 @@ export default function GuildMemberPicker({
 									index === activeMemberIndex ? "bg-accent text-primary" : ""
 								}`}
 							>
-								<Avatar
+								<UserDisplay
+									id={member.id}
 									name={member.displayName}
-									image={member.avatarUrl}
+									username={member.username}
+									avatarUrl={member.avatarUrl}
 									size="sm"
-									aria-hidden="true"
+									linkName={false}
+									keepFocusOnCopy
 								/>
-								<span className="min-w-0">
-									<span className="block truncate font-medium">{member.displayName}</span>
-									<span className="block truncate text-xs text-muted-foreground">
-										@{member.username}
-									</span>
-								</span>
 							</li>
 						))}
 					</ul>

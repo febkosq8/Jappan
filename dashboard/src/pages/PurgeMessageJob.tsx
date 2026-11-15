@@ -196,7 +196,8 @@ function PurgeMessageList({
 											<div className="flex flex-wrap items-center justify-between gap-2 text-xs">
 												<UserDisplay
 													id={message.author.id}
-													name={`${message.author.displayName} (@${message.author.username})`}
+													name={message.author.displayName}
+													username={message.author.username}
 													avatarUrl={message.author.avatarUrl}
 													size="sm"
 													showId
