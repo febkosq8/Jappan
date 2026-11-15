@@ -4,6 +4,7 @@ import { APIError, createAuthMiddleware } from "better-auth/api";
 import { bearer } from "better-auth/plugins";
 import mongoose from "mongoose";
 
+import { formatUser } from "../helpers/discord.js";
 import AuthAccountModel from "../models/authAccount.js";
 import AuthSessionModel from "../models/authSession.js";
 import AuthUserModel from "../models/authUser.js";
@@ -47,13 +48,10 @@ function createAuth() {
 			after: createAuthMiddleware(async (ctx) => {
 				if (ctx.path === "/callback/:id" && ctx.context.newSession) {
 					logger.info("HTTP", "Dashboard user signed in", {
-						userId: ctx.context.newSession.user.id,
-						username: ctx.context.newSession.user.username,
-					});
-				} else if (ctx.path === "/sign-out" && ctx.context.session) {
-					logger.info("HTTP", "Dashboard user signed out", {
-						userId: ctx.context.session.user.id,
-						username: ctx.context.session.user.username,
+						user: formatUser({
+							id: ctx.context.newSession.user.id,
+							username: ctx.context.newSession.user.username ?? ctx.context.newSession.user.name,
+						}),
 					});
 				}
 			}),
@@ -154,6 +152,9 @@ function createAuth() {
 				},
 				delete: {
 					after: async (session, context) => {
+						if (context?.path === "/sign-out") {
+							logger.info("HTTP", "Dashboard user signed out", { userId: session.userId });
+						}
 						notifySessionsEnded({ userId: session.userId });
 						if (context?.path !== "/sign-out") return;
 						await AuthSessionModel.deleteMany({ userId: new mongoose.Types.ObjectId(session.userId) });
