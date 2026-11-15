@@ -61,7 +61,7 @@ function GuildDetails({ guild }: { guild: UserGuildDetails }) {
 		const syncSectionFromUrl = () => {
 			const nextSection = readSectionFromHash();
 			setSection(nextSection);
-			if (nextSection === "evaluate-user") return;
+			if (nextSection === "evaluate-user" || nextSection === "warnings") return;
 			const url = new URL(window.location.href);
 			if (!url.search) return;
 			url.search = "";

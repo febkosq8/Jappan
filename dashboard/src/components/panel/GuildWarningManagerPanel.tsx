@@ -1,7 +1,7 @@
 import { Button, Card, DateHandler, Input, Table, type TableColumnDef } from "@febkosq8/arc";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FiAlertCircle, FiInfo, FiUser } from "react-icons/fi";
 import { toast } from "sonner";
 
@@ -34,6 +34,23 @@ function issueSuccessMessage(result: WarningIssueResult): string {
 	}
 }
 
+function getMemberIdFromUrl(): string {
+	if (window.location.hash.slice(1).split("?")[0] !== "warnings") return "";
+	return new URLSearchParams(window.location.search).get("userId") ?? "";
+}
+
+function updateWarningsUrl(memberId: string) {
+	const url = new URL(window.location.href);
+	url.searchParams.delete("userAccessMemberId");
+	url.searchParams.delete("userAccessTab");
+	if (memberId) {
+		url.searchParams.set("userId", memberId);
+	} else {
+		url.searchParams.delete("userId");
+	}
+	window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
 export default function GuildWarningManagerPanel({
 	guildId,
 	active,
@@ -45,8 +62,17 @@ export default function GuildWarningManagerPanel({
 }) {
 	const queryClient = useQueryClient();
 	const panelHeading = useRef<HTMLHeadingElement>(null);
-	const [memberId, setMemberId] = useState("");
+	const [memberId, setMemberId] = useState(getMemberIdFromUrl);
 	const [reason, setReason] = useState("");
+	useEffect(() => {
+		if (!active) {
+			if (memberId) setMemberId("");
+			if (reason) setReason("");
+			return;
+		}
+		updateWarningsUrl(memberId);
+	}, [active, memberId]);
+
 	const memberQuery = useQuery({
 		queryKey: ["user", "guild", guildId, "warnings", memberId],
 		queryFn: () => APIHandler.getGuildMemberWarnings(guildId, memberId),
@@ -199,7 +225,7 @@ export default function GuildWarningManagerPanel({
 						<FiUser className="size-6 text-muted-foreground" aria-hidden="true" />
 						<p className="mt-3 font-medium">Select a member to review their warnings</p>
 						<p className="mt-1 text-sm text-muted-foreground">
-							Search above or select a warning count in the list below.
+							Search above or use Review history in the table below.
 						</p>
 					</div>
 				) : (
