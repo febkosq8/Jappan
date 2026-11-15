@@ -1,4 +1,4 @@
-import { Button, Card, DateHandler, Input, Table, type TableColumnDef } from "@febkosq8/arc";
+import { Button, Card, DateHandler, DoubleClickButton, Input, Table, type TableColumnDef } from "@febkosq8/arc";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { useEffect, useRef, useState } from "react";
@@ -11,6 +11,7 @@ import GuildWarningsTable from "@jappan/components/panel/GuildWarningsTable";
 import GuildSectionLink from "@jappan/components/panel/GuildSectionLink";
 import GuildMemberPicker from "@jappan/components/panel/GuildMemberPicker";
 import UserDisplay from "@jappan/components/display/UserDisplay";
+import { CONFIRM_CLICK_MS } from "@jappan/helpers/confirmClick";
 
 function getErrorMessage(error: unknown): string {
 	if (axios.isAxiosError<{ error?: string }>(error) && typeof error.response?.data?.error === "string") {
@@ -122,7 +123,7 @@ export default function GuildWarningManagerPanel({
 			size: 320,
 			mobileFullWidth: true,
 			filterFn: "includesString",
-			cell: ({ row }) => <span className="whitespace-normal break-words">{row.original.reason}</span>,
+			cell: ({ row }) => <span className="whitespace-normal wrap-break-word">{row.original.reason}</span>,
 		},
 		{
 			accessorKey: "issuedAt",
@@ -146,7 +147,7 @@ export default function GuildWarningManagerPanel({
 			accessorFn: (warning) =>
 				[warning.issuer?.username, warning.issuerId].filter(Boolean).join(" ") || "Unknown",
 			header: "Issuer",
-			size: 260,
+			size: 150,
 			filterFn: "includesString",
 			cell: ({ row }) => {
 				const issuer = row.original.issuer;
@@ -161,7 +162,7 @@ export default function GuildWarningManagerPanel({
 			id: "thresholdAction",
 			accessorFn: (warning) => warning.thresholdAction.replace(/_/gu, " "),
 			header: "Threshold action",
-			size: 170,
+			size: 150,
 			filterFn: "includesString",
 			cell: ({ row }) => <span className="capitalize">{row.original.thresholdAction.replace(/_/gu, " ")}</span>,
 		},
@@ -174,16 +175,18 @@ export default function GuildWarningManagerPanel({
 			enableColumnFilter: false,
 			enableHiding: false,
 			cell: ({ row }) => (
-				<Button
+				<DoubleClickButton
+					doubleClickMsDuration={CONFIRM_CLICK_MS}
 					type="button"
-					size="sm"
-					variant="outline-secondary"
+					size="xs"
+					variant="outline-destructive"
+					feedbackContent="Click again"
 					disabled={unavailable || row.original.thresholdAction === "pending"}
 					aria-label={`Delete warning: ${row.original.reason}`}
-					onClick={() => deleteMutation.mutate(row.original.id)}
+					onDoubleClick={() => deleteMutation.mutate(row.original.id)}
 				>
 					Delete
-				</Button>
+				</DoubleClickButton>
 			),
 		},
 	];
