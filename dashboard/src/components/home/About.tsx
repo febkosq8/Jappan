@@ -31,6 +31,7 @@ import APIHandler, { apiBaseURL } from "@jappan/handlers/APIHandler";
 import BotStatusOverviewPanel from "@jappan/components/panel/BotStatusOverviewPanel";
 import BotStatusHealthPanel from "@jappan/components/panel/BotStatusHealthPanel";
 import CopyIdButton from "@jappan/components/display/CopyIdButton";
+import ErrorPage from "@jappan/components/ErrorPage";
 import LoadingIndicator from "../LoadingIndicator";
 
 const commandCategories = ["General", "Music", "Leveling", "Fun", "Moderation"] as const;
@@ -221,59 +222,81 @@ export default function About() {
 							</Tag>
 						</div>
 						{botQuery.isError && (
-							<p role="status" className="mt-3 text-sm text-destructive">
-								{botQuery.data
-									? "Could not refresh bot details. Showing the last fetched values."
-									: "Could not load bot details. Try refetching bot status."}
-							</p>
-						)}
-						<Tabs defaultValue="overview" className="mt-4 gap-4">
-							<div className="flex flex-wrap items-center justify-between gap-3">
-								<TabsList aria-label="Bot status sections">
-									<TabsTab value="overview" size="sm">
-										Overview
-									</TabsTab>
-									<TabsTab value="health" size="sm">
-										Health
-									</TabsTab>
-								</TabsList>
-								{botQuery.data && (
-									<div className="flex min-w-0 items-center gap-3">
-										<Avatar
-											name={botQuery.data.botName}
-											image={botQuery.data.botAvatarUrl}
-											size="lg"
-											aria-hidden="true"
-										/>
-										<div className="min-w-0">
-											<p className="truncate font-semibold">{botQuery.data.botName}</p>
-											<p className="flex items-center gap-1 text-sm text-muted-foreground">
-												<span className="min-w-0 break-all">
-													Bot ID: {botQuery.data.botId ?? "Unavailable"}
-												</span>
-												<CopyIdButton id={botQuery.data.botId} label="Bot ID" />
-											</p>
-										</div>
-									</div>
-								)}
+							<div className="mt-3">
+								<ErrorPage
+									variant="inline"
+									status="Error"
+									title={
+										botQuery.data ? "Could not refresh bot details" : "Could not load bot details"
+									}
+									message={
+										botQuery.data
+											? "Showing the last fetched values."
+											: "Try again to load bot details."
+									}
+									actions={
+										<Button
+											type="button"
+											size="sm"
+											variant="outline-primary"
+											onClick={() => void botQuery.refetch()}
+											disabled={botQuery.isFetching}
+										>
+											Retry
+										</Button>
+									}
+								/>
 							</div>
-							<TabsPanel value="overview">
-								<BotStatusOverviewPanel
-									bot={botQuery.data}
-									isError={botQuery.isError}
-									updatedAt={botQuery.dataUpdatedAt}
-									healthUpdatedAt={healthQuery.dataUpdatedAt}
-								/>
-							</TabsPanel>
-							<TabsPanel value="health">
-								<BotStatusHealthPanel
-									health={healthQuery.data}
-									healthIsError={healthQuery.isError}
-									bot={botQuery.data}
-									botIsError={botQuery.isError}
-								/>
-							</TabsPanel>
-						</Tabs>
+						)}
+						{!(botQuery.isError && !botQuery.data) && (
+							<Tabs defaultValue="overview" className="mt-4 gap-4">
+								<div className="flex flex-wrap items-center justify-between gap-3">
+									<TabsList aria-label="Bot status sections">
+										<TabsTab value="overview" size="sm">
+											Overview
+										</TabsTab>
+										<TabsTab value="health" size="sm">
+											Health
+										</TabsTab>
+									</TabsList>
+									{botQuery.data && (
+										<div className="flex min-w-0 items-center gap-3">
+											<Avatar
+												name={botQuery.data.botName}
+												image={botQuery.data.botAvatarUrl}
+												size="lg"
+												aria-hidden="true"
+											/>
+											<div className="min-w-0">
+												<p className="truncate font-semibold">{botQuery.data.botName}</p>
+												<p className="flex items-center gap-1 text-sm text-muted-foreground">
+													<span className="min-w-0 break-all">
+														Bot ID: {botQuery.data.botId ?? "Unavailable"}
+													</span>
+													<CopyIdButton id={botQuery.data.botId} label="Bot ID" />
+												</p>
+											</div>
+										</div>
+									)}
+								</div>
+								<TabsPanel value="overview">
+									<BotStatusOverviewPanel
+										bot={botQuery.data}
+										isError={botQuery.isError}
+										updatedAt={botQuery.dataUpdatedAt}
+										healthUpdatedAt={healthQuery.dataUpdatedAt}
+									/>
+								</TabsPanel>
+								<TabsPanel value="health">
+									<BotStatusHealthPanel
+										health={healthQuery.data}
+										healthIsError={healthQuery.isError}
+										bot={botQuery.data}
+										botIsError={botQuery.isError}
+									/>
+								</TabsPanel>
+							</Tabs>
+						)}
 						<div className="mt-4 flex items-center justify-between gap-4">
 							<div className="min-w-0">
 								<p className="mt-1 min-h-6 text-base text-muted-foreground">

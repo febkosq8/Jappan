@@ -360,7 +360,7 @@ export default function Commands() {
 			) : groups.length === 0 ? (
 				<p className="mt-6 text-muted-foreground">No commands found in this category.</p>
 			) : (
-				<ul className="mt-6 grid grid-cols-1 auto-rows-[1px] gap-3 grid-flow-row-dense sm:grid-cols-2 lg:grid-cols-3">
+				<ul className="mt-6 grid grid-cols-1 auto-rows-0.25 gap-3 grid-flow-row-dense sm:grid-cols-2 lg:grid-cols-3">
 					{groups.map(({ command, subcommands }) => (
 						<CommandCard key={command.name} command={command} subcommands={subcommands} />
 					))}
