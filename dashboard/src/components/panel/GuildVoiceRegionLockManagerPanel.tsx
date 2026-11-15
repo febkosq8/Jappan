@@ -10,6 +10,7 @@ import ChannelDisplay from "@jappan/components/display/ChannelDisplay";
 import CopyIdButton from "@jappan/components/display/CopyIdButton";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import GuildMemberPicker from "@jappan/components/panel/GuildMemberPicker";
+import GuildSectionLink from "@jappan/components/panel/GuildSectionLink";
 import APIHandler, { type VoiceRegionLock, type WarningMember } from "@jappan/handlers/APIHandler";
 
 function formatVoiceRegion(region: string): string {
@@ -162,7 +163,9 @@ export default function GuildVoiceRegionLockManagerPanel({
 
 	return (
 		<Card id="voice-region-locks" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
-			<h2 className="text-lg font-semibold">Manage voice region locks</h2>
+			<h2 className="flex items-center gap-1 text-lg font-semibold">
+				Manage voice region locks <GuildSectionLink id="voice-region-locks" label="voice region locks" />
+			</h2>
 			<p className="mt-1 text-sm text-muted-foreground">
 				Choose a member, voice channel, and region. The region is applied the next time that member joins the
 				channel. Each member can have one lock; creating another replaces their existing lock.

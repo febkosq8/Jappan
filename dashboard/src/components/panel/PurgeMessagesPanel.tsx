@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import GuildMemberPicker from "@jappan/components/panel/GuildMemberPicker";
 import CopyIdButton from "@jappan/components/display/CopyIdButton";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
+import GuildSectionLink from "@jappan/components/panel/GuildSectionLink";
 import APIHandler, { type WarningMember } from "@jappan/handlers/APIHandler";
 
 const purgeableChannelTypes = new Set(["GuildText", "GuildAnnouncement", "GuildVoice"]);
@@ -85,10 +86,10 @@ export default function PurgeMessagesPanel({ active, guildId }: { active: boolea
 	};
 
 	return (
-		<section aria-labelledby="purge-messages-heading" className="space-y-4">
+		<section id="purge-messages" aria-labelledby="purge-messages-heading" className="space-y-4">
 			<div>
-				<h2 id="purge-messages-heading" className="text-xl font-semibold">
-					Purge messages
+				<h2 id="purge-messages-heading" className="flex items-center gap-1 text-xl font-semibold">
+					Purge messages <GuildSectionLink id="purge-messages" label="purge messages" />
 				</h2>
 				<p className="mt-1 text-sm text-muted-foreground">
 					Create a job to preview messages and confirm deletion on its job page.

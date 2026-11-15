@@ -3,7 +3,18 @@ import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useEffect, useState } from "react";
 import { FaListCheck } from "react-icons/fa6";
-import { FiAlertCircle, FiArrowLeft, FiGlobe, FiHash, FiHome, FiKey, FiSliders, FiTag, FiTrash2 } from "react-icons/fi";
+import {
+	FiAlertCircle,
+	FiArrowLeft,
+	FiGlobe,
+	FiHash,
+	FiHome,
+	FiKey,
+	FiSliders,
+	FiTag,
+	FiTrash2,
+	FiUserCheck,
+} from "react-icons/fi";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -17,6 +28,7 @@ import GuildRolesPanel from "@jappan/components/panel/GuildRolesPanel";
 import GuildServicePreferencesPanel from "@jappan/components/panel/GuildServicePreferencesPanel";
 import GuildVoiceRegionLockManagerPanel from "@jappan/components/panel/GuildVoiceRegionLockManagerPanel";
 import GuildWarningManagerPanel from "@jappan/components/panel/GuildWarningManagerPanel";
+import GuildUserAccessPanel from "@jappan/components/panel/GuildUserAccessPanel";
 import GuildOverviewPanel from "@jappan/components/panel/GuildOverviewPanel";
 import BotPermissionsPanel from "@jappan/components/panel/BotPermissionsPanel";
 import CommandPermissionsPanel from "@jappan/components/panel/CommandPermissionsPanel";
@@ -28,6 +40,7 @@ const guildSections = [
 	{ id: "guild-overview", label: "Overview", icon: FiHome },
 	{ id: "guild-channels", label: "Channels", icon: FiHash },
 	{ id: "guild-roles", label: "Roles", icon: FiTag },
+	{ id: "user-access", label: "Evaluate user", icon: FiUserCheck },
 	{ id: "service-preferences", label: "Service Preferences", icon: FiSliders },
 	{ id: "warnings", label: "Warnings", icon: FiAlertCircle },
 	{ id: "voice-region-locks", label: "Voice region locks", icon: FiGlobe },
@@ -79,6 +92,14 @@ function GuildDetails({ guild }: { guild: UserGuildDetails }) {
 			</TabsPanel>
 			<TabsPanel value="guild-roles" keepMounted>
 				<GuildRolesPanel guild={guild} />
+			</TabsPanel>
+			<TabsPanel value="user-access" keepMounted>
+				<GuildUserAccessPanel
+					key={guild.id}
+					guildId={guild.id}
+					active={section === "user-access"}
+					isActiveMember={guild.isActiveMember}
+				/>
 			</TabsPanel>
 			<TabsPanel value="service-preferences" keepMounted>
 				<GuildServicePreferencesPanel guild={guild} active={section === "service-preferences"} />
@@ -155,7 +176,7 @@ export default function UserViewGuild() {
 		const errorMessage =
 			errorStatus === 403
 				? "You need Manage Server permission in this guild to view its details."
-				: "Could not load guild details. Check your access and try again.";
+				: "Could not load guild details.\nCheck your access and try again.";
 		return (
 			<ErrorPage
 				status={errorStatus ? String(errorStatus) : "Guild error"}

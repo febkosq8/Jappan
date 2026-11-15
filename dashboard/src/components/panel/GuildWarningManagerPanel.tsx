@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import APIHandler, { type WarningIssueResult, type WarningRecord } from "@jappan/handlers/APIHandler";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import GuildWarningsTable from "@jappan/components/panel/GuildWarningsTable";
+import GuildSectionLink from "@jappan/components/panel/GuildSectionLink";
 import GuildMemberPicker from "@jappan/components/panel/GuildMemberPicker";
 import UserDisplay from "@jappan/components/display/UserDisplay";
 
@@ -169,9 +170,9 @@ export default function GuildWarningManagerPanel({
 						<h2
 							ref={panelHeading}
 							tabIndex={-1}
-							className="scroll-mt-24 text-lg font-semibold focus-visible:ring-2 focus-visible:ring-ring"
+							className="scroll-mt-24 flex items-center gap-1 text-lg font-semibold focus-visible:ring-2 focus-visible:ring-ring"
 						>
-							Manage warnings
+							Manage warnings <GuildSectionLink id="warnings" label="warnings" />
 						</h2>
 						<p className="mt-1 text-sm text-muted-foreground">
 							Review a member's history and manage individual warnings.

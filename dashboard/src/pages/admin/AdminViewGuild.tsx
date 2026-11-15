@@ -28,6 +28,7 @@ import {
 	FiSliders,
 	FiTag,
 	FiTrash2,
+	FiUserCheck,
 } from "react-icons/fi";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -49,6 +50,7 @@ import GuildRolesPanel from "@jappan/components/panel/GuildRolesPanel";
 import GuildServicePreferencesPanel from "@jappan/components/panel/GuildServicePreferencesPanel";
 import GuildVoiceRegionLockManagerPanel from "@jappan/components/panel/GuildVoiceRegionLockManagerPanel";
 import GuildWarningManagerPanel from "@jappan/components/panel/GuildWarningManagerPanel";
+import GuildUserAccessPanel from "@jappan/components/panel/GuildUserAccessPanel";
 import GuildSectionLink from "@jappan/components/panel/GuildSectionLink";
 import GuildOverviewPanel from "@jappan/components/panel/GuildOverviewPanel";
 import BotPermissionsPanel from "@jappan/components/panel/BotPermissionsPanel";
@@ -63,6 +65,7 @@ const guildSections = [
 	{ id: "admin-actions", label: "Admin actions", icon: FiSettings },
 	{ id: "guild-channels", label: "Channels", icon: FiHash },
 	{ id: "guild-roles", label: "Roles", icon: FiTag },
+	{ id: "user-access", label: "Evaluate user", icon: FiUserCheck },
 	{ id: "service-preferences", label: "Service Preferences", icon: FiSliders },
 	{ id: "warnings", label: "Warnings", icon: FiAlertCircle },
 	{ id: "voice-region-locks", label: "Voice region locks", icon: FiGlobe },
@@ -331,7 +334,9 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 												})),
 											]}
 										/>
-										{selectedChannelId && <CopyIdButton id={selectedChannelId} label="Channel ID" />}
+										{selectedChannelId && (
+											<CopyIdButton id={selectedChannelId} label="Channel ID" />
+										)}
 									</div>
 								</div>
 								<div>
@@ -436,7 +441,9 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 											{inviteMutation.data.channel?.name ?? "Unknown"}
 											{inviteMutation.data.channel && (
 												<span className="ml-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
-													<span className="break-all">({inviteMutation.data.channel.id})</span>
+													<span className="break-all">
+														({inviteMutation.data.channel.id})
+													</span>
 													<CopyIdButton
 														id={inviteMutation.data.channel.id}
 														label="Channel ID"
@@ -629,6 +636,14 @@ function GuildDetails({ guild }: { guild: AdminGuildDetails }) {
 			<TabsPanel value="guild-roles" keepMounted>
 				<GuildRolesPanel guild={guild} />
 			</TabsPanel>
+			<TabsPanel value="user-access" keepMounted>
+				<GuildUserAccessPanel
+					key={guild.id}
+					guildId={guild.id}
+					active={section === "user-access"}
+					isActiveMember={guild.isActiveMember}
+				/>
+			</TabsPanel>
 			<TabsPanel value="service-preferences" keepMounted>
 				<GuildServicePreferencesPanel guild={guild} active={section === "service-preferences"} />
 			</TabsPanel>
@@ -704,7 +719,7 @@ export default function AdminViewGuild() {
 			<ErrorPage
 				status={errorStatus ? String(errorStatus) : "Guild error"}
 				title="Could not load guild details"
-				message="Could not load guild details. Check your access and try again."
+				message={"Could not load guild details.\nCheck your access and try again."}
 				actions={
 					<>
 						<Button onClick={() => void guildQuery.refetch()}>Retry</Button>

@@ -167,6 +167,59 @@ export const warningMemberDetailsSchema = warningMemberSchema.extend({
 	),
 });
 
+const guildMemberRoleAccessSchema = z.object({
+	id: snowflake("role"),
+	name: z.string(),
+	position: z.number().int(),
+	color: z.string().nullable(),
+	managed: z.boolean(),
+	permissions: z.array(z.string()),
+});
+
+export const guildMemberAccessSchema = z.object({
+	member: warningMemberSchema.extend({
+		bot: z.boolean(),
+		joinedTimestampMs: z.number().int().nullable(),
+		isOwner: z.boolean(),
+		permissions: z.array(z.string()),
+	}),
+	roles: z.object({
+		assigned: z.array(guildMemberRoleAccessSchema),
+		manageable: z.array(guildMemberRoleAccessSchema),
+		assignable: z.array(guildMemberRoleAccessSchema),
+	}),
+	permissionSources: z.array(
+		z.object({
+			permission: z.string(),
+			roles: z.array(
+				z.object({
+					id: snowflake("role"),
+					name: z.string(),
+					color: z.string().nullable(),
+				}),
+			),
+		}),
+	),
+	channels: z.array(
+		z.object({
+			id: snowflake("channel"),
+			name: z.string(),
+			typeName: z.string(),
+			parentName: z.string().nullable(),
+			canAccess: z.boolean().nullable(),
+			permissions: z.array(z.string()).nullable(),
+			overrides: z.array(
+				z.object({
+					targetType: z.enum(["member", "role"]),
+					targetName: z.string(),
+					allow: z.array(z.string()),
+					deny: z.array(z.string()),
+				}),
+			),
+		}),
+	),
+});
+
 export const warnedMemberSchema = z.object({
 	userId: snowflake("user"),
 	username: z.string(),

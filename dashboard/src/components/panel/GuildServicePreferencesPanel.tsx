@@ -13,6 +13,7 @@ import APIHandler, {
 } from "@jappan/handlers/APIHandler";
 import CopyIdButton from "@jappan/components/display/CopyIdButton";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
+import GuildSectionLink from "@jappan/components/panel/GuildSectionLink";
 
 const textChannelTypes = ["GuildText", "GuildAnnouncement"];
 
@@ -557,7 +558,9 @@ export default function GuildServicePreferencesPanel({
 
 	return (
 		<Card id="service-preferences" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
-			<h2 className="text-lg font-semibold">Service preferences</h2>
+			<h2 className="flex items-center gap-1 text-lg font-semibold">
+				Service preferences <GuildSectionLink id="service-preferences" label="service preferences" />
+			</h2>
 			<p className="mt-1 text-sm text-muted-foreground">
 				Choose how the bot behaves in this server. Changes apply as soon as they are saved.
 			</p>

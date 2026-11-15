@@ -306,6 +306,53 @@ export interface WarningMemberDetails extends WarningMember {
 	warnings: WarningRecord[];
 }
 
+export interface GuildMemberAccess extends WarningMember {
+	bot: boolean;
+	joinedTimestampMs: number | null;
+	isOwner: boolean;
+	permissions: string[];
+}
+
+export interface GuildMemberRoleAccess {
+	id: string;
+	name: string;
+	position: number;
+	color: string | null;
+	managed: boolean;
+	permissions: string[];
+}
+
+export interface GuildMemberPermissionSource {
+	permission: string;
+	roles: { id: string; name: string; color: string | null }[];
+}
+
+export interface GuildMemberChannelAccess {
+	id: string;
+	name: string;
+	typeName: string;
+	parentName: string | null;
+	canAccess: boolean | null;
+	permissions: string[] | null;
+	overrides: {
+		targetType: "member" | "role";
+		targetName: string;
+		allow: string[];
+		deny: string[];
+	}[];
+}
+
+export interface GuildMemberAccessDetails {
+	member: GuildMemberAccess;
+	roles: {
+		assigned: GuildMemberRoleAccess[];
+		manageable: GuildMemberRoleAccess[];
+		assignable: GuildMemberRoleAccess[];
+	};
+	permissionSources: GuildMemberPermissionSource[];
+	channels: GuildMemberChannelAccess[];
+}
+
 export interface WarnedMember {
 	userId: string;
 	username: string;
@@ -343,6 +390,7 @@ export interface ServicePreferencesEditorGuild {
 export interface GuildRole {
 	id: string;
 	name: string;
+	color: string | null;
 	position: number;
 	assignable: boolean;
 }
@@ -599,6 +647,14 @@ class APIHandler {
 	static async getGuildMemberWarnings(guildId: string, userId: string): Promise<WarningMemberDetails> {
 		const { data } = await apiClient.get<WarningMemberDetails>(
 			`/api/v1/guilds/${encodeURIComponent(guildId)}/users/${encodeURIComponent(userId)}/warn`,
+			{ withCredentials: true },
+		);
+		return data;
+	}
+
+	static async getGuildMemberAccess(guildId: string, userId: string): Promise<GuildMemberAccessDetails> {
+		const { data } = await apiClient.get<GuildMemberAccessDetails>(
+			`/api/v1/guilds/${encodeURIComponent(guildId)}/users/${encodeURIComponent(userId)}/access`,
 			{ withCredentials: true },
 		);
 		return data;

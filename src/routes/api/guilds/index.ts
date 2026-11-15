@@ -1,4 +1,12 @@
-import { DiscordAPIError, PermissionFlagsBits, RESTJSONErrorCodes, type Guild } from "discord.js";
+import {
+	ChannelType,
+	DiscordAPIError,
+	OverwriteType,
+	PermissionFlagsBits,
+	RESTJSONErrorCodes,
+	type Guild,
+	type Role,
+} from "discord.js";
 import type { Response } from "express";
 import { z } from "zod";
 
@@ -64,6 +72,7 @@ import {
 	guildLeaderboardEntrySchema,
 	guildLeaderboardSchema,
 	guildSchema,
+	guildMemberAccessSchema,
 	levelingPreferenceSchema,
 	memberAnnouncementsPreferenceSchema,
 	warnedMemberSchema,
@@ -132,6 +141,7 @@ const guildChannelSchema = z.object({
 const guildRoleSchema = z.object({
 	id: z.string(),
 	name: z.string(),
+	color: z.string().nullable(),
 	position: z.number().int(),
 	assignable: z.boolean(),
 });
@@ -397,7 +407,7 @@ export default defineRouter("/guilds", [
 		responses: {
 			200: {
 				description:
-					"Guild roles excluding @everyone, highest position first, with whether the bot can assign each",
+					"Guild roles including @everyone, highest position first, with whether the bot can assign each",
 				schema: paginatedListSchema(guildRoleSchema),
 			},
 			...accessResponses,
@@ -679,6 +689,144 @@ export default defineRouter("/guilds", [
 			return response
 				.status(200)
 				.json(paginateList({ items: filtered, page: query.page, perPageLimit: query.perPageLimit }));
+		},
+	},
+	{
+		method: "get",
+		path: "/:guildId/users/:userId/access",
+		tags: guildTags,
+		summary: "Evaluate a guild member's roles, channel access, and permissions",
+		errorMessage: "Failed to evaluate guild member access",
+		security,
+		parameters: [
+			...parameters,
+			{
+				name: "userId",
+				in: "path",
+				required: true,
+				description: "Discord user ID",
+				schema: z.string().regex(/^\d{17,20}$/u),
+			},
+		],
+		responses: {
+			200: { description: "Guild member access evaluation", schema: guildMemberAccessSchema },
+			...accessResponses,
+			404: { description: "Guild or member not found", schema: errorResponseSchema },
+			409: { description: "Bot is not a guild member", schema: errorResponseSchema },
+			503: { description: "Guild or service unavailable", schema: errorResponseSchema },
+			500: { description: "Failed to evaluate guild member access", schema: errorResponseSchema },
+		},
+		middleware,
+		handler: async (request, response) => {
+			const guild = await resolveGuild(request.params.guildId, response);
+			if (!guild) return;
+			const userId = request.params.userId;
+			if (typeof userId !== "string" || !guildIdPattern.test(userId)) {
+				return response.status(400).json({ error: "Invalid user ID" });
+			}
+			const member = await guild.members.fetch(userId).catch((error: unknown) => {
+				if (error instanceof DiscordAPIError && error.code === RESTJSONErrorCodes.UnknownMember) {
+					return null;
+				}
+				throw error;
+			});
+			if (!member) {
+				return response.status(404).json({ error: "Guild member not found" });
+			}
+
+			const [guildRoles, fetchedChannels] = await Promise.all([guild.roles.fetch(), guild.channels.fetch()]);
+			const roleAccess = (role: Role) => ({
+				id: role.id,
+				name: role.name,
+				position: role.position,
+				color: role.color === 0 ? null : role.hexColor,
+				managed: role.managed,
+				permissions: role.permissions.toArray(),
+			});
+			const roles = [...guildRoles.values()]
+				.filter((role) => role.id !== guild.id)
+				.sort((first, second) => second.position - first.position || first.id.localeCompare(second.id));
+			const hasManageRoles = member.permissions.has(PermissionFlagsBits.ManageRoles);
+			const canManageOrAssignRole = (role: Role) =>
+				!role.managed &&
+				(member.id === guild.ownerId || (hasManageRoles && member.roles.highest.comparePositionTo(role) > 0));
+			const assignedRoles = [...member.roles.cache.values()]
+				.filter((role) => role.id !== guild.id)
+				.sort((first, second) => second.position - first.position || first.id.localeCompare(second.id));
+			const everyoneRole = guildRoles.get(guild.id);
+			const permissionRoles = [...(everyoneRole ? [everyoneRole] : []), ...assignedRoles];
+			const permissionSources = member.permissions.toArray().map((permission) => ({
+				permission,
+				roles:
+					member.id === guild.ownerId
+						? []
+						: permissionRoles
+								.filter(
+									(role) =>
+										role.permissions.has(permission) ||
+										role.permissions.has(PermissionFlagsBits.Administrator),
+								)
+								.map((role) => ({
+									id: role.id,
+									name: role.name,
+									color: role.color === 0 ? null : role.hexColor,
+								})),
+			}));
+			const channels = [...fetchedChannels.values()]
+				.filter(
+					(channel): channel is NonNullable<typeof channel> =>
+						channel !== null && channel.type !== ChannelType.GuildCategory && !channel.isThread(),
+				)
+				.sort((first, second) => first.rawPosition - second.rawPosition || first.id.localeCompare(second.id))
+				.map((channel) => {
+					const permissions = channel.permissionsFor(member);
+					const overrides = [...channel.permissionOverwrites.cache.values()]
+						.filter(
+							(overwrite) =>
+								(overwrite.type === OverwriteType.Member && overwrite.id === member.id) ||
+								(overwrite.type === OverwriteType.Role &&
+									(overwrite.id === guild.id || member.roles.cache.has(overwrite.id))),
+						)
+						.map((overwrite) => ({
+							targetType:
+								overwrite.type === OverwriteType.Member ? ("member" as const) : ("role" as const),
+							targetName:
+								overwrite.type === OverwriteType.Member
+									? member.displayName
+									: (guild.roles.cache.get(overwrite.id)?.name ?? "Unknown role"),
+							allow: overwrite.allow.toArray(),
+							deny: overwrite.deny.toArray(),
+						}));
+					return {
+						id: channel.id,
+						name: channel.name,
+						typeName: ChannelType[channel.type] ?? `Unknown (${channel.type})`,
+						parentName: channel.parent?.name ?? null,
+						canAccess: permissions?.has(PermissionFlagsBits.ViewChannel) ?? null,
+						permissions: permissions?.toArray() ?? null,
+						overrides,
+					};
+				});
+
+			return response.status(200).json({
+				member: {
+					id: member.id,
+					username: member.user.username,
+					displayName: member.displayName,
+					avatarUrl: member.displayAvatarURL({ size: 64 }),
+					bot: member.user.bot,
+					joinedTimestampMs: member.joinedTimestamp,
+					isOwner: member.id === guild.ownerId,
+					permissions: member.permissions.toArray(),
+				},
+				roles: {
+					assigned: assignedRoles.map(roleAccess),
+					manageable: roles.filter(canManageOrAssignRole).map(roleAccess),
+					assignable: roles.filter(canManageOrAssignRole).map(roleAccess),
+				},
+				permissionSources,
+				channels,
+			});
 		},
 	},
 	{
