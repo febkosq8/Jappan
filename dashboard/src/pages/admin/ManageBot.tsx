@@ -19,8 +19,9 @@ import { useEffect, useState } from "react";
 import { FiCheckCircle, FiHome, FiMusic, FiPower, FiRefreshCw, FiSettings, FiShield, FiXCircle } from "react-icons/fi";
 import { toast } from "sonner";
 
-import { AccessRedirect, accessErrorStatus } from "@jappan/components/AdminRoute";
+import { AccessRedirect, accessErrorStatus } from "@jappan/components/AuthRoute";
 import ChannelDisplay from "@jappan/components/display/ChannelDisplay";
+import CopyIdButton from "@jappan/components/display/CopyIdButton";
 import UserDisplay from "@jappan/components/display/UserDisplay";
 import ExternalTextLink from "@jappan/components/ExternalTextLink";
 import LatencyHelp from "@jappan/components/LatencyHelp";
@@ -82,7 +83,10 @@ function PlayerSession({ session }: { session: AdminBotPlayerSession }) {
 									target="_self"
 								/>
 							</h3>
-							<p className="text-xs text-muted-foreground">{session.guild.id}</p>
+							<p className="flex items-center gap-1 text-xs text-muted-foreground">
+								<span className="min-w-0 break-all">{session.guild.id}</span>
+								<CopyIdButton id={session.guild.id} label="Guild ID" />
+							</p>
 						</div>
 					</div>
 					<Tag variant="secondary" size="sm">
@@ -103,20 +107,19 @@ function PlayerSession({ session }: { session: AdminBotPlayerSession }) {
 					<Card hoverable={false} className="min-w-0 rounded-md border-border p-3">
 						<dt className="text-muted-foreground">Owner</dt>
 						<dd className="mt-1 wrap-break-words font-medium">
-							<UserDisplay
-								id={session.owner.id}
-								name={session.owner.username}
-								avatarUrl={session.owner.avatarUrl}
-							/>
+							<UserDisplay user={session.owner} />
 						</dd>
 					</Card>
 					<Card hoverable={false} className="min-w-0 rounded-md border-border p-3 sm:col-span-2">
 						<dt className="text-muted-foreground">Player session ID</dt>
-						<dd className="mt-1 break-all font-medium">
-							<ExternalTextLink
-								href={`/player/${encodeURIComponent(session.sessionId)}`}
-								text={session.sessionId}
-							/>
+						<dd className="mt-1 flex items-center gap-1 font-medium">
+							<span className="min-w-0 break-all">
+								<ExternalTextLink
+									href={`/player/${encodeURIComponent(session.sessionId)}`}
+									text={session.sessionId}
+								/>
+							</span>
+							<CopyIdButton id={session.sessionId} label="Player session ID" />
 						</dd>
 					</Card>
 					<Card hoverable={false} className="min-w-0 rounded-md border-border p-3">
@@ -288,7 +291,10 @@ export default function ManageBot() {
 										<div className="flex min-w-0 items-center gap-2 self-end">
 											<div className="min-w-0 text-right">
 												<p className="truncate text-lg font-semibold">{bot.botName}</p>
-												<p className="truncate text-sm text-muted-foreground">{bot.botId}</p>
+												<p className="flex items-center justify-end gap-1 text-sm text-muted-foreground">
+													<CopyIdButton id={bot.botId} label="Bot ID" />
+													<span className="min-w-0 truncate">{bot.botId}</span>
+												</p>
 											</div>
 											<Avatar
 												name={bot.botName}
@@ -577,12 +583,7 @@ export default function ManageBot() {
 						<ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 							{administratorsQuery.data.map((administrator) => (
 								<li key={administrator.id} className="min-w-0 rounded-md border border-border p-3">
-									<UserDisplay
-										id={administrator.id}
-										name={administrator.username}
-										avatarUrl={administrator.avatarUrl}
-										size="sm"
-									/>
+									<UserDisplay user={administrator} size="sm" />
 								</li>
 							))}
 						</ul>
@@ -784,7 +785,12 @@ export default function ManageBot() {
 														.filter((guild) => !guild.messageSent)
 														.map((guild) => (
 															<li key={guild.id}>
-																{guild.name} ({guild.id})
+																<span className="inline-flex max-w-full flex-wrap items-center gap-1">
+																	<span className="break-all">
+																		{guild.name} ({guild.id})
+																	</span>
+																	<CopyIdButton id={guild.id} label="Guild ID" />
+																</span>
 															</li>
 														))}
 												</ul>
@@ -796,7 +802,12 @@ export default function ManageBot() {
 												<ul className="mt-1 list-inside list-disc">
 													{selfKickMutation.data.failedGuilds.map((guild) => (
 														<li key={guild.id}>
-															{guild.name} ({guild.id})
+															<span className="inline-flex max-w-full flex-wrap items-center gap-1">
+																<span className="break-all">
+																	{guild.name} ({guild.id})
+																</span>
+																<CopyIdButton id={guild.id} label="Guild ID" />
+															</span>
 															{guild.messageSent ? " — departure message sent" : ""}
 														</li>
 													))}

@@ -1,4 +1,4 @@
-FROM node:26.13.0-bookworm-slim AS build
+FROM node:26.13.1-bookworm-slim AS build
 
 WORKDIR /app
 
@@ -16,7 +16,7 @@ RUN pnpm install --frozen-lockfile
 RUN pnpm run build
 RUN pnpm prune --prod
 
-FROM node:26.13.0-bookworm-slim AS runtime
+FROM node:26.13.1-bookworm-slim AS runtime
 
 LABEL org.opencontainers.image.source="https://github.com/febkosq8/Jappan" \
 	org.opencontainers.image.description="Jappan is a Discord bot made to make life easier through music playback, fun commands, moderation, leveling, audit logging, playlists, and server administration features." \
@@ -32,6 +32,7 @@ COPY --from=build /app/package.json ./package.json
 COPY --from=build /app/extractorpack.config.mjs ./extractorpack.config.mjs
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
+COPY public ./public
 
 USER node
 

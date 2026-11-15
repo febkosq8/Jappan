@@ -1,5 +1,18 @@
 @import "@febkosq8/arc/styles.css";
 
+@utility app-page-min-height {
+	min-height: calc(100dvh - 4.125rem);
+}
+
+@utility command-option-dotted-border {
+	border: 1px solid transparent;
+	background:
+		radial-gradient(ellipse 3px 1px at center, var(--color-border) 99%, transparent) top left / 10px 1px repeat-x,
+		radial-gradient(ellipse 3px 1px at center, var(--color-border) 99%, transparent) bottom left / 10px 1px repeat-x,
+		radial-gradient(ellipse 1px 3px at center, var(--color-border) 99%, transparent) left top / 1px 10px repeat-y,
+		radial-gradient(ellipse 1px 3px at center, var(--color-border) 99%, transparent) right top / 1px 10px repeat-y;
+}
+
 @layer base {
 	html {
 		scroll-behavior: smooth;

@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import {
 	FiAlertTriangle,
 	FiArrowLeft,
-	FiCopy,
 	FiEye,
 	FiGlobe,
 	FiInfo,
@@ -21,11 +20,12 @@ import type { IconType } from "react-icons";
 import { RiSignalWifiErrorLine } from "react-icons/ri";
 import { useParams } from "react-router-dom";
 import { toast } from "sonner";
-import { AccessRedirect, accessErrorStatus } from "@jappan/components/AdminRoute";
+import { AccessRedirect, accessErrorStatus } from "@jappan/components/AuthRoute";
+import ErrorPage from "@jappan/components/ErrorPage";
 import ChannelDisplay from "@jappan/components/display/ChannelDisplay";
 import UserDisplay from "@jappan/components/display/UserDisplay";
 import ExternalTextLink from "@jappan/components/ExternalTextLink";
-import AddToQueue from "@jappan/components/player/AddToQueue";
+import TrackInput from "@jappan/components/player/TrackInput";
 import NowPlaying from "@jappan/components/player/NowPlaying";
 import PlayerLoading from "@jappan/components/player/PlayerLoading";
 import formatDuration from "@jappan/helpers/formatDuration";
@@ -198,18 +198,17 @@ export default function WebPlayer() {
 	const accessStatus = accessErrorStatus(sessionQuery.error);
 	if (replaced) {
 		return (
-			<main className="flex min-h-[calc(100dvh-4.0625rem)] flex-col items-center justify-center px-4 text-center">
-				<FiCopy className="size-10 text-muted-foreground" aria-hidden="true" />
-				<h1 className="mt-4 text-3xl font-bold">This session is open in another tab</h1>
-				<p className="mt-2 max-w-md text-muted-foreground">
-					You opened this player session in another tab. Only the most recently opened tab can control it.
-				</p>
-				<p className="mt-2 max-w-md text-muted-foreground">Continue playback in that tab, or return home.</p>
-				<PillLink variant="outline-secondary" href="/" className="mt-6 gap-2">
-					<FiArrowLeft aria-hidden="true" />
-					Back home
-				</PillLink>
-			</main>
+			<ErrorPage
+				status="Player session conflict"
+				title="This player session is open in another tab"
+				message="You opened this player session in another tab. Only the most recently opened tab can control it.\n\nContinue playback in that tab, or return home."
+				actions={
+					<PillLink variant="outline-secondary" href="/" className="gap-2">
+						<FiArrowLeft aria-hidden="true" />
+						Back home
+					</PillLink>
+				}
+			/>
 		);
 	}
 	if (accessStatus === 401) {
@@ -217,52 +216,49 @@ export default function WebPlayer() {
 	}
 	if (accessStatus === 403) {
 		return (
-			<main className="flex min-h-[calc(100dvh-4.0625rem)] flex-col items-center justify-center px-4 text-center">
-				<h1 className="text-2xl font-bold">You can't view this player</h1>
-				<p className="mt-2 max-w-md text-muted-foreground">
-					{getErrorMessage(sessionQuery.error, "You don't have access to this player.")} Join the server in
-					Discord, then try again.
-				</p>
-				<Button className="mt-6" onClick={() => void sessionQuery.refetch()}>
-					Try again
-				</Button>
-			</main>
+			<ErrorPage
+				status="403"
+				title="You can't view this player session"
+				message={"You don't have access to this player session.\nJoin the server in Discord, then try again."}
+				actions={<Button onClick={() => void sessionQuery.refetch()}>Try again</Button>}
+			/>
 		);
 	}
 
 	if (ended || status === 404 || status === 400) {
 		return (
-			<main className="flex min-h-[calc(100dvh-4.0625rem)] flex-col items-center justify-center px-4 text-center">
-				<h1 className="text-3xl font-bold">No session found</h1>
-				<p className="mt-2 max-w-md text-muted-foreground">This can happen for a few reasons:</p>
-				<ul className="mt-3 max-w-md list-disc space-y-1 pl-5 text-left text-muted-foreground">
-					<li>The session ended because playback stopped or the bot left the voice channel.</li>
+			<ErrorPage
+				status={status === 400 ? "400" : "404"}
+				title="Player session not found"
+				message="This player session may be unavailable for a few reasons:"
+				actions={
+					<PillLink variant="outline-secondary" href="/" className="gap-2">
+						<FiArrowLeft aria-hidden="true" />
+						Back home
+					</PillLink>
+				}
+			>
+				<ul className="list-disc space-y-1 pl-5 text-left text-muted-foreground">
+					<li>The player session ended because playback stopped or the bot left the voice channel.</li>
 					<li>The link is invalid or incomplete.</li>
 					<li>The bot restarted, which clears active sessions.</li>
 				</ul>
-				<p className="mt-3 max-w-md text-muted-foreground">
-					Start playback again in Discord to get a new session.
+				<p className="mt-3 text-muted-foreground">
+					Start playback again in Discord to get a new player session.
 				</p>
-				<PillLink variant="outline-secondary" href="/" className="mt-6 gap-2">
-					<FiArrowLeft aria-hidden="true" />
-					Back home
-				</PillLink>
-			</main>
+			</ErrorPage>
 		);
 	}
 
 	const session = sessionQuery.data;
 	if (!session) {
 		return sessionQuery.isError ? (
-			<main className="flex min-h-[calc(100dvh-4.0625rem)] flex-col items-center justify-center px-4 text-center">
-				<h1 className="text-2xl font-bold">Player unavailable</h1>
-				<p className="mt-2 text-muted-foreground">
-					{getErrorMessage(sessionQuery.error, "Could not reach the player.")}
-				</p>
-				<Button className="mt-6" onClick={() => void sessionQuery.refetch()}>
-					Try again
-				</Button>
-			</main>
+			<ErrorPage
+				status={status ? String(status) : "Player session error"}
+				title="Player session unavailable"
+				message="Could not reach the player session."
+				actions={<Button onClick={() => void sessionQuery.refetch()}>Try again</Button>}
+			/>
 		) : (
 			<PlayerLoading section={section} onSectionChange={changeSection} />
 		);
@@ -387,21 +383,13 @@ export default function WebPlayer() {
 						<div className="grid gap-x-8 gap-y-4 sm:grid-cols-[auto_minmax(0,1fr)_auto_auto]">
 							<div className="min-w-0">
 								<p className="text-sm font-semibold text-muted-foreground">Owner</p>
-								<UserDisplay
-									name={session.owner.username}
-									avatarUrl={session.owner.avatarUrl}
-									showId={false}
-								/>
+								<UserDisplay user={session.owner} showId={false} />
 							</div>
 							<div className="min-w-0">
 								<p className="text-sm font-semibold text-muted-foreground">Last change</p>
 								{session.lastChangedBy ? (
 									<div className="min-w-0">
-										<UserDisplay
-											name={session.lastChangedBy.username}
-											avatarUrl={session.lastChangedBy.avatarUrl}
-											showId={false}
-										/>
+										<UserDisplay user={session.lastChangedBy} showId={false} />
 										<div className="ml-12">
 											<p className="text-xs text-muted-foreground">
 												via {session.lastChangedBy.source === "web" ? "Web Player" : "Discord"}{" "}
@@ -536,11 +524,13 @@ export default function WebPlayer() {
 				</TabsPanel>
 				<TabsPanel value="queue" keepMounted className="flex flex-col gap-4">
 					{session.viewer.canControl && (
-						<AddToQueue
+						<TrackInput
 							sessionId={sessionId}
 							disabled={controlMutation.isPending || !connected}
 							adding={controlMutation.isPending && controlMutation.variables?.path === "queue/add"}
-							onAdd={(query) => controlMutation.mutate({ path: "queue/add", body: { query } })}
+							onAdd={(query, onSuccess) =>
+								controlMutation.mutate({ path: "queue/add", body: { query } }, { onSuccess })
+							}
 							loadSuggestions={websocket.suggestions}
 						/>
 					)}

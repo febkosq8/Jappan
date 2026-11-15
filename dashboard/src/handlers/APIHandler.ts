@@ -10,6 +10,16 @@ const apiClient = axios.create({
 	timeout: 0,
 });
 
+interface PaginatedListResponse<T> {
+	items: T[];
+	pagination: {
+		page: number;
+		perPageLimit: number;
+		total: number;
+		totalPages: number;
+	};
+}
+
 export interface HealthResponse {
 	healthy: boolean;
 	services: {
@@ -23,7 +33,7 @@ export interface AdminBotPlayerSession {
 	sessionId: string;
 	guild: { id: string; name: string; icon: string | null };
 	channel: { id: string; name: string } | null;
-	owner: { id: string; username: string; avatarUrl: string | null };
+	owner: User;
 	queueSize: number;
 	nowPlaying: {
 		name: string;
@@ -33,11 +43,7 @@ export interface AdminBotPlayerSession {
 	playerState: "Playing" | "Paused";
 }
 
-export interface AdminBotAdministrator {
-	id: string;
-	username: string;
-	avatarUrl: string;
-}
+export type AdminBotAdministrator = User;
 
 export interface BotStatus {
 	botName: string;
@@ -81,7 +87,7 @@ interface AdminGuildBase {
 	systemChannel?: { id: string; name: string } | null;
 	permissions?: string[];
 	hasRequiredPermissions?: boolean;
-	owner?: { userId: string; avatarUrl: string; username: string };
+	owner?: User;
 }
 
 export interface AdminGuild extends AdminGuildBase {
@@ -104,6 +110,10 @@ export interface AdminGuildChannel {
 	canSendMessage: boolean;
 	canReadMessages: boolean;
 	canManageMessages: boolean;
+	canManageWebhooks: boolean;
+	canManageChannels: boolean;
+	canConnect?: boolean;
+	canSpeak?: boolean;
 	topic?: string | null;
 	nsfw?: boolean;
 	rateLimitPerUser?: number | null;
@@ -142,7 +152,7 @@ export interface GuildPurgeMessagePreview {
 		id: string;
 		channelId: string;
 		channelName: string;
-		author: { id: string; username: string; displayName: string; avatarUrl: string };
+		author: User;
 		content: string;
 		embedContent?: (string | null)[];
 		createdTimestampMs: number;
@@ -218,7 +228,7 @@ export interface AdminGuildInvite {
 	uses: number | null;
 	maxUses: number | null;
 	temporary: boolean;
-	inviter: { id: string; username: string } | null;
+	inviter: User | null;
 }
 
 export interface ServicePreferences {
@@ -249,7 +259,7 @@ export interface UserGuild {
 	name: string;
 	icon?: string | null;
 	hasRequiredPermissions?: boolean;
-	owner?: { userId: string; avatarUrl: string; username: string };
+	owner?: User;
 }
 
 export interface UserGuildDetails extends UserGuild {
@@ -265,37 +275,85 @@ export interface GuildLeaderboard {
 	guildIcon: string | null;
 	enabled: boolean;
 	reward: { threshold: number; role: PreferenceEntity } | null;
-	entries: { rank: number; userId: string; username: string; avatarUrl: string | null; points: number }[];
+	entries: (User & { rank: number; points: number })[];
 	page: number;
 	pageCount: number;
 }
 
-export interface WarningMember {
+export interface User {
 	id: string;
+	displayName: string | null;
 	username: string;
-	displayName: string;
 	avatarUrl: string | null;
 }
+
+export type WarningMember = User;
 
 export interface WarningRecord {
 	id: string;
 	issuedAt: string | null;
 	reason: string;
 	issuerId: string | null;
-	issuer: { userId: string; username?: string; avatarUrl?: string | null } | null;
+	issuer: User | null;
 	thresholdAction: "unknown" | "pending" | "none" | "banned" | "timed_out" | "ban_failed" | "timeout_failed";
 }
 
-export interface WarningMemberDetails extends WarningMember {
+export interface WarningMemberDetails extends User {
 	isGuildMember: boolean;
 	warningCount: number;
 	warnings: WarningRecord[];
 }
 
-export interface WarnedMember {
-	userId: string;
-	username: string;
-	avatarUrl: string | null;
+export interface GuildMemberAccess extends User {
+	bot: boolean;
+	joinedTimestampMs: number | null;
+	isOwner: boolean;
+	permissions: string[];
+}
+
+export interface GuildMemberRoleAccess {
+	id: string;
+	name: string;
+	position: number;
+	color: string | null;
+	managed: boolean;
+	permissions: string[];
+}
+
+export interface GuildMemberPermissionSource {
+	permission: string;
+	roles: { id: string; name: string; color: string | null }[];
+}
+
+export interface GuildMemberChannelAccess {
+	id: string;
+	name: string;
+	typeName: string;
+	parentName: string | null;
+	canAccess: boolean | null;
+	permissions: string[] | null;
+	overrides: {
+		targetType: "member" | "role";
+		targetId: string;
+		targetName: string;
+		targetColor: string | null;
+		allow: string[];
+		deny: string[];
+	}[];
+}
+
+export interface GuildMemberAccessDetails {
+	member: GuildMemberAccess;
+	roles: {
+		assigned: GuildMemberRoleAccess[];
+		manageable: GuildMemberRoleAccess[];
+		assignable: GuildMemberRoleAccess[];
+	};
+	permissionSources: GuildMemberPermissionSource[];
+	channels: GuildMemberChannelAccess[];
+}
+
+export interface WarnedMember extends User {
 	warningCount: number;
 }
 
@@ -304,10 +362,7 @@ export interface WarningIssueResult {
 	action: "none" | "banned" | "timed_out" | "ban_failed" | "timeout_failed";
 }
 
-export interface VoiceRegionLock {
-	userId: string;
-	userName: string;
-	avatarUrl: string | null;
+export interface VoiceRegionLock extends User {
 	channelId: string;
 	channelName: string;
 	region: string;
@@ -329,9 +384,22 @@ export interface ServicePreferencesEditorGuild {
 export interface GuildRole {
 	id: string;
 	name: string;
+	color: string | null;
 	position: number;
-	managed: boolean;
 	assignable: boolean;
+}
+
+export interface GuildRoleDetails extends GuildRole {
+	managed: boolean;
+	isBotRole: boolean;
+	color: string | null;
+	iconUrl: string | null;
+	unicodeEmoji: string | null;
+	permissions: string[];
+	hoisted: boolean;
+	mentionable: boolean;
+	createdTimestampMs: number;
+	memberCount: number;
 }
 
 export interface AuditLogPreferenceInput {
@@ -360,9 +428,10 @@ export interface WarningsPreferenceInput {
 	auditChannelId: string | null;
 }
 
-export interface GlobalCommand {
+export interface PublicCommand {
 	id: string | null;
-	type: "command" | "sub-command";
+	type: "command" | "sub-command" | "context-menu";
+	applicationCommandType: "chat-input" | "message-context-menu" | "user-context-menu";
 	name: string;
 	description: string;
 	category: "general" | "music" | "level" | "fun" | "moderator" | "admin";
@@ -392,21 +461,21 @@ export interface PlayerTrack {
 	thumbnailUrl: string | null;
 	source: string;
 	durationMs: number;
-	requestedBy: { username: string; avatarUrl: string | null } | null;
+	requestedBy: User | null;
 }
 export interface PlayerSession {
 	sessionId: string;
 	webPlayerCount: number;
 	guild: { id: string; name: string; iconUrl: string | null };
 	channel: { id: string; name: string; listenerCount: number; region: string | null } | null;
-	owner: { username: string; avatarUrl: string | null };
+	owner: User;
 	locked: boolean;
-	lastChangedBy: {
-		username: string;
-		avatarUrl: string | null;
-		source: "discord" | "web";
-		timestampMs: number;
-	} | null;
+	lastChangedBy:
+		| (User & {
+				source: "discord" | "web";
+				timestampMs: number;
+		  })
+		| null;
 	viewer: {
 		isOwner: boolean;
 		isAdmin: boolean;
@@ -433,6 +502,10 @@ export interface PlayerSession {
 	};
 	serverTimestampMs: number;
 }
+export interface PlayerSessionStartResult {
+	sessionId: string;
+	skippedTracks: number;
+}
 export interface PlayerSuggestion {
 	kind: "track" | "playlist" | "savedPlaylist";
 	title: string;
@@ -455,14 +528,24 @@ export type PlayerControlAction =
 	| { path: "queue/remove" | "queue/skip-to"; body: { index: number } }
 	| { path: "queue/add"; body: { query: string } };
 class APIHandler {
+	private static async getAllListItems<T>(
+		path: string,
+		options: { params?: Record<string, string | number | boolean>; withCredentials?: boolean } = {},
+	): Promise<T[]> {
+		const { data } = await apiClient.get<PaginatedListResponse<T>>(path, {
+			...(options.withCredentials === undefined ? {} : { withCredentials: options.withCredentials }),
+			params: { ...options.params, page: 1, perPageLimit: 0 },
+		});
+		return data.items;
+	}
+
 	static async getHealth(): Promise<HealthResponse> {
 		const { data } = await apiClient.get<HealthResponse>("/api/v1/public/health/", { timeout: HEALTH_TIMEOUT_MS });
 		return data;
 	}
 
-	static async getGlobalCommands(): Promise<GlobalCommand[]> {
-		const { data } = await apiClient.get<GlobalCommand[]>("/api/v1/public/commands");
-		return data;
+	static async getPublicCommands(): Promise<PublicCommand[]> {
+		return APIHandler.getAllListItems<PublicCommand>("/api/v1/public/commands");
 	}
 
 	static async getPlayerSession(sessionId: string): Promise<PlayerSession> {
@@ -472,9 +555,29 @@ class APIHandler {
 		return data;
 	}
 
-	static async getUserPlaylists(): Promise<UserPlaylist[]> {
-		const { data } = await apiClient.get<UserPlaylist[]>("/api/v1/playlists", { withCredentials: true });
+	static async startPlayerSession(input: {
+		guildId: string;
+		query: string;
+		shuffle?: boolean;
+		loop?: boolean;
+	}): Promise<PlayerSessionStartResult> {
+		const { data } = await apiClient.post<PlayerSessionStartResult>("/api/v1/player/start", input, {
+			withCredentials: true,
+		});
 		return data;
+	}
+
+	static async getPlayerSuggestions(query: string): Promise<PlayerSuggestion[]> {
+		const { data } = await apiClient.post<PlayerSuggestion[]>(
+			"/api/v1/player/suggestions",
+			{ query },
+			{ withCredentials: true },
+		);
+		return data;
+	}
+
+	static async getUserPlaylists(): Promise<UserPlaylist[]> {
+		return APIHandler.getAllListItems<UserPlaylist>("/api/v1/playlists", { withCredentials: true });
 	}
 
 	static async saveUserPlaylist(playlist: UserPlaylist): Promise<void> {
@@ -486,18 +589,15 @@ class APIHandler {
 	}
 
 	static async getAdminGuilds(): Promise<AdminGuild[]> {
-		const { data } = await apiClient.get<AdminGuild[]>("/api/v1/admin/guilds", { withCredentials: true });
-		return data;
+		return APIHandler.getAllListItems<AdminGuild>("/api/v1/admin/guilds", { withCredentials: true });
 	}
 
 	static async getManagedGuilds(): Promise<UserGuild[]> {
-		const { data } = await apiClient.get<UserGuild[]>("/api/v1/guilds/manager", { withCredentials: true });
-		return data;
+		return APIHandler.getAllListItems<UserGuild>("/api/v1/guilds/manager", { withCredentials: true });
 	}
 
 	static async getUserMemberGuilds(): Promise<UserGuild[]> {
-		const { data } = await apiClient.get<UserGuild[]>("/api/v1/guilds/member", { withCredentials: true });
-		return data;
+		return APIHandler.getAllListItems<UserGuild>("/api/v1/guilds/member", { withCredentials: true });
 	}
 
 	static async getUserGuild(guildId: string): Promise<UserGuildDetails> {
@@ -508,31 +608,48 @@ class APIHandler {
 	}
 
 	static async getGuildLeaderboard(guildId: string, page: number): Promise<GuildLeaderboard> {
-		const { data } = await apiClient.get<GuildLeaderboard>(
-			`/api/v1/guilds/${encodeURIComponent(guildId)}/leaderboard`,
-			{ params: { page }, withCredentials: true },
-		);
-		return data;
+		const { data } = await apiClient.get<
+			Omit<GuildLeaderboard, "entries" | "page" | "pageCount"> &
+				PaginatedListResponse<GuildLeaderboard["entries"][number]>
+		>(`/api/v1/guilds/${encodeURIComponent(guildId)}/leaderboard`, {
+			params: { page, perPageLimit: 20 },
+			withCredentials: true,
+		});
+		return {
+			guildName: data.guildName,
+			guildIcon: data.guildIcon,
+			enabled: data.enabled,
+			reward: data.reward,
+			entries: data.items,
+			page: data.pagination.page,
+			pageCount: Math.max(1, data.pagination.totalPages),
+		};
 	}
 
-	static async searchGuildMembers(guildId: string, query?: string): Promise<WarningMember[]> {
-		const { data } = await apiClient.get<WarningMember[]>(`/api/v1/guilds/${encodeURIComponent(guildId)}/members`, {
+	static async searchGuildMembers(guildId: string, query?: string): Promise<User[]> {
+		return APIHandler.getAllListItems<User>(`/api/v1/guilds/${encodeURIComponent(guildId)}/members`, {
 			...(query ? { params: { query } } : {}),
 			withCredentials: true,
 		});
-		return data;
 	}
 
 	static async getGuildWarnedMembers(guildId: string): Promise<WarnedMember[]> {
-		const { data } = await apiClient.get<WarnedMember[]>(`/api/v1/guilds/${encodeURIComponent(guildId)}/warnings`, {
+		return APIHandler.getAllListItems<WarnedMember>(`/api/v1/guilds/${encodeURIComponent(guildId)}/warnings`, {
 			withCredentials: true,
 		});
-		return data;
 	}
 
 	static async getGuildMemberWarnings(guildId: string, userId: string): Promise<WarningMemberDetails> {
 		const { data } = await apiClient.get<WarningMemberDetails>(
 			`/api/v1/guilds/${encodeURIComponent(guildId)}/users/${encodeURIComponent(userId)}/warn`,
+			{ withCredentials: true },
+		);
+		return data;
+	}
+
+	static async getGuildMemberAccess(guildId: string, userId: string): Promise<GuildMemberAccessDetails> {
+		const { data } = await apiClient.get<GuildMemberAccessDetails>(
+			`/api/v1/guilds/${encodeURIComponent(guildId)}/users/${encodeURIComponent(userId)}/evaluate`,
 			{ withCredentials: true },
 		);
 		return data;
@@ -555,11 +672,11 @@ class APIHandler {
 	}
 
 	static async getGuildVoiceRegionLocks(guildId: string): Promise<VoiceRegionLocks> {
-		const { data } = await apiClient.get<VoiceRegionLocks>(
+		const { data } = await apiClient.get<PaginatedListResponse<VoiceRegionLock> & { regions: string[] }>(
 			`/api/v1/guilds/${encodeURIComponent(guildId)}/voice-region-locks`,
-			{ withCredentials: true },
+			{ params: { page: 1, perPageLimit: 0 }, withCredentials: true },
 		);
-		return data;
+		return { locks: data.items, regions: data.regions };
 	}
 
 	static async addGuildVoiceRegionLock(
@@ -587,17 +704,15 @@ class APIHandler {
 	}
 
 	static async getAdminBotAdministrators(): Promise<AdminBotAdministrator[]> {
-		const { data } = await apiClient.get<AdminBotAdministrator[]>("/api/v1/admin/bot/administrators", {
+		return APIHandler.getAllListItems<AdminBotAdministrator>("/api/v1/admin/bot/administrators", {
 			withCredentials: true,
 		});
-		return data;
 	}
 
 	static async getAdminBotPlayerState(): Promise<AdminBotPlayerSession[]> {
-		const { data } = await apiClient.get<AdminBotPlayerSession[]>("/api/v1/admin/bot/player-sessions", {
+		return APIHandler.getAllListItems<AdminBotPlayerSession>("/api/v1/admin/bot/player-sessions", {
 			withCredentials: true,
 		});
-		return data;
 	}
 
 	static async refreshAdminBotPlayerHealth(): Promise<{ healthy: boolean }> {
@@ -640,11 +755,9 @@ class APIHandler {
 	}
 
 	static async getGuildChannels(guildId: string): Promise<AdminGuildChannel[]> {
-		const { data } = await apiClient.get<AdminGuildChannel[]>(
-			`/api/v1/guilds/${encodeURIComponent(guildId)}/channels`,
-			{ withCredentials: true },
-		);
-		return data;
+		return APIHandler.getAllListItems<AdminGuildChannel>(`/api/v1/guilds/${encodeURIComponent(guildId)}/channels`, {
+			withCredentials: true,
+		});
 	}
 
 	static async createGuildMessagePurgeJob(
@@ -701,9 +814,16 @@ class APIHandler {
 	}
 
 	static async getGuildRoles(guildId: string): Promise<GuildRole[]> {
-		const { data } = await apiClient.get<GuildRole[]>(`/api/v1/guilds/${encodeURIComponent(guildId)}/roles`, {
+		return APIHandler.getAllListItems<GuildRole>(`/api/v1/guilds/${encodeURIComponent(guildId)}/roles`, {
 			withCredentials: true,
 		});
+	}
+
+	static async getGuildRoleDetails(guildId: string, roleId: string): Promise<GuildRoleDetails> {
+		const { data } = await apiClient.get<GuildRoleDetails>(
+			`/api/v1/guilds/${encodeURIComponent(guildId)}/roles/${encodeURIComponent(roleId)}`,
+			{ withCredentials: true },
+		);
 		return data;
 	}
 
@@ -735,7 +855,7 @@ class APIHandler {
 		channelId: string,
 	): Promise<AdminGuildMessageResult> {
 		const { data } = await apiClient.put<AdminGuildMessageResult>(
-			`/api/v1/admin/guilds/${encodeURIComponent(guildId)}/messages`,
+			`/api/v1/admin/guilds/${encodeURIComponent(guildId)}/message`,
 			{ message, channelId },
 			{ withCredentials: true },
 		);

@@ -2,38 +2,63 @@ import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 
 import type { Config } from "../services/config.js";
 
-type GuildDashboardSection = "service-preferences" | "warnings" | "voice-region-locks";
+type GuildDashboardSection =
+	| "overview"
+	| "admin-actions"
+	| "channels"
+	| "roles"
+	| "evaluate-user"
+	| "service-preferences"
+	| "warnings"
+	| "voice-region-locks"
+	| "bot-permissions"
+	| "command-permissions"
+	| "purge-messages";
 
 interface CreateGuildDashboardUrlOptions {
 	config: Config;
 	guildId: string;
-	section: GuildDashboardSection;
+	section?: GuildDashboardSection;
+	userId?: string;
+	evaluateUser?: "overview" | "roles" | "channels";
 }
 
-interface CreateDashboardLinkOptions {
+interface CreateDashboardLinkActionRowOptions {
 	url: string;
 	label: string;
 }
 
-function createDashboardLink({ url, label }: CreateDashboardLinkOptions) {
+function createDashboardLinkActionRow({ url, label }: CreateDashboardLinkActionRowOptions) {
 	return new ActionRowBuilder<ButtonBuilder>().addComponents(
 		new ButtonBuilder().setLabel(label).setStyle(ButtonStyle.Link).setURL(url),
 	);
 }
 
-export function createGuildDashboardUrl({ config, guildId, section }: CreateGuildDashboardUrlOptions): string {
-	return new URL(`/guild/${encodeURIComponent(guildId)}#${section}`, config.BOT_WEBSITE).href;
+export function createGuildDashboardUrl({
+	config,
+	guildId,
+	section,
+	userId,
+	evaluateUser,
+}: CreateGuildDashboardUrlOptions): string {
+	const url = new URL(`/guild/${encodeURIComponent(guildId)}`, config.BOT_WEBSITE);
+	if (userId) {
+		url.searchParams.set("userId", userId);
+		if (evaluateUser) url.searchParams.set("evaluateUser", evaluateUser);
+	}
+	if (section) url.hash = section;
+	return url.href;
 }
 
-export function createGuildDashboardLink(options: CreateGuildDashboardUrlOptions) {
-	return createDashboardLink({
+export function createGuildDashboardLinkActionRow(options: CreateGuildDashboardUrlOptions) {
+	return createDashboardLinkActionRow({
 		url: createGuildDashboardUrl(options),
 		label: "Manage in Dashboard",
 	});
 }
 
-export function createPlaylistDashboardLink({ config }: { config: Config }) {
-	return createDashboardLink({
+export function createPlaylistDashboardLinkActionRow({ config }: { config: Config }) {
+	return createDashboardLinkActionRow({
 		url: new URL("/playlists", config.BOT_WEBSITE).href,
 		label: "Manage Playlists",
 	});

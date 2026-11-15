@@ -7,9 +7,11 @@ import { toast } from "sonner";
 
 import UserDisplay from "@jappan/components/display/UserDisplay";
 import ChannelDisplay from "@jappan/components/display/ChannelDisplay";
+import CopyIdButton from "@jappan/components/display/CopyIdButton";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import GuildMemberPicker from "@jappan/components/panel/GuildMemberPicker";
-import APIHandler, { type VoiceRegionLock, type WarningMember } from "@jappan/handlers/APIHandler";
+import GuildSectionLink from "@jappan/components/panel/GuildSectionLink";
+import APIHandler, { type User, type VoiceRegionLock } from "@jappan/handlers/APIHandler";
 
 function formatVoiceRegion(region: string): string {
 	return region.replace(/-/g, " ").replace(/(^|\s)\S/gu, (initial) => initial.toUpperCase());
@@ -32,7 +34,7 @@ export default function GuildVoiceRegionLockManagerPanel({
 	isActiveMember: boolean;
 }) {
 	const queryClient = useQueryClient();
-	const [selectedMember, setSelectedMember] = useState<WarningMember | null>(null);
+	const [selectedMember, setSelectedMember] = useState<User | null>(null);
 	const [channelId, setChannelId] = useState("");
 	const [region, setRegion] = useState("");
 	const queryKey = ["user", "guild", guildId, "voice-region-locks"];
@@ -97,19 +99,14 @@ export default function GuildVoiceRegionLockManagerPanel({
 
 	const columns: TableColumnDef<VoiceRegionLock>[] = [
 		{
-			accessorKey: "userName",
+			accessorKey: "username",
 			header: "User",
 			mobileFullWidth: true,
 			size: 260,
 			filterFn: "includesString",
 			cell: ({ row }) => (
 				<div className="flex min-h-12 items-center py-2">
-					<UserDisplay
-						id={row.original.userId}
-						name={row.original.userName}
-						avatarUrl={row.original.avatarUrl}
-						size="md"
-					/>
+					<UserDisplay user={row.original} size="md" />
 				</div>
 			),
 		},
@@ -131,7 +128,7 @@ export default function GuildVoiceRegionLockManagerPanel({
 		},
 		{
 			id: "actions",
-			accessorKey: "userId",
+			accessorKey: "id",
 			header: "Actions",
 			size: 120,
 			enableSorting: false,
@@ -142,10 +139,12 @@ export default function GuildVoiceRegionLockManagerPanel({
 					size="sm"
 					variant="outline-secondary"
 					disabled={busy || !active}
-					aria-label={`Remove voice region lock for ${row.original.userName}`}
-					onClick={() => removeMutation.mutate(row.original.userId)}
+					aria-label={`Remove voice region lock for ${
+						row.original.displayName ?? `@${row.original.username}`
+					}`}
+					onClick={() => removeMutation.mutate(row.original.id)}
 				>
-					{removeMutation.isPending && removeMutation.variables === row.original.userId
+					{removeMutation.isPending && removeMutation.variables === row.original.id
 						? "Removing..."
 						: "Remove"}
 				</Button>
@@ -161,7 +160,9 @@ export default function GuildVoiceRegionLockManagerPanel({
 
 	return (
 		<Card id="voice-region-locks" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
-			<h2 className="text-lg font-semibold">Manage voice region locks</h2>
+			<h2 className="flex items-center gap-1 text-lg font-semibold">
+				Manage voice region locks <GuildSectionLink id="voice-region-locks" label="voice region locks" />
+			</h2>
 			<p className="mt-1 text-sm text-muted-foreground">
 				Choose a member, voice channel, and region. The region is applied the next time that member joins the
 				channel. Each member can have one lock; creating another replaces their existing lock.
@@ -212,12 +213,7 @@ export default function GuildVoiceRegionLockManagerPanel({
 											Member to watch
 										</p>
 										<div className="flex items-center justify-between gap-3 rounded-md border border-border p-2">
-											<UserDisplay
-												id={selectedMember.id}
-												name={selectedMember.displayName}
-												avatarUrl={selectedMember.avatarUrl}
-												size="sm"
-											/>
+											<UserDisplay user={selectedMember} size="sm" />
 											<Button
 												type="button"
 												size="sm"
@@ -247,20 +243,23 @@ export default function GuildVoiceRegionLockManagerPanel({
 							</div>
 							<div>
 								<LabelField id="voice-region-lock-channel" label="Voice channel" className="mb-1" />
-								<Select
-									id="voice-region-lock-channel"
-									value={channelId}
-									onChange={setChannelId}
-									data={[
-										{ key: "", label: "Select a voice channel" },
-										...voiceChannels.map((channel) => ({
-											key: channel.id,
-											label: `#${channel.name} (${channel.id})`,
-										})),
-									]}
-									disabled={!active || busy || channelsQuery.isFetching || channelsQuery.isError}
-									className="h-10"
-								/>
+								<div className="flex items-center gap-1">
+									<Select
+										id="voice-region-lock-channel"
+										value={channelId}
+										onChange={setChannelId}
+										data={[
+											{ key: "", label: "Select a voice channel" },
+											...voiceChannels.map((channel) => ({
+												key: channel.id,
+												label: `#${channel.name} (${channel.id})`,
+											})),
+										]}
+										disabled={!active || busy || channelsQuery.isFetching || channelsQuery.isError}
+										className="h-10 min-w-0 flex-1"
+									/>
+									{channelId && <CopyIdButton id={channelId} label="Channel ID" />}
+								</div>
 								{channelsQuery.isSuccess && voiceChannels.length === 0 && (
 									<p className="mt-1 text-xs text-muted-foreground">
 										No voice channels are available.

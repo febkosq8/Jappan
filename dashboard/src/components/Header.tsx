@@ -73,7 +73,7 @@ export default function Header() {
 						<Menu buttonText={mobilePage}>
 							{homeItem}
 							{commandsItem}
-							{isAuthenticated && <GuildMenu asSubmenu />}
+							<GuildMenu asSubmenu />
 							{isAdmin && <AdminMenu asSubmenu />}
 						</Menu>
 					</nav>
@@ -82,7 +82,7 @@ export default function Header() {
 							{homeItem}
 							{commandsItem}
 						</Menu>
-						{isAuthenticated && <GuildMenu />}
+						<GuildMenu />
 						{isAdmin && <AdminMenu />}
 					</nav>
 					<AuthHeaderControls />

@@ -22,13 +22,7 @@ const columns: TableColumnDef<LeaderboardEntry>[] = [
 			const entry = row.original;
 			return (
 				<div className="flex min-h-10 items-center">
-					<UserDisplay
-						id={entry.userId}
-						name={entry.username}
-						avatarUrl={entry.avatarUrl}
-						size="md"
-						showId={false}
-					/>
+					<UserDisplay user={entry} size="md" showId={false} />
 				</div>
 			);
 		},
@@ -37,7 +31,7 @@ const columns: TableColumnDef<LeaderboardEntry>[] = [
 		accessorKey: "points",
 		header: "Points",
 		size: 120,
-		filterFn: "includesString",
+		enableColumnFilter: false,
 		cell: ({ row }) => (
 			<span className="block text-right tabular-nums">{row.original.points.toLocaleString()}</span>
 		),

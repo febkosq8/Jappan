@@ -11,7 +11,7 @@ import {
 } from "discord.js";
 
 import type { BotCommand, BotCommandData } from "../helpers/command.js";
-import { createGuildDashboardLink } from "../helpers/dashboard.js";
+import { createGuildDashboardLinkActionRow } from "../helpers/dashboard.js";
 import { formatVoiceRegion } from "../helpers/voiceRegion.js";
 import { getCommandId } from "../services/commandLoader.js";
 import {
@@ -88,7 +88,7 @@ const command: BotCommand = {
 			return;
 		}
 		const dashboardLink = [
-			createGuildDashboardLink({
+			createGuildDashboardLinkActionRow({
 				config,
 				guildId: interaction.guild.id,
 				section: "voice-region-locks",

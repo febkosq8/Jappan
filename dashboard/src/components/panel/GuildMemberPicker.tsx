@@ -1,11 +1,12 @@
-import { Avatar, Input } from "@febkosq8/arc";
+import { Input } from "@febkosq8/arc";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useEffect, useId, useState, type KeyboardEvent } from "react";
 import { FiSearch } from "react-icons/fi";
 
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
-import APIHandler, { type WarningMember } from "@jappan/handlers/APIHandler";
+import UserDisplay from "@jappan/components/display/UserDisplay";
+import APIHandler, { type User } from "@jappan/handlers/APIHandler";
 
 export default function GuildMemberPicker({
 	id,
@@ -20,7 +21,7 @@ export default function GuildMemberPicker({
 	enabled: boolean;
 	disabled?: boolean;
 	selectedMemberId?: string;
-	onSelect: (member: WarningMember) => void;
+	onSelect: (member: User) => void;
 }) {
 	const listboxId = useId();
 	const [searchInput, setSearchInput] = useState("");
@@ -34,7 +35,7 @@ export default function GuildMemberPicker({
 	}, [searchInput]);
 
 	const membersQuery = useQuery({
-		queryKey: ["user", "guild", guildId, "members", searchQuery],
+		queryKey: ["user", "guild", guildId, "members", ...(searchQuery ? [searchQuery] : [])],
 		queryFn: () => APIHandler.searchGuildMembers(guildId, searchQuery || undefined),
 		enabled: enabled && (searchQuery.length === 0 || searchQuery.length >= 2),
 		retry: false,
@@ -55,7 +56,7 @@ export default function GuildMemberPicker({
 			? membersQuery.error.response.data.error
 			: "Could not load guild members. Please try again.";
 
-	const selectMember = (member: WarningMember) => {
+	const selectMember = (member: User) => {
 		onSelect(member);
 		setSearchInput("");
 		setSearchQuery("");
@@ -161,18 +162,7 @@ export default function GuildMemberPicker({
 									index === activeMemberIndex ? "bg-accent text-primary" : ""
 								}`}
 							>
-								<Avatar
-									name={member.displayName}
-									image={member.avatarUrl}
-									size="sm"
-									aria-hidden="true"
-								/>
-								<span className="min-w-0">
-									<span className="block truncate font-medium">{member.displayName}</span>
-									<span className="block truncate text-xs text-muted-foreground">
-										@{member.username}
-									</span>
-								</span>
+								<UserDisplay user={member} size="sm" linkUsername={false} keepFocusOnCopy />
 							</li>
 						))}
 					</ul>

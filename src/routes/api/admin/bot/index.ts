@@ -2,10 +2,19 @@ import { z } from "zod";
 import type { Response } from "express";
 
 import { getClient } from "../../../../bot.js";
+import { toApiUser } from "../../../../helpers/apiUser.js";
 import { requireAdmin, requireSession } from "../../../../handlers/auth.js";
 import { requireDiscord } from "../../../../handlers/availability.js";
 import { DISCORD_INTERACTION_TIME_LIMIT_MS } from "../../../../helpers/interaction.js";
 import { formatUser } from "../../../../helpers/discord.js";
+import {
+	filterListByQuery,
+	listQueryParameters,
+	listQuerySchema,
+	paginateList,
+	paginatedListSchema,
+	parseListQuery,
+} from "../../../../helpers/list.js";
 import { defineRouter, errorResponseSchema } from "../../../../helpers/route.js";
 import { undeployGuildCommandsGlobally } from "../../../../services/adminDeployment.js";
 import { selfKickGuilds } from "../../../../helpers/adminGuild.js";
@@ -14,12 +23,13 @@ import { getConfig } from "../../../../services/config.js";
 import { logger } from "../../../../services/logger.js";
 import { getActivePlayerSessions, runPlayerHealthCheck } from "../../../../services/player.js";
 import { handleShutdown } from "../../../../services/shutdown.js";
+import { apiUserSchema } from "../../schemas.js";
 
 const activePlayerSessionSchema = z.object({
 	sessionId: z.string(),
 	guild: z.object({ id: z.string(), name: z.string(), icon: z.string().url().nullable() }),
 	channel: z.object({ id: z.string(), name: z.string() }).nullable(),
-	owner: z.object({ id: z.string(), username: z.string(), avatarUrl: z.string().url().nullable() }),
+	owner: apiUserSchema,
 	queueSize: z.number(),
 	nowPlaying: z
 		.object({
@@ -30,6 +40,7 @@ const activePlayerSessionSchema = z.object({
 		.nullable(),
 	playerState: z.enum(["Playing", "Paused"]),
 });
+const administratorSchema = apiUserSchema;
 
 const stopBotRequestSchema = z.object({ confirm: z.literal(true) });
 const stopBotResponseSchema = z.object({
@@ -70,27 +81,46 @@ export default defineRouter("/bot", [
 		tags: ["Admin Bot"],
 		summary: "List configured bot administrators",
 		errorMessage: "Failed to get bot administrators",
-		security: [{ sessionCookie: [] }],
+		security: [{ sessionBearer: [] }],
+		parameters: listQueryParameters(administratorSchema),
 		responses: {
 			200: {
 				description: "Configured bot administrators",
-				schema: z.array(z.object({ id: z.string(), username: z.string(), avatarUrl: z.string().url() })),
+				schema: paginatedListSchema(administratorSchema),
 			},
+			400: { description: "Invalid list query", schema: errorResponseSchema },
 			401: { description: "Authentication required", schema: errorResponseSchema },
 			403: { description: "Admin access required", schema: errorResponseSchema },
 			503: { description: "Discord bot is unavailable", schema: errorResponseSchema },
 			500: { description: "Failed to get bot administrators", schema: errorResponseSchema },
 		},
 		middleware: [requireSession, requireAdmin, requireDiscord],
-		handler: async (_request, response) => {
+		handler: async (request, response) => {
+			const query = parseListQuery(request.query, listQuerySchema, response);
+			if (!query) return;
 			const client = getClient();
 			const administrators = await Promise.all(
 				[...new Set(getConfig("ADMIN_USER_IDS"))].map(async (id) => {
 					const user = await client.users.fetch(id);
-					return { id: user.id, username: user.username, avatarUrl: user.displayAvatarURL({ size: 64 }) };
+					return toApiUser({
+						id: user.id,
+						username: user.username,
+						displayName: user.globalName,
+						avatarUrl: user.displayAvatarURL({ size: 64 }),
+					});
 				}),
 			);
-			return response.status(200).json(administrators);
+			const filtered = filterListByQuery({
+				items: administrators,
+				query: query.query,
+				fieldFilters: query.fieldFilters,
+				itemSchema: administratorSchema,
+				response,
+			});
+			if (!filtered) return;
+			return response
+				.status(200)
+				.json(paginateList({ items: filtered, page: query.page, perPageLimit: query.perPageLimit }));
 		},
 	},
 	{
@@ -99,16 +129,36 @@ export default defineRouter("/bot", [
 		tags: ["Admin Bot"],
 		summary: "View active player sessions",
 		errorMessage: "Failed to get active player sessions",
-		security: [{ sessionCookie: [] }],
+		security: [{ sessionBearer: [] }],
+		parameters: listQueryParameters(activePlayerSessionSchema),
 		responses: {
-			200: { description: "Active player sessions", schema: z.array(activePlayerSessionSchema) },
+			200: {
+				description: "Active player sessions",
+				schema: paginatedListSchema(activePlayerSessionSchema),
+			},
+			400: { description: "Invalid list query", schema: errorResponseSchema },
 			401: { description: "Authentication required", schema: errorResponseSchema },
 			403: { description: "Admin access required", schema: errorResponseSchema },
 			503: { description: "Discord bot is unavailable", schema: errorResponseSchema },
 			500: { description: "Failed to get active player sessions", schema: errorResponseSchema },
 		},
 		middleware: [requireDiscord, requireSession, requireAdmin],
-		handler: (_request, response) => response.status(200).json(getActivePlayerSessions()),
+		handler: (request, response) => {
+			const query = parseListQuery(request.query, listQuerySchema, response);
+			if (!query) return;
+			const sessions = getActivePlayerSessions();
+			const filtered = filterListByQuery({
+				items: sessions,
+				query: query.query,
+				fieldFilters: query.fieldFilters,
+				itemSchema: activePlayerSessionSchema,
+				response,
+			});
+			if (!filtered) return;
+			return response
+				.status(200)
+				.json(paginateList({ items: filtered, page: query.page, perPageLimit: query.perPageLimit }));
+		},
 	},
 	{
 		method: "delete",
@@ -116,7 +166,7 @@ export default defineRouter("/bot", [
 		tags: ["Admin Bot"],
 		summary: "Remove guild commands from every installed guild",
 		errorMessage: "Failed to undeploy guild commands",
-		security: [{ sessionCookie: [] }],
+		security: [{ sessionBearer: [] }],
 		requestBody: {
 			required: true,
 			content: { "application/json": { schema: undeployGuildsRequestSchema } },
@@ -180,7 +230,7 @@ export default defineRouter("/bot", [
 		tags: ["Admin Bot"],
 		summary: "Leave installed guilds except the player health-check guild",
 		errorMessage: "Failed to leave guilds",
-		security: [{ sessionCookie: [] }],
+		security: [{ sessionBearer: [] }],
 		requestBody: {
 			required: true,
 			content: { "application/json": { schema: selfKickRequestSchema } },
@@ -239,7 +289,7 @@ export default defineRouter("/bot", [
 		tags: ["Admin Bot"],
 		summary: "Refresh player health status",
 		errorMessage: "Failed to refresh player health status",
-		security: [{ sessionCookie: [] }],
+		security: [{ sessionBearer: [] }],
 		responses: {
 			200: {
 				description: "Updated player health status",
@@ -267,7 +317,7 @@ export default defineRouter("/bot", [
 		tags: ["Admin Bot"],
 		summary: "Stop the bot process",
 		errorMessage: "Failed to schedule bot shutdown",
-		security: [{ sessionCookie: [] }],
+		security: [{ sessionBearer: [] }],
 		requestBody: {
 			required: true,
 			content: { "application/json": { schema: stopBotRequestSchema } },

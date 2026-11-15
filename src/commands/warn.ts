@@ -9,7 +9,7 @@ import {
 } from "discord.js";
 
 import type { BotCommand, BotCommandData } from "../helpers/command.js";
-import { createGuildDashboardLink } from "../helpers/dashboard.js";
+import { createGuildDashboardLinkActionRow } from "../helpers/dashboard.js";
 import type { Config } from "../services/config.js";
 import {
 	getWarningCount,
@@ -161,19 +161,21 @@ const command: BotCommand = {
 			await interaction.editReply("⛔ This command can only be used in a guild.");
 			return;
 		}
+		const guildId = interaction.guild.id;
 		const dashboardLinks = {
 			settings: [
-				createGuildDashboardLink({
+				createGuildDashboardLinkActionRow({
 					config,
-					guildId: interaction.guild.id,
+					guildId,
 					section: "service-preferences",
 				}),
 			],
-			warnings: [
-				createGuildDashboardLink({
+			warnings: (userId?: string) => [
+				createGuildDashboardLinkActionRow({
 					config,
-					guildId: interaction.guild.id,
+					guildId,
 					section: "warnings",
+					...(userId ? { userId } : {}),
 				}),
 			],
 		};
@@ -244,35 +246,36 @@ const command: BotCommand = {
 				issuerId: interaction.user.id,
 				reason,
 			});
+			const warningDashboardLinks = dashboardLinks.warnings(user.id);
 			switch (result.action) {
 				case "ban_failed":
 					await interaction.editReply({
 						content: `Warning issued to ${user}, but I could not ban them because their role is higher than mine or they are the server owner. Total warnings: ${result.warningCount}.`,
-						components: dashboardLinks.warnings,
+						components: warningDashboardLinks,
 					});
 					return;
 				case "timeout_failed":
 					await interaction.editReply({
 						content: `Warning issued to ${user}, but I could not time them out because their role is higher than mine or they are the server owner. Total warnings: ${result.warningCount}.`,
-						components: dashboardLinks.warnings,
+						components: warningDashboardLinks,
 					});
 					return;
 				case "banned":
 					await interaction.editReply({
 						content: `${user} was warned and banned after reaching ${result.warningCount} warnings.`,
-						components: dashboardLinks.warnings,
+						components: warningDashboardLinks,
 					});
 					return;
 				case "timed_out":
 					await interaction.editReply({
 						content: `${user} was warned and timed out after reaching ${result.warningCount} warnings.`,
-						components: dashboardLinks.warnings,
+						components: warningDashboardLinks,
 					});
 					return;
 				case "none":
 					await interaction.editReply({
 						content: `Warning issued to ${user}. Total warnings: ${result.warningCount}.`,
-						components: dashboardLinks.warnings,
+						components: warningDashboardLinks,
 					});
 					return;
 			}
@@ -283,7 +286,7 @@ const command: BotCommand = {
 			if (user) {
 				await interaction.editReply({
 					content: `${user} currently has ${await getWarningCount(interaction.guild.id, user.id)} warning(s).`,
-					components: dashboardLinks.warnings,
+					components: dashboardLinks.warnings(user.id),
 				});
 				return;
 			}

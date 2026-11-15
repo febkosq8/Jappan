@@ -1,4 +1,4 @@
-import { Avatar, DateHandler } from "@febkosq8/arc";
+import { DateHandler } from "@febkosq8/arc";
 
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import type { BotStatus } from "@jappan/handlers/APIHandler";
@@ -16,15 +16,6 @@ export default function BotStatusOverviewPanel({
 }) {
 	return (
 		<div>
-			{bot && (
-				<div className="mb-4 flex min-w-0 items-center gap-3">
-					<Avatar name={bot.botName} image={bot.botAvatarUrl} size="lg" aria-hidden="true" />
-					<div className="min-w-0">
-						<p className="truncate font-semibold">{bot.botName}</p>
-						<p className="break-all text-sm text-muted-foreground">Bot ID: {bot.botId ?? "Unavailable"}</p>
-					</div>
-				</div>
-			)}
 			<dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
 				{[
 					{ label: "Bot version", value: bot && `v${bot.version}` },

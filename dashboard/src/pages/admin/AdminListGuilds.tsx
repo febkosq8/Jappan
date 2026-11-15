@@ -2,8 +2,9 @@ import { Avatar, Button, DateHandler, Table, TextLink, type TableColumnDef } fro
 import { useQuery } from "@tanstack/react-query";
 
 import APIHandler, { type AdminGuild } from "@jappan/handlers/APIHandler";
-import { AccessRedirect, accessErrorStatus } from "@jappan/components/AdminRoute";
+import { AccessRedirect, accessErrorStatus } from "@jappan/components/AuthRoute";
 import UserDisplay from "@jappan/components/display/UserDisplay";
+import CopyIdButton from "@jappan/components/display/CopyIdButton";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import useDocumentTitle, { formatTitle } from "@jappan/helpers/useDocumentTitle";
 
@@ -31,7 +32,10 @@ const columns: TableColumnDef<AdminGuild>[] = [
 							target="_self"
 							className="block truncate font-medium"
 						/>
-						<span className="block text-xs text-muted-foreground">{guild.id}</span>
+						<span className="flex items-center gap-1 text-xs text-muted-foreground">
+							<span className="min-w-0 break-all">{guild.id}</span>
+							<CopyIdButton id={guild.id} label="Guild ID" />
+						</span>
 					</span>
 				</div>
 			);
@@ -60,11 +64,7 @@ const columns: TableColumnDef<AdminGuild>[] = [
 		sortUndefined: "last",
 		cell: ({ row }) => {
 			const owner = row.original.owner;
-			return owner ? (
-				<UserDisplay id={owner.userId} name={owner.username} avatarUrl={owner.avatarUrl} />
-			) : (
-				<Unavailable />
-			);
+			return owner ? <UserDisplay user={owner} /> : <Unavailable />;
 		},
 	},
 	{

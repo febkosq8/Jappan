@@ -1,6 +1,7 @@
 import type { Guild as DiscordGuild } from "discord.js";
 import { EmbedBuilder, chatInputApplicationCommandMention } from "discord.js";
 
+import { createGuildDashboardLinkActionRow, createGuildDashboardUrl } from "../helpers/dashboard.js";
 import { getOrCreateGuildData, isActiveGuild, sendGuildMessage } from "../helpers/guild.js";
 import { getCommandId } from "./commandLoader.js";
 import { getConfig } from "./config.js";
@@ -21,6 +22,7 @@ export async function initializeGuild(guild: DiscordGuild): Promise<void> {
 			? chatInputApplicationCommandMention("help", helpCommandId)
 			: "the command menu";
 		const config = getConfig();
+		const dashboardUrl = createGuildDashboardUrl({ config, guildId: guild.id, section: "overview" });
 		const welcomeEmbed = new EmbedBuilder()
 			.setColor("Orange")
 			.setAuthor({ name: config.BOT_NAME, iconURL: config.BOT_PFP, url: config.BOT_WEBSITE })
@@ -31,6 +33,7 @@ export async function initializeGuild(guild: DiscordGuild): Promise<void> {
 				{ name: "Moderation", value: "Manage warnings and keep your server organized.", inline: true },
 				{ name: "Announcements", value: "Welcome new members and track server activity.", inline: true },
 			)
+			.addFields({ name: "Dashboard", value: "Manage your guild's Jappan settings on the website." })
 			.addFields({ name: "Get started", value: `Use ${helpCommand} to explore the available commands.` })
 			.setFooter({ text: "Jappan is ready to help." })
 			.setTimestamp();
@@ -42,12 +45,18 @@ export async function initializeGuild(guild: DiscordGuild): Promise<void> {
 			"- Moderation and warnings",
 			"- Member announcements and server tools",
 			"",
+			`Manage this guild in the dashboard: ${dashboardUrl}`,
+			"",
 			`Use ${helpCommand} to explore the available commands.`,
 		].join("\n");
 		let delivered = await sendGuildMessage({
 			guild,
-			content: { embeds: [welcomeEmbed] },
+			content: {
+				embeds: [welcomeEmbed],
+				components: [createGuildDashboardLinkActionRow({ config, guildId: guild.id, section: "overview" })],
+			},
 			failureMessage: "Failed to send guild initialization embed",
+			preferTextChannel: true,
 			details: { guildName: guild.name },
 		});
 		if (!delivered) {
@@ -55,6 +64,7 @@ export async function initializeGuild(guild: DiscordGuild): Promise<void> {
 				guild,
 				content: welcomeContent,
 				failureMessage: "Failed to send guild initialization fallback message",
+				preferTextChannel: true,
 				details: { guildName: guild.name },
 			});
 		}

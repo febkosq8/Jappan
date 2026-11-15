@@ -1,10 +1,12 @@
 import { Button, Card, DateHandler, Tag } from "@febkosq8/arc";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
+import { FiRefreshCw } from "react-icons/fi";
 
 import APIHandler, { type AdminGuildChannel } from "@jappan/handlers/APIHandler";
-import { AccessRedirect, accessErrorStatus } from "@jappan/components/AdminRoute";
+import { AccessRedirect, accessErrorStatus } from "@jappan/components/AuthRoute";
 import ChannelDisplay from "@jappan/components/display/ChannelDisplay";
+import ErrorPage from "@jappan/components/ErrorPage";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import GuildSectionLink from "@jappan/components/panel/GuildSectionLink";
 
@@ -106,13 +108,11 @@ function ChannelGroupList({ guildId, channels }: { guildId: string; channels: Ad
 														NSFW
 													</Tag>
 												)}
-												{channel.rateLimitPerUser != null &&
-													channel.rateLimitPerUser > 0 && (
-														<Tag variant="secondary" size="xs">
-															Slowmode:{" "}
-															{DateHandler.formatDuration(channel.rateLimitPerUser)}
-														</Tag>
-													)}
+												{channel.rateLimitPerUser != null && channel.rateLimitPerUser > 0 && (
+													<Tag variant="secondary" size="xs">
+														Slowmode: {DateHandler.formatDuration(channel.rateLimitPerUser)}
+													</Tag>
+												)}
 												{channel.userLimit !== undefined && channel.userLimit > 0 && (
 													<Tag variant="secondary" size="xs">
 														User limit: {channel.userLimit}
@@ -140,42 +140,32 @@ function ChannelGroupList({ guildId, channels }: { guildId: string; channels: Ad
 													</div>
 												)}
 											</div>
-											<div className="flex min-w-0 flex-wrap gap-x-1">
-												<dt className="text-muted-foreground">Can send message:</dt>
-												<dd
-													className={
-														channel.canSendMessage
-															? "font-medium text-success"
-															: "font-medium text-destructive"
-													}
-												>
-													{channel.canSendMessage ? "Yes" : "No"}
-												</dd>
-											</div>
-											<div className="flex min-w-0 flex-wrap gap-x-1">
-												<dt className="text-muted-foreground">Can read messages:</dt>
-												<dd
-													className={
-														channel.canReadMessages
-															? "font-medium text-success"
-															: "font-medium text-destructive"
-													}
-												>
-													{channel.canReadMessages ? "Yes" : "No"}
-												</dd>
-											</div>
-											<div className="flex min-w-0 flex-wrap gap-x-1">
-												<dt className="text-muted-foreground">Can manage messages:</dt>
-												<dd
-													className={
-														channel.canManageMessages
-															? "font-medium text-success"
-															: "font-medium text-destructive"
-													}
-												>
-													{channel.canManageMessages ? "Yes" : "No"}
-												</dd>
-											</div>
+											{(
+												[
+													["Can send message", channel.canSendMessage],
+													["Can read messages", channel.canReadMessages],
+													["Can manage messages", channel.canManageMessages],
+													["Can manage webhooks", channel.canManageWebhooks],
+													["Can manage channels", channel.canManageChannels],
+													["Can connect", channel.canConnect],
+													["Can speak", channel.canSpeak],
+												] as const
+											).map(([label, granted]) =>
+												granted === undefined ? null : (
+													<div key={label} className="flex min-w-0 flex-wrap gap-x-1">
+														<dt className="text-muted-foreground">{label}:</dt>
+														<dd
+															className={
+																granted
+																	? "font-medium text-success"
+																	: "font-medium text-destructive"
+															}
+														>
+															{granted ? "Yes" : "No"}
+														</dd>
+													</div>
+												),
+											)}
 											{channel.topic && (
 												<div className="col-span-2 min-w-0">
 													<dt className="text-muted-foreground">Topic:</dt>
@@ -224,30 +214,46 @@ export default function GuildChannelsPanel({ guild }: { guild: { id: string; isA
 					: "Could not load channels. Please try again.";
 
 	return (
-		<Card id="guild-channels" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
-			<div className="flex items-center justify-between gap-3">
+		<Card id="channels" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
+			<div className="flex flex-wrap items-center justify-between gap-3">
 				<h2 className="flex items-center gap-1 text-lg font-semibold">
-					Channels <GuildSectionLink id="guild-channels" label="channels" />
+					Channels <GuildSectionLink id="channels" label="channels" />
 				</h2>
-				{totalChannelCount !== undefined && (
-					<span className="shrink-0 rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">
-						Total: {totalChannelCount} {totalChannelCount === 1 ? "channel" : "channels"}
-					</span>
-				)}
+				<div className="flex shrink-0 items-center gap-2">
+					{channelsQuery.data && (
+						<Button
+							type="button"
+							size="icon-sm"
+							variant="outline-primary"
+							className="group/refetch"
+							aria-label="Refresh channels"
+							disabled={channelsQuery.isFetching || !guild.isActiveMember}
+							onClick={() => void channelsQuery.refetch()}
+						>
+							<FiRefreshCw className="size-4 group-hover/refetch:animate-spin" aria-hidden="true" />
+						</Button>
+					)}
+					{totalChannelCount !== undefined && (
+						<span className="shrink-0 rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">
+							Total: {totalChannelCount} {totalChannelCount === 1 ? "channel" : "channels"}
+						</span>
+					)}
+					{!channelsQuery.data && !channelsQuery.isError && (
+						<Button
+							type="button"
+							size="sm"
+							variant="outline-primary"
+							disabled={channelsQuery.isFetching || !guild.isActiveMember}
+							onClick={() => void channelsQuery.refetch()}
+						>
+							Load channels
+						</Button>
+					)}
+				</div>
 			</div>
 			<p className="mt-1 text-sm text-muted-foreground">
 				Load the current channels and categories from Discord. Threads are not included.
 			</p>
-			<Button
-				type="button"
-				size="sm"
-				variant="outline-primary"
-				className="mt-3"
-				disabled={channelsQuery.isFetching || !guild.isActiveMember}
-				onClick={() => void channelsQuery.refetch()}
-			>
-				{channelsQuery.data ? "Refresh channels" : "Load channels"}
-			</Button>
 			{!guild.isActiveMember && (
 				<p className="mt-3 text-muted-foreground">The bot is not a member of this guild.</p>
 			)}
@@ -256,9 +262,24 @@ export default function GuildChannelsPanel({ guild }: { guild: { id: string; isA
 					<LoadingIndicator label="Loading channels" inline size={80} rows={1} columns={5} />
 				</div>
 			) : channelsQuery.isError ? (
-				<p role="alert" className="mt-3 text-destructive">
-					{errorMessage}
-				</p>
+				<div className="mt-3">
+					<ErrorPage
+						variant="inline"
+						status={errorStatus ? String(errorStatus) : "Error"}
+						title="Could not load channels"
+						message={errorMessage}
+						actions={
+							<Button
+								type="button"
+								size="sm"
+								variant="outline-primary"
+								onClick={() => void channelsQuery.refetch()}
+							>
+								Retry
+							</Button>
+						}
+					/>
+				</div>
 			) : channelsQuery.data?.length === 0 ? (
 				<p className="mt-3 text-muted-foreground">No channels found.</p>
 			) : channelsQuery.data ? (

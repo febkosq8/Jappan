@@ -4,10 +4,12 @@ import {
 	ButtonStyle,
 	EmbedBuilder,
 	InteractionContextType,
+	MessageFlags,
 	PermissionFlagsBits,
 	SlashCommandBuilder,
 } from "discord.js";
 
+import { createGuildDashboardUrl } from "../helpers/dashboard.js";
 import type { BotCommand, BotCommandData } from "../services/commandLoader.js";
 import { isDatabaseConnected } from "../services/database.js";
 import { isPlayerAvailable } from "../services/player.js";
@@ -33,6 +35,15 @@ const command: BotCommand = {
 		.setDescription(commandData.description)
 		.setContexts([InteractionContextType.Guild]),
 	execute: async ({ interaction, config }) => {
+		const guild = interaction.guild;
+		if (!guild) {
+			await interaction.reply({
+				content: "This command is only available in a server.",
+				flags: MessageFlags.Ephemeral,
+			});
+			return;
+		}
+
 		await interaction.deferReply();
 		const uptime =
 			interaction.client.uptime === null
@@ -46,6 +57,10 @@ const command: BotCommand = {
 				.setURL("https://discord.gg/3mRbVCjvmz")
 				.setStyle(ButtonStyle.Link),
 			new ButtonBuilder().setLabel("Website").setURL(config.BOT_WEBSITE).setStyle(ButtonStyle.Link),
+			new ButtonBuilder()
+				.setLabel("Manage guild")
+				.setURL(createGuildDashboardUrl({ config, guildId: guild.id, section: "overview" }))
+				.setStyle(ButtonStyle.Link),
 		);
 		const embed = new EmbedBuilder()
 			.setColor("Blue")

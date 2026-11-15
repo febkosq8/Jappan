@@ -6,6 +6,7 @@ import { isBotCommand, isBotContextMenuCommand } from "../helpers/command.js";
 import about from "../commands/about.js";
 import auditlog from "../commands/auditlog.js";
 import createPurgeJob from "../commands/create-purge-job.js";
+import evaluateUser from "../commands/evaluate-user.js";
 import purgeMessages from "../commands/purge-messages.js";
 import doppelganger from "../commands/doppelganger.js";
 import admin from "../commands/guildCommands/admin.js";
@@ -33,6 +34,7 @@ const globalCommandModules: readonly unknown[] = [
 	about,
 	auditlog,
 	purgeMessages,
+	evaluateUser,
 	doppelganger,
 	help,
 	leaderboard,

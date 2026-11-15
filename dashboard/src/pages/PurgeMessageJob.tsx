@@ -20,7 +20,10 @@ import {
 } from "react-icons/fi";
 
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
+import { AccessRedirect } from "@jappan/components/AuthRoute";
+import ErrorPage from "@jappan/components/ErrorPage";
 import ChannelDisplay from "@jappan/components/display/ChannelDisplay";
+import CopyIdButton from "@jappan/components/display/CopyIdButton";
 import GuildPageHeader from "@jappan/components/display/GuildPageHeader";
 import UserDisplay from "@jappan/components/display/UserDisplay";
 import GuildDetail from "@jappan/components/panel/GuildDetail";
@@ -191,26 +194,23 @@ function PurgeMessageList({
 									return (
 										<li key={message.id} className="rounded-md border border-border p-3">
 											<div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-												<UserDisplay
-													id={message.author.id}
-													name={`${message.author.displayName} (@${message.author.username})`}
-													avatarUrl={message.author.avatarUrl}
-													size="sm"
-													showId
-												/>
+												<UserDisplay user={message.author} size="sm" showId />
 												{showStatuses && (
 													<MessageStatusTag
 														status={messageStatuses[message.id] ?? "pending"}
 													/>
 												)}
-												<a
-													href={message.jumpUrl}
-													target="_blank"
-													rel="noreferrer"
-													className="min-w-0 break-all text-center text-muted-foreground underline hover:text-primary"
-												>
-													Message ID: {message.id}
-												</a>
+												<span className="flex min-w-0 items-center gap-1">
+													<a
+														href={message.jumpUrl}
+														target="_blank"
+														rel="noreferrer"
+														className="min-w-0 break-all text-center text-muted-foreground underline hover:text-primary"
+													>
+														Message ID: {message.id}
+													</a>
+													<CopyIdButton id={message.id} label="Message ID" />
+												</span>
 												<span className="whitespace-nowrap text-center text-muted-foreground">
 													{DateHandler.getDateTime(message.createdTimestampMs)}
 												</span>
@@ -388,9 +388,21 @@ export default function PurgeMessageJob() {
 
 	if (!isValidJobId || accessProblem || jobQuery.isError || clockUnavailable) {
 		const status = axios.isAxiosError(jobQuery.error) ? jobQuery.error.response?.status : undefined;
+		if (status === 401) return <AccessRedirect status={401} />;
 		const notFound = !isValidJobId || status === 400 || status === 404;
 		const denied = status === 403;
 		const title = notFound ? "No purge job found" : denied ? "You can't view this job" : "Purge job unavailable";
+		const statusLabel = notFound
+			? "404"
+			: denied
+				? "403"
+				: status
+					? String(status)
+					: clockUnavailable
+						? "Invalid response"
+						: accessProblem
+							? "Access error"
+							: "Purge job error";
 		const message = clockUnavailable
 			? "This job did not return a valid server time. Reload its latest state."
 			: accessProblem
@@ -399,50 +411,57 @@ export default function PurgeMessageJob() {
 					? "You do not have permission to view this message purge job."
 					: "Could not load message purge progress.";
 		return (
-			<main className="flex min-h-[calc(100dvh-4.0625rem)] flex-col items-center justify-center px-4 py-10 text-center">
-				<FiAlertCircle className="size-10 text-muted-foreground" aria-hidden="true" />
-				<h1 className="mt-4 text-3xl font-bold">{title}</h1>
-				{notFound ? (
+			<ErrorPage
+				status={statusLabel}
+				title={title}
+				message={notFound ? "This can happen for a few reasons:" : <span role="alert">{message}</span>}
+				actions={
 					<>
-						<p className="mt-2 max-w-md text-muted-foreground">This can happen for a few reasons:</p>
-						<ul className="mt-3 max-w-md list-disc space-y-1 pl-5 text-left text-muted-foreground">
+						{isValidJobId && !notFound && (
+							<Button
+								disabled={jobQuery.isFetching}
+								onClick={() =>
+									void jobQuery.refetch().then((result) => {
+										if (result.isSuccess) setAccessProblem(false);
+									})
+								}
+							>
+								{jobQuery.isFetching ? "Trying again…" : "Try again"}
+							</Button>
+						)}
+						<PillLink
+							variant="outline-secondary"
+							href={
+								jobQuery.data
+									? `/guild/${encodeURIComponent(jobQuery.data.guildId)}#purge-messages`
+									: "/guilds"
+							}
+							className="gap-2"
+						>
+							<FiArrowLeft aria-hidden="true" />
+							{jobQuery.data ? "Back to guild" : "Back to guilds"}
+						</PillLink>
+					</>
+				}
+			>
+				{notFound && (
+					<>
+						<ul className="list-disc space-y-1 pl-5 text-left text-muted-foreground">
 							<li>The job has expired.</li>
 							<li>The link is invalid or incomplete.</li>
 							<li>The bot restarted, which clears stored jobs.</li>
 						</ul>
-						<p className="mt-3 max-w-md text-muted-foreground">
+						<p className="mt-3 text-muted-foreground">
 							Start a new job from your guild or use /purge-messages.
 						</p>
 					</>
-				) : (
-					<p role="alert" className="mt-2 max-w-md text-muted-foreground">
-						{message}
-					</p>
 				)}
-				<div className="mt-6 flex flex-wrap justify-center gap-3">
-					{isValidJobId && !notFound && (
-						<Button
-							disabled={jobQuery.isFetching}
-							onClick={() =>
-								void jobQuery.refetch().then((result) => {
-									if (result.isSuccess) setAccessProblem(false);
-								})
-							}
-						>
-							{jobQuery.isFetching ? "Trying again…" : "Try again"}
-						</Button>
-					)}
-					<PillLink variant="outline-secondary" href="/guilds" className="gap-2">
-						<FiArrowLeft aria-hidden="true" />
-						Back to guilds
-					</PillLink>
-				</div>
-			</main>
+			</ErrorPage>
 		);
 	}
 	if (jobQuery.isPending || !hasServerClock) {
 		return (
-			<main className="flex min-h-[calc(100dvh-4.0625rem)] items-center justify-center px-4 py-10">
+			<main className="app-page-min-height flex items-center justify-center px-4 py-10">
 				<LoadingIndicator label="Loading message purge job" />
 			</main>
 		);
@@ -467,9 +486,14 @@ export default function PurgeMessageJob() {
 				: FiAlertCircle;
 	return (
 		<main className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6">
-			<PillLink href="/guilds" variant="outline-secondary" size="sm" className="mb-5 gap-2">
+			<PillLink
+				href={`/guild/${encodeURIComponent(job.guildId)}#purge-messages`}
+				variant="outline-secondary"
+				size="sm"
+				className="mb-5 gap-2"
+			>
 				<FiArrowLeft aria-hidden="true" />
-				Guilds
+				Back to guild
 			</PillLink>
 			<GuildPageHeader
 				title="Message purge job"
@@ -761,7 +785,7 @@ export default function PurgeMessageJob() {
 															skipped due to missing permissions.
 														</span>
 														<PillLink
-															href={`/guild/${encodeURIComponent(job.guildId)}#guild-channels`}
+															href={`/guild/${encodeURIComponent(job.guildId)}#channels`}
 															variant="outline-secondary"
 															size="sm"
 															className="shrink-0 whitespace-nowrap"

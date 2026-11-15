@@ -21,30 +21,33 @@ function getColumns({
 			mobileFullWidth: true,
 			size: 260,
 			filterFn: "includesString",
-			cell: ({ row }) => (
-				<UserDisplay
-					id={row.original.userId}
-					name={row.original.username}
-					avatarUrl={row.original.avatarUrl}
-					size="md"
-				/>
-			),
+			cell: ({ row }) => <UserDisplay user={row.original} size="md" />,
 		},
 		{
 			accessorKey: "warningCount",
 			header: "Warnings",
 			size: 120,
 			filterFn: "includesString",
+			cell: ({ row }) => <span className="tabular-nums">{row.original.warningCount.toLocaleString()}</span>,
+		},
+		{
+			id: "review",
+			accessorKey: "id",
+			header: "Review",
+			size: 150,
+			enableSorting: false,
+			enableColumnFilter: false,
 			cell: ({ row }) => (
-				<button
+				<Button
 					type="button"
-					className="inline-flex items-center rounded-md text-primary tabular-nums underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+					size="xs"
+					variant="outline-primary"
 					disabled={disabled}
-					aria-label={`View ${row.original.username}'s ${row.original.warningCount} warning(s)`}
-					onClick={() => onSelectMember(row.original.userId)}
+					aria-label={`Review warnings for ${row.original.username}`}
+					onClick={() => onSelectMember(row.original.id)}
 				>
-					{row.original.warningCount.toLocaleString()}
-				</button>
+					Review history
+				</Button>
 			),
 		},
 	];
@@ -87,7 +90,7 @@ export default function GuildWarningsTable({
 				)}
 			</div>
 			<p className="mt-1 text-sm text-muted-foreground">
-				Ordered by warning count. Select a count to review that member's warning history above.
+				Ordered by warning count. Use Review history to inspect a member's warnings above.
 			</p>
 			{!loadRequested && (
 				<Button

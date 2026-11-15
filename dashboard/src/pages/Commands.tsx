@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Button, Card, PillLink, Tag } from "@febkosq8/arc";
 import { useQuery } from "@tanstack/react-query";
 import { FiCopy } from "react-icons/fi";
@@ -5,10 +6,11 @@ import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
-import APIHandler, { type GlobalCommand } from "@jappan/handlers/APIHandler";
+import CopyIdButton from "@jappan/components/display/CopyIdButton";
+import APIHandler, { type PublicCommand } from "@jappan/handlers/APIHandler";
 import useDocumentTitle, { formatTitle } from "@jappan/helpers/useDocumentTitle";
 
-function CopyCommandButton({ command }: { command: GlobalCommand }) {
+function CopyCommandButton({ command }: { command: PublicCommand }) {
 	const copyCommand = async () => {
 		if (!command.id) {
 			toast.error("Command ID is unavailable.");
@@ -52,7 +54,7 @@ function ValueTags({ values }: { values: string[] }) {
 	);
 }
 
-function CommandDetails({ command }: { command: GlobalCommand }) {
+function CommandDetails({ command }: { command: PublicCommand }) {
 	return (
 		<>
 			<p className="mt-2 text-muted-foreground">{command.description}</p>
@@ -61,7 +63,10 @@ function CommandDetails({ command }: { command: GlobalCommand }) {
 					<div>
 						<dt className="text-muted-foreground">Command ID</dt>
 						<dd className="mt-1 wrap-break-word font-medium">
-							<ValueTags values={[command.id ?? "Unavailable"]} />
+							<div className="flex flex-wrap items-center gap-1">
+								<ValueTags values={[command.id ?? "Unavailable"]} />
+								<CopyIdButton id={command.id} label="Command ID" />
+							</div>
 						</dd>
 					</div>
 				)}
@@ -93,7 +98,7 @@ function CommandDetails({ command }: { command: GlobalCommand }) {
 							<h5 className="text-sm font-semibold">Options</h5>
 							<div className="mt-1 flex flex-wrap items-baseline gap-2">
 								<span className="text-xs text-muted-foreground">Usage</span>
-								<pre className="min-w-0 whitespace-pre-wrap break-words rounded-md border border-border bg-muted px-2 py-1 text-xs text-foreground">
+								<pre className="min-w-0 whitespace-pre-wrap wrap-break-word rounded-md border border-border bg-muted px-2 py-1 text-xs text-foreground">
 									<code>
 										/{command.name}{" "}
 										{command.options
@@ -128,7 +133,10 @@ function CommandDetails({ command }: { command: GlobalCommand }) {
 									...(option.maxLength !== null ? [`Max length: ${option.maxLength}`] : []),
 								];
 								return (
-									<li key={option.name} className="rounded-md border border-border p-3 text-sm">
+									<li
+										key={option.name}
+										className="command-option-dotted-border rounded-md p-3 text-sm"
+									>
 										<div className="flex flex-wrap items-start justify-between gap-2">
 											<p className="min-w-0 wrap-break-word font-medium">
 												<code>{option.name}</code>
@@ -167,22 +175,47 @@ function CommandDetails({ command }: { command: GlobalCommand }) {
 	);
 }
 
-function CommandCard({
-	command,
-	subcommands,
-	hasSubcommands,
-}: {
-	command: GlobalCommand;
-	subcommands: GlobalCommand[];
-	hasSubcommands: boolean;
-}) {
+function CommandCard({ command, subcommands }: { command: PublicCommand; subcommands: PublicCommand[] }) {
+	const cardRef = useRef<HTMLLIElement>(null);
+
+	useEffect(() => {
+		const cardElement = cardRef.current;
+		const gridElement = cardElement?.parentElement;
+		if (!cardElement || !gridElement) return;
+
+		const observer = new ResizeObserver(([entry]) => {
+			if (!entry) return;
+			const gridStyle = getComputedStyle(gridElement);
+			const rowHeight = Number.parseFloat(gridStyle.gridAutoRows);
+			const rowGap = Number.parseFloat(gridStyle.rowGap);
+			const rowSpan = Math.ceil((entry.contentRect.height + rowGap) / (rowHeight + rowGap));
+			cardElement.style.gridRowEnd = `span ${rowSpan}`;
+		});
+		observer.observe(cardElement);
+
+		return () => observer.disconnect();
+	}, []);
+
 	return (
-		<li className="mb-3 inline-block w-full min-w-0 break-inside-avoid align-top">
+		<li ref={cardRef} className="min-w-0 self-start">
 			<Card hoverable={true} hoverLift={false} className="p-5">
 				<div className="flex flex-wrap items-center justify-between gap-2">
 					<div className="flex min-w-0 items-center gap-1">
-						<h2 className="min-w-0 wrap-break-word text-lg font-semibold">/{command.name}</h2>
-						{!hasSubcommands && <CopyCommandButton command={command} />}
+						<div className="min-w-0">
+							<div className="flex min-w-0 items-center gap-1">
+								<h2 className="min-w-0 wrap-break-word text-lg font-semibold">
+									{command.type === "context-menu" ? `> ${command.name}` : `/${command.name}`}
+								</h2>
+								{command.type !== "context-menu" && <CopyCommandButton command={command} />}
+							</div>
+							<p className="mt-0.5 text-xs text-muted-foreground">
+								{command.applicationCommandType === "chat-input"
+									? "Slash command"
+									: command.applicationCommandType === "message-context-menu"
+										? "Message context menu"
+										: "User context menu"}
+							</p>
+						</div>
 					</div>
 					<div className="flex flex-wrap gap-1">
 						<Tag
@@ -227,15 +260,15 @@ function CommandCard({
 	);
 }
 
-function groupCommands(commands: GlobalCommand[]) {
+function groupCommands(commands: PublicCommand[]) {
 	const roots = new Map(
 		commands.filter((command) => command.type === "command").map((command) => [command.name, command]),
 	);
-	const subcommands = new Map<string, GlobalCommand[]>();
-	const standalone: GlobalCommand[] = [];
+	const subcommands = new Map<string, PublicCommand[]>();
+	const standalone: PublicCommand[] = [];
 
 	for (const command of commands) {
-		if (command.type === "command") {
+		if (command.type !== "sub-command") {
 			standalone.push(command);
 			continue;
 		}
@@ -259,12 +292,11 @@ export default function Commands() {
 	useDocumentTitle(formatTitle("Commands"));
 	const [searchParams, setSearchParams] = useSearchParams();
 	const category = searchParams.get("category") || "all";
-	const commandsQuery = useQuery({ queryKey: ["public", "commands"], queryFn: APIHandler.getGlobalCommands });
+	const commandsQuery = useQuery({ queryKey: ["public", "commands"], queryFn: APIHandler.getPublicCommands });
 	const categories = [...new Set((commandsQuery.data ?? []).map((command) => command.category))].sort();
 	const groups = groupCommands(commandsQuery.data ?? [])
 		.map(({ command, subcommands }) => ({
 			command,
-			hasSubcommands: subcommands.length > 0,
 			subcommands:
 				category === "all" ? subcommands : subcommands.filter((subcommand) => subcommand.category === category),
 		}))
@@ -328,14 +360,9 @@ export default function Commands() {
 			) : groups.length === 0 ? (
 				<p className="mt-6 text-muted-foreground">No commands found in this category.</p>
 			) : (
-				<ul className="mt-6 columns-1 gap-3 sm:columns-2 lg:columns-3">
-					{groups.map(({ command, subcommands, hasSubcommands }) => (
-						<CommandCard
-							key={command.name}
-							command={command}
-							subcommands={subcommands}
-							hasSubcommands={hasSubcommands}
-						/>
+				<ul className="mt-6 grid grid-cols-1 auto-rows-0.25 gap-3 grid-flow-row-dense sm:grid-cols-2 lg:grid-cols-3">
+					{groups.map(({ command, subcommands }) => (
+						<CommandCard key={command.name} command={command} subcommands={subcommands} />
 					))}
 				</ul>
 			)}

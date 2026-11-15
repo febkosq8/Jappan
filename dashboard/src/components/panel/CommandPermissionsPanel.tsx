@@ -8,13 +8,15 @@ import GuildSectionLink from "@jappan/components/panel/GuildSectionLink";
 export default function CommandPermissionsPanel({ permissions }: { permissions?: string[] }) {
 	const commandsQuery = useQuery({
 		queryKey: ["public", "commands"],
-		queryFn: APIHandler.getGlobalCommands,
+		queryFn: APIHandler.getPublicCommands,
 		enabled: permissions !== undefined,
 	});
 	const grantedPermissions = new Set(permissions);
 	const isAdministrator = grantedPermissions.has("Administrator");
 	const commands = commandsQuery.data?.filter(
-		(command, _index, all) => !all.some((other) => other.name.startsWith(`${command.name} `)),
+		(command, _index, all) =>
+			command.type === "sub-command" ||
+			!all.some((other) => other.type === "sub-command" && other.name.startsWith(`${command.name} `)),
 	);
 
 	return (
@@ -43,16 +45,22 @@ export default function CommandPermissionsPanel({ permissions }: { permissions?:
 				<p className="mt-3 text-muted-foreground">No commands available</p>
 			) : (
 				<ul className="mt-3 grid gap-3 sm:grid-cols-2">
-					{commands.map(({ name, requiredBotPermissions }) => {
+					{commands.map(({ name, applicationCommandType, requiredBotPermissions }) => {
 						const permChecks = requiredBotPermissions.map(
 							(permission) =>
 								[permission, isAdministrator || grantedPermissions.has(permission)] as const,
 						);
 						const missing = permChecks.some(([, granted]) => !granted);
+						const commandLabel =
+							applicationCommandType === "chat-input"
+								? `/${name}`
+								: applicationCommandType === "message-context-menu"
+									? `Message action: ${name}`
+									: `User action: ${name}`;
 						return (
 							<li key={name} className="min-w-0 rounded-md border border-border p-3">
 								<div className="flex flex-wrap items-center justify-between gap-2">
-									<h3 className="wrap-break-word font-medium">/{name}</h3>
+									<h3 className="wrap-break-word font-medium">{commandLabel}</h3>
 									<span className={missing ? "text-destructive" : "text-success"}>
 										{missing
 											? "Some required permissions missing"

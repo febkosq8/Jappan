@@ -25,7 +25,7 @@ export default defineExternalRouter("/api/v1", router, [
 		tags: ["Authentication"],
 		summary: "Get the current session",
 		errorMessage: "Failed to get session",
-		security: [{}, { sessionCookie: [] }],
+		security: [{}, { sessionBearer: [] }],
 		responses: {
 			200: {
 				description: "Current session and user, or null when signed out; may refresh the session cookie",

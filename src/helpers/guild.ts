@@ -12,6 +12,7 @@ import { getClient } from "../bot.js";
 import GuildModel, { type Guild as StoredGuild, type GuildDocument } from "../models/guild.js";
 import { getGuildCommands, getRequiredGlobalBotPermissions } from "../services/commandLoader.js";
 import { logger } from "../services/logger.js";
+import { toApiUser, type ApiUser } from "./apiUser.js";
 import type { LogDetails } from "./logger.js";
 
 export interface GuildDataOptions {
@@ -46,6 +47,22 @@ export async function getOrCreateGuildData({ guildId, guildName, guild }: GuildD
 
 export function getClientGuild(guildId: string): Guild | undefined {
 	return getClient().guilds.cache.get(guildId);
+}
+
+export async function listGuildMembers(guild: Guild): Promise<GuildMember[]> {
+	const members: GuildMember[] = [];
+	let after: string | undefined;
+	while (true) {
+		const page = await guild.members.list({ limit: 1000, ...(after ? { after } : {}) });
+		members.push(...page.values());
+		if (page.size < 1000) return members;
+		const lastMember = [...page.values()].at(-1);
+		if (!lastMember) return members;
+		if (lastMember.id === after) {
+			throw new Error(`Guild member pagination did not advance for guild ${guild.id}`);
+		}
+		after = lastMember.id;
+	}
 }
 
 async function getPreferenceChannel(guild: Guild | undefined, channelId: string) {
@@ -135,7 +152,7 @@ export interface GuildState {
 	systemChannel?: { id: string; name: string } | null;
 	permissions?: ReturnType<PermissionsBitField["toArray"]>;
 	hasRequiredPermissions?: boolean;
-	owner?: { userId: string; avatarUrl: string; username: string };
+	owner?: ApiUser;
 	guildCommandDeploymentState?: { deployed: number; total: number };
 	discoveredTimestampMs?: number | null;
 	servicePreferences?: Awaited<ReturnType<typeof resolveServicePreferences>>;
@@ -228,7 +245,13 @@ export async function getGuildState(
 	if (keys.includes("channelCount")) returnData.channelCount = guild.channels.cache.size;
 	if (keys.includes("owner")) {
 		const owner = await guild.client.users.fetch(guild.ownerId);
-		returnData.owner = { userId: owner.id, avatarUrl: owner.displayAvatarURL(), username: owner.username };
+		const ownerMember = guild.members.cache.get(owner.id);
+		returnData.owner = toApiUser({
+			id: owner.id,
+			username: owner.username,
+			displayName: ownerMember?.displayName ?? owner.globalName,
+			avatarUrl: owner.displayAvatarURL(),
+		});
 	}
 	if (keys.includes("createdTimestampMs")) returnData.createdTimestampMs = guild.createdTimestamp;
 	if (keys.includes("description") && guild.description) returnData.description = guild.description;
@@ -317,6 +340,7 @@ export interface SendGuildMessageOptions {
 	content: string | MessageCreateOptions;
 	failureMessage: string;
 	channelId?: string;
+	preferTextChannel?: boolean;
 	details?: LogDetails;
 }
 
@@ -332,12 +356,19 @@ export async function sendGuildMessage({
 	content,
 	failureMessage,
 	channelId,
+	preferTextChannel = false,
 	details,
 }: SendGuildMessageOptions): Promise<SentGuildMessage | null> {
 	const botMember = await guild.members.fetchMe().catch(() => null);
-	const channels = channelId
+	const candidateChannels = channelId
 		? [await guild.channels.fetch(channelId).catch(() => null)]
 		: [guild.systemChannel, ...guild.channels.cache.values()];
+	const channels = preferTextChannel
+		? [
+				...candidateChannels.filter((channel) => channel?.isTextBased() && !channel.isVoiceBased()),
+				...candidateChannels.filter((channel) => channel?.isTextBased() && channel.isVoiceBased()),
+			]
+		: candidateChannels;
 	const requiresEmbedLinks = typeof content !== "string" && Boolean(content.embeds?.length);
 	const messageType = requiresEmbedLinks ? "embed" : "normal";
 	const requiredPermissions = [

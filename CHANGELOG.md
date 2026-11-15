@@ -5,6 +5,37 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.5] - 2026-11-15
+
+### Added
+
+- Added dashboard message-purge jobs with configurable filters, message previews, confirmation, live progress updates, and job results; added the `/purge-messages` command.
+- Added dashboard playback startup for tracks, playlists, and saved playlists, including voice-channel validation and a player message in the voice channel.
+- Added optional YouTube player token configuration and documented the environment variable.
+- Added guild role panels with role hierarchy, assignability, and permission details.
+- Added the User Access Evaluator to review a selected member's effective guild, role, and channel permissions and their sources; added `/evaluate-user` to open the evaluator for a selected member, with supporting API endpoints.
+- Added searchable, filterable, paginated API list responses, expanded channel permission details, and updated OpenAPI documentation.
+- Added copy-ID controls for displayed Discord IDs, an API exploration link, and reusable dashboard error pages.
+
+### Changed
+
+- Improved the player track input with explicit selection and loading states, Backspace-to-clear behavior, and alphabetically sorted saved playlists.
+- Improved web-player session and queue handling, guild selection with avatars, and feedback when adding tracks; deployed guild commands are now synchronized on startup.
+- Improved guild and bot administration views with channel organization, permission details, role information, and clearer health and latency status.
+- Added contextual dashboard links to bot command responses, including a Manage Guild link in `/about`; guild message sending can prefer a text channel.
+- Improved the commands page with user and bot permission requirements, usage and option details, and a responsive layout.
+- Updated Node.js to 26.13.1 and pnpm to 12.21.0.
+- Updated the dashboard's Arc component library to 0.9.1.
+
+### Removed
+
+- Replaced the `/clear` command with the preview-and-confirm `/purge-messages` workflow.
+
+### Fixed
+
+- Improved error handling and error-page behavior across dashboard workflows.
+- Excluded members with zero points from leaderboard results and corrected dashboard query keys for member and warning data.
+
 ## [2.1.2] - 2026-11-11
 
 ### Added

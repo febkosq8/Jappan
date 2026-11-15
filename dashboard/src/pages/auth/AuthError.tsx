@@ -1,8 +1,9 @@
-import { Button, Card, PillLink } from "@febkosq8/arc";
+import { Button, PillLink } from "@febkosq8/arc";
+import ErrorPage from "@jappan/components/ErrorPage";
 import { sessionErrorCode, useSessionQuery, useSignIn } from "@jappan/handlers/auth";
-import { authErrorURL, safeCallbackPath } from "@jappan/handlers/authRedirect";
+import { authErrorURL, safeCallbackPath } from "@jappan/helpers/authRedirect";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { FiAlertTriangle, FiArrowLeft, FiLogIn, FiRefreshCw } from "react-icons/fi";
+import { FiArrowLeft, FiLogIn, FiRefreshCw } from "react-icons/fi";
 import { Navigate, useLocation, useSearchParams } from "react-router-dom";
 import useDocumentTitle, { formatTitle } from "@jappan/helpers/useDocumentTitle";
 
@@ -138,62 +139,47 @@ export default function AuthError() {
 	}
 
 	return (
-		<main className="flex min-h-[calc(100dvh-4rem)] items-center justify-center px-4 py-10">
-			<Card className="w-full max-w-lg" aria-labelledby="auth-error-title" hoverLift={false}>
-				<Card.Content className="flex flex-col items-center p-6 text-center sm:p-8">
-					<span
-						className="mb-4 grid size-14 place-items-center rounded-full bg-destructive/10 text-destructive"
-						aria-hidden="true"
-					>
-						<FiAlertTriangle className="size-7" />
-					</span>
-					<p className="text-sm font-semibold uppercase tracking-wide text-destructive">{status}</p>
-					<h1 id="auth-error-title" className="mt-2 text-2xl font-bold tracking-tight">
-						{title}
-					</h1>
-					<p className="mt-3 whitespace-pre-line text-muted-foreground">{message}</p>
-					{!unauthenticated && !forbidden && (
-						<div className="mt-5 w-full rounded-md border border-border bg-muted px-3 py-2 text-left">
-							<p className="text-xs text-muted-foreground">Error code</p>
-							<p className="mt-1 break-all font-mono text-sm">{errorCode}</p>
-						</div>
+		<ErrorPage
+			status={status}
+			title={title}
+			message={message}
+			errorCode={!unauthenticated && !forbidden ? errorCode : undefined}
+			actions={
+				<>
+					{sessionError && (
+						<Button
+							variant="outline-primary"
+							disabled={retrying || sessionQuery.isFetching}
+							onClick={() => void retrySession()}
+							className="gap-2"
+							aria-label="Try again"
+						>
+							<FiRefreshCw className="size-4" aria-hidden="true" />
+							{retrying || sessionQuery.isFetching
+								? "Retrying..."
+								: networkError
+									? `Try again (${retryCountdown}s)`
+									: "Try again"}
+						</Button>
 					)}
-					<div className="mt-6 flex flex-wrap items-center justify-center gap-2">
-						{sessionError && (
-							<Button
-								variant="outline-primary"
-								disabled={retrying || sessionQuery.isFetching}
-								onClick={() => void retrySession()}
-								className="gap-2"
-								aria-label="Try again"
-							>
-								<FiRefreshCw className="size-4" aria-hidden="true" />
-								{retrying || sessionQuery.isFetching
-									? "Retrying..."
-									: networkError
-										? `Try again (${retryCountdown}s)`
-										: "Try again"}
-							</Button>
-						)}
-						{unauthenticated && (
-							<Button
-								variant="outline-primary"
-								disabled={busy}
-								onClick={() => void signIn()}
-								className="gap-2"
-								aria-label="Sign in"
-							>
-								<FiLogIn className="size-4" aria-hidden="true" />
-								{busy ? "Signing in..." : countdown > 0 ? `Sign in (${countdown}s)` : "Sign in"}
-							</Button>
-						)}
-						<PillLink href="/" variant="outline-secondary" className="gap-2">
-							<FiArrowLeft aria-hidden="true" />
-							Go home
-						</PillLink>
-					</div>
-				</Card.Content>
-			</Card>
-		</main>
+					{unauthenticated && (
+						<Button
+							variant="outline-primary"
+							disabled={busy}
+							onClick={() => void signIn()}
+							className="gap-2"
+							aria-label="Sign in"
+						>
+							<FiLogIn className="size-4" aria-hidden="true" />
+							{busy ? "Signing in..." : countdown > 0 ? `Sign in (${countdown}s)` : "Sign in"}
+						</Button>
+					)}
+					<PillLink href="/" variant="outline-secondary" className="gap-2">
+						<FiArrowLeft aria-hidden="true" />
+						Go home
+					</PillLink>
+				</>
+			}
+		/>
 	);
 }

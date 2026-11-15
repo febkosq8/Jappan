@@ -14,7 +14,7 @@ import {
 } from "@febkosq8/arc";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import { useEffect, useState, type ReactNode, type SubmitEvent } from "react";
+import { useEffect, useState, type SubmitEvent } from "react";
 import { FaListCheck } from "react-icons/fa6";
 import {
 	FiAlertCircle,
@@ -24,9 +24,11 @@ import {
 	FiHash,
 	FiHome,
 	FiSettings,
-	FiShield,
+	FiKey,
 	FiSliders,
+	FiTag,
 	FiTrash2,
+	FiUserCheck,
 } from "react-icons/fi";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -37,14 +39,18 @@ import APIHandler, {
 	type AdminGuildDetails,
 	type AdminGuildMessageResult,
 } from "@jappan/handlers/APIHandler";
-import { AccessRedirect, accessErrorStatus } from "@jappan/components/AdminRoute";
+import { AccessRedirect, accessErrorStatus } from "@jappan/components/AuthRoute";
+import ErrorPage from "@jappan/components/ErrorPage";
 import ExternalTextLink from "@jappan/components/ExternalTextLink";
+import CopyIdButton from "@jappan/components/display/CopyIdButton";
 import GuildPageHeader from "@jappan/components/display/GuildPageHeader";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import GuildChannelsPanel from "@jappan/components/panel/GuildChannelsPanel";
+import GuildRolesPanel from "@jappan/components/panel/GuildRolesPanel";
 import GuildServicePreferencesPanel from "@jappan/components/panel/GuildServicePreferencesPanel";
 import GuildVoiceRegionLockManagerPanel from "@jappan/components/panel/GuildVoiceRegionLockManagerPanel";
 import GuildWarningManagerPanel from "@jappan/components/panel/GuildWarningManagerPanel";
+import GuildUserAccessPanel from "@jappan/components/panel/GuildUserAccessPanel";
 import GuildSectionLink from "@jappan/components/panel/GuildSectionLink";
 import GuildOverviewPanel from "@jappan/components/panel/GuildOverviewPanel";
 import BotPermissionsPanel from "@jappan/components/panel/BotPermissionsPanel";
@@ -55,13 +61,15 @@ import useDocumentTitle, { formatTitle } from "@jappan/helpers/useDocumentTitle"
 import { CONFIRM_CLICK_MS } from "@jappan/helpers/confirmClick";
 
 const guildSections = [
-	{ id: "guild-overview", label: "Overview", icon: FiHome },
+	{ id: "overview", label: "Overview", icon: FiHome },
 	{ id: "admin-actions", label: "Admin actions", icon: FiSettings },
-	{ id: "guild-channels", label: "Channels", icon: FiHash },
+	{ id: "channels", label: "Channels", icon: FiHash },
+	{ id: "roles", label: "Roles", icon: FiTag },
+	{ id: "evaluate-user", label: "Evaluate user", icon: FiUserCheck },
 	{ id: "service-preferences", label: "Service Preferences", icon: FiSliders },
 	{ id: "warnings", label: "Warnings", icon: FiAlertCircle },
 	{ id: "voice-region-locks", label: "Voice region locks", icon: FiGlobe },
-	{ id: "bot-permissions", label: "Bot permissions", icon: FiShield },
+	{ id: "bot-permissions", label: "Bot permissions", icon: FiKey },
 	{ id: "command-permissions", label: "Command permissions", icon: FaListCheck },
 	{ id: "purge-messages", label: "Purge messages", icon: FiTrash2 },
 ];
@@ -158,7 +166,7 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 		},
 		onSuccess: () => {
 			queryClient.removeQueries({ queryKey: ["user", "guild", guild.id, "channels"], exact: true });
-			queryClient.removeQueries({ queryKey: ["user", "guild", guild.id, "roles"], exact: true });
+			queryClient.removeQueries({ queryKey: ["user", "guild", guild.id, "roles"] });
 			void queryClient.invalidateQueries({ queryKey: ["user", "guild", guild.id], exact: true });
 			void queryClient.invalidateQueries({ queryKey: ["admin", "guild", guild.id] });
 			void queryClient.invalidateQueries({ queryKey: ["admin", "list-guilds"] });
@@ -311,20 +319,25 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 							<form onSubmit={submitMessage} className="mt-4 space-y-3">
 								<div>
 									<LabelField id="admin-message-channel" label="Channel" className="mb-1" />
-									<Select
-										id="admin-message-channel"
-										value={selectedChannelId}
-										onChange={setChannelId}
-										disabled={textChannels.length === 0 || sendMessageMutation.isPending}
-										className="h-10"
-										data={[
-											{ key: "", label: "Select a channel", disabled: true },
-											...textChannels.map((channel) => ({
-												key: channel.id,
-												label: `#${channel.name} (${channel.id}) | ${channel.parent ? (channel.parent.name ?? "Unavailable category") : "Uncategorized"}`,
-											})),
-										]}
-									/>
+									<div className="flex items-center gap-1">
+										<Select
+											id="admin-message-channel"
+											value={selectedChannelId}
+											onChange={setChannelId}
+											disabled={textChannels.length === 0 || sendMessageMutation.isPending}
+											className="h-10 min-w-0 flex-1"
+											data={[
+												{ key: "", label: "Select a channel", disabled: true },
+												...textChannels.map((channel) => ({
+													key: channel.id,
+													label: `#${channel.name} (${channel.id}) | ${channel.parent ? (channel.parent.name ?? "Unavailable category") : "Uncategorized"}`,
+												})),
+											]}
+										/>
+										{selectedChannelId && (
+											<CopyIdButton id={selectedChannelId} label="Channel ID" />
+										)}
+									</div>
 								</div>
 								<div>
 									<LabelField id="admin-message-content" label="Message" className="mb-1" />
@@ -427,8 +440,14 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 										<dd>
 											{inviteMutation.data.channel?.name ?? "Unknown"}
 											{inviteMutation.data.channel && (
-												<span className="ml-1 break-all text-xs text-muted-foreground">
-													({inviteMutation.data.channel.id})
+												<span className="ml-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
+													<span className="break-all">
+														({inviteMutation.data.channel.id})
+													</span>
+													<CopyIdButton
+														id={inviteMutation.data.channel.id}
+														label="Channel ID"
+													/>
 												</span>
 											)}
 										</dd>
@@ -464,7 +483,12 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 									</div>
 									<div>
 										<dt className="text-muted-foreground">Inviter</dt>
-										<dd>{inviteMutation.data.inviter?.username ?? "Unknown"}</dd>
+										<dd>
+											{inviteMutation.data.inviter?.displayName ??
+												(inviteMutation.data.inviter
+													? `@${inviteMutation.data.inviter.username}`
+													: "Unknown")}
+										</dd>
 									</div>
 								</dl>
 							</div>
@@ -506,24 +530,29 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 							{channelsQuery.data && !channelsQuery.isError && (
 								<div>
 									<LabelField id="guild-kick-channel" label="Departure channel" className="mb-1" />
-									<Select
-										id="guild-kick-channel"
-										value={selectedKickChannelId}
-										onChange={setKickChannelId}
-										disabled={
-											textChannels.length === 0 ||
-											channelsQuery.isFetching ||
-											kickMutation.isPending
-										}
-										className="h-10"
-										data={[
-											{ key: "", label: "No departure message" },
-											...textChannels.map((channel) => ({
-												key: channel.id,
-												label: `#${channel.name} (${channel.id}) | ${channel.parent ? (channel.parent.name ?? "Unavailable category") : "Uncategorized"}`,
-											})),
-										]}
-									/>
+									<div className="flex items-center gap-1">
+										<Select
+											id="guild-kick-channel"
+											value={selectedKickChannelId}
+											onChange={setKickChannelId}
+											disabled={
+												textChannels.length === 0 ||
+												channelsQuery.isFetching ||
+												kickMutation.isPending
+											}
+											className="h-10 min-w-0 flex-1"
+											data={[
+												{ key: "", label: "No departure message" },
+												...textChannels.map((channel) => ({
+													key: channel.id,
+													label: `#${channel.name} (${channel.id}) | ${channel.parent ? (channel.parent.name ?? "Unavailable category") : "Uncategorized"}`,
+												})),
+											]}
+										/>
+										{selectedKickChannelId && (
+											<CopyIdButton id={selectedKickChannelId} label="Channel ID" />
+										)}
+									</div>
 									{textChannels.length === 0 && (
 										<p className="mt-1 text-sm text-muted-foreground">
 											No sendable channels are available. The bot will leave without sending a
@@ -574,18 +603,31 @@ function GuildDetails({ guild }: { guild: AdminGuildDetails }) {
 	const [section, setSection] = useState(readSectionFromHash);
 
 	useEffect(() => {
-		const handleHashChange = () => setSection(readSectionFromHash());
-		window.addEventListener("hashchange", handleHashChange);
-		return () => window.removeEventListener("hashchange", handleHashChange);
+		const syncSectionFromUrl = () => {
+			const nextSection = readSectionFromHash();
+			setSection(nextSection);
+			if (nextSection === "evaluate-user" || nextSection === "warnings") return;
+			const url = new URL(window.location.href);
+			if (!url.search) return;
+			url.search = "";
+			window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+		};
+		window.addEventListener("hashchange", syncSectionFromUrl);
+		window.addEventListener("popstate", syncSectionFromUrl);
+		syncSectionFromUrl();
+		return () => {
+			window.removeEventListener("hashchange", syncSectionFromUrl);
+			window.removeEventListener("popstate", syncSectionFromUrl);
+		};
 	}, []);
 
 	const changeSection = (value: string) => {
 		setSection(value);
-		window.history.replaceState(
-			window.history.state,
-			"",
-			`${window.location.pathname}${window.location.search}#${value}`,
-		);
+		const url = new URL(window.location.href);
+		url.search = "";
+		url.hash = "";
+		url.hash = value;
+		window.history.pushState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
 	};
 
 	return (
@@ -600,14 +642,25 @@ function GuildDetails({ guild }: { guild: AdminGuildDetails }) {
 					</TabsTab>
 				))}
 			</TabsList>
-			<TabsPanel value="guild-overview" keepMounted>
+			<TabsPanel value="overview" keepMounted>
 				<GuildOverviewPanel guild={guild} />
 			</TabsPanel>
 			<TabsPanel value="admin-actions" keepMounted>
 				<GuildActions key={guild.id} guild={guild} />
 			</TabsPanel>
-			<TabsPanel value="guild-channels" keepMounted>
+			<TabsPanel value="channels" keepMounted>
 				<GuildChannelsPanel guild={guild} />
+			</TabsPanel>
+			<TabsPanel value="roles" keepMounted>
+				<GuildRolesPanel guild={guild} />
+			</TabsPanel>
+			<TabsPanel value="evaluate-user" keepMounted>
+				<GuildUserAccessPanel
+					key={guild.id}
+					guildId={guild.id}
+					active={section === "evaluate-user"}
+					isActiveMember={guild.isActiveMember}
+				/>
 			</TabsPanel>
 			<TabsPanel value="service-preferences" keepMounted>
 				<GuildServicePreferencesPanel guild={guild} active={section === "service-preferences"} />
@@ -634,7 +687,7 @@ function GuildDetails({ guild }: { guild: AdminGuildDetails }) {
 				<CommandPermissionsPanel permissions={guild.permissions} />
 			</TabsPanel>
 			<TabsPanel value="purge-messages" keepMounted>
-				<PurgeMessagesPanel active={section === "purge-messages"} initialGuildId={guild.id} />
+				<PurgeMessagesPanel active={section === "purge-messages"} guildId={guild.id} />
 			</TabsPanel>
 		</Tabs>
 	);
@@ -663,25 +716,38 @@ export default function AdminViewGuild() {
 
 	const accessStatus = accessErrorStatus(guildQuery.error);
 	if (accessStatus) return <AccessRedirect status={accessStatus} />;
-
-	let content: ReactNode;
-	if (!guildId) {
-		content = <p role="alert">Invalid guild ID.</p>;
-	} else if (!validGuildId) {
-		content = <p role="alert">Invalid guild ID.</p>;
-	} else if (guildQuery.isPending || guildQuery.isFetching) {
-		content = <LoadingIndicator label="Loading guild" />;
-	} else if (guildQuery.isError) {
-		content = guildNotFound ? null : (
-			<div role="alert">
-				<p>Could not load guild details. Check your access and try again.</p>
-				<Button size="sm" variant="outline-primary" onClick={() => void guildQuery.refetch()}>
-					Retry
-				</Button>
-			</div>
+	if (!validGuildId) {
+		return (
+			<ErrorPage
+				status="400"
+				title="Invalid guild ID"
+				message="The guild ID in this address is invalid."
+				actions={
+					<PillLink href="/admin/guilds" variant="outline-secondary">
+						All guilds
+					</PillLink>
+				}
+			/>
 		);
-	} else {
-		content = <GuildDetails guild={guildQuery.data} />;
+	}
+	if (guildNotFound) return null;
+	if (guildQuery.isError) {
+		const errorStatus = axios.isAxiosError(guildQuery.error) ? guildQuery.error.response?.status : undefined;
+		return (
+			<ErrorPage
+				status={errorStatus ? String(errorStatus) : "Guild error"}
+				title="Could not load guild details"
+				message={"Could not load guild details.\nCheck your access and try again."}
+				actions={
+					<>
+						<Button onClick={() => void guildQuery.refetch()}>Retry</Button>
+						<PillLink href="/admin/guilds" variant="outline-secondary">
+							All guilds
+						</PillLink>
+					</>
+				}
+			/>
+		);
 	}
 
 	return (
@@ -691,7 +757,11 @@ export default function AdminViewGuild() {
 				All guilds
 			</PillLink>
 			<GuildPageHeader title="Guild details" guild={guildQuery.data} />
-			{content}
+			{guildQuery.isPending || guildQuery.isFetching ? (
+				<LoadingIndicator label="Loading guild" />
+			) : guildQuery.data ? (
+				<GuildDetails guild={guildQuery.data} />
+			) : null}
 		</main>
 	);
 }

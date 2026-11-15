@@ -10,8 +10,12 @@ import { logger } from "../services/logger.js";
 import { getBotVersion } from "../helpers/utils.js";
 
 const REQUEST_TIMEOUT_MS = 5 * 60 * 1000;
-const QUIET_ROUTES = ["/api/v1/public/health"];
+const QUIET_ROUTES_PREFIX = ["/api/v1/public/health"];
+const QUIET_ROUTES_EXACT = ["/api/v1/auth/get-session"];
 const QUIET_METHODS = ["OPTIONS"];
+const STATIC_ROUTE_PREFIXES = ["/swagger/"];
+const DEFAULT_CACHE_CONTROL = "no-cache, no-store, must-revalidate";
+const STATIC_CACHE_CONTROL = "private, no-cache, max-age=1800, must-revalidate";
 const AUTH_ROUTE_PREFIX = "/api/v1/auth/";
 const CSP_BASE =
 	"object-src 'none'; frame-src 'none'; form-action 'self'; base-uri 'self'; frame-ancestors 'none'; upgrade-insecure-requests;";
@@ -26,7 +30,6 @@ const securityHeaders: Record<string, string> = {
 	"X-Content-Type-Options": "nosniff",
 	"Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
 	"Referrer-Policy": "no-referrer",
-	"Cache-Control": "no-cache, no-store, must-revalidate",
 };
 
 function processRequest(request: Request, response: Response, next: NextFunction): void {
@@ -34,6 +37,12 @@ function processRequest(request: Request, response: Response, next: NextFunction
 	for (const [name, value] of Object.entries(securityHeaders)) {
 		response.setHeader(name, value);
 	}
+	response.setHeader(
+		"Cache-Control",
+		STATIC_ROUTE_PREFIXES.some((prefix) => request.path.startsWith(prefix))
+			? STATIC_CACHE_CONTROL
+			: DEFAULT_CACHE_CONTROL,
+	);
 	response.setHeader("X-Request-Timeout-Ms", REQUEST_TIMEOUT_MS.toString());
 	response.setHeader("X-Version", `v${getBotVersion()}`);
 	response.setHeader("Content-Security-Policy", request.path.startsWith(DOCS_ROUTE) ? DOCS_CSP : DEFAULT_CSP);
@@ -48,7 +57,11 @@ function processRequest(request: Request, response: Response, next: NextFunction
 			});
 		}
 	});
-	if (!QUIET_ROUTES.some((route) => request.path.startsWith(route)) && !QUIET_METHODS.includes(request.method)) {
+	if (
+		!QUIET_ROUTES_PREFIX.some((route) => request.path.startsWith(route)) &&
+		!QUIET_ROUTES_EXACT.includes(request.path) &&
+		!QUIET_METHODS.includes(request.method)
+	) {
 		logger.info("HTTP", "HTTP request received", {
 			method: request.method,
 			url: requestUrl,

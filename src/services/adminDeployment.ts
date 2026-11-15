@@ -77,10 +77,53 @@ export function getPrefixCommand(content: string): PrefixCommand | undefined {
 	return command === "ping" ? command : undefined;
 }
 
-export async function setGuildCommands(guild: Guild, shouldDeploy: boolean): Promise<number> {
-	const guildCommands = shouldDeploy ? getGuildCommands().map((command) => command.data.toJSON()) : [];
+export async function setGuildCommands({
+	guild,
+	mode,
+}: {
+	guild: Guild;
+	mode: "deploy" | "undeploy";
+}): Promise<number> {
+	const guildCommands = mode === "deploy" ? getGuildCommands().map((command) => command.data.toJSON()) : [];
 	const registeredCommands = await guild.commands.set(guildCommands);
 	return registeredCommands.size;
+}
+
+export async function syncDeployedGuildCommands(client: Client): Promise<{
+	syncedGuildCount: number;
+	skippedGuildCount: number;
+	failures: { guild: string; error: unknown }[];
+}> {
+	let syncedGuildCount = 0;
+	let skippedGuildCount = 0;
+	const failures: { guild: string; error: unknown }[] = [];
+
+	logger.info("BOT", "Starting guild application command update", {
+		guildCount: client.guilds.cache.size,
+		commandCount: getGuildCommands().size,
+	});
+
+	for (const guild of client.guilds.cache.values()) {
+		if (!guild.available) {
+			skippedGuildCount += 1;
+			continue;
+		}
+
+		try {
+			const existingCommands = await guild.commands.fetch();
+			if (existingCommands.size === 0) {
+				skippedGuildCount += 1;
+				continue;
+			}
+
+			await setGuildCommands({ guild, mode: "deploy" });
+			syncedGuildCount += 1;
+		} catch (error: unknown) {
+			failures.push({ guild: formatGuild(guild), error });
+		}
+	}
+
+	return { syncedGuildCount, skippedGuildCount, failures };
 }
 
 export async function handlePrefixMessage({

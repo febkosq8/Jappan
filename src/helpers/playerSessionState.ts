@@ -1,5 +1,6 @@
 import type { QueueRepeatMode, Track } from "discord-player";
 import { canControlPlayerSession, isPlayerSessionOwner, type PlayerActor } from "../services/playerAccess.js";
+import { toApiUser, type ApiUser } from "./apiUser.js";
 import type { PlayerChangeSource, PlayerQueue } from "./player.js";
 
 export const REPEAT_MODE_LABELS = ["off", "track", "queue", "autoplay"] as const;
@@ -13,7 +14,7 @@ export interface PlayerSessionTrack {
 	readonly thumbnailUrl: string | null;
 	readonly source: string;
 	readonly durationMs: number;
-	readonly requestedBy: { readonly username: string; readonly avatarUrl: string | null } | null;
+	readonly requestedBy: ApiUser | null;
 }
 
 export interface PlayerSessionState {
@@ -26,14 +27,14 @@ export interface PlayerSessionState {
 		readonly listenerCount: number;
 		readonly region: string | null;
 	} | null;
-	readonly owner: { readonly username: string; readonly avatarUrl: string | null };
+	readonly owner: ApiUser;
 	readonly locked: boolean;
-	readonly lastChangedBy: {
-		readonly username: string;
-		readonly avatarUrl: string | null;
-		readonly source: PlayerChangeSource;
-		readonly timestampMs: number;
-	} | null;
+	readonly lastChangedBy:
+		| (ApiUser & {
+				readonly source: PlayerChangeSource;
+				readonly timestampMs: number;
+		  })
+		| null;
 	/** What the requesting user may do with this session. */
 	readonly viewer: {
 		readonly isOwner: boolean;
@@ -85,10 +86,12 @@ function serializeTrack(track: Track): PlayerSessionTrack {
 		source: track.source,
 		durationMs: finiteDurationMs(track),
 		requestedBy: track.requestedBy
-			? {
+			? toApiUser({
+					id: track.requestedBy.id,
 					username: track.requestedBy.username,
+					displayName: track.requestedBy.globalName,
 					avatarUrl: toHttpUrl(track.requestedBy.displayAvatarURL()),
-				}
+				})
 			: null,
 	};
 }
@@ -110,8 +113,12 @@ function getLastChangeInfo(queue: PlayerQueue): PlayerSessionState["lastChangedB
 	}
 	const changer = queue.guild.client.users.cache.get(change.id);
 	return {
-		username: change.username,
-		avatarUrl: changer?.displayAvatarURL() ?? null,
+		...toApiUser({
+			id: change.id,
+			username: changer?.username ?? change.username,
+			displayName: changer?.globalName,
+			avatarUrl: changer?.displayAvatarURL({ size: 64 }) ?? null,
+		}),
 		source: change.source,
 		timestampMs: change.timestampMs,
 	};
@@ -154,7 +161,12 @@ export function getPlayerSessionState({
 		webPlayerCount,
 		guild: { id: queue.guild.id, name: queue.guild.name, iconUrl: queue.guild.iconURL() },
 		channel: getChannelInfo(queue),
-		owner: { username: ownerUser?.username ?? owner.username, avatarUrl: ownerUser?.displayAvatarURL() ?? null },
+		owner: toApiUser({
+			id: owner.id,
+			username: ownerUser?.username ?? owner.username,
+			displayName: ownerUser?.globalName,
+			avatarUrl: ownerUser?.displayAvatarURL({ size: 64 }) ?? null,
+		}),
 		locked: queue.metadata.locked,
 		lastChangedBy: getLastChangeInfo(queue),
 		viewer: {

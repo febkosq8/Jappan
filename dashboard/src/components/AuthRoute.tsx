@@ -2,7 +2,7 @@ import axios from "axios";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 
 import { isAdminSession, sessionErrorCode, useSessionQuery } from "@jappan/handlers/auth";
-import { authErrorURL } from "@jappan/handlers/authRedirect";
+import { authErrorURL } from "@jappan/helpers/authRedirect";
 import LoadingIndicator from "./LoadingIndicator";
 
 export function AccessRedirect({ status }: { status: 401 | 403 }) {
@@ -23,7 +23,8 @@ function AuthErrorRedirect({
 	rejectedSessionId?: string;
 }) {
 	const location = useLocation();
-	const returnTo = `${location.pathname}${location.search}${location.hash}`;
+	const { hash } = window.location;
+	const returnTo = `${location.pathname}${location.search}${hash}`;
 	const errorURL = new URL(authErrorURL(window.location.origin, returnTo, errorCode));
 	return <Navigate to={`${errorURL.pathname}${errorURL.search}`} replace state={{ rejectedSessionId }} />;
 }

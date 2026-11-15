@@ -421,6 +421,23 @@ export function getValidatedPlayerVoiceChannel(interaction: ChatInputCommandInte
 	return { success: true, channel: voiceChannel, member };
 }
 
+export function createPlayerLoadingEmbed({
+	searchResult,
+	member,
+}: {
+	searchResult: SearchResult;
+	member: GuildMember | APIInteractionGuildMember;
+}): EmbedBuilder {
+	const firstTrack = searchResult.tracks[0];
+	return createPlayerEmbed({
+		title: "⏳ Loading playback",
+		description: `Waiting for your ${searchResult.playlist ? "playlist" : "track"} to start.`,
+		color: "Blue",
+		requestedBy: formatUser(member.user),
+		...(firstTrack?.thumbnail ? { thumbnail: firstTrack.thumbnail } : {}),
+	});
+}
+
 export function updatePlayerQueueMessage({
 	queue,
 	content,

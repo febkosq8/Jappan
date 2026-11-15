@@ -1,17 +1,33 @@
-import { ApplicationCommandOptionType, ChannelType, PermissionsBitField } from "discord.js";
+import { ApplicationCommandOptionType, ApplicationCommandType, ChannelType, PermissionsBitField } from "discord.js";
 import { z } from "zod";
 
 import { getClient } from "../../bot.js";
 import { getClientGuilds } from "../../helpers/guild.js";
 import { defineRouter, errorResponseSchema } from "../../helpers/route.js";
 import type { RouteDefinition } from "../../helpers/route.js";
+import {
+	filterListByQuery,
+	listQueryParameters,
+	listQuerySchema,
+	paginateList,
+	paginatedListSchema,
+	parseListQuery,
+} from "../../helpers/list.js";
 import { getBotVersion } from "../../helpers/utils.js";
-import { getCommandId, getGlobalCommands, type BotCommand, type BotCommandData } from "../../services/commandLoader.js";
+import {
+	getCommandId,
+	getGlobalCommands,
+	getGlobalContextMenuCommands,
+	type BotCommand,
+	type BotCommandData,
+	type BotContextMenuCommand,
+} from "../../services/commandLoader.js";
 import healthRouter from "./health.js";
 
 const commandSchema = z.object({
 	id: z.string().nullable(),
-	type: z.enum(["command", "sub-command"]),
+	type: z.enum(["command", "sub-command", "context-menu"]),
+	applicationCommandType: z.enum(["chat-input", "message-context-menu", "user-context-menu"]),
 	name: z.string(),
 	description: z.string(),
 	category: z.enum(["general", "music", "level", "fun", "moderator", "admin"]),
@@ -68,6 +84,7 @@ function getPublicCommandEntries(command: BotCommand): z.infer<typeof detailedCo
 		entries.push({
 			id,
 			type: prefix ? "sub-command" : "command",
+			applicationCommandType: "chat-input",
 			name,
 			description: metadata.description,
 			category: metadata.category,
@@ -129,6 +146,29 @@ function getPublicCommandEntries(command: BotCommand): z.infer<typeof detailedCo
 	return entries;
 }
 
+function getPublicContextMenuCommandEntry(command: BotContextMenuCommand): z.infer<typeof detailedCommandSchema> {
+	const definition = command.data.toJSON();
+	const requiredBotPermissions = new PermissionsBitField().add(...(command.commandData.requiredBotPermissions ?? []));
+	const requiredUserPermissions = new PermissionsBitField().add(
+		...(command.commandData.defaultMemberPermissions === undefined
+			? []
+			: [command.commandData.defaultMemberPermissions]),
+	);
+	return {
+		id: getCommandId(definition.name) ?? null,
+		type: "context-menu",
+		applicationCommandType:
+			definition.type === ApplicationCommandType.Message ? "message-context-menu" : "user-context-menu",
+		name: definition.name,
+		description: command.commandData.description,
+		category: command.commandData.category,
+		requiredBotPermissions: requiredBotPermissions.toArray(),
+		requiredUserPermissions: requiredUserPermissions.toArray(),
+		usageNotes: [...(command.commandData.usageNotes ?? [])],
+		options: [],
+	};
+}
+
 const botStatusSchema = z.object({
 	botName: z.string(),
 	botAvatarUrl: z.string().url(),
@@ -179,17 +219,36 @@ const publicRoutes: RouteDefinition[] = [
 		method: "get",
 		path: "/commands",
 		tags: ["Public"],
-		summary: "List global slash commands and subcommands",
+		summary: "List global slash commands, subcommands, and context-menu actions",
 		errorMessage: "Failed to list commands",
+		parameters: listQueryParameters(detailedCommandSchema),
 		responses: {
 			200: {
-				description: "Global command definitions, options, and declared permissions",
-				schema: z.array(detailedCommandSchema),
+				description: "Global application command definitions, options, and declared permissions",
+				schema: paginatedListSchema(detailedCommandSchema),
 			},
+			400: { description: "Invalid list query", schema: errorResponseSchema },
 			500: { description: "Failed to list commands", schema: errorResponseSchema },
 		},
-		handler: (_request, response) =>
-			response.status(200).json(Array.from(getGlobalCommands().values()).flatMap(getPublicCommandEntries)),
+		handler: (request, response) => {
+			const query = parseListQuery(request.query, listQuerySchema, response);
+			if (!query) return;
+			const entries = [
+				...Array.from(getGlobalCommands().values()).flatMap(getPublicCommandEntries),
+				...Array.from(getGlobalContextMenuCommands().values()).map(getPublicContextMenuCommandEntry),
+			];
+			const filtered = filterListByQuery({
+				items: entries,
+				query: query.query,
+				fieldFilters: query.fieldFilters,
+				itemSchema: detailedCommandSchema,
+				response,
+			});
+			if (!filtered) return;
+			return response
+				.status(200)
+				.json(paginateList({ items: filtered, page: query.page, perPageLimit: query.perPageLimit }));
+		},
 	},
 ];
 

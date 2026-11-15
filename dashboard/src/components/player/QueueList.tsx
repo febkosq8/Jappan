@@ -64,13 +64,18 @@ export default function QueueList({
 										{track.requestedBy && (
 											<span className="flex shrink-0 items-center gap-1.5">
 												<Avatar
-													name={track.requestedBy.username}
+													name={
+														track.requestedBy.displayName ??
+														`@${track.requestedBy.username}`
+													}
 													image={track.requestedBy.avatarUrl}
 													size="sm"
 													className="size-5"
 													aria-hidden="true"
 												/>
-												<span className="max-w-32 truncate">{track.requestedBy.username}</span>
+												<span className="max-w-32 truncate">
+													{track.requestedBy.displayName ?? `@${track.requestedBy.username}`}
+												</span>
 											</span>
 										)}
 									</div>

@@ -1,6 +1,7 @@
 import { betterAuth } from "better-auth";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
 import { APIError } from "better-auth/api";
+import { bearer } from "better-auth/plugins";
 import mongoose from "mongoose";
 
 import AuthAccountModel from "../models/authAccount.js";
@@ -41,6 +42,7 @@ function createAuth() {
 		trustedOrigins: [...config.ALLOWED_ORIGINS],
 		onAPIError: { errorURL: new URL("/auth/error", config.BOT_WEBSITE).href },
 		database: mongodbAdapter(DatabaseManager.getDatabaseInstance()),
+		plugins: [bearer()],
 		socialProviders: {
 			discord: {
 				clientId: config.AUTH_DISCORD_CLIENT_ID,

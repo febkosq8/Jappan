@@ -5,7 +5,7 @@ import { useCallback, useState } from "react";
 import { toast } from "sonner";
 
 import { apiBaseURL } from "./APIHandler";
-import { authErrorURL, safeCallbackPath } from "./authRedirect";
+import { authErrorURL, safeCallbackPath } from "../helpers/authRedirect";
 
 export const authClient = createAuthClient({
 	baseURL: `${apiBaseURL}/api/v1/auth`,
@@ -44,7 +44,13 @@ export function sessionErrorCode(error: unknown): "NETWORK_ERROR" | "SESSION_CHE
 export function useSessionQuery(
 	options: { refetchOnWindowFocus?: boolean; refetchOnMount?: boolean; refetchOnReconnect?: boolean } = {},
 ) {
-	return useQuery({ queryKey: sessionQueryKey, queryFn: fetchSession, refetchOnWindowFocus: true, ...options });
+	return useQuery({
+		queryKey: sessionQueryKey,
+		queryFn: fetchSession,
+		staleTime: 30_000,
+		refetchOnWindowFocus: true,
+		...options,
+	});
 }
 
 export function isAdminSession(session: Awaited<ReturnType<typeof fetchSession>> | undefined): boolean {
