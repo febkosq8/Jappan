@@ -63,11 +63,7 @@ const columns: TableColumnDef<UserGuild>[] = [
 		sortUndefined: "last",
 		cell: ({ row }) => {
 			const owner = row.original.owner;
-			return owner ? (
-				<UserDisplay id={owner.userId} name={owner.username} avatarUrl={owner.avatarUrl} />
-			) : (
-				<Unavailable />
-			);
+			return owner ? <UserDisplay user={owner} /> : <Unavailable />;
 		},
 	},
 	{

@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { Response } from "express";
 
 import { getClient } from "../../../../bot.js";
+import { toApiUser } from "../../../../helpers/apiUser.js";
 import { requireAdmin, requireSession } from "../../../../handlers/auth.js";
 import { requireDiscord } from "../../../../handlers/availability.js";
 import { DISCORD_INTERACTION_TIME_LIMIT_MS } from "../../../../helpers/interaction.js";
@@ -22,12 +23,13 @@ import { getConfig } from "../../../../services/config.js";
 import { logger } from "../../../../services/logger.js";
 import { getActivePlayerSessions, runPlayerHealthCheck } from "../../../../services/player.js";
 import { handleShutdown } from "../../../../services/shutdown.js";
+import { apiUserSchema } from "../../schemas.js";
 
 const activePlayerSessionSchema = z.object({
 	sessionId: z.string(),
 	guild: z.object({ id: z.string(), name: z.string(), icon: z.string().url().nullable() }),
 	channel: z.object({ id: z.string(), name: z.string() }).nullable(),
-	owner: z.object({ id: z.string(), username: z.string(), avatarUrl: z.string().url().nullable() }),
+	owner: apiUserSchema,
 	queueSize: z.number(),
 	nowPlaying: z
 		.object({
@@ -38,7 +40,7 @@ const activePlayerSessionSchema = z.object({
 		.nullable(),
 	playerState: z.enum(["Playing", "Paused"]),
 });
-const administratorSchema = z.object({ id: z.string(), username: z.string(), avatarUrl: z.string().url() });
+const administratorSchema = apiUserSchema;
 
 const stopBotRequestSchema = z.object({ confirm: z.literal(true) });
 const stopBotResponseSchema = z.object({
@@ -100,7 +102,12 @@ export default defineRouter("/bot", [
 			const administrators = await Promise.all(
 				[...new Set(getConfig("ADMIN_USER_IDS"))].map(async (id) => {
 					const user = await client.users.fetch(id);
-					return { id: user.id, username: user.username, avatarUrl: user.displayAvatarURL({ size: 64 }) };
+					return toApiUser({
+						id: user.id,
+						username: user.username,
+						displayName: user.globalName,
+						avatarUrl: user.displayAvatarURL({ size: 64 }),
+					});
 				}),
 			);
 			const filtered = filterListByQuery({

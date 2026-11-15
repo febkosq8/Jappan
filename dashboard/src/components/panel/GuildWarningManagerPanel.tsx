@@ -124,8 +124,8 @@ export default function GuildWarningManagerPanel({
 			filterFn: "includesString",
 			cell: ({ row }) => {
 				const issuer = row.original.issuer;
-				return issuer?.username ? (
-					<UserDisplay id={issuer.userId} name={issuer.username} avatarUrl={issuer.avatarUrl} size="sm" />
+				return issuer ? (
+					<UserDisplay user={issuer} size="sm" />
 				) : (
 					<span className="break-all">{row.original.issuerId ?? "Unknown"}</span>
 				);
@@ -223,13 +223,7 @@ export default function GuildWarningManagerPanel({
 						{selectedMember && (
 							<>
 								<div className="flex flex-wrap items-center gap-3 border-y border-border py-4">
-									<UserDisplay
-										id={selectedMember.id}
-										name={selectedMember.displayName}
-										username={selectedMember.username}
-										avatarUrl={selectedMember.avatarUrl}
-										size="md"
-									/>
+									<UserDisplay user={selectedMember} size="md" />
 									<span className="ml-auto inline-flex items-center gap-2 rounded-md bg-accent px-3 py-2 font-medium text-primary">
 										<FiAlertCircle aria-hidden="true" />
 										{selectedMember.warningCount} warning(s)

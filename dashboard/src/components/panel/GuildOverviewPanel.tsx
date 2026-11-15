@@ -28,11 +28,7 @@ export default function GuildOverviewPanel({ guild }: { guild: AdminGuildDetails
 					)}
 					{"owner" in guild && guild.owner && (
 						<GuildDetail label="Owner">
-							<UserDisplay
-								id={guild.owner.userId}
-								name={guild.owner.username}
-								avatarUrl={guild.owner.avatarUrl}
-							/>
+							<UserDisplay user={guild.owner} />
 						</GuildDetail>
 					)}
 					{"isActiveMember" in guild && (

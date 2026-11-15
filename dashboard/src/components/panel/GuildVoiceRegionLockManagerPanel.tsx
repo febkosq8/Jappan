@@ -11,7 +11,7 @@ import CopyIdButton from "@jappan/components/display/CopyIdButton";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import GuildMemberPicker from "@jappan/components/panel/GuildMemberPicker";
 import GuildSectionLink from "@jappan/components/panel/GuildSectionLink";
-import APIHandler, { type VoiceRegionLock, type WarningMember } from "@jappan/handlers/APIHandler";
+import APIHandler, { type User, type VoiceRegionLock } from "@jappan/handlers/APIHandler";
 
 function formatVoiceRegion(region: string): string {
 	return region.replace(/-/g, " ").replace(/(^|\s)\S/gu, (initial) => initial.toUpperCase());
@@ -34,7 +34,7 @@ export default function GuildVoiceRegionLockManagerPanel({
 	isActiveMember: boolean;
 }) {
 	const queryClient = useQueryClient();
-	const [selectedMember, setSelectedMember] = useState<WarningMember | null>(null);
+	const [selectedMember, setSelectedMember] = useState<User | null>(null);
 	const [channelId, setChannelId] = useState("");
 	const [region, setRegion] = useState("");
 	const queryKey = ["user", "guild", guildId, "voice-region-locks"];
@@ -99,19 +99,14 @@ export default function GuildVoiceRegionLockManagerPanel({
 
 	const columns: TableColumnDef<VoiceRegionLock>[] = [
 		{
-			accessorKey: "userName",
+			accessorKey: "username",
 			header: "User",
 			mobileFullWidth: true,
 			size: 260,
 			filterFn: "includesString",
 			cell: ({ row }) => (
 				<div className="flex min-h-12 items-center py-2">
-					<UserDisplay
-						id={row.original.userId}
-						name={row.original.userName}
-						avatarUrl={row.original.avatarUrl}
-						size="md"
-					/>
+					<UserDisplay user={row.original} size="md" />
 				</div>
 			),
 		},
@@ -133,7 +128,7 @@ export default function GuildVoiceRegionLockManagerPanel({
 		},
 		{
 			id: "actions",
-			accessorKey: "userId",
+			accessorKey: "id",
 			header: "Actions",
 			size: 120,
 			enableSorting: false,
@@ -144,10 +139,10 @@ export default function GuildVoiceRegionLockManagerPanel({
 					size="sm"
 					variant="outline-secondary"
 					disabled={busy || !active}
-					aria-label={`Remove voice region lock for ${row.original.userName}`}
-					onClick={() => removeMutation.mutate(row.original.userId)}
+					aria-label={`Remove voice region lock for ${row.original.displayName}`}
+					onClick={() => removeMutation.mutate(row.original.id)}
 				>
-					{removeMutation.isPending && removeMutation.variables === row.original.userId
+					{removeMutation.isPending && removeMutation.variables === row.original.id
 						? "Removing..."
 						: "Remove"}
 				</Button>
@@ -216,13 +211,7 @@ export default function GuildVoiceRegionLockManagerPanel({
 											Member to watch
 										</p>
 										<div className="flex items-center justify-between gap-3 rounded-md border border-border p-2">
-											<UserDisplay
-												id={selectedMember.id}
-												name={selectedMember.displayName}
-												username={selectedMember.username}
-												avatarUrl={selectedMember.avatarUrl}
-												size="sm"
-											/>
+											<UserDisplay user={selectedMember} size="sm" />
 											<Button
 												type="button"
 												size="sm"

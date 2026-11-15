@@ -2,48 +2,62 @@ import { Avatar } from "@febkosq8/arc";
 
 import ExternalTextLink from "@jappan/components/ExternalTextLink";
 import CopyIdButton from "@jappan/components/display/CopyIdButton";
+import type { User } from "@jappan/handlers/APIHandler";
 
-interface UserDisplayProps {
-	id?: string;
-	name: string;
-	username?: string;
-	avatarUrl?: string | null;
+type UserDisplayProps = {
 	size?: "sm" | "md" | "lg" | "xl";
 	showId?: boolean;
 	linkName?: boolean;
 	keepFocusOnCopy?: boolean;
-}
+} & (
+	| { user: User }
+	| {
+			user?: undefined;
+			id?: string;
+			name: string;
+			username?: string;
+			avatarUrl?: string | null;
+	  }
+);
 
-export default function UserDisplay({
-	id,
-	name,
-	username,
-	avatarUrl,
-	size = "lg",
-	showId = true,
-	linkName = true,
-	keepFocusOnCopy = false,
-}: UserDisplayProps) {
+export default function UserDisplay(props: UserDisplayProps) {
+	const { size = "lg", showId = true, linkName = true, keepFocusOnCopy = false } = props;
+	const identity = props.user
+		? {
+				id: props.user.id,
+				name: props.user.displayName,
+				username: props.user.username,
+				avatarUrl: props.user.avatarUrl,
+			}
+		: {
+				id: props.id,
+				name: props.name,
+				username: props.username,
+				avatarUrl: props.avatarUrl,
+			};
+
 	return (
 		<div className="flex min-w-0 items-center gap-2">
-			<Avatar name={name} image={avatarUrl} size={size} aria-hidden="true" />
+			<Avatar name={identity.name} image={identity.avatarUrl} size={size} aria-hidden="true" />
 			<div className="min-w-0">
 				<p className="flex min-w-0 items-center gap-1 font-medium">
 					<span className="min-w-0 truncate">
-						{id && linkName ? (
+						{identity.id && linkName ? (
 							<ExternalTextLink
-								href={`https://discord.com/users/${encodeURIComponent(id)}`}
-								text={name}
+								href={`https://discord.com/users/${encodeURIComponent(identity.id)}`}
+								text={identity.name}
 							/>
 						) : (
-							name
+							identity.name
 						)}
 					</span>
-					{username && <span className="shrink-0 font-normal text-muted-foreground">(@{username})</span>}
+					{identity.username && (
+						<span className="shrink-0 font-normal text-muted-foreground">(@{identity.username})</span>
+					)}
 				</p>
-				{showId && id && (
+				{showId && identity.id && (
 					<p className="flex items-center gap-1">
-						<span className="min-w-0 break-all text-xs text-muted-foreground">{id}</span>
+						<span className="min-w-0 break-all text-xs text-muted-foreground">{identity.id}</span>
 						{keepFocusOnCopy ? (
 							<span
 								className="shrink-0"
@@ -53,10 +67,10 @@ export default function UserDisplay({
 								}}
 								onClick={(event) => event.stopPropagation()}
 							>
-								<CopyIdButton id={id} label="User ID" />
+								<CopyIdButton id={identity.id} label="User ID" />
 							</span>
 						) : (
-							<CopyIdButton id={id} label="User ID" />
+							<CopyIdButton id={identity.id} label="User ID" />
 						)}
 					</p>
 				)}

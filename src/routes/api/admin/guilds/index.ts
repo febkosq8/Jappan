@@ -13,6 +13,8 @@ import {
 	parseListQuery,
 } from "../../../../helpers/list.js";
 import { defineRouter, errorResponseSchema } from "../../../../helpers/route.js";
+import { toApiUser } from "../../../../helpers/apiUser.js";
+import { apiUserSchema } from "../../schemas.js";
 import { getGuildInvite, kickGuild, sendGuildAdminMessage } from "../../../../helpers/adminGuild.js";
 import {
 	allGuildKeys,
@@ -82,7 +84,7 @@ const adminGuildInviteSchema = z.object({
 	uses: z.number().int().nullable(),
 	maxUses: z.number().int().nullable(),
 	temporary: z.boolean(),
-	inviter: z.object({ id: z.string(), username: z.string() }).nullable(),
+	inviter: apiUserSchema.nullable(),
 });
 
 export default defineRouter("/guilds", [
@@ -406,7 +408,14 @@ export default defineRouter("/guilds", [
 				uses: invite.uses ?? null,
 				maxUses: invite.maxUses ?? null,
 				temporary: invite.temporary,
-				inviter: invite.inviter ? { id: invite.inviter.id, username: invite.inviter.username } : null,
+				inviter: invite.inviter
+					? toApiUser({
+							id: invite.inviter.id,
+							username: invite.inviter.username,
+							displayName: invite.inviter.globalName,
+							avatarUrl: invite.inviter.displayAvatarURL({ size: 64 }),
+						})
+					: null,
 			});
 		},
 	},

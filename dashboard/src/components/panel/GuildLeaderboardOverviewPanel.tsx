@@ -50,15 +50,15 @@ export default function GuildLeaderboardOverviewPanel({ leaderboard }: { leaderb
 							<FaTrophy className="size-4" aria-hidden="true" />
 							{place === 1 ? "1st place" : place === 2 ? "2nd place" : "3rd place"}
 						</span>
-						<Avatar name={entry.username} image={entry.avatarUrl} size="lg" aria-hidden="true" />
+						<Avatar name={entry.displayName} image={entry.avatarUrl} size="lg" aria-hidden="true" />
 						<div className="min-w-0 max-w-full">
 							<a
-								href={`https://discord.com/users/${encodeURIComponent(entry.userId)}`}
+								href={`https://discord.com/users/${encodeURIComponent(entry.id)}`}
 								target="_blank"
 								rel="noreferrer"
 								className="font-semibold text-foreground underline-offset-4 hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 							>
-								{entry.username}
+								{entry.displayName}
 							</a>
 							<p className="mt-1 text-sm tabular-nums text-muted-foreground">
 								{entry.points.toLocaleString()} points

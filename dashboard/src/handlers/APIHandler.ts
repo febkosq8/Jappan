@@ -33,7 +33,7 @@ export interface AdminBotPlayerSession {
 	sessionId: string;
 	guild: { id: string; name: string; icon: string | null };
 	channel: { id: string; name: string } | null;
-	owner: { id: string; username: string; avatarUrl: string | null };
+	owner: User;
 	queueSize: number;
 	nowPlaying: {
 		name: string;
@@ -43,11 +43,7 @@ export interface AdminBotPlayerSession {
 	playerState: "Playing" | "Paused";
 }
 
-export interface AdminBotAdministrator {
-	id: string;
-	username: string;
-	avatarUrl: string;
-}
+export type AdminBotAdministrator = User;
 
 export interface BotStatus {
 	botName: string;
@@ -91,7 +87,7 @@ interface AdminGuildBase {
 	systemChannel?: { id: string; name: string } | null;
 	permissions?: string[];
 	hasRequiredPermissions?: boolean;
-	owner?: { userId: string; avatarUrl: string; username: string };
+	owner?: User;
 }
 
 export interface AdminGuild extends AdminGuildBase {
@@ -156,7 +152,7 @@ export interface GuildPurgeMessagePreview {
 		id: string;
 		channelId: string;
 		channelName: string;
-		author: { id: string; username: string; displayName: string; avatarUrl: string };
+		author: User;
 		content: string;
 		embedContent?: (string | null)[];
 		createdTimestampMs: number;
@@ -232,7 +228,7 @@ export interface AdminGuildInvite {
 	uses: number | null;
 	maxUses: number | null;
 	temporary: boolean;
-	inviter: { id: string; username: string } | null;
+	inviter: User | null;
 }
 
 export interface ServicePreferences {
@@ -263,7 +259,7 @@ export interface UserGuild {
 	name: string;
 	icon?: string | null;
 	hasRequiredPermissions?: boolean;
-	owner?: { userId: string; avatarUrl: string; username: string };
+	owner?: User;
 }
 
 export interface UserGuildDetails extends UserGuild {
@@ -279,34 +275,36 @@ export interface GuildLeaderboard {
 	guildIcon: string | null;
 	enabled: boolean;
 	reward: { threshold: number; role: PreferenceEntity } | null;
-	entries: { rank: number; userId: string; username: string; avatarUrl: string | null; points: number }[];
+	entries: (User & { rank: number; points: number })[];
 	page: number;
 	pageCount: number;
 }
 
-export interface WarningMember {
+export interface User {
 	id: string;
-	username: string;
 	displayName: string;
+	username: string;
 	avatarUrl: string | null;
 }
+
+export type WarningMember = User;
 
 export interface WarningRecord {
 	id: string;
 	issuedAt: string | null;
 	reason: string;
 	issuerId: string | null;
-	issuer: { userId: string; username?: string; avatarUrl?: string | null } | null;
+	issuer: User | null;
 	thresholdAction: "unknown" | "pending" | "none" | "banned" | "timed_out" | "ban_failed" | "timeout_failed";
 }
 
-export interface WarningMemberDetails extends WarningMember {
+export interface WarningMemberDetails extends User {
 	isGuildMember: boolean;
 	warningCount: number;
 	warnings: WarningRecord[];
 }
 
-export interface GuildMemberAccess extends WarningMember {
+export interface GuildMemberAccess extends User {
 	bot: boolean;
 	joinedTimestampMs: number | null;
 	isOwner: boolean;
@@ -353,10 +351,7 @@ export interface GuildMemberAccessDetails {
 	channels: GuildMemberChannelAccess[];
 }
 
-export interface WarnedMember {
-	userId: string;
-	username: string;
-	avatarUrl: string | null;
+export interface WarnedMember extends User {
 	warningCount: number;
 }
 
@@ -365,10 +360,7 @@ export interface WarningIssueResult {
 	action: "none" | "banned" | "timed_out" | "ban_failed" | "timeout_failed";
 }
 
-export interface VoiceRegionLock {
-	userId: string;
-	userName: string;
-	avatarUrl: string | null;
+export interface VoiceRegionLock extends User {
 	channelId: string;
 	channelName: string;
 	region: string;
@@ -466,21 +458,21 @@ export interface PlayerTrack {
 	thumbnailUrl: string | null;
 	source: string;
 	durationMs: number;
-	requestedBy: { username: string; avatarUrl: string | null } | null;
+	requestedBy: User | null;
 }
 export interface PlayerSession {
 	sessionId: string;
 	webPlayerCount: number;
 	guild: { id: string; name: string; iconUrl: string | null };
 	channel: { id: string; name: string; listenerCount: number; region: string | null } | null;
-	owner: { username: string; avatarUrl: string | null };
+	owner: User;
 	locked: boolean;
-	lastChangedBy: {
-		username: string;
-		avatarUrl: string | null;
-		source: "discord" | "web";
-		timestampMs: number;
-	} | null;
+	lastChangedBy:
+		| (User & {
+				source: "discord" | "web";
+				timestampMs: number;
+		  })
+		| null;
 	viewer: {
 		isOwner: boolean;
 		isAdmin: boolean;
@@ -631,8 +623,8 @@ class APIHandler {
 		};
 	}
 
-	static async searchGuildMembers(guildId: string, query?: string): Promise<WarningMember[]> {
-		return APIHandler.getAllListItems<WarningMember>(`/api/v1/guilds/${encodeURIComponent(guildId)}/members`, {
+	static async searchGuildMembers(guildId: string, query?: string): Promise<User[]> {
+		return APIHandler.getAllListItems<User>(`/api/v1/guilds/${encodeURIComponent(guildId)}/members`, {
 			...(query ? { params: { query } } : {}),
 			withCredentials: true,
 		});

@@ -7,6 +7,7 @@ import {
 import { getLinkedDiscordAccountId, requireActiveUser, requireSession } from "../../../handlers/auth.js";
 import { requireDatabase, requireDiscord } from "../../../handlers/availability.js";
 import { defineRouter, errorResponseSchema, type RouteDefinition } from "../../../helpers/route.js";
+import { apiUserSchema } from "../schemas.js";
 import { MAX_PLAY_QUERY_LENGTH } from "../../../helpers/playerLimits.js";
 import { getPlayerSessionState } from "../../../helpers/playerSessionState.js";
 import type { AuthSession } from "../../../services/auth.js";
@@ -45,7 +46,7 @@ const trackSchema = z.object({
 	thumbnailUrl: z.string().nullable(),
 	source: z.string(),
 	durationMs: z.number().int().nonnegative(),
-	requestedBy: z.object({ username: z.string(), avatarUrl: z.string().nullable() }).nullable(),
+	requestedBy: apiUserSchema.nullable(),
 });
 const playerSessionSchema = z.object({
 	sessionId: z.string(),
@@ -59,12 +60,10 @@ const playerSessionSchema = z.object({
 			region: z.string().nullable(),
 		})
 		.nullable(),
-	owner: z.object({ username: z.string(), avatarUrl: z.string().nullable() }),
+	owner: apiUserSchema,
 	locked: z.boolean(),
-	lastChangedBy: z
-		.object({
-			username: z.string(),
-			avatarUrl: z.string().nullable(),
+	lastChangedBy: apiUserSchema
+		.extend({
 			source: z.enum(["discord", "web"]),
 			timestampMs: z.number().int(),
 		})

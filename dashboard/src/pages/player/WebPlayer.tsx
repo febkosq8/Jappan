@@ -393,11 +393,7 @@ export default function WebPlayer() {
 								<p className="text-sm font-semibold text-muted-foreground">Last change</p>
 								{session.lastChangedBy ? (
 									<div className="min-w-0">
-										<UserDisplay
-											name={session.lastChangedBy.username}
-											avatarUrl={session.lastChangedBy.avatarUrl}
-											showId={false}
-										/>
+										<UserDisplay user={session.lastChangedBy} showId={false} />
 										<div className="ml-12">
 											<p className="text-xs text-muted-foreground">
 												via {session.lastChangedBy.source === "web" ? "Web Player" : "Discord"}{" "}

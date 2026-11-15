@@ -151,13 +151,7 @@ function AccessDetails({ access, guildId }: { access: GuildMemberAccessDetails; 
 	return (
 		<div className="space-y-5">
 			<div className="flex flex-wrap items-center gap-3 border-y border-border py-4">
-				<UserDisplay
-					id={access.member.id}
-					name={access.member.displayName}
-					username={access.member.username}
-					avatarUrl={access.member.avatarUrl}
-					size="md"
-				/>
+				<UserDisplay user={access.member} size="md" />
 				{(access.member.bot || access.member.isOwner) && (
 					<div className="flex min-w-0 flex-1 flex-wrap items-center justify-center gap-1">
 						{access.member.bot && (

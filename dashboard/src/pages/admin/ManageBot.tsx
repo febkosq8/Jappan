@@ -107,11 +107,7 @@ function PlayerSession({ session }: { session: AdminBotPlayerSession }) {
 					<Card hoverable={false} className="min-w-0 rounded-md border-border p-3">
 						<dt className="text-muted-foreground">Owner</dt>
 						<dd className="mt-1 wrap-break-words font-medium">
-							<UserDisplay
-								id={session.owner.id}
-								name={session.owner.username}
-								avatarUrl={session.owner.avatarUrl}
-							/>
+							<UserDisplay user={session.owner} />
 						</dd>
 					</Card>
 					<Card hoverable={false} className="min-w-0 rounded-md border-border p-3 sm:col-span-2">
@@ -587,12 +583,7 @@ export default function ManageBot() {
 						<ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 							{administratorsQuery.data.map((administrator) => (
 								<li key={administrator.id} className="min-w-0 rounded-md border border-border p-3">
-									<UserDisplay
-										id={administrator.id}
-										name={administrator.username}
-										avatarUrl={administrator.avatarUrl}
-										size="sm"
-									/>
+									<UserDisplay user={administrator} size="sm" />
 								</li>
 							))}
 						</ul>

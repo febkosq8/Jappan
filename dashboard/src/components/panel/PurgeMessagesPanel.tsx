@@ -9,7 +9,7 @@ import CopyIdButton from "@jappan/components/display/CopyIdButton";
 import UserDisplay from "@jappan/components/display/UserDisplay";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import GuildSectionLink from "@jappan/components/panel/GuildSectionLink";
-import APIHandler, { type WarningMember } from "@jappan/handlers/APIHandler";
+import APIHandler, { type User } from "@jappan/handlers/APIHandler";
 
 const purgeableChannelTypes = new Set(["GuildText", "GuildAnnouncement", "GuildVoice"]);
 
@@ -26,7 +26,7 @@ export default function PurgeMessagesPanel({ active, guildId }: { active: boolea
 	const [text, setText] = useState("");
 	const [regex, setRegex] = useState(false);
 	const [ignoreCase, setIgnoreCase] = useState(false);
-	const [selectedMember, setSelectedMember] = useState<WarningMember | null>(null);
+	const [selectedMember, setSelectedMember] = useState<User | null>(null);
 
 	const channelsQuery = useQuery({
 		queryKey: ["user", "guild", guildId, "channels"],
@@ -152,13 +152,7 @@ export default function PurgeMessagesPanel({ active, guildId }: { active: boolea
 						<LabelField id="purge-messages-member" label="Message author (optional)" className="mb-1" />
 						{selectedMember ? (
 							<div className="flex flex-wrap items-center gap-3">
-								<UserDisplay
-									id={selectedMember.id}
-									name={selectedMember.displayName}
-									username={selectedMember.username}
-									avatarUrl={selectedMember.avatarUrl}
-									size="sm"
-								/>
+								<UserDisplay user={selectedMember} size="sm" />
 								<Button
 									size="sm"
 									variant="outline-secondary"

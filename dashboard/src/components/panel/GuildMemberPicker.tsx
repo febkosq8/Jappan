@@ -6,7 +6,7 @@ import { FiSearch } from "react-icons/fi";
 
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import UserDisplay from "@jappan/components/display/UserDisplay";
-import APIHandler, { type WarningMember } from "@jappan/handlers/APIHandler";
+import APIHandler, { type User } from "@jappan/handlers/APIHandler";
 
 export default function GuildMemberPicker({
 	id,
@@ -21,7 +21,7 @@ export default function GuildMemberPicker({
 	enabled: boolean;
 	disabled?: boolean;
 	selectedMemberId?: string;
-	onSelect: (member: WarningMember) => void;
+	onSelect: (member: User) => void;
 }) {
 	const listboxId = useId();
 	const [searchInput, setSearchInput] = useState("");
@@ -56,7 +56,7 @@ export default function GuildMemberPicker({
 			? membersQuery.error.response.data.error
 			: "Could not load guild members. Please try again.";
 
-	const selectMember = (member: WarningMember) => {
+	const selectMember = (member: User) => {
 		onSelect(member);
 		setSearchInput("");
 		setSearchQuery("");
@@ -162,15 +162,7 @@ export default function GuildMemberPicker({
 									index === activeMemberIndex ? "bg-accent text-primary" : ""
 								}`}
 							>
-								<UserDisplay
-									id={member.id}
-									name={member.displayName}
-									username={member.username}
-									avatarUrl={member.avatarUrl}
-									size="sm"
-									linkName={false}
-									keepFocusOnCopy
-								/>
+								<UserDisplay user={member} size="sm" linkName={false} keepFocusOnCopy />
 							</li>
 						))}
 					</ul>

@@ -33,6 +33,7 @@ import {
 	parseListQuery,
 	validateListFieldFilters,
 } from "../../../helpers/list.js";
+import { toApiUser } from "../../../helpers/apiUser.js";
 import { defineRouter, errorResponseSchema } from "../../../helpers/route.js";
 import { getAdminGuildRoleDetails, listAdminGuildChannels, listAdminGuildRoles } from "../../../helpers/adminGuild.js";
 import {
@@ -595,7 +596,7 @@ export default defineRouter("/guilds", [
 		summary: "List users with at least one warning in a guild",
 		errorMessage: "Failed to list warned users",
 		security,
-		parameters: [...parameters, ...listQueryParameters(warnedMemberSchema, ["userId", "username", "warningCount"])],
+		parameters: [...parameters, ...listQueryParameters(warnedMemberSchema, ["id", "username", "warningCount"])],
 		responses: {
 			200: {
 				description: "Users with positive warning counts, highest count first",
@@ -616,7 +617,7 @@ export default defineRouter("/guilds", [
 			if (
 				!validateListFieldFilters({
 					fieldFilters: query.fieldFilters,
-					fields: ["userId", "username", "warningCount"],
+					fields: ["id", "username", "warningCount"],
 					itemSchema: warnedMemberSchema,
 					response,
 				})
@@ -627,18 +628,28 @@ export default defineRouter("/guilds", [
 				guildId: guild.id,
 				page: query.page,
 				perPageLimit: query.perPageLimit,
-				fieldFilters: query.fieldFilters,
+				fieldFilters: Object.fromEntries(
+					Object.entries(query.fieldFilters).map(([field, value]) => [
+						field === "id" ? "userId" : field,
+						value,
+					]),
+				),
 				...(query.query ? { query: query.query } : {}),
 			});
-			const enrichedMembers = members.map((member) => ({
-				userId: member.userId,
-				username: member.username,
-				warningCount: member.warningCount,
-				avatarUrl:
-					guild.members.cache.get(member.userId)?.displayAvatarURL({ size: 64 }) ??
-					guild.client.users.cache.get(member.userId)?.displayAvatarURL({ size: 64 }) ??
-					null,
-			}));
+			const enrichedMembers = members.map((member) => {
+				const guildMember = guild.members.cache.get(member.userId);
+				const user = guildMember?.user ?? guild.client.users.cache.get(member.userId);
+				return {
+					...toApiUser({
+						id: member.userId,
+						username: user?.username ?? member.username,
+						displayName: guildMember?.displayName ?? user?.globalName,
+						avatarUrl:
+							guildMember?.displayAvatarURL({ size: 64 }) ?? user?.displayAvatarURL({ size: 64 }) ?? null,
+					}),
+					warningCount: member.warningCount,
+				};
+			});
 			return response.status(200).json(
 				createPaginatedList({
 					items: enrichedMembers,
@@ -672,12 +683,14 @@ export default defineRouter("/guilds", [
 			const guild = await resolveGuild(request.params.guildId, response);
 			if (!guild) return;
 			const members = await listGuildMembers(guild);
-			const mappedMembers = members.map((member) => ({
-				id: member.id,
-				username: member.user.username,
-				displayName: member.displayName,
-				avatarUrl: member.displayAvatarURL({ size: 64 }),
-			}));
+			const mappedMembers = members.map((member) =>
+				toApiUser({
+					id: member.id,
+					username: member.user.username,
+					displayName: member.displayName,
+					avatarUrl: member.displayAvatarURL({ size: 64 }),
+				}),
+			);
 			const filtered = filterListByQuery({
 				items: mappedMembers,
 				query: query.query,
@@ -810,10 +823,12 @@ export default defineRouter("/guilds", [
 
 			return response.status(200).json({
 				member: {
-					id: member.id,
-					username: member.user.username,
-					displayName: member.displayName,
-					avatarUrl: member.displayAvatarURL({ size: 64 }),
+					...toApiUser({
+						id: member.id,
+						username: member.user.username,
+						displayName: member.displayName,
+						avatarUrl: member.displayAvatarURL({ size: 64 }),
+					}),
 					bot: member.user.bot,
 					joinedTimestampMs: member.joinedTimestamp,
 					isOwner: member.id === guild.ownerId,
@@ -878,7 +893,7 @@ export default defineRouter("/guilds", [
 			const user = member?.user ?? (await fetchWarningUser(guild, userId));
 			const username = user?.username ?? storedMember?.username ?? userId;
 			const warnings = await getWarningRecords(guild.id, userId);
-			const issuers = new Map<string, { userId: string; username?: string; avatarUrl?: string | null }>();
+			const issuers = new Map<string, ReturnType<typeof toApiUser>>();
 			await Promise.all(
 				[...new Set(warnings.map((warning) => warning.issuerId).filter((id): id is string => id !== null))].map(
 					async (issuerId) => {
@@ -886,21 +901,24 @@ export default defineRouter("/guilds", [
 						issuers.set(
 							issuerId,
 							issuer
-								? {
-										userId: issuer.id,
+								? toApiUser({
+										id: issuer.id,
 										username: issuer.username,
+										displayName: issuer.globalName,
 										avatarUrl: issuer.displayAvatarURL({ size: 64 }),
-									}
-								: { userId: issuerId },
+									})
+								: toApiUser({ id: issuerId, username: issuerId }),
 						);
 					},
 				),
 			);
 			return response.status(200).json({
-				id: userId,
-				username,
-				displayName: member?.displayName ?? user?.globalName ?? username,
-				avatarUrl: member?.displayAvatarURL({ size: 64 }) ?? user?.displayAvatarURL({ size: 64 }) ?? null,
+				...toApiUser({
+					id: userId,
+					username,
+					displayName: member?.displayName ?? user?.globalName,
+					avatarUrl: member?.displayAvatarURL({ size: 64 }) ?? user?.displayAvatarURL({ size: 64 }) ?? null,
+				}),
 				isGuildMember: member !== null,
 				warningCount: warnings.length,
 				warnings: warnings.map((warning) => ({
@@ -952,11 +970,17 @@ export default defineRouter("/guilds", [
 							throw error;
 						}));
 					return {
-						...lock,
-						userName: user?.username ?? lock.userName,
-						avatarUrl:
-							member?.displayAvatarURL({ size: 64 }) ?? user?.displayAvatarURL({ size: 64 }) ?? null,
+						...toApiUser({
+							id: lock.userId,
+							username: user?.username ?? lock.userName,
+							displayName: member?.displayName ?? user?.globalName,
+							avatarUrl:
+								member?.displayAvatarURL({ size: 64 }) ?? user?.displayAvatarURL({ size: 64 }) ?? null,
+						}),
+						channelId: lock.channelId,
 						channelName: guild.channels.cache.get(lock.channelId)?.name ?? lock.channelName,
+						region: lock.region,
+						fallbackRegion: lock.fallbackRegion,
 					};
 				}),
 			);
@@ -1013,7 +1037,18 @@ export default defineRouter("/guilds", [
 					channelId: body.data.channelId,
 					region: body.data.region,
 				});
-				return response.status(201).json({ ...lock, avatarUrl: member.displayAvatarURL({ size: 64 }) });
+				return response.status(201).json({
+					...toApiUser({
+						id: member.id,
+						username: member.user.username,
+						displayName: member.displayName,
+						avatarUrl: member.displayAvatarURL({ size: 64 }),
+					}),
+					channelId: lock.channelId,
+					channelName: lock.channelName,
+					region: lock.region,
+					fallbackRegion: lock.fallbackRegion,
+				});
 			} catch (error: unknown) {
 				if (error instanceof VoiceRegionLockValidationError) {
 					return response.status(400).json({ error: error.message });
@@ -1179,10 +1214,7 @@ export default defineRouter("/guilds", [
 		summary: "Get a guild's leveling leaderboard",
 		errorMessage: "Failed to get guild leaderboard",
 		security,
-		parameters: [
-			...parameters,
-			...listQueryParameters(guildLeaderboardEntrySchema, ["userId", "username", "points"]),
-		],
+		parameters: [...parameters, ...listQueryParameters(guildLeaderboardEntrySchema, ["id", "username", "points"])],
 		responses: {
 			200: { description: "Guild leaderboard and leveling reward", schema: guildLeaderboardSchema },
 			...accessResponses,
@@ -1207,7 +1239,7 @@ export default defineRouter("/guilds", [
 			if (
 				!validateListFieldFilters({
 					fieldFilters: query.fieldFilters,
-					fields: ["userId", "username", "points"],
+					fields: ["id", "username", "points"],
 					itemSchema: guildLeaderboardEntrySchema,
 					response,
 				})
@@ -1221,7 +1253,12 @@ export default defineRouter("/guilds", [
 						page: query.page,
 						pageSize: query.perPageLimit,
 						clampPage: false,
-						fieldFilters: query.fieldFilters,
+						fieldFilters: Object.fromEntries(
+							Object.entries(query.fieldFilters).map(([field, value]) => [
+								field === "id" ? "userId" : field,
+								value,
+							]),
+						),
 						...(query.query ? { query: query.query } : {}),
 					})
 				: { entries: [], page: query.page, pageCount: 0, total: 0 };
@@ -1240,16 +1277,21 @@ export default defineRouter("/guilds", [
 					leveling.threshold !== null && leveling.role
 						? { threshold: leveling.threshold, role: leveling.role }
 						: null,
-				items: leaderboard.entries.map((entry, index) => ({
-					rank: (leaderboard.page - 1) * query.perPageLimit + index + 1,
-					userId: entry.userId,
-					username: entry.username,
-					avatarUrl:
-						guild.members.cache.get(entry.userId)?.displayAvatarURL({ size: 64 }) ??
-						guild.client.users.cache.get(entry.userId)?.displayAvatarURL({ size: 64 }) ??
-						null,
-					points: entry.leveling.points,
-				})),
+				items: leaderboard.entries.map((entry, index) => {
+					const member = guild.members.cache.get(entry.userId);
+					const user = member?.user ?? guild.client.users.cache.get(entry.userId);
+					return {
+						...toApiUser({
+							id: entry.userId,
+							username: user?.username ?? entry.username,
+							displayName: member?.displayName ?? user?.globalName,
+							avatarUrl:
+								member?.displayAvatarURL({ size: 64 }) ?? user?.displayAvatarURL({ size: 64 }) ?? null,
+						}),
+						rank: (leaderboard.page - 1) * query.perPageLimit + index + 1,
+						points: entry.leveling.points,
+					};
+				}),
 				pagination: {
 					page: leaderboard.page,
 					perPageLimit: query.perPageLimit,

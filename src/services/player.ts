@@ -6,6 +6,7 @@ import { SpotifyExtractor as SpotifyMetadataExtractor } from "discord-player-spo
 import type { APIInteractionGuildMember, Client, GuildMember, Message } from "discord.js";
 
 import { registerPlayerHandlers } from "../handlers/player.js";
+import { toApiUser, type ApiUser } from "../helpers/apiUser.js";
 import { MAX_QUEUE_SIZE } from "../helpers/playerLimits.js";
 import {
 	checkPlayerHealth,
@@ -41,7 +42,7 @@ export interface ActivePlayerSession {
 	readonly sessionId: string;
 	readonly guild: { readonly id: string; readonly name: string; readonly icon: string | null };
 	readonly channel: { readonly id: string; readonly name: string } | null;
-	readonly owner: { readonly id: string; readonly username: string; readonly avatarUrl: string | null };
+	readonly owner: ApiUser;
 	readonly queueSize: number;
 	readonly nowPlaying: {
 		readonly name: string;
@@ -180,11 +181,12 @@ export function getActivePlayerSessions(): ActivePlayerSession[] {
 			sessionId: queue.metadata.sessionId,
 			guild: { id: queue.guild.id, name: queue.guild.name, icon: queue.guild.iconURL() },
 			channel: queue.channel ? { id: queue.channel.id, name: queue.channel.name } : null,
-			owner: {
+			owner: toApiUser({
 				id: owner.id,
+				displayName: ownerUser?.globalName ?? owner.username,
 				username: ownerUser?.username ?? owner.username,
-				avatarUrl: ownerUser?.displayAvatarURL() ?? null,
-			},
+				avatarUrl: ownerUser?.displayAvatarURL({ size: 64 }) ?? null,
+			}),
 			queueSize: queue.tracks.size,
 			nowPlaying: track
 				? {

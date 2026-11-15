@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { apiUserSchema } from "../schemas.js";
+
 const guildBaseSchema = z.object({
 	id: z.string(),
 	name: z.string(),
@@ -13,7 +15,7 @@ const guildBaseSchema = z.object({
 	systemChannel: z.object({ id: z.string(), name: z.string() }).nullable().optional(),
 	permissions: z.array(z.string()).optional(),
 	hasRequiredPermissions: z.boolean().optional(),
-	owner: z.object({ userId: z.string(), avatarUrl: z.string(), username: z.string() }).optional(),
+	owner: apiUserSchema.optional(),
 });
 
 export const guildSchema = z.object({
@@ -21,7 +23,7 @@ export const guildSchema = z.object({
 	name: z.string(),
 	icon: z.string().nullable().optional(),
 	hasRequiredPermissions: z.boolean().optional(),
-	owner: z.object({ userId: z.string(), avatarUrl: z.string(), username: z.string() }).optional(),
+	owner: apiUserSchema.optional(),
 });
 
 export const adminGuildSchema = guildBaseSchema.extend({
@@ -65,11 +67,8 @@ export const guildDetailsSchema = guildSchema.extend({
 	permissions: z.array(z.string()).optional(),
 });
 
-export const guildLeaderboardEntrySchema = z.object({
+export const guildLeaderboardEntrySchema = apiUserSchema.extend({
 	rank: z.number().int().positive(),
-	userId: z.string(),
-	username: z.string(),
-	avatarUrl: z.string().url().nullable(),
 	points: z.number().int().nonnegative(),
 });
 
@@ -131,12 +130,7 @@ export const warningsPreferenceSchema = z.object({
 	auditChannelId: snowflake("channel").nullable(),
 });
 
-export const warningMemberSchema = z.object({
-	id: snowflake("user"),
-	username: z.string(),
-	displayName: z.string(),
-	avatarUrl: z.string().url().nullable(),
-});
+export const warningMemberSchema = apiUserSchema.extend({ id: snowflake("user") });
 
 export const warningMemberDetailsSchema = warningMemberSchema.extend({
 	isGuildMember: z.boolean(),
@@ -147,13 +141,7 @@ export const warningMemberDetailsSchema = warningMemberSchema.extend({
 			issuedAt: z.string().datetime().nullable(),
 			reason: z.string(),
 			issuerId: snowflake("issuer").nullable(),
-			issuer: z
-				.object({
-					userId: snowflake("issuer"),
-					username: z.string().optional(),
-					avatarUrl: z.url().nullable().optional(),
-				})
-				.nullable(),
+			issuer: apiUserSchema.extend({ id: snowflake("issuer") }).nullable(),
 			thresholdAction: z.enum([
 				"unknown",
 				"pending",
@@ -220,10 +208,8 @@ export const guildMemberAccessSchema = z.object({
 	),
 });
 
-export const warnedMemberSchema = z.object({
-	userId: snowflake("user"),
-	username: z.string(),
-	avatarUrl: z.string().url().nullable(),
+export const warnedMemberSchema = apiUserSchema.extend({
+	id: snowflake("user"),
 	warningCount: z.number().int().min(1),
 });
 
@@ -238,10 +224,8 @@ export const warningActionResultSchema = z.object({
 	action: z.enum(["none", "banned", "timed_out", "ban_failed", "timeout_failed"]),
 });
 
-export const voiceRegionLockSchema = z.object({
-	userId: snowflake("user"),
-	userName: z.string(),
-	avatarUrl: z.string().url().nullable(),
+export const voiceRegionLockSchema = apiUserSchema.extend({
+	id: snowflake("user"),
 	channelId: snowflake("channel"),
 	channelName: z.string(),
 	region: z.string(),

@@ -21,14 +21,7 @@ function getColumns({
 			mobileFullWidth: true,
 			size: 260,
 			filterFn: "includesString",
-			cell: ({ row }) => (
-				<UserDisplay
-					id={row.original.userId}
-					name={row.original.username}
-					avatarUrl={row.original.avatarUrl}
-					size="md"
-				/>
-			),
+			cell: ({ row }) => <UserDisplay user={row.original} size="md" />,
 		},
 		{
 			accessorKey: "warningCount",
@@ -41,7 +34,7 @@ function getColumns({
 					className="inline-flex items-center rounded-md text-primary tabular-nums underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
 					disabled={disabled}
 					aria-label={`View ${row.original.username}'s ${row.original.warningCount} warning(s)`}
-					onClick={() => onSelectMember(row.original.userId)}
+					onClick={() => onSelectMember(row.original.id)}
 				>
 					{row.original.warningCount.toLocaleString()}
 				</button>

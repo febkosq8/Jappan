@@ -12,6 +12,7 @@ import { getClient } from "../bot.js";
 import GuildModel, { type Guild as StoredGuild, type GuildDocument } from "../models/guild.js";
 import { getGuildCommands, getRequiredGlobalBotPermissions } from "../services/commandLoader.js";
 import { logger } from "../services/logger.js";
+import { toApiUser, type ApiUser } from "./apiUser.js";
 import type { LogDetails } from "./logger.js";
 
 export interface GuildDataOptions {
@@ -151,7 +152,7 @@ export interface GuildState {
 	systemChannel?: { id: string; name: string } | null;
 	permissions?: ReturnType<PermissionsBitField["toArray"]>;
 	hasRequiredPermissions?: boolean;
-	owner?: { userId: string; avatarUrl: string; username: string };
+	owner?: ApiUser;
 	guildCommandDeploymentState?: { deployed: number; total: number };
 	discoveredTimestampMs?: number | null;
 	servicePreferences?: Awaited<ReturnType<typeof resolveServicePreferences>>;
@@ -244,7 +245,13 @@ export async function getGuildState(
 	if (keys.includes("channelCount")) returnData.channelCount = guild.channels.cache.size;
 	if (keys.includes("owner")) {
 		const owner = await guild.client.users.fetch(guild.ownerId);
-		returnData.owner = { userId: owner.id, avatarUrl: owner.displayAvatarURL(), username: owner.username };
+		const ownerMember = guild.members.cache.get(owner.id);
+		returnData.owner = toApiUser({
+			id: owner.id,
+			username: owner.username,
+			displayName: ownerMember?.displayName ?? owner.globalName,
+			avatarUrl: owner.displayAvatarURL(),
+		});
 	}
 	if (keys.includes("createdTimestampMs")) returnData.createdTimestampMs = guild.createdTimestamp;
 	if (keys.includes("description") && guild.description) returnData.description = guild.description;
