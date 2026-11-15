@@ -5,18 +5,28 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.1.5] - 2026-11-14
+## [2.1.5] - 2026-11-15
 
 ### Added
 
 - Added dashboard message-purge jobs with configurable filters, message previews, live progress updates, and job results; added the `/purge-messages` command.
 - Added dashboard playback startup for tracks, playlists, and saved playlists, including voice-channel validation and a player message in the voice channel.
 - Added optional YouTube player token configuration and documented the environment variable.
+- Added dashboard management for guild roles and user-access evaluation, including the `/evaluate-user` command and supporting API endpoints.
+- Added searchable, filterable, paginated API list responses, expanded channel permission details, copy-ID controls, a link to explore the API, and reusable dashboard error pages.
 
 ### Changed
 
 - Improved the player track input with explicit selection and loading states, Backspace-to-clear behavior, and alphabetically sorted saved playlists.
 - Improved guild and bot administration views, including channel organization and bot health/latency status.
+- Improved web-player session and queue handling, guild selection, and feedback when adding tracks; deployed guild commands are now synchronized on startup.
+- Improved guild command permission and option displays, and allow message-sending commands to prefer a text channel.
+- Updated Node.js to 26.13.1 and pnpm to 12.21.0.
+
+### Fixed
+
+- Improved error handling across dashboard workflows.
+- Excluded members with zero points from leaderboard results and corrected dashboard query keys for member and warning data.
 
 ## [2.1.2] - 2026-11-11
 
