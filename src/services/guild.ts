@@ -22,7 +22,7 @@ export async function initializeGuild(guild: DiscordGuild): Promise<void> {
 			? chatInputApplicationCommandMention("help", helpCommandId)
 			: "the command menu";
 		const config = getConfig();
-		const dashboardUrl = createGuildDashboardUrl({ config, guildId: guild.id });
+		const dashboardUrl = createGuildDashboardUrl({ config, guildId: guild.id, section: "overview" });
 		const welcomeEmbed = new EmbedBuilder()
 			.setColor("Orange")
 			.setAuthor({ name: config.BOT_NAME, iconURL: config.BOT_PFP, url: config.BOT_WEBSITE })
@@ -53,7 +53,7 @@ export async function initializeGuild(guild: DiscordGuild): Promise<void> {
 			guild,
 			content: {
 				embeds: [welcomeEmbed],
-				components: [createGuildDashboardLinkActionRow({ config, guildId: guild.id })],
+				components: [createGuildDashboardLinkActionRow({ config, guildId: guild.id, section: "overview" })],
 			},
 			failureMessage: "Failed to send guild initialization embed",
 			preferTextChannel: true,

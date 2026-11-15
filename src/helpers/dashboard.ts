@@ -2,12 +2,24 @@ import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 
 import type { Config } from "../services/config.js";
 
-type GuildDashboardSection = "service-preferences" | "warnings" | "voice-region-locks";
+type GuildDashboardSection =
+	| "overview"
+	| "admin-actions"
+	| "channels"
+	| "roles"
+	| "evaluate-user"
+	| "service-preferences"
+	| "warnings"
+	| "voice-region-locks"
+	| "bot-permissions"
+	| "command-permissions"
+	| "purge-messages";
 
 interface CreateGuildDashboardUrlOptions {
 	config: Config;
 	guildId: string;
 	section?: GuildDashboardSection;
+	userId?: string;
 }
 
 interface CreateDashboardLinkActionRowOptions {
@@ -21,9 +33,11 @@ function createDashboardLinkActionRow({ url, label }: CreateDashboardLinkActionR
 	);
 }
 
-export function createGuildDashboardUrl({ config, guildId, section }: CreateGuildDashboardUrlOptions): string {
-	const sectionHash = section ? `#${section}` : "";
-	return new URL(`/guild/${encodeURIComponent(guildId)}${sectionHash}`, config.BOT_WEBSITE).href;
+export function createGuildDashboardUrl({ config, guildId, section, userId }: CreateGuildDashboardUrlOptions): string {
+	const url = new URL(`/guild/${encodeURIComponent(guildId)}`, config.BOT_WEBSITE);
+	if (userId) url.searchParams.set("userId", userId);
+	if (section) url.hash = section;
+	return url.href;
 }
 
 export function createGuildDashboardLinkActionRow(options: CreateGuildDashboardUrlOptions) {
