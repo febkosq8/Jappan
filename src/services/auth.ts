@@ -97,11 +97,22 @@ function createAuth() {
 		},
 		databaseHooks: {
 			user: {
+				create: {
+					after: async (user, context) => {
+						if (context?.path !== "/callback/:id") return;
+						logger.info("AUTH", "User created", {
+							user: formatUser({
+								id: user.id,
+								username: typeof user.username === "string" ? user.username : user.name,
+							}),
+						});
+					},
+				},
 				update: {
 					before: async (user, context) => {
-						if (("username" in user || "discordAccountId" in user) && context?.path !== "/callback/:id") {
+						if (context?.path !== "/callback/:id") {
 							throw new APIError("FORBIDDEN", {
-								message: "Discord usernames can only be updated by Discord",
+								message: "User data can only be updated by Discord",
 							});
 						}
 					},
