@@ -102,7 +102,7 @@ function RoleDetails({ role }: { role: GuildRoleDetails }) {
 						{role.color && (
 							<span
 								aria-hidden="true"
-								className="size-3 rounded-full border border-border"
+								className="size-4 shrink-0 rounded-full border border-border"
 								style={{ backgroundColor: role.color }}
 							/>
 						)}
