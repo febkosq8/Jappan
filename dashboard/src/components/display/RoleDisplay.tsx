@@ -21,14 +21,14 @@ export default function RoleDisplay({ id, name, color, showId = true, onSelect }
 					variant="outline-secondary"
 					aria-haspopup="dialog"
 					onClick={onSelect}
-					className="min-w-0 gap-2 whitespace-normal text-left leading-tight"
+					className="min-w-0 items-center gap-2 whitespace-normal text-left"
 				>
 					<FiTag
 						className="size-4 shrink-0 text-muted-foreground"
 						style={color ? { color } : undefined}
 						aria-hidden="true"
 					/>
-					<span className="wrap-break-word">{name ?? "Unavailable role"}</span>
+					<span className="wrap-break-word leading-none">{name ?? "Unavailable role"}</span>
 				</Button>
 				{showId && (
 					<span className="inline-flex max-w-full items-center gap-1 text-xs leading-tight text-muted-foreground">
