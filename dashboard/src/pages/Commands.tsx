@@ -171,33 +171,29 @@ function CommandDetails({ command }: { command: PublicCommand }) {
 	);
 }
 
-function CommandCard({
-	command,
-	subcommands,
-	hasSubcommands,
-}: {
-	command: PublicCommand;
-	subcommands: PublicCommand[];
-	hasSubcommands: boolean;
-}) {
+function CommandCard({ command, subcommands }: { command: PublicCommand; subcommands: PublicCommand[] }) {
 	return (
 		<li className="mb-3 inline-block w-full min-w-0 break-inside-avoid align-top">
 			<Card hoverable={true} hoverLift={false} className="p-5">
 				<div className="flex flex-wrap items-center justify-between gap-2">
 					<div className="flex min-w-0 items-center gap-1">
-						<h2 className="min-w-0 wrap-break-word text-lg font-semibold">
-							{command.type === "context-menu" ? <>&gt;{command.name}</> : `/${command.name}`}
-						</h2>
-						{!hasSubcommands && command.type !== "context-menu" && <CopyCommandButton command={command} />}
+						<div className="min-w-0">
+							<div className="flex min-w-0 items-center gap-1">
+								<h2 className="min-w-0 wrap-break-word text-lg font-semibold">
+									{command.type === "context-menu" ? `>${command.name}` : `/${command.name}`}
+								</h2>
+								{command.type !== "context-menu" && <CopyCommandButton command={command} />}
+							</div>
+							<p className="mt-0.5 text-xs text-muted-foreground">
+								{command.applicationCommandType === "chat-input"
+									? "Slash command"
+									: command.applicationCommandType === "message-context-menu"
+										? "Message context menu"
+										: "User context menu"}
+							</p>
+						</div>
 					</div>
 					<div className="flex flex-wrap gap-1">
-						<Tag variant="outline" size="sm">
-							{command.applicationCommandType === "chat-input"
-								? "Slash command"
-								: command.applicationCommandType === "message-context-menu"
-									? "Message context menu"
-									: "User context menu"}
-						</Tag>
 						<Tag
 							variant="secondary"
 							size="sm"
@@ -277,7 +273,6 @@ export default function Commands() {
 	const groups = groupCommands(commandsQuery.data ?? [])
 		.map(({ command, subcommands }) => ({
 			command,
-			hasSubcommands: subcommands.length > 0,
 			subcommands:
 				category === "all" ? subcommands : subcommands.filter((subcommand) => subcommand.category === category),
 		}))
@@ -342,13 +337,8 @@ export default function Commands() {
 				<p className="mt-6 text-muted-foreground">No commands found in this category.</p>
 			) : (
 				<ul className="mt-6 columns-1 gap-3 sm:columns-2 lg:columns-3">
-					{groups.map(({ command, subcommands, hasSubcommands }) => (
-						<CommandCard
-							key={command.name}
-							command={command}
-							subcommands={subcommands}
-							hasSubcommands={hasSubcommands}
-						/>
+					{groups.map(({ command, subcommands }) => (
+						<CommandCard key={command.name} command={command} subcommands={subcommands} />
 					))}
 				</ul>
 			)}
