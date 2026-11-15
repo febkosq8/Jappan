@@ -67,7 +67,7 @@ const confirmSchema = z.object({ previewId: z.string().uuid(), confirm: z.litera
 const actionRoutes: RouteDefinition[] = (["preview", "confirm", "cancel"] as const).map((action) => ({
 	method: "post",
 	path: `/:jobId/${action}`,
-	tags: ["Guild"],
+	tags: ["Guild Prune Jobs"],
 	summary:
 		action === "preview"
 			? "Prepare a purge job preview"
@@ -136,7 +136,7 @@ export default defineRouter("/purge-jobs", [
 	{
 		method: "get",
 		path: "/:jobId",
-		tags: ["Guild"],
+		tags: ["Guild Prune Jobs"],
 		summary: "Get message purge job progress",
 		errorMessage: "Failed to get message purge job",
 		security: [{ sessionBearer: [] }],

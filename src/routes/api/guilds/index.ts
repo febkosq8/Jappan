@@ -77,7 +77,7 @@ import {
 	voiceRegionLockSchema,
 } from "./schemas.js";
 
-const tags = ["Guild"];
+const guildTags = ["Guilds"];
 const security = [{ sessionBearer: [] }];
 const middleware = [
 	requireDatabase,
@@ -206,7 +206,7 @@ export default defineRouter("/guilds", [
 	{
 		method: "get",
 		path: "/manager",
-		tags,
+		tags: guildTags,
 		summary: "List guilds the user can manage",
 		errorMessage: "Failed to list guilds",
 		security,
@@ -248,7 +248,7 @@ export default defineRouter("/guilds", [
 	{
 		method: "get",
 		path: "/member",
-		tags,
+		tags: guildTags,
 		summary: "List bot guilds the user is a member of",
 		errorMessage: "Failed to list guild memberships",
 		security,
@@ -290,7 +290,7 @@ export default defineRouter("/guilds", [
 	{
 		method: "get",
 		path: "/:guildId/channels",
-		tags,
+		tags: guildTags,
 		summary: "List channels in a registered guild",
 		errorMessage: "Failed to list guild channels",
 		security,
@@ -341,7 +341,7 @@ export default defineRouter("/guilds", [
 	{
 		method: "get",
 		path: "/:guildId/roles/:roleId",
-		tags,
+		tags: guildTags,
 		summary: "Get details for a role in a registered guild",
 		errorMessage: "Failed to get guild role details",
 		security,
@@ -389,7 +389,7 @@ export default defineRouter("/guilds", [
 	{
 		method: "get",
 		path: "/:guildId/roles",
-		tags,
+		tags: guildTags,
 		summary: "List roles in a registered guild",
 		errorMessage: "Failed to list guild roles",
 		security,
@@ -441,7 +441,7 @@ export default defineRouter("/guilds", [
 	{
 		method: "patch",
 		path: "/:guildId/audit-log",
-		tags,
+		tags: ["Guild Settings"],
 		summary: "Update audit log preferences",
 		errorMessage: "Failed to update service preferences",
 		security,
@@ -476,7 +476,7 @@ export default defineRouter("/guilds", [
 	{
 		method: "patch",
 		path: "/:guildId/leveling",
-		tags,
+		tags: ["Guild Settings"],
 		summary: "Update leveling preferences",
 		errorMessage: "Failed to update service preferences",
 		security,
@@ -511,7 +511,7 @@ export default defineRouter("/guilds", [
 	{
 		method: "patch",
 		path: "/:guildId/member-announcements",
-		tags,
+		tags: ["Guild Settings"],
 		summary: "Update member announcement preferences",
 		errorMessage: "Failed to update service preferences",
 		security,
@@ -546,7 +546,7 @@ export default defineRouter("/guilds", [
 	{
 		method: "patch",
 		path: "/:guildId/warnings",
-		tags,
+		tags: ["Guild Settings"],
 		summary: "Update warning preferences",
 		errorMessage: "Failed to update service preferences",
 		security,
@@ -581,7 +581,7 @@ export default defineRouter("/guilds", [
 	{
 		method: "get",
 		path: "/:guildId/warnings",
-		tags,
+		tags: ["Guild Warnings"],
 		summary: "List users with at least one warning in a guild",
 		errorMessage: "Failed to list warned users",
 		security,
@@ -642,7 +642,7 @@ export default defineRouter("/guilds", [
 	{
 		method: "get",
 		path: "/:guildId/members",
-		tags,
+		tags: guildTags,
 		summary: "List or search guild members",
 		errorMessage: "Failed to list or search guild members",
 		security,
@@ -684,7 +684,7 @@ export default defineRouter("/guilds", [
 	{
 		method: "get",
 		path: "/:guildId/users/:userId/warn",
-		tags,
+		tags: ["Guild Warnings"],
 		summary: "Get a guild member's warning count and history",
 		errorMessage: "Failed to get member warning count",
 		security,
@@ -765,7 +765,7 @@ export default defineRouter("/guilds", [
 	{
 		method: "get",
 		path: "/:guildId/voice-region-locks",
-		tags,
+		tags: ["Guild Voice Region Locks"],
 		summary: "List voice region locks and available regions",
 		errorMessage: "Failed to list voice region locks",
 		security,
@@ -829,7 +829,7 @@ export default defineRouter("/guilds", [
 	{
 		method: "post",
 		path: "/:guildId/voice-region-locks",
-		tags,
+		tags: ["Guild Voice Region Locks"],
 		summary: "Create a voice region lock",
 		errorMessage: "Failed to create voice region lock",
 		security,
@@ -877,7 +877,7 @@ export default defineRouter("/guilds", [
 	{
 		method: "delete",
 		path: "/:guildId/voice-region-locks/:userId",
-		tags,
+		tags: ["Guild Voice Region Locks"],
 		summary: "Delete a user's voice region lock",
 		errorMessage: "Failed to delete voice region lock",
 		security,
@@ -917,7 +917,7 @@ export default defineRouter("/guilds", [
 	{
 		method: "post",
 		path: "/:guildId/users/:userId/warn",
-		tags,
+		tags: ["Guild Warnings"],
 		summary: "Issue a warning to a guild member",
 		errorMessage: "Failed to issue warning",
 		security,
@@ -971,7 +971,7 @@ export default defineRouter("/guilds", [
 	{
 		method: "delete",
 		path: "/:guildId/users/:userId/warn/:warningId",
-		tags,
+		tags: ["Guild Warnings"],
 		summary: "Delete a warning from a guild member's history",
 		errorMessage: "Failed to delete member warning",
 		security,
@@ -1027,7 +1027,7 @@ export default defineRouter("/guilds", [
 	{
 		method: "get",
 		path: "/:guildId/leaderboard",
-		tags,
+		tags: guildTags,
 		summary: "Get a guild's leveling leaderboard",
 		errorMessage: "Failed to get guild leaderboard",
 		security,
@@ -1117,7 +1117,7 @@ export default defineRouter("/guilds", [
 	{
 		method: "get",
 		path: "/:guildId",
-		tags,
+		tags: guildTags,
 		summary: "Get a registered guild",
 		errorMessage: "Failed to get guild",
 		security,

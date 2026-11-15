@@ -148,7 +148,7 @@ export default defineRouter("/guilds", [
 	{
 		method: "post",
 		path: "/:guildId/messages/purge",
-		tags: ["Guild"],
+		tags: ["Guild Prune Jobs"],
 		summary: "Create a purge request without scanning or deleting messages",
 		errorMessage: "Failed to create message purge job",
 		security: [{ sessionBearer: [] }],

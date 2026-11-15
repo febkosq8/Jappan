@@ -804,7 +804,7 @@ class APIHandler {
 		channelId: string,
 	): Promise<AdminGuildMessageResult> {
 		const { data } = await apiClient.put<AdminGuildMessageResult>(
-			`/api/v1/admin/guilds/${encodeURIComponent(guildId)}/messages`,
+			`/api/v1/admin/guilds/${encodeURIComponent(guildId)}/message`,
 			{ message, channelId },
 			{ withCredentials: true },
 		);
