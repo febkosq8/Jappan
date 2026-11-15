@@ -15,6 +15,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
 	FiAlertTriangle,
 	FiCheckCircle,
+	FiCode,
 	FiCpu,
 	FiGithub,
 	FiLayers,
@@ -26,7 +27,7 @@ import {
 } from "react-icons/fi";
 import { SiDiscord } from "react-icons/si";
 import { toast } from "sonner";
-import APIHandler from "@jappan/handlers/APIHandler";
+import APIHandler, { apiBaseURL } from "@jappan/handlers/APIHandler";
 import BotStatusOverviewPanel from "@jappan/components/panel/BotStatusOverviewPanel";
 import BotStatusHealthPanel from "@jappan/components/panel/BotStatusHealthPanel";
 import CopyIdButton from "@jappan/components/display/CopyIdButton";
@@ -119,8 +120,6 @@ export default function About() {
 						<FiGithub className="size-4 shrink-0" aria-hidden="true" />
 						GitHub
 					</PillLink>
-				</div>
-				<div className="mt-3 flex flex-wrap gap-3">
 					<PillLink
 						variant="outline"
 						size="md"
@@ -142,6 +141,17 @@ export default function About() {
 					>
 						<FiLifeBuoy className="size-4 shrink-0" aria-hidden="true" />
 						Support server
+					</PillLink>
+					<PillLink
+						href={`${apiBaseURL}/swagger`}
+						variant="outline"
+						size="md"
+						className="gap-2.5"
+						target="_blank"
+						rel="noreferrer"
+					>
+						<FiCode className="size-4 shrink-0" aria-hidden="true" />
+						Explore API
 					</PillLink>
 				</div>
 				<Card className="mt-8 w-full" aria-label="Live bot status" hoverLift={false}>
