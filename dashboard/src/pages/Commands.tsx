@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Button, Card, PillLink, Tag } from "@febkosq8/arc";
 import { useQuery } from "@tanstack/react-query";
 import { FiCopy } from "react-icons/fi";
@@ -172,15 +173,35 @@ function CommandDetails({ command }: { command: PublicCommand }) {
 }
 
 function CommandCard({ command, subcommands }: { command: PublicCommand; subcommands: PublicCommand[] }) {
+	const cardRef = useRef<HTMLLIElement>(null);
+
+	useEffect(() => {
+		const cardElement = cardRef.current;
+		const gridElement = cardElement?.parentElement;
+		if (!cardElement || !gridElement) return;
+
+		const observer = new ResizeObserver(([entry]) => {
+			if (!entry) return;
+			const gridStyle = getComputedStyle(gridElement);
+			const rowHeight = Number.parseFloat(gridStyle.gridAutoRows);
+			const rowGap = Number.parseFloat(gridStyle.rowGap);
+			const rowSpan = Math.ceil((entry.contentRect.height + rowGap) / (rowHeight + rowGap));
+			cardElement.style.gridRowEnd = `span ${rowSpan}`;
+		});
+		observer.observe(cardElement);
+
+		return () => observer.disconnect();
+	}, []);
+
 	return (
-		<li className="mb-3 inline-block w-full min-w-0 break-inside-avoid align-top">
+		<li ref={cardRef} className="min-w-0 self-start">
 			<Card hoverable={true} hoverLift={false} className="p-5">
 				<div className="flex flex-wrap items-center justify-between gap-2">
 					<div className="flex min-w-0 items-center gap-1">
 						<div className="min-w-0">
 							<div className="flex min-w-0 items-center gap-1">
 								<h2 className="min-w-0 wrap-break-word text-lg font-semibold">
-									{command.type === "context-menu" ? `>${command.name}` : `/${command.name}`}
+									{command.type === "context-menu" ? `> ${command.name}` : `/${command.name}`}
 								</h2>
 								{command.type !== "context-menu" && <CopyCommandButton command={command} />}
 							</div>
@@ -336,7 +357,7 @@ export default function Commands() {
 			) : groups.length === 0 ? (
 				<p className="mt-6 text-muted-foreground">No commands found in this category.</p>
 			) : (
-				<ul className="mt-6 columns-1 gap-3 sm:columns-2 lg:columns-3">
+				<ul className="mt-6 grid grid-cols-1 auto-rows-[1px] gap-3 grid-flow-row-dense sm:grid-cols-2 lg:grid-cols-3">
 					{groups.map(({ command, subcommands }) => (
 						<CommandCard key={command.name} command={command} subcommands={subcommands} />
 					))}
