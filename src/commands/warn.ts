@@ -9,7 +9,7 @@ import {
 } from "discord.js";
 
 import type { BotCommand, BotCommandData } from "../helpers/command.js";
-import { createGuildDashboardLink } from "../helpers/dashboard.js";
+import { createGuildDashboardLinkActionRow } from "../helpers/dashboard.js";
 import type { Config } from "../services/config.js";
 import {
 	getWarningCount,
@@ -163,14 +163,14 @@ const command: BotCommand = {
 		}
 		const dashboardLinks = {
 			settings: [
-				createGuildDashboardLink({
+				createGuildDashboardLinkActionRow({
 					config,
 					guildId: interaction.guild.id,
 					section: "service-preferences",
 				}),
 			],
 			warnings: [
-				createGuildDashboardLink({
+				createGuildDashboardLinkActionRow({
 					config,
 					guildId: interaction.guild.id,
 					section: "warnings",

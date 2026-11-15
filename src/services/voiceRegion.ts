@@ -11,7 +11,7 @@ import {
 	userMention,
 } from "discord.js";
 
-import { createGuildDashboardLink } from "../helpers/dashboard.js";
+import { createGuildDashboardLinkActionRow } from "../helpers/dashboard.js";
 import { isActiveGuild, sendGuildMessage } from "../helpers/guild.js";
 import { formatVoiceRegion } from "../helpers/voiceRegion.js";
 import type { GuildMemberStateDocument } from "../models/guildMemberState.js";
@@ -273,7 +273,7 @@ export async function handleVoiceRegionState(oldState: VoiceState, newState: Voi
 					}),
 				],
 				components: [
-					createGuildDashboardLink({
+					createGuildDashboardLinkActionRow({
 						config: getConfig(),
 						guildId: newState.guild.id,
 						section: "voice-region-locks",
@@ -316,7 +316,7 @@ export async function handleVoiceRegionState(oldState: VoiceState, newState: Voi
 					}),
 				],
 				components: [
-					createGuildDashboardLink({
+					createGuildDashboardLinkActionRow({
 						config: getConfig(),
 						guildId: newState.guild.id,
 						section: "voice-region-locks",
