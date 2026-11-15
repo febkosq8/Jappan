@@ -296,8 +296,8 @@ export default function ManageBot() {
 											<div className="min-w-0 text-right">
 												<p className="truncate text-lg font-semibold">{bot.botName}</p>
 												<p className="flex items-center justify-end gap-1 text-sm text-muted-foreground">
-													<span className="min-w-0 truncate">{bot.botId}</span>
 													<CopyIdButton id={bot.botId} label="Bot ID" />
+													<span className="min-w-0 truncate">{bot.botId}</span>
 												</p>
 											</div>
 											<Avatar
