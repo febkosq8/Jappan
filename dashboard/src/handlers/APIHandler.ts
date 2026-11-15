@@ -344,8 +344,20 @@ export interface GuildRole {
 	id: string;
 	name: string;
 	position: number;
-	managed: boolean;
 	assignable: boolean;
+}
+
+export interface GuildRoleDetails extends GuildRole {
+	managed: boolean;
+	isBotRole: boolean;
+	color: string | null;
+	iconUrl: string | null;
+	unicodeEmoji: string | null;
+	permissions: string[];
+	hoisted: boolean;
+	mentionable: boolean;
+	createdTimestampMs: number;
+	memberCount: number;
 }
 
 export interface AuditLogPreferenceInput {
@@ -756,6 +768,14 @@ class APIHandler {
 		});
 	}
 
+	static async getGuildRoleDetails(guildId: string, roleId: string): Promise<GuildRoleDetails> {
+		const { data } = await apiClient.get<GuildRoleDetails>(
+			`/api/v1/guilds/${encodeURIComponent(guildId)}/roles/${encodeURIComponent(roleId)}`,
+			{ withCredentials: true },
+		);
+		return data;
+	}
+
 	private static async updateServicePreference<Input>(guildId: string, action: string, input: Input): Promise<void> {
 		await apiClient.patch<void>(`/api/v1/guilds/${encodeURIComponent(guildId)}/${action}`, input, {
 			withCredentials: true,
@@ -784,7 +804,7 @@ class APIHandler {
 		channelId: string,
 	): Promise<AdminGuildMessageResult> {
 		const { data } = await apiClient.put<AdminGuildMessageResult>(
-			`/api/v1/admin/guilds/${encodeURIComponent(guildId)}/messages`,
+			`/api/v1/admin/guilds/${encodeURIComponent(guildId)}/message`,
 			{ message, channelId },
 			{ withCredentials: true },
 		);

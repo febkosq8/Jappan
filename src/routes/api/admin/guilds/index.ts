@@ -89,7 +89,7 @@ export default defineRouter("/guilds", [
 	{
 		method: "put",
 		path: "/:guildId/commands",
-		tags: ["Admin Guilds"],
+		tags: ["Admin Guild Commands"],
 		summary: "Deploy commands in a registered guild",
 		errorMessage: "Failed to deploy guild commands",
 		security: [{ sessionBearer: [] }],
@@ -116,7 +116,7 @@ export default defineRouter("/guilds", [
 	{
 		method: "delete",
 		path: "/:guildId/commands",
-		tags: ["Admin Guilds"],
+		tags: ["Admin Guild Commands"],
 		summary: "Undeploy commands from a registered guild",
 		errorMessage: "Failed to undeploy guild commands",
 		security: [{ sessionBearer: [] }],
@@ -261,7 +261,7 @@ export default defineRouter("/guilds", [
 	},
 	{
 		method: "put",
-		path: "/:guildId/messages",
+		path: "/:guildId/message",
 		tags: ["Admin Guilds"],
 		summary: "Send an admin message to a registered guild",
 		errorMessage: "Failed to send admin guild message",

@@ -48,6 +48,22 @@ export function getClientGuild(guildId: string): Guild | undefined {
 	return getClient().guilds.cache.get(guildId);
 }
 
+export async function listGuildMembers(guild: Guild): Promise<GuildMember[]> {
+	const members: GuildMember[] = [];
+	let after: string | undefined;
+	while (true) {
+		const page = await guild.members.list({ limit: 1000, ...(after ? { after } : {}) });
+		members.push(...page.values());
+		if (page.size < 1000) return members;
+		const lastMember = [...page.values()].at(-1);
+		if (!lastMember) return members;
+		if (lastMember.id === after) {
+			throw new Error(`Guild member pagination did not advance for guild ${guild.id}`);
+		}
+		after = lastMember.id;
+	}
+}
+
 async function getPreferenceChannel(guild: Guild | undefined, channelId: string) {
 	if (!guild?.available) return { id: channelId, name: null };
 

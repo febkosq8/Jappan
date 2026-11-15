@@ -10,6 +10,7 @@ import {
 	getAdminGuildForAction,
 	getClientGuild,
 	getClientGuilds,
+	listGuildMembers,
 	sendGuildMessage,
 } from "./guild.js";
 import type { Config } from "../services/config.js";
@@ -121,16 +122,57 @@ export async function listAdminGuildRoles(guildId: string) {
 	const botMember = guild.members.me ?? (await guild.members.fetchMe());
 	const canManageRoles = botMember.permissions.has(PermissionFlagsBits.ManageRoles);
 	const fetched = await guild.roles.fetch();
-	const roles = [...fetched.values()]
-		.sort((first, second) => second.position - first.position || first.id.localeCompare(second.id))
-		.map((role) => ({
-			id: role.id,
-			name: role.name,
-			position: role.position,
-			managed: role.managed,
-			assignable: canAssignRole(role, botMember, canManageRoles),
-		}));
+	const guildRoles = [...fetched.values()]
+		.filter((role) => role.id !== guild.id)
+		.sort((first, second) => second.position - first.position || first.id.localeCompare(second.id));
+	const roles = guildRoles.map((role) => getGuildRoleSummary({ role, botMember, canManageRoles }));
 	return { status: "ok", roles } as const;
+}
+
+function getGuildRoleSummary({
+	role,
+	botMember,
+	canManageRoles,
+}: {
+	role: Role;
+	botMember: GuildMember;
+	canManageRoles: boolean;
+}) {
+	return {
+		id: role.id,
+		name: role.name,
+		position: role.position,
+		assignable: canAssignRole(role, botMember, canManageRoles),
+	};
+}
+
+export async function getAdminGuildRoleDetails(guildId: string, roleId: string) {
+	const adminGuild = await getAdminGuildForAction(guildId);
+	if (adminGuild.status !== "ok") return adminGuild;
+	const { guild } = adminGuild;
+
+	const role = await guild.roles.fetch(roleId, { force: true });
+	if (!role || role.id === guild.id) return { status: "not_found" } as const;
+
+	const botMember = guild.members.me ?? (await guild.members.fetchMe());
+	const canManageRoles = botMember.permissions.has(PermissionFlagsBits.ManageRoles);
+	const members = await listGuildMembers(guild);
+	return {
+		status: "ok",
+		role: {
+			...getGuildRoleSummary({ role, botMember, canManageRoles }),
+			managed: role.managed,
+			isBotRole: role.tags?.botId === botMember.id,
+			color: role.color === 0 ? null : role.hexColor,
+			iconUrl: role.iconURL({ size: 64 }),
+			unicodeEmoji: role.unicodeEmoji,
+			permissions: role.permissions.toArray(),
+			hoisted: role.hoist,
+			mentionable: role.mentionable,
+			createdTimestampMs: role.createdTimestamp,
+			memberCount: members.filter((member) => member.roles.cache.has(role.id)).length,
+		},
+	} as const;
 }
 
 export function canAssignRole(role: Role, botMember: GuildMember, canManageRoles: boolean): boolean {

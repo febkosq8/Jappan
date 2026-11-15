@@ -1,4 +1,4 @@
-import { DiscordAPIError, PermissionFlagsBits, RESTJSONErrorCodes, type Guild, type GuildMember } from "discord.js";
+import { DiscordAPIError, PermissionFlagsBits, RESTJSONErrorCodes, type Guild } from "discord.js";
 import type { Response } from "express";
 import { z } from "zod";
 
@@ -26,13 +26,14 @@ import {
 	validateListFieldFilters,
 } from "../../../helpers/list.js";
 import { defineRouter, errorResponseSchema } from "../../../helpers/route.js";
-import { listAdminGuildChannels, listAdminGuildRoles } from "../../../helpers/adminGuild.js";
+import { getAdminGuildRoleDetails, listAdminGuildChannels, listAdminGuildRoles } from "../../../helpers/adminGuild.js";
 import {
 	baseGuildKeys,
 	getGuildState,
 	extendedGuildKeys,
 	getAdminGuildForAction,
 	getOrCreateGuildData,
+	listGuildMembers,
 } from "../../../helpers/guild.js";
 import { listGuilds } from "../../../services/adminGuild.js";
 import type { AuthSession } from "../../../services/auth.js";
@@ -76,7 +77,7 @@ import {
 	voiceRegionLockSchema,
 } from "./schemas.js";
 
-const tags = ["Guild"];
+const guildTags = ["Guilds"];
 const security = [{ sessionBearer: [] }];
 const middleware = [
 	requireDatabase,
@@ -132,8 +133,19 @@ const guildRoleSchema = z.object({
 	id: z.string(),
 	name: z.string(),
 	position: z.number().int(),
-	managed: z.boolean(),
 	assignable: z.boolean(),
+});
+const guildRoleDetailsSchema = guildRoleSchema.extend({
+	managed: z.boolean(),
+	isBotRole: z.boolean(),
+	color: z.string().nullable(),
+	iconUrl: z.string().nullable(),
+	unicodeEmoji: z.string().nullable(),
+	permissions: z.array(z.string()),
+	hoisted: z.boolean(),
+	mentionable: z.boolean(),
+	createdTimestampMs: z.number().int(),
+	memberCount: z.number().int(),
 });
 
 async function resolveGuild(guildId: unknown, response: Response): Promise<Guild | null> {
@@ -173,22 +185,6 @@ async function resolveGuildMember({ guild, userId, response }: { guild: Guild; u
 	}
 }
 
-async function listGuildMembers(guild: Guild): Promise<GuildMember[]> {
-	const members: GuildMember[] = [];
-	let after: string | undefined;
-	while (true) {
-		const page = await guild.members.list({ limit: 1000, ...(after ? { after } : {}) });
-		members.push(...page.values());
-		if (page.size < 1000) return members;
-		const lastMember = [...page.values()].at(-1);
-		if (!lastMember) return members;
-		if (lastMember.id === after) {
-			throw new Error(`Guild member pagination did not advance for guild ${guild.id}`);
-		}
-		after = lastMember.id;
-	}
-}
-
 async function fetchWarningUser(guild: Guild, userId: string) {
 	return guild.client.users.fetch(userId).catch((error: unknown) => {
 		if (
@@ -210,7 +206,7 @@ export default defineRouter("/guilds", [
 	{
 		method: "get",
 		path: "/manager",
-		tags,
+		tags: guildTags,
 		summary: "List guilds the user can manage",
 		errorMessage: "Failed to list guilds",
 		security,
@@ -252,7 +248,7 @@ export default defineRouter("/guilds", [
 	{
 		method: "get",
 		path: "/member",
-		tags,
+		tags: guildTags,
 		summary: "List bot guilds the user is a member of",
 		errorMessage: "Failed to list guild memberships",
 		security,
@@ -294,7 +290,7 @@ export default defineRouter("/guilds", [
 	{
 		method: "get",
 		path: "/:guildId/channels",
-		tags,
+		tags: guildTags,
 		summary: "List channels in a registered guild",
 		errorMessage: "Failed to list guild channels",
 		security,
@@ -344,15 +340,64 @@ export default defineRouter("/guilds", [
 	},
 	{
 		method: "get",
+		path: "/:guildId/roles/:roleId",
+		tags: guildTags,
+		summary: "Get details for a role in a registered guild",
+		errorMessage: "Failed to get guild role details",
+		security,
+		parameters: [
+			...parameters,
+			{
+				name: "roleId",
+				in: "path",
+				required: true,
+				description: "Discord role ID",
+				schema: z.string().regex(guildIdPattern),
+			},
+		],
+		responses: {
+			200: { description: "Guild role details", schema: guildRoleDetailsSchema },
+			...accessResponses,
+			404: { description: "Guild or role not found", schema: errorResponseSchema },
+			409: { description: "Bot is not a guild member", schema: errorResponseSchema },
+			503: { description: "Guild or service unavailable", schema: errorResponseSchema },
+			500: { description: "Failed to get guild role details", schema: errorResponseSchema },
+		},
+		middleware,
+		handler: async (request, response) => {
+			const guildId = request.params.guildId;
+			const roleId = request.params.roleId;
+			if (typeof guildId !== "string" || !guildIdPattern.test(guildId)) {
+				return response.status(400).json({ error: "Invalid guild ID" });
+			}
+			if (typeof roleId !== "string" || !guildIdPattern.test(roleId)) {
+				return response.status(400).json({ error: "Invalid role ID" });
+			}
+			const result = await getAdminGuildRoleDetails(guildId, roleId);
+			switch (result.status) {
+				case "not_found":
+					return response.status(404).json({ error: "Guild or role not found" });
+				case "not_member":
+					return response.status(409).json({ error: "Bot is not a guild member" });
+				case "unavailable":
+					return response.status(503).json({ error: "Guild is unavailable" });
+				case "ok":
+					return response.status(200).json(result.role);
+			}
+		},
+	},
+	{
+		method: "get",
 		path: "/:guildId/roles",
-		tags,
+		tags: guildTags,
 		summary: "List roles in a registered guild",
 		errorMessage: "Failed to list guild roles",
 		security,
 		parameters: [...parameters, ...listQueryParameters(guildRoleSchema)],
 		responses: {
 			200: {
-				description: "Guild roles, highest first, with whether the bot can assign each",
+				description:
+					"Guild roles excluding @everyone, highest position first, with whether the bot can assign each",
 				schema: paginatedListSchema(guildRoleSchema),
 			},
 			...accessResponses,
@@ -396,7 +441,7 @@ export default defineRouter("/guilds", [
 	{
 		method: "patch",
 		path: "/:guildId/audit-log",
-		tags,
+		tags: ["Guild Settings"],
 		summary: "Update audit log preferences",
 		errorMessage: "Failed to update service preferences",
 		security,
@@ -431,7 +476,7 @@ export default defineRouter("/guilds", [
 	{
 		method: "patch",
 		path: "/:guildId/leveling",
-		tags,
+		tags: ["Guild Settings"],
 		summary: "Update leveling preferences",
 		errorMessage: "Failed to update service preferences",
 		security,
@@ -466,7 +511,7 @@ export default defineRouter("/guilds", [
 	{
 		method: "patch",
 		path: "/:guildId/member-announcements",
-		tags,
+		tags: ["Guild Settings"],
 		summary: "Update member announcement preferences",
 		errorMessage: "Failed to update service preferences",
 		security,
@@ -501,7 +546,7 @@ export default defineRouter("/guilds", [
 	{
 		method: "patch",
 		path: "/:guildId/warnings",
-		tags,
+		tags: ["Guild Settings"],
 		summary: "Update warning preferences",
 		errorMessage: "Failed to update service preferences",
 		security,
@@ -536,7 +581,7 @@ export default defineRouter("/guilds", [
 	{
 		method: "get",
 		path: "/:guildId/warnings",
-		tags,
+		tags: ["Guild Warnings"],
 		summary: "List users with at least one warning in a guild",
 		errorMessage: "Failed to list warned users",
 		security,
@@ -597,7 +642,7 @@ export default defineRouter("/guilds", [
 	{
 		method: "get",
 		path: "/:guildId/members",
-		tags,
+		tags: guildTags,
 		summary: "List or search guild members",
 		errorMessage: "Failed to list or search guild members",
 		security,
@@ -639,7 +684,7 @@ export default defineRouter("/guilds", [
 	{
 		method: "get",
 		path: "/:guildId/users/:userId/warn",
-		tags,
+		tags: ["Guild Warnings"],
 		summary: "Get a guild member's warning count and history",
 		errorMessage: "Failed to get member warning count",
 		security,
@@ -720,7 +765,7 @@ export default defineRouter("/guilds", [
 	{
 		method: "get",
 		path: "/:guildId/voice-region-locks",
-		tags,
+		tags: ["Guild Voice Region Locks"],
 		summary: "List voice region locks and available regions",
 		errorMessage: "Failed to list voice region locks",
 		security,
@@ -784,7 +829,7 @@ export default defineRouter("/guilds", [
 	{
 		method: "post",
 		path: "/:guildId/voice-region-locks",
-		tags,
+		tags: ["Guild Voice Region Locks"],
 		summary: "Create a voice region lock",
 		errorMessage: "Failed to create voice region lock",
 		security,
@@ -832,7 +877,7 @@ export default defineRouter("/guilds", [
 	{
 		method: "delete",
 		path: "/:guildId/voice-region-locks/:userId",
-		tags,
+		tags: ["Guild Voice Region Locks"],
 		summary: "Delete a user's voice region lock",
 		errorMessage: "Failed to delete voice region lock",
 		security,
@@ -872,7 +917,7 @@ export default defineRouter("/guilds", [
 	{
 		method: "post",
 		path: "/:guildId/users/:userId/warn",
-		tags,
+		tags: ["Guild Warnings"],
 		summary: "Issue a warning to a guild member",
 		errorMessage: "Failed to issue warning",
 		security,
@@ -926,7 +971,7 @@ export default defineRouter("/guilds", [
 	{
 		method: "delete",
 		path: "/:guildId/users/:userId/warn/:warningId",
-		tags,
+		tags: ["Guild Warnings"],
 		summary: "Delete a warning from a guild member's history",
 		errorMessage: "Failed to delete member warning",
 		security,
@@ -982,7 +1027,7 @@ export default defineRouter("/guilds", [
 	{
 		method: "get",
 		path: "/:guildId/leaderboard",
-		tags,
+		tags: guildTags,
 		summary: "Get a guild's leveling leaderboard",
 		errorMessage: "Failed to get guild leaderboard",
 		security,
@@ -1072,7 +1117,7 @@ export default defineRouter("/guilds", [
 	{
 		method: "get",
 		path: "/:guildId",
-		tags,
+		tags: guildTags,
 		summary: "Get a registered guild",
 		errorMessage: "Failed to get guild",
 		security,

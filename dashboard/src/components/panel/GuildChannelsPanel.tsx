@@ -5,6 +5,7 @@ import axios from "axios";
 import APIHandler, { type AdminGuildChannel } from "@jappan/handlers/APIHandler";
 import { AccessRedirect, accessErrorStatus } from "@jappan/components/AuthRoute";
 import ChannelDisplay from "@jappan/components/display/ChannelDisplay";
+import ErrorPage from "@jappan/components/ErrorPage";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import GuildSectionLink from "@jappan/components/panel/GuildSectionLink";
 
@@ -226,16 +227,18 @@ export default function GuildChannelsPanel({ guild }: { guild: { id: string; isA
 			<p className="mt-1 text-sm text-muted-foreground">
 				Load the current channels and categories from Discord. Threads are not included.
 			</p>
-			<Button
-				type="button"
-				size="sm"
-				variant="outline-primary"
-				className="mt-3"
-				disabled={channelsQuery.isFetching || !guild.isActiveMember}
-				onClick={() => void channelsQuery.refetch()}
-			>
-				{channelsQuery.data ? "Refresh channels" : "Load channels"}
-			</Button>
+			{!channelsQuery.isError && (
+				<Button
+					type="button"
+					size="sm"
+					variant="outline-primary"
+					className="mt-3"
+					disabled={channelsQuery.isFetching || !guild.isActiveMember}
+					onClick={() => void channelsQuery.refetch()}
+				>
+					{channelsQuery.data ? "Refresh channels" : "Load channels"}
+				</Button>
+			)}
 			{!guild.isActiveMember && (
 				<p className="mt-3 text-muted-foreground">The bot is not a member of this guild.</p>
 			)}
@@ -244,9 +247,24 @@ export default function GuildChannelsPanel({ guild }: { guild: { id: string; isA
 					<LoadingIndicator label="Loading channels" inline size={80} rows={1} columns={5} />
 				</div>
 			) : channelsQuery.isError ? (
-				<p role="alert" className="mt-3 text-destructive">
-					{errorMessage}
-				</p>
+				<div className="mt-3">
+					<ErrorPage
+						variant="inline"
+						status={errorStatus ? String(errorStatus) : "Error"}
+						title="Could not load channels"
+						message={errorMessage}
+						actions={
+							<Button
+								type="button"
+								size="sm"
+								variant="outline-primary"
+								onClick={() => void channelsQuery.refetch()}
+							>
+								Retry
+							</Button>
+						}
+					/>
+				</div>
 			) : channelsQuery.data?.length === 0 ? (
 				<p className="mt-3 text-muted-foreground">No channels found.</p>
 			) : channelsQuery.data ? (
