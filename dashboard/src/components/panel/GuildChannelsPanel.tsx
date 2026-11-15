@@ -213,10 +213,10 @@ export default function GuildChannelsPanel({ guild }: { guild: { id: string; isA
 					: "Could not load channels. Please try again.";
 
 	return (
-		<Card id="guild-channels" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
+		<Card id="channels" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
 			<div className="flex items-center justify-between gap-3">
 				<h2 className="flex items-center gap-1 text-lg font-semibold">
-					Channels <GuildSectionLink id="guild-channels" label="channels" />
+					Channels <GuildSectionLink id="channels" label="channels" />
 				</h2>
 				{totalChannelCount !== undefined && (
 					<span className="shrink-0 rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">

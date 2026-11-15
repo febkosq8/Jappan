@@ -118,10 +118,10 @@ export default function GuildRolesPanel({ guild }: { guild: { id: string; isActi
 					: "Could not load roles. Please try again.";
 	return (
 		<>
-			<Card id="guild-roles" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
+			<Card id="roles" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
 				<div className="flex items-center justify-between gap-3">
 					<h2 className="flex items-center gap-1 text-lg font-semibold">
-						Roles <GuildSectionLink id="guild-roles" label="roles" />
+						Roles <GuildSectionLink id="roles" label="roles" />
 					</h2>
 					{roles && (
 						<span className="shrink-0 rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">
@@ -129,9 +129,7 @@ export default function GuildRolesPanel({ guild }: { guild: { id: string; isActi
 						</span>
 					)}
 				</div>
-				<p className="mt-1 text-sm text-muted-foreground">
-					Load the current roles in this guild, highest position first.
-				</p>
+				<p className="mt-1 text-sm text-muted-foreground">Load the current roles in this guild.</p>
 				{!rolesQuery.isError && (
 					<Button
 						type="button"

@@ -37,10 +37,10 @@ import guildIdPattern from "@jappan/helpers/guildIdPattern";
 import useDocumentTitle, { formatTitle } from "@jappan/helpers/useDocumentTitle";
 
 const guildSections = [
-	{ id: "guild-overview", label: "Overview", icon: FiHome },
-	{ id: "guild-channels", label: "Channels", icon: FiHash },
-	{ id: "guild-roles", label: "Roles", icon: FiTag },
-	{ id: "user-access", label: "Evaluate user", icon: FiUserCheck },
+	{ id: "overview", label: "Overview", icon: FiHome },
+	{ id: "channels", label: "Channels", icon: FiHash },
+	{ id: "roles", label: "Roles", icon: FiTag },
+	{ id: "evaluate-user", label: "Evaluate user", icon: FiUserCheck },
 	{ id: "service-preferences", label: "Service Preferences", icon: FiSliders },
 	{ id: "warnings", label: "Warnings", icon: FiAlertCircle },
 	{ id: "voice-region-locks", label: "Voice region locks", icon: FiGlobe },
@@ -58,18 +58,33 @@ function GuildDetails({ guild }: { guild: UserGuildDetails }) {
 	const [section, setSection] = useState(readSectionFromHash);
 
 	useEffect(() => {
-		const handleHashChange = () => setSection(readSectionFromHash());
-		window.addEventListener("hashchange", handleHashChange);
-		return () => window.removeEventListener("hashchange", handleHashChange);
+		const syncSectionFromUrl = () => {
+			const nextSection = readSectionFromHash();
+			setSection(nextSection);
+			if (nextSection === "evaluate-user") return;
+			const url = new URL(window.location.href);
+			url.searchParams.delete("userAccessMemberId");
+			url.searchParams.delete("userAccessTab");
+			window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+		};
+		window.addEventListener("hashchange", syncSectionFromUrl);
+		window.addEventListener("popstate", syncSectionFromUrl);
+		syncSectionFromUrl();
+		return () => {
+			window.removeEventListener("hashchange", syncSectionFromUrl);
+			window.removeEventListener("popstate", syncSectionFromUrl);
+		};
 	}, []);
 
 	const changeSection = (value: string) => {
 		setSection(value);
-		window.history.replaceState(
-			window.history.state,
-			"",
-			`${window.location.pathname}${window.location.search}#${value}`,
-		);
+		const url = new URL(window.location.href);
+		url.hash = value;
+		if (value !== "evaluate-user") {
+			url.searchParams.delete("userAccessMemberId");
+			url.searchParams.delete("userAccessTab");
+		}
+		window.history.pushState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
 	};
 
 	return (
@@ -84,20 +99,20 @@ function GuildDetails({ guild }: { guild: UserGuildDetails }) {
 					</TabsTab>
 				))}
 			</TabsList>
-			<TabsPanel value="guild-overview" keepMounted>
+			<TabsPanel value="overview" keepMounted>
 				<GuildOverviewPanel guild={guild} />
 			</TabsPanel>
-			<TabsPanel value="guild-channels" keepMounted>
+			<TabsPanel value="channels" keepMounted>
 				<GuildChannelsPanel guild={guild} />
 			</TabsPanel>
-			<TabsPanel value="guild-roles" keepMounted>
+			<TabsPanel value="roles" keepMounted>
 				<GuildRolesPanel guild={guild} />
 			</TabsPanel>
-			<TabsPanel value="user-access" keepMounted>
+			<TabsPanel value="evaluate-user" keepMounted>
 				<GuildUserAccessPanel
 					key={guild.id}
 					guildId={guild.id}
-					active={section === "user-access"}
+					active={section === "evaluate-user"}
 					isActiveMember={guild.isActiveMember}
 				/>
 			</TabsPanel>

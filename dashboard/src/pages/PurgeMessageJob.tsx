@@ -785,7 +785,7 @@ export default function PurgeMessageJob() {
 															skipped due to missing permissions.
 														</span>
 														<PillLink
-															href={`/guild/${encodeURIComponent(job.guildId)}#guild-channels`}
+															href={`/guild/${encodeURIComponent(job.guildId)}#channels`}
 															variant="outline-secondary"
 															size="sm"
 															className="shrink-0 whitespace-nowrap"

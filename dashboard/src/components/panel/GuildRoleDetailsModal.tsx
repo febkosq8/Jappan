@@ -5,6 +5,7 @@ import axios from "axios";
 import APIHandler, { type GuildRoleDetails } from "@jappan/handlers/APIHandler";
 import { AccessRedirect, accessErrorStatus } from "@jappan/components/AuthRoute";
 import ErrorPage from "@jappan/components/ErrorPage";
+import formatPermission from "@jappan/helpers/formatPermission";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import RoleDisplay from "@jappan/components/display/RoleDisplay";
 
@@ -85,7 +86,7 @@ function RoleDetails({ role }: { role: GuildRoleDetails }) {
 							{role.permissions.map((permission) => (
 								<li key={permission}>
 									<Tag variant="secondary" size="xs">
-										{permission.replace(/([a-z])([A-Z])/g, "$1 $2")}
+										{formatPermission(permission)}
 									</Tag>
 								</li>
 							))}

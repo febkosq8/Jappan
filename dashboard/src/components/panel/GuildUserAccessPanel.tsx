@@ -1,7 +1,7 @@
 import { Button, Card, DateHandler, PreviewCard, Tabs, TabsList, TabsPanel, TabsTab, Tag } from "@febkosq8/arc";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FiLock, FiUser } from "react-icons/fi";
 
 import APIHandler, {
@@ -15,6 +15,7 @@ import ChannelDisplay from "@jappan/components/display/ChannelDisplay";
 import RoleDisplay from "@jappan/components/display/RoleDisplay";
 import UserDisplay from "@jappan/components/display/UserDisplay";
 import ErrorPage from "@jappan/components/ErrorPage";
+import formatPermission from "@jappan/helpers/formatPermission";
 import GuildRoleDetailsModal from "@jappan/components/panel/GuildRoleDetailsModal";
 import GuildSectionLink from "@jappan/components/panel/GuildSectionLink";
 import GuildMemberPicker from "@jappan/components/panel/GuildMemberPicker";
@@ -27,8 +28,41 @@ function getErrorMessage(error: unknown): string {
 	return "Could not evaluate this member's access. Please try again.";
 }
 
-function formatPermission(permission: string): string {
-	return permission.replace(/([a-z])([A-Z])/gu, "$1 $2");
+type AccessSection = "overview" | "roles" | "channels";
+
+function isAccessSection(value: string): value is AccessSection {
+	return value === "overview" || value === "roles" || value === "channels";
+}
+
+function isAccessPanelActiveInUrl(): boolean {
+	return window.location.hash.slice(1).split("?")[0] === "evaluate-user";
+}
+
+function getMemberIdFromUrl(): string {
+	return isAccessPanelActiveInUrl()
+		? (new URLSearchParams(window.location.search).get("userAccessMemberId") ?? "")
+		: "";
+}
+
+function getAccessSectionFromUrl(): AccessSection {
+	if (!isAccessPanelActiveInUrl()) return "overview";
+	const section = new URLSearchParams(window.location.search).get("userAccessTab");
+	return section && isAccessSection(section) ? section : "overview";
+}
+
+function updateUserAccessUrl(memberId: string, section: AccessSection) {
+	const url = new URL(window.location.href);
+	if (memberId) {
+		url.searchParams.set("userAccessMemberId", memberId);
+	} else {
+		url.searchParams.delete("userAccessMemberId");
+	}
+	if (memberId && section !== "overview") {
+		url.searchParams.set("userAccessTab", section);
+	} else {
+		url.searchParams.delete("userAccessTab");
+	}
+	window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
 }
 
 function PermissionList({
@@ -203,9 +237,25 @@ function RoleList({
 	);
 }
 
-function AccessDetails({ access, guildId }: { access: GuildMemberAccessDetails; guildId: string }) {
-	const [section, setSection] = useState("overview");
+function AccessDetails({
+	access,
+	guildId,
+	initialSection,
+	onSectionChange,
+}: {
+	access: GuildMemberAccessDetails;
+	guildId: string;
+	initialSection: AccessSection;
+	onSectionChange: (section: AccessSection) => void;
+}) {
+	const [section, setSection] = useState(initialSection);
 	const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
+
+	const changeSection = (value: string) => {
+		if (!isAccessSection(value)) return;
+		setSection(value);
+		onSectionChange(value);
+	};
 
 	return (
 		<div className="space-y-5">
@@ -232,7 +282,7 @@ function AccessDetails({ access, guildId }: { access: GuildMemberAccessDetails; 
 				)}
 			</div>
 
-			<Tabs value={section} onValueChange={setSection} className="gap-4">
+			<Tabs value={section} onValueChange={changeSection} className="gap-4">
 				<TabsList aria-label="Member access details" className="flex-wrap">
 					<TabsTab value="overview" size="sm">
 						Overview
@@ -467,7 +517,12 @@ export default function GuildUserAccessPanel({
 	active: boolean;
 	isActiveMember: boolean;
 }) {
-	const [memberId, setMemberId] = useState("");
+	const [memberId, setMemberId] = useState(getMemberIdFromUrl);
+	const [accessSection, setAccessSection] = useState(getAccessSectionFromUrl);
+	useEffect(() => {
+		if (active) updateUserAccessUrl(memberId, accessSection);
+	}, [active, accessSection, memberId]);
+
 	const memberQuery = useQuery({
 		queryKey: ["user", "guild", guildId, "member-access", memberId],
 		queryFn: () => APIHandler.getGuildMemberAccess(guildId, memberId),
@@ -479,11 +534,11 @@ export default function GuildUserAccessPanel({
 	const errorStatus = axios.isAxiosError(memberQuery.error) ? memberQuery.error.response?.status : undefined;
 
 	return (
-		<Card id="user-access" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
+		<Card id="evaluate-user" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
 			<div className="flex flex-wrap items-start justify-between gap-4">
 				<div>
 					<h2 className="flex items-center gap-1 text-lg font-semibold">
-						Evaluate user access <GuildSectionLink id="user-access" label="evaluate user access" />
+						Evaluate user access <GuildSectionLink id="evaluate-user" label="evaluate user" />
 					</h2>
 					<p className="mt-1 text-sm text-muted-foreground">
 						Review a member's effective permissions, channel access, and role capabilities.
@@ -538,7 +593,13 @@ export default function GuildUserAccessPanel({
 						</div>
 					)}
 					{memberQuery.data && (
-						<AccessDetails key={memberQuery.data.member.id} access={memberQuery.data} guildId={guildId} />
+						<AccessDetails
+							key={memberQuery.data.member.id}
+							access={memberQuery.data}
+							guildId={guildId}
+							initialSection={accessSection}
+							onSectionChange={setAccessSection}
+						/>
 					)}
 				</div>
 			)}
