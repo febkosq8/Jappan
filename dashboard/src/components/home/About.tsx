@@ -29,6 +29,7 @@ import { toast } from "sonner";
 import APIHandler from "@jappan/handlers/APIHandler";
 import BotStatusOverviewPanel from "@jappan/components/panel/BotStatusOverviewPanel";
 import BotStatusHealthPanel from "@jappan/components/panel/BotStatusHealthPanel";
+import CopyIdButton from "@jappan/components/display/CopyIdButton";
 import LoadingIndicator from "../LoadingIndicator";
 
 const commandCategories = ["General", "Music", "Leveling", "Fun", "Moderation"] as const;
@@ -217,14 +218,35 @@ export default function About() {
 							</p>
 						)}
 						<Tabs defaultValue="overview" className="mt-4 gap-4">
-							<TabsList aria-label="Bot status sections">
-								<TabsTab value="overview" size="sm">
-									Overview
-								</TabsTab>
-								<TabsTab value="health" size="sm">
-									Health
-								</TabsTab>
-							</TabsList>
+							<div className="flex flex-wrap items-center justify-between gap-3">
+								<TabsList aria-label="Bot status sections">
+									<TabsTab value="overview" size="sm">
+										Overview
+									</TabsTab>
+									<TabsTab value="health" size="sm">
+										Health
+									</TabsTab>
+								</TabsList>
+								{botQuery.data && (
+									<div className="flex min-w-0 items-center gap-3">
+										<Avatar
+											name={botQuery.data.botName}
+											image={botQuery.data.botAvatarUrl}
+											size="lg"
+											aria-hidden="true"
+										/>
+										<div className="min-w-0">
+											<p className="truncate font-semibold">{botQuery.data.botName}</p>
+											<p className="flex items-center gap-1 text-sm text-muted-foreground">
+												<span className="min-w-0 break-all">
+													Bot ID: {botQuery.data.botId ?? "Unavailable"}
+												</span>
+												<CopyIdButton id={botQuery.data.botId} label="Bot ID" />
+											</p>
+										</div>
+									</div>
+								)}
+							</div>
 							<TabsPanel value="overview">
 								<BotStatusOverviewPanel
 									bot={botQuery.data}

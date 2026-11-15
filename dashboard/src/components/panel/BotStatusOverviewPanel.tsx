@@ -1,7 +1,6 @@
-import { Avatar, DateHandler } from "@febkosq8/arc";
+import { DateHandler } from "@febkosq8/arc";
 
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
-import CopyIdButton from "@jappan/components/display/CopyIdButton";
 import type { BotStatus } from "@jappan/handlers/APIHandler";
 
 export default function BotStatusOverviewPanel({
@@ -17,18 +16,6 @@ export default function BotStatusOverviewPanel({
 }) {
 	return (
 		<div>
-			{bot && (
-				<div className="mb-4 flex min-w-0 items-center gap-3">
-					<Avatar name={bot.botName} image={bot.botAvatarUrl} size="lg" aria-hidden="true" />
-					<div className="min-w-0">
-						<p className="truncate font-semibold">{bot.botName}</p>
-						<p className="flex items-center gap-1 text-sm text-muted-foreground">
-							<span className="min-w-0 break-all">Bot ID: {bot.botId ?? "Unavailable"}</span>
-							<CopyIdButton id={bot.botId} label="Bot ID" />
-						</p>
-					</div>
-				</div>
-			)}
 			<dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
 				{[
 					{ label: "Bot version", value: bot && `v${bot.version}` },
