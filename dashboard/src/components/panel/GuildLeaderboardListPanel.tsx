@@ -31,7 +31,7 @@ const columns: TableColumnDef<LeaderboardEntry>[] = [
 		accessorKey: "points",
 		header: "Points",
 		size: 120,
-		filterFn: "includesString",
+		enableColumnFilter: false,
 		cell: ({ row }) => (
 			<span className="block text-right tabular-nums">{row.original.points.toLocaleString()}</span>
 		),

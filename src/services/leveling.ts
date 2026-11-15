@@ -418,6 +418,7 @@ export async function getLeaderboard({
 	});
 	const filter = {
 		guildId,
+		"leveling.points": { $gt: 0 },
 		...(filters.length > 0
 			? { $and: fieldFilterConditions }
 			: escapedQuery
@@ -464,13 +465,14 @@ export async function getLeaderboardPreview({
 	guildId,
 	userId,
 }: GetLeaderboardPreviewOptions): Promise<LeaderboardPreview> {
+	const leaderboardFilter = { guildId, "leveling.points": { $gt: 0 } };
 	const [entries, member] = await Promise.all([
-		GuildMemberStateModel.find({ guildId })
+		GuildMemberStateModel.find(leaderboardFilter)
 			.sort({ "leveling.points": -1, userId: 1 })
 			.limit(3)
 			.select({ userId: 1, username: 1, "leveling.points": 1 })
 			.exec(),
-		GuildMemberStateModel.findOne({ guildId, userId })
+		GuildMemberStateModel.findOne({ ...leaderboardFilter, userId })
 			.select({ userId: 1, username: 1, "leveling.points": 1 })
 			.exec(),
 	]);
@@ -480,7 +482,7 @@ export async function getLeaderboardPreview({
 	}
 
 	const membersAhead = await GuildMemberStateModel.countDocuments({
-		guildId,
+		...leaderboardFilter,
 		$or: [
 			{ "leveling.points": { $gt: member.leveling.points } },
 			{ "leveling.points": member.leveling.points, userId: { $lt: userId } },
