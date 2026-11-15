@@ -39,9 +39,9 @@ function isAccessPanelActiveInUrl(): boolean {
 }
 
 function getMemberIdFromUrl(): string {
-	return isAccessPanelActiveInUrl()
-		? (new URLSearchParams(window.location.search).get("userAccessMemberId") ?? "")
-		: "";
+	if (!isAccessPanelActiveInUrl()) return "";
+	const searchParams = new URLSearchParams(window.location.search);
+	return searchParams.get("userId") ?? searchParams.get("userAccessMemberId") ?? "";
 }
 
 function getAccessSectionFromUrl(): AccessSection {
@@ -52,10 +52,11 @@ function getAccessSectionFromUrl(): AccessSection {
 
 function updateUserAccessUrl(memberId: string, section: AccessSection) {
 	const url = new URL(window.location.href);
+	url.searchParams.delete("userAccessMemberId");
 	if (memberId) {
-		url.searchParams.set("userAccessMemberId", memberId);
+		url.searchParams.set("userId", memberId);
 	} else {
-		url.searchParams.delete("userAccessMemberId");
+		url.searchParams.delete("userId");
 	}
 	if (memberId && section !== "overview") {
 		url.searchParams.set("userAccessTab", section);

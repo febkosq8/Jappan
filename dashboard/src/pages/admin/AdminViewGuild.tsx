@@ -608,8 +608,8 @@ function GuildDetails({ guild }: { guild: AdminGuildDetails }) {
 			setSection(nextSection);
 			if (nextSection === "evaluate-user") return;
 			const url = new URL(window.location.href);
-			url.searchParams.delete("userAccessMemberId");
-			url.searchParams.delete("userAccessTab");
+			if (!url.search) return;
+			url.search = "";
 			window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
 		};
 		window.addEventListener("hashchange", syncSectionFromUrl);
@@ -624,11 +624,9 @@ function GuildDetails({ guild }: { guild: AdminGuildDetails }) {
 	const changeSection = (value: string) => {
 		setSection(value);
 		const url = new URL(window.location.href);
+		url.search = "";
+		url.hash = "";
 		url.hash = value;
-		if (value !== "evaluate-user") {
-			url.searchParams.delete("userAccessMemberId");
-			url.searchParams.delete("userAccessTab");
-		}
 		window.history.pushState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
 	};
 
