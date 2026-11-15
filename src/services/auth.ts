@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
-import { APIError } from "better-auth/api";
+import { APIError, createAuthMiddleware } from "better-auth/api";
 import { bearer } from "better-auth/plugins";
 import mongoose from "mongoose";
 
@@ -43,6 +43,21 @@ function createAuth() {
 		onAPIError: { errorURL: new URL("/auth/error", config.BOT_WEBSITE).href },
 		database: mongodbAdapter(DatabaseManager.getDatabaseInstance()),
 		plugins: [bearer()],
+		hooks: {
+			after: createAuthMiddleware(async (ctx) => {
+				if (ctx.path === "/callback/:id" && ctx.context.newSession) {
+					logger.info("HTTP", "Dashboard user signed in", {
+						userId: ctx.context.newSession.user.id,
+						username: ctx.context.newSession.user.username,
+					});
+				} else if (ctx.path === "/sign-out" && ctx.context.session) {
+					logger.info("HTTP", "Dashboard user signed out", {
+						userId: ctx.context.session.user.id,
+						username: ctx.context.session.user.username,
+					});
+				}
+			}),
+		},
 		socialProviders: {
 			discord: {
 				clientId: config.AUTH_DISCORD_CLIENT_ID,
