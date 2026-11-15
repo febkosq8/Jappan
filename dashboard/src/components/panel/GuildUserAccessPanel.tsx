@@ -330,7 +330,12 @@ function AccessDetails({
 				<TabsPanel value="roles">
 					<div className="space-y-3">
 						<Card hoverable={false} className="min-w-0 space-y-3 rounded-md border-border p-3">
-							<h4 className="font-semibold">Assigned roles</h4>
+							<div>
+								<h4 className="font-semibold">Assigned roles</h4>
+								<p className="mt-1 text-sm text-muted-foreground">
+									Click a role tag to explore its details.
+								</p>
+							</div>
 							<RoleList
 								roles={access.roles.assigned}
 								emptyLabel="No assigned roles."
@@ -345,6 +350,9 @@ function AccessDetails({
 									<p className="mt-1 text-sm text-muted-foreground">
 										Based on Manage Roles permission and role hierarchy.
 									</p>
+									<p className="mt-1 text-sm text-muted-foreground">
+										Click a role tag to explore its details.
+									</p>
 								</div>
 								<RoleList
 									roles={access.roles.manageable}
@@ -357,6 +365,9 @@ function AccessDetails({
 									<h4 className="font-semibold">Roles they can assign</h4>
 									<p className="mt-1 text-sm text-muted-foreground">
 										Managed integration roles and roles at or above their highest role are excluded.
+									</p>
+									<p className="mt-1 text-sm text-muted-foreground">
+										Click a role tag to explore its details.
 									</p>
 								</div>
 								<RoleList
