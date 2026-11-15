@@ -28,12 +28,16 @@ export default function GuildLeaderboardOverviewPanel({ leaderboard }: { leaderb
 
 	return (
 		<div className="grid items-end gap-3 sm:grid-cols-3">
-			{podiumSlots.map(({ place, entry }) =>
-				entry ? (
+			{podiumSlots.map(({ place, entry }) => {
+				if (!entry) {
+					return <div key={place} aria-hidden="true" className="hidden sm:block" />;
+				}
+				const displayName = entry.displayName ?? `@${entry.username}`;
+				return (
 					<Card
 						key={place}
 						hoverable={false}
-						aria-label={`${place}${place === 1 ? "st" : place === 2 ? "nd" : "rd"} place: ${entry.username}, ${entry.points.toLocaleString()} points`}
+						aria-label={`${place}${place === 1 ? "st" : place === 2 ? "nd" : "rd"} place: ${displayName}, ${entry.points.toLocaleString()} points`}
 						className={`flex flex-col items-center gap-3 p-4 text-center ${
 							place === 1 ? "border-primary/60 sm:p-5" : ""
 						}`}
@@ -50,25 +54,23 @@ export default function GuildLeaderboardOverviewPanel({ leaderboard }: { leaderb
 							<FaTrophy className="size-4" aria-hidden="true" />
 							{place === 1 ? "1st place" : place === 2 ? "2nd place" : "3rd place"}
 						</span>
-						<Avatar name={entry.username} image={entry.avatarUrl} size="lg" aria-hidden="true" />
+						<Avatar name={displayName} image={entry.avatarUrl} size="lg" aria-hidden="true" />
 						<div className="min-w-0 max-w-full">
 							<a
-								href={`https://discord.com/users/${encodeURIComponent(entry.userId)}`}
+								href={`https://discord.com/users/${encodeURIComponent(entry.id)}`}
 								target="_blank"
 								rel="noreferrer"
 								className="font-semibold text-foreground underline-offset-4 hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 							>
-								{entry.username}
+								{displayName}
 							</a>
 							<p className="mt-1 text-sm tabular-nums text-muted-foreground">
 								{entry.points.toLocaleString()} points
 							</p>
 						</div>
 					</Card>
-				) : (
-					<div key={place} aria-hidden="true" className="hidden sm:block" />
-				),
-			)}
+				);
+			})}
 		</div>
 	);
 }

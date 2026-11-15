@@ -14,6 +14,7 @@ import { getPlayerWebUser } from "../../../services/playerAccess.js";
 import { getPlayerSuggestions } from "../../../services/playerSearch.js";
 import { startPlayerSession } from "../../../services/playerSessionStart.js";
 import { getPlayerSessionViewerCount } from "../../../services/playerWebsocket.js";
+import { apiUserSchema } from "../schemas.js";
 const tags = ["Player"];
 const security = [{ sessionBearer: [] }];
 // Authenticate before resolving the session so unauthenticated callers cannot probe session IDs.
@@ -45,7 +46,7 @@ const trackSchema = z.object({
 	thumbnailUrl: z.string().nullable(),
 	source: z.string(),
 	durationMs: z.number().int().nonnegative(),
-	requestedBy: z.object({ username: z.string(), avatarUrl: z.string().nullable() }).nullable(),
+	requestedBy: apiUserSchema.nullable(),
 });
 const playerSessionSchema = z.object({
 	sessionId: z.string(),
@@ -59,12 +60,10 @@ const playerSessionSchema = z.object({
 			region: z.string().nullable(),
 		})
 		.nullable(),
-	owner: z.object({ username: z.string(), avatarUrl: z.string().nullable() }),
+	owner: apiUserSchema,
 	locked: z.boolean(),
-	lastChangedBy: z
-		.object({
-			username: z.string(),
-			avatarUrl: z.string().nullable(),
+	lastChangedBy: apiUserSchema
+		.extend({
 			source: z.enum(["discord", "web"]),
 			timestampMs: z.number().int(),
 		})

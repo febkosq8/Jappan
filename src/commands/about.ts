@@ -59,7 +59,7 @@ const command: BotCommand = {
 			new ButtonBuilder().setLabel("Website").setURL(config.BOT_WEBSITE).setStyle(ButtonStyle.Link),
 			new ButtonBuilder()
 				.setLabel("Manage guild")
-				.setURL(createGuildDashboardUrl({ config, guildId: guild.id }))
+				.setURL(createGuildDashboardUrl({ config, guildId: guild.id, section: "overview" }))
 				.setStyle(ButtonStyle.Link),
 		);
 		const embed = new EmbedBuilder()

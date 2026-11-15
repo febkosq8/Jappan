@@ -194,13 +194,7 @@ function PurgeMessageList({
 									return (
 										<li key={message.id} className="rounded-md border border-border p-3">
 											<div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-												<UserDisplay
-													id={message.author.id}
-													name={`${message.author.displayName} (@${message.author.username})`}
-													avatarUrl={message.author.avatarUrl}
-													size="sm"
-													showId
-												/>
+												<UserDisplay user={message.author} size="sm" showId />
 												{showStatuses && (
 													<MessageStatusTag
 														status={messageStatuses[message.id] ?? "pending"}
@@ -791,7 +785,7 @@ export default function PurgeMessageJob() {
 															skipped due to missing permissions.
 														</span>
 														<PillLink
-															href={`/guild/${encodeURIComponent(job.guildId)}#guild-channels`}
+															href={`/guild/${encodeURIComponent(job.guildId)}#channels`}
 															variant="outline-secondary"
 															size="sm"
 															className="shrink-0 whitespace-nowrap"

@@ -1,7 +1,4 @@
 import {
-	ActionRowBuilder,
-	ButtonBuilder,
-	ButtonStyle,
 	ChannelType,
 	EmbedBuilder,
 	InteractionContextType,
@@ -13,6 +10,7 @@ import {
 } from "discord.js";
 
 import type { BotCommand, BotCommandData } from "../helpers/command.js";
+import { createGuildDashboardLinkActionRow } from "../helpers/dashboard.js";
 import { getAuditLogStatus, setAuditLog } from "../services/auditLog.js";
 import type { Config } from "../services/config.js";
 
@@ -182,10 +180,6 @@ const command: BotCommand = {
 
 		if (subcommand === "on" || subcommand === "off" || subcommand === "check") {
 			const status = await getAuditLogStatus(interaction.guild.id, interaction.guild.name);
-			const servicePreferencesUrl = new URL(
-				`/guild/${encodeURIComponent(interaction.guild.id)}#service-preferences`,
-				config.BOT_WEBSITE,
-			).href;
 			await interaction.editReply({
 				embeds: [
 					createStatusEmbed({
@@ -197,12 +191,11 @@ const command: BotCommand = {
 					}),
 				],
 				components: [
-					new ActionRowBuilder<ButtonBuilder>().addComponents(
-						new ButtonBuilder()
-							.setLabel("Manage in Dashboard")
-							.setStyle(ButtonStyle.Link)
-							.setURL(servicePreferencesUrl),
-					),
+					createGuildDashboardLinkActionRow({
+						config,
+						guildId: interaction.guild.id,
+						section: "service-preferences",
+					}),
 				],
 			});
 			return;

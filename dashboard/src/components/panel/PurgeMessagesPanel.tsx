@@ -6,8 +6,10 @@ import { toast } from "sonner";
 
 import GuildMemberPicker from "@jappan/components/panel/GuildMemberPicker";
 import CopyIdButton from "@jappan/components/display/CopyIdButton";
+import UserDisplay from "@jappan/components/display/UserDisplay";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
-import APIHandler, { type WarningMember } from "@jappan/handlers/APIHandler";
+import GuildSectionLink from "@jappan/components/panel/GuildSectionLink";
+import APIHandler, { type User } from "@jappan/handlers/APIHandler";
 
 const purgeableChannelTypes = new Set(["GuildText", "GuildAnnouncement", "GuildVoice"]);
 
@@ -24,7 +26,7 @@ export default function PurgeMessagesPanel({ active, guildId }: { active: boolea
 	const [text, setText] = useState("");
 	const [regex, setRegex] = useState(false);
 	const [ignoreCase, setIgnoreCase] = useState(false);
-	const [selectedMember, setSelectedMember] = useState<WarningMember | null>(null);
+	const [selectedMember, setSelectedMember] = useState<User | null>(null);
 
 	const channelsQuery = useQuery({
 		queryKey: ["user", "guild", guildId, "channels"],
@@ -85,150 +87,143 @@ export default function PurgeMessagesPanel({ active, guildId }: { active: boolea
 	};
 
 	return (
-		<section aria-labelledby="purge-messages-heading" className="space-y-4">
+		<Card id="purge-messages" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
 			<div>
-				<h2 id="purge-messages-heading" className="text-xl font-semibold">
-					Purge messages
+				<h2 id="purge-messages-heading" className="flex items-center gap-1 text-lg font-semibold">
+					Purge messages <GuildSectionLink id="purge-messages" label="purge messages" />
 				</h2>
 				<p className="mt-1 text-sm text-muted-foreground">
 					Create a job to preview messages and confirm deletion on its job page.
 				</p>
 			</div>
-			<Card hoverable={false} className="rounded-md border-border">
-				<Card.Content className="space-y-4 p-4!">
-					<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-						<div>
-							<div className="mb-1 flex items-center gap-2">
-								<LabelField id="purge-messages-channel" label="Channel (optional)" />
-								{channelsQuery.isFetching && (
-									<LoadingIndicator label="Loading channels" inline size={60} rows={1} columns={5} />
-								)}
-							</div>
-							<div className="flex items-center gap-1">
-								<Select
-									id="purge-messages-channel"
-									value={channelId}
-									onChange={(value) => updateFilter(() => setChannelId(value))}
-									data={[
-										{ key: "", label: "All channels" },
-										...channels.map((channel) => ({
-											key: channel.id,
-											label: `#${channel.name} (${channel.id}) | ${channel.parent ? (channel.parent.name ?? "Unavailable category") : "Uncategorized"}`,
-										})),
-									]}
-									disabled={!active || isBusy || channelsQuery.isFetching || channelsQuery.isError}
-									className="h-10 min-w-0 flex-1"
-								/>
-								{channelId && <CopyIdButton id={channelId} label="Channel ID" />}
-							</div>
-							{channelsQuery.isError && (
-								<p role="alert" className="mt-1 text-sm text-destructive">
-									{getErrorMessage(channelsQuery.error, "Could not load channels.")}
-								</p>
-							)}
-							{channelsQuery.isSuccess && channels.length === 0 && (
-								<p className="mt-1 text-xs text-muted-foreground">
-									No supported message channels found.
-								</p>
+			<div className="mt-4 space-y-4">
+				<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+					<div>
+						<div className="mb-1 flex items-center gap-2">
+							<LabelField id="purge-messages-channel" label="Channel (optional)" />
+							{channelsQuery.isFetching && (
+								<LoadingIndicator label="Loading channels" inline size={60} rows={1} columns={5} />
 							)}
 						</div>
-						<div>
-							<LabelField id="purge-messages-count" label="Maximum messages" className="mb-1" />
-							<Input
-								id="purge-messages-count"
-								type="number"
-								min={1}
-								max={200}
-								step={1}
-								value={countInput}
-								onChange={(event) => updateFilter(() => setCountInput(event.target.value))}
-								disabled={!active || isBusy}
-								className="w-full"
+						<div className="flex items-center gap-1">
+							<Select
+								id="purge-messages-channel"
+								value={channelId}
+								onChange={(value) => updateFilter(() => setChannelId(value))}
+								data={[
+									{ key: "", label: "All channels" },
+									...channels.map((channel) => ({
+										key: channel.id,
+										label: `#${channel.name} (${channel.id}) | ${channel.parent ? (channel.parent.name ?? "Unavailable category") : "Uncategorized"}`,
+									})),
+								]}
+								disabled={!active || isBusy || channelsQuery.isFetching || channelsQuery.isError}
+								className="h-10 min-w-0 flex-1"
 							/>
-							<p className="mt-1 text-xs text-muted-foreground">
-								Up to 200 messages total across the selected scope.
-							</p>
+							{channelId && <CopyIdButton id={channelId} label="Channel ID" />}
 						</div>
-						<div>
-							<LabelField id="purge-messages-member" label="Message author (optional)" className="mb-1" />
-							{selectedMember ? (
-								<div className="flex flex-wrap items-center gap-3">
-									<span className="text-sm">
-										{selectedMember.displayName}{" "}
-										<span className="text-muted-foreground">@{selectedMember.username}</span>
-									</span>
-									<Button
-										size="sm"
-										variant="outline-secondary"
+						{channelsQuery.isError && (
+							<p role="alert" className="mt-1 text-sm text-destructive">
+								{getErrorMessage(channelsQuery.error, "Could not load channels.")}
+							</p>
+						)}
+						{channelsQuery.isSuccess && channels.length === 0 && (
+							<p className="mt-1 text-xs text-muted-foreground">No supported message channels found.</p>
+						)}
+					</div>
+					<div>
+						<LabelField id="purge-messages-count" label="Maximum messages" className="mb-1" />
+						<Input
+							id="purge-messages-count"
+							type="number"
+							min={1}
+							max={200}
+							step={1}
+							value={countInput}
+							onChange={(event) => updateFilter(() => setCountInput(event.target.value))}
+							disabled={!active || isBusy}
+							className="w-full"
+						/>
+						<p className="mt-1 text-xs text-muted-foreground">
+							Up to 200 messages total across the selected scope.
+						</p>
+					</div>
+					<div>
+						<LabelField id="purge-messages-member" label="Message author (optional)" className="mb-1" />
+						{selectedMember ? (
+							<div className="flex flex-wrap items-center gap-3">
+								<UserDisplay user={selectedMember} size="sm" />
+								<Button
+									size="sm"
+									variant="outline-secondary"
+									disabled={!active || isBusy}
+									onClick={() => updateFilter(() => setSelectedMember(null))}
+								>
+									Remove author filter
+								</Button>
+							</div>
+						) : (
+							<GuildMemberPicker
+								id="purge-messages-member"
+								guildId={guildId}
+								enabled={active}
+								disabled={isBusy}
+								onSelect={(member) => updateFilter(() => setSelectedMember(member))}
+							/>
+						)}
+					</div>
+					<div className="col-span-full">
+						<div className="mb-1 flex flex-wrap items-center justify-between gap-3">
+							<LabelField id="purge-messages-text" label={regex ? "Text matches" : "Text contains"} />
+							<div className="flex flex-wrap items-center gap-4">
+								<label className="flex items-center gap-2 text-sm">
+									<Switch
+										checked={regex}
+										onChange={(checked) => updateFilter(() => setRegex(checked))}
 										disabled={!active || isBusy}
-										onClick={() => updateFilter(() => setSelectedMember(null))}
-									>
-										Remove author filter
-									</Button>
-								</div>
-							) : (
-								<GuildMemberPicker
-									id="purge-messages-member"
-									guildId={guildId}
-									enabled={active}
-									disabled={isBusy}
-									onSelect={(member) => updateFilter(() => setSelectedMember(member))}
-								/>
-							)}
-						</div>
-						<div className="col-span-full">
-							<div className="mb-1 flex flex-wrap items-center justify-between gap-3">
-								<LabelField id="purge-messages-text" label={regex ? "Text matches" : "Text contains"} />
-								<div className="flex flex-wrap items-center gap-4">
-									<label className="flex items-center gap-2 text-sm">
-										<Switch
-											checked={regex}
-											onChange={(checked) => updateFilter(() => setRegex(checked))}
-											disabled={!active || isBusy}
-											aria-label="Regex"
-										/>
-										<span>Regex</span>
-									</label>
-									<label className="flex items-center gap-2 text-sm">
-										<Switch
-											checked={ignoreCase}
-											onChange={(checked) => updateFilter(() => setIgnoreCase(checked))}
-											disabled={!active || isBusy}
-											aria-label="Ignore case"
-										/>
-										<span>Ignore case</span>
-									</label>
-								</div>
+										aria-label="Regex"
+									/>
+									<span>Regex</span>
+								</label>
+								<label className="flex items-center gap-2 text-sm">
+									<Switch
+										checked={ignoreCase}
+										onChange={(checked) => updateFilter(() => setIgnoreCase(checked))}
+										disabled={!active || isBusy}
+										aria-label="Ignore case"
+									/>
+									<span>Ignore case</span>
+								</label>
 							</div>
-							<Input
-								as="textarea"
-								id="purge-messages-text"
-								rows={2}
-								value={text}
-								onChange={(event) => updateFilter(() => setText(event.target.value))}
-								placeholder={regex ? "RE2 pattern, without /.../ delimiters" : "Text filter"}
-								maxLength={2000}
-								disabled={!active || isBusy}
-								className="w-full"
-							/>
-							<p className="mt-1 text-xs text-muted-foreground">
-								{regex
-									? "Safe RE2 syntax; no lookarounds or backreferences."
-									: "Matches messages containing this text."}
-							</p>
 						</div>
+						<Input
+							as="textarea"
+							id="purge-messages-text"
+							rows={2}
+							value={text}
+							onChange={(event) => updateFilter(() => setText(event.target.value))}
+							placeholder={regex ? "RE2 pattern, without /.../ delimiters" : "Text filter"}
+							maxLength={2000}
+							disabled={!active || isBusy}
+							className="w-full"
+						/>
+						<p className="mt-1 text-xs text-muted-foreground">
+							{regex
+								? "Safe RE2 syntax; no lookarounds or backreferences."
+								: "Matches messages containing this text."}
+						</p>
 					</div>
-					<div className="flex flex-wrap items-center gap-3">
-						<Button
-							variant="outline-primary"
-							disabled={!active || !canCreate || isBusy}
-							onClick={startPurgeJob}
-						>
-							{createMutation.isPending ? "Creating job..." : "Start purge job"}
-						</Button>
-					</div>
-				</Card.Content>
-			</Card>
-		</section>
+				</div>
+				<div className="flex flex-wrap items-center gap-3">
+					<Button
+						variant="outline-primary"
+						disabled={!active || !canCreate || isBusy}
+						onClick={startPurgeJob}
+					>
+						{createMutation.isPending ? "Creating job..." : "Start purge job"}
+					</Button>
+				</div>
+			</div>
+		</Card>
 	);
 }

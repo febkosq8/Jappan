@@ -12,9 +12,9 @@ import GuildSectionLink from "@jappan/components/panel/GuildSectionLink";
 export default function GuildOverviewPanel({ guild }: { guild: AdminGuildDetails | UserGuildDetails }) {
 	return (
 		<div className="space-y-4">
-			<Card id="guild-overview" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
+			<Card id="overview" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
 				<h2 className="flex items-center gap-1 text-lg font-semibold">
-					Guild overview <GuildSectionLink id="guild-overview" label="guild overview" />
+					Guild overview <GuildSectionLink id="overview" label="overview" />
 				</h2>
 				<dl className="mt-5 grid gap-3 sm:grid-cols-2">
 					{"hasRequiredPermissions" in guild && guild.hasRequiredPermissions !== undefined && (
@@ -28,11 +28,7 @@ export default function GuildOverviewPanel({ guild }: { guild: AdminGuildDetails
 					)}
 					{"owner" in guild && guild.owner && (
 						<GuildDetail label="Owner">
-							<UserDisplay
-								id={guild.owner.userId}
-								name={guild.owner.username}
-								avatarUrl={guild.owner.avatarUrl}
-							/>
+							<UserDisplay user={guild.owner} />
 						</GuildDetail>
 					)}
 					{"isActiveMember" in guild && (

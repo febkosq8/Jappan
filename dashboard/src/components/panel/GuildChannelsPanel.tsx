@@ -1,6 +1,7 @@
 import { Button, Card, DateHandler, Tag } from "@febkosq8/arc";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
+import { FiRefreshCw } from "react-icons/fi";
 
 import APIHandler, { type AdminGuildChannel } from "@jappan/handlers/APIHandler";
 import { AccessRedirect, accessErrorStatus } from "@jappan/components/AuthRoute";
@@ -213,32 +214,46 @@ export default function GuildChannelsPanel({ guild }: { guild: { id: string; isA
 					: "Could not load channels. Please try again.";
 
 	return (
-		<Card id="guild-channels" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
-			<div className="flex items-center justify-between gap-3">
+		<Card id="channels" hoverable={false} className="scroll-mt-24 p-5 sm:p-6">
+			<div className="flex flex-wrap items-center justify-between gap-3">
 				<h2 className="flex items-center gap-1 text-lg font-semibold">
-					Channels <GuildSectionLink id="guild-channels" label="channels" />
+					Channels <GuildSectionLink id="channels" label="channels" />
 				</h2>
-				{totalChannelCount !== undefined && (
-					<span className="shrink-0 rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">
-						Total: {totalChannelCount} {totalChannelCount === 1 ? "channel" : "channels"}
-					</span>
-				)}
+				<div className="flex shrink-0 items-center gap-2">
+					{channelsQuery.data && (
+						<Button
+							type="button"
+							size="icon-sm"
+							variant="outline-primary"
+							className="group/refetch"
+							aria-label="Refresh channels"
+							disabled={channelsQuery.isFetching || !guild.isActiveMember}
+							onClick={() => void channelsQuery.refetch()}
+						>
+							<FiRefreshCw className="size-4 group-hover/refetch:animate-spin" aria-hidden="true" />
+						</Button>
+					)}
+					{totalChannelCount !== undefined && (
+						<span className="shrink-0 rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">
+							Total: {totalChannelCount} {totalChannelCount === 1 ? "channel" : "channels"}
+						</span>
+					)}
+					{!channelsQuery.data && !channelsQuery.isError && (
+						<Button
+							type="button"
+							size="sm"
+							variant="outline-primary"
+							disabled={channelsQuery.isFetching || !guild.isActiveMember}
+							onClick={() => void channelsQuery.refetch()}
+						>
+							Load channels
+						</Button>
+					)}
+				</div>
 			</div>
 			<p className="mt-1 text-sm text-muted-foreground">
 				Load the current channels and categories from Discord. Threads are not included.
 			</p>
-			{!channelsQuery.isError && (
-				<Button
-					type="button"
-					size="sm"
-					variant="outline-primary"
-					className="mt-3"
-					disabled={channelsQuery.isFetching || !guild.isActiveMember}
-					onClick={() => void channelsQuery.refetch()}
-				>
-					{channelsQuery.data ? "Refresh channels" : "Load channels"}
-				</Button>
-			)}
 			{!guild.isActiveMember && (
 				<p className="mt-3 text-muted-foreground">The bot is not a member of this guild.</p>
 			)}

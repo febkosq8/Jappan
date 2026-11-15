@@ -3,7 +3,18 @@ import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { useEffect, useState } from "react";
 import { FaListCheck } from "react-icons/fa6";
-import { FiAlertCircle, FiArrowLeft, FiGlobe, FiHash, FiHome, FiKey, FiSliders, FiTag, FiTrash2 } from "react-icons/fi";
+import {
+	FiAlertCircle,
+	FiArrowLeft,
+	FiGlobe,
+	FiHash,
+	FiHome,
+	FiKey,
+	FiSliders,
+	FiTag,
+	FiTrash2,
+	FiUserCheck,
+} from "react-icons/fi";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -17,6 +28,7 @@ import GuildRolesPanel from "@jappan/components/panel/GuildRolesPanel";
 import GuildServicePreferencesPanel from "@jappan/components/panel/GuildServicePreferencesPanel";
 import GuildVoiceRegionLockManagerPanel from "@jappan/components/panel/GuildVoiceRegionLockManagerPanel";
 import GuildWarningManagerPanel from "@jappan/components/panel/GuildWarningManagerPanel";
+import GuildUserAccessPanel from "@jappan/components/panel/GuildUserAccessPanel";
 import GuildOverviewPanel from "@jappan/components/panel/GuildOverviewPanel";
 import BotPermissionsPanel from "@jappan/components/panel/BotPermissionsPanel";
 import CommandPermissionsPanel from "@jappan/components/panel/CommandPermissionsPanel";
@@ -25,9 +37,10 @@ import guildIdPattern from "@jappan/helpers/guildIdPattern";
 import useDocumentTitle, { formatTitle } from "@jappan/helpers/useDocumentTitle";
 
 const guildSections = [
-	{ id: "guild-overview", label: "Overview", icon: FiHome },
-	{ id: "guild-channels", label: "Channels", icon: FiHash },
-	{ id: "guild-roles", label: "Roles", icon: FiTag },
+	{ id: "overview", label: "Overview", icon: FiHome },
+	{ id: "channels", label: "Channels", icon: FiHash },
+	{ id: "roles", label: "Roles", icon: FiTag },
+	{ id: "evaluate-user", label: "Evaluate user", icon: FiUserCheck },
 	{ id: "service-preferences", label: "Service Preferences", icon: FiSliders },
 	{ id: "warnings", label: "Warnings", icon: FiAlertCircle },
 	{ id: "voice-region-locks", label: "Voice region locks", icon: FiGlobe },
@@ -45,18 +58,31 @@ function GuildDetails({ guild }: { guild: UserGuildDetails }) {
 	const [section, setSection] = useState(readSectionFromHash);
 
 	useEffect(() => {
-		const handleHashChange = () => setSection(readSectionFromHash());
-		window.addEventListener("hashchange", handleHashChange);
-		return () => window.removeEventListener("hashchange", handleHashChange);
+		const syncSectionFromUrl = () => {
+			const nextSection = readSectionFromHash();
+			setSection(nextSection);
+			if (nextSection === "evaluate-user" || nextSection === "warnings") return;
+			const url = new URL(window.location.href);
+			if (!url.search) return;
+			url.search = "";
+			window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+		};
+		window.addEventListener("hashchange", syncSectionFromUrl);
+		window.addEventListener("popstate", syncSectionFromUrl);
+		syncSectionFromUrl();
+		return () => {
+			window.removeEventListener("hashchange", syncSectionFromUrl);
+			window.removeEventListener("popstate", syncSectionFromUrl);
+		};
 	}, []);
 
 	const changeSection = (value: string) => {
 		setSection(value);
-		window.history.replaceState(
-			window.history.state,
-			"",
-			`${window.location.pathname}${window.location.search}#${value}`,
-		);
+		const url = new URL(window.location.href);
+		url.search = "";
+		url.hash = "";
+		url.hash = value;
+		window.history.pushState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
 	};
 
 	return (
@@ -71,14 +97,22 @@ function GuildDetails({ guild }: { guild: UserGuildDetails }) {
 					</TabsTab>
 				))}
 			</TabsList>
-			<TabsPanel value="guild-overview" keepMounted>
+			<TabsPanel value="overview" keepMounted>
 				<GuildOverviewPanel guild={guild} />
 			</TabsPanel>
-			<TabsPanel value="guild-channels" keepMounted>
+			<TabsPanel value="channels" keepMounted>
 				<GuildChannelsPanel guild={guild} />
 			</TabsPanel>
-			<TabsPanel value="guild-roles" keepMounted>
+			<TabsPanel value="roles" keepMounted>
 				<GuildRolesPanel guild={guild} />
+			</TabsPanel>
+			<TabsPanel value="evaluate-user" keepMounted>
+				<GuildUserAccessPanel
+					key={guild.id}
+					guildId={guild.id}
+					active={section === "evaluate-user"}
+					isActiveMember={guild.isActiveMember}
+				/>
 			</TabsPanel>
 			<TabsPanel value="service-preferences" keepMounted>
 				<GuildServicePreferencesPanel guild={guild} active={section === "service-preferences"} />
@@ -155,7 +189,7 @@ export default function UserViewGuild() {
 		const errorMessage =
 			errorStatus === 403
 				? "You need Manage Server permission in this guild to view its details."
-				: "Could not load guild details. Check your access and try again.";
+				: "Could not load guild details.\nCheck your access and try again.";
 		return (
 			<ErrorPage
 				status={errorStatus ? String(errorStatus) : "Guild error"}

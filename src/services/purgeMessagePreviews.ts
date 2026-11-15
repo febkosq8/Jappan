@@ -9,6 +9,8 @@ import {
 } from "discord.js";
 import { z } from "zod";
 
+import { toApiUser } from "../helpers/apiUser.js";
+import { apiUserSchema } from "../routes/api/schemas.js";
 import type { PurgeableGuildChannel } from "./purgeMessageJobs.js";
 import { createPurgeMessageTextFilter } from "./purgeMessageTextFilter.js";
 
@@ -28,14 +30,7 @@ export const purgeMessagePreviewSchema = z.object({
 	channel: z.object({ id: z.string(), name: z.string() }).nullable(),
 	request: z.object({
 		count: z.number().int().min(1).max(200),
-		targetUser: z
-			.object({
-				id: z.string(),
-				username: z.string(),
-				displayName: z.string(),
-				avatarUrl: z.string().nullable(),
-			})
-			.nullable(),
+		targetUser: apiUserSchema.nullable(),
 		textFilter: z.string().nullable(),
 		regex: z.boolean(),
 		ignoreCase: z.boolean(),
@@ -55,12 +50,7 @@ export const purgeMessagePreviewSchema = z.object({
 			id: z.string(),
 			channelId: z.string(),
 			channelName: z.string(),
-			author: z.object({
-				id: z.string(),
-				username: z.string(),
-				displayName: z.string(),
-				avatarUrl: z.string(),
-			}),
+			author: apiUserSchema,
 			content: z.string(),
 			embedContent: z.array(z.string().nullable()),
 			createdTimestampMs: z.number().int(),
@@ -344,12 +334,12 @@ export async function createPurgeMessagePreview({
 		request: {
 			count,
 			targetUser: targetUser
-				? {
+				? toApiUser({
 						id: targetUser.id,
 						username: targetUser.username,
-						displayName: targetMember?.displayName ?? targetUser.globalName ?? targetUser.username,
+						displayName: targetMember?.displayName ?? targetUser.globalName,
 						avatarUrl: targetUser.displayAvatarURL(),
-					}
+					})
 				: null,
 			textFilter: textFilter.text,
 			regex,
@@ -369,12 +359,12 @@ export async function createPurgeMessagePreview({
 			id: message.id,
 			channelId: message.channelId,
 			channelName: message.channel.isDMBased() ? "" : message.channel.name,
-			author: {
+			author: toApiUser({
 				id: message.author.id,
 				username: message.author.username,
-				displayName: message.member?.displayName ?? message.author.globalName ?? message.author.username,
+				displayName: message.member?.displayName ?? message.author.globalName,
 				avatarUrl: message.author.displayAvatarURL(),
-			},
+			}),
 			content: message.content,
 			embedContent: getPurgeMessageEmbedContent(message),
 			createdTimestampMs: message.createdTimestamp,

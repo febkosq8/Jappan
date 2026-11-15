@@ -1,15 +1,17 @@
-import { Avatar, Button, Card, DateHandler, Input, Table, type TableColumnDef } from "@febkosq8/arc";
+import { Button, Card, DateHandler, DoubleClickButton, Input, Table, type TableColumnDef } from "@febkosq8/arc";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FiAlertCircle, FiInfo, FiUser } from "react-icons/fi";
 import { toast } from "sonner";
 
 import APIHandler, { type WarningIssueResult, type WarningRecord } from "@jappan/handlers/APIHandler";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import GuildWarningsTable from "@jappan/components/panel/GuildWarningsTable";
+import GuildSectionLink from "@jappan/components/panel/GuildSectionLink";
 import GuildMemberPicker from "@jappan/components/panel/GuildMemberPicker";
 import UserDisplay from "@jappan/components/display/UserDisplay";
+import { CONFIRM_CLICK_MS } from "@jappan/helpers/confirmClick";
 
 function getErrorMessage(error: unknown): string {
 	if (axios.isAxiosError<{ error?: string }>(error) && typeof error.response?.data?.error === "string") {
@@ -33,6 +35,23 @@ function issueSuccessMessage(result: WarningIssueResult): string {
 	}
 }
 
+function getMemberIdFromUrl(): string {
+	if (window.location.hash.slice(1).split("?")[0] !== "warnings") return "";
+	return new URLSearchParams(window.location.search).get("userId") ?? "";
+}
+
+function updateWarningsUrl(memberId: string) {
+	const url = new URL(window.location.href);
+	url.searchParams.delete("userAccessMemberId");
+	url.searchParams.delete("userAccessTab");
+	if (memberId) {
+		url.searchParams.set("userId", memberId);
+	} else {
+		url.searchParams.delete("userId");
+	}
+	window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
 export default function GuildWarningManagerPanel({
 	guildId,
 	active,
@@ -44,8 +63,17 @@ export default function GuildWarningManagerPanel({
 }) {
 	const queryClient = useQueryClient();
 	const panelHeading = useRef<HTMLHeadingElement>(null);
-	const [memberId, setMemberId] = useState("");
+	const [memberId, setMemberId] = useState(getMemberIdFromUrl);
 	const [reason, setReason] = useState("");
+	useEffect(() => {
+		if (!active) {
+			if (memberId) setMemberId("");
+			if (reason) setReason("");
+			return;
+		}
+		updateWarningsUrl(memberId);
+	}, [active, memberId]);
+
 	const memberQuery = useQuery({
 		queryKey: ["user", "guild", guildId, "warnings", memberId],
 		queryFn: () => APIHandler.getGuildMemberWarnings(guildId, memberId),
@@ -95,7 +123,7 @@ export default function GuildWarningManagerPanel({
 			size: 320,
 			mobileFullWidth: true,
 			filterFn: "includesString",
-			cell: ({ row }) => <span className="whitespace-normal break-words">{row.original.reason}</span>,
+			cell: ({ row }) => <span className="whitespace-normal wrap-break-word">{row.original.reason}</span>,
 		},
 		{
 			accessorKey: "issuedAt",
@@ -119,12 +147,12 @@ export default function GuildWarningManagerPanel({
 			accessorFn: (warning) =>
 				[warning.issuer?.username, warning.issuerId].filter(Boolean).join(" ") || "Unknown",
 			header: "Issuer",
-			size: 260,
+			size: 150,
 			filterFn: "includesString",
 			cell: ({ row }) => {
 				const issuer = row.original.issuer;
-				return issuer?.username ? (
-					<UserDisplay id={issuer.userId} name={issuer.username} avatarUrl={issuer.avatarUrl} size="sm" />
+				return issuer ? (
+					<UserDisplay user={issuer} size="sm" />
 				) : (
 					<span className="break-all">{row.original.issuerId ?? "Unknown"}</span>
 				);
@@ -134,7 +162,7 @@ export default function GuildWarningManagerPanel({
 			id: "thresholdAction",
 			accessorFn: (warning) => warning.thresholdAction.replace(/_/gu, " "),
 			header: "Threshold action",
-			size: 170,
+			size: 150,
 			filterFn: "includesString",
 			cell: ({ row }) => <span className="capitalize">{row.original.thresholdAction.replace(/_/gu, " ")}</span>,
 		},
@@ -147,16 +175,18 @@ export default function GuildWarningManagerPanel({
 			enableColumnFilter: false,
 			enableHiding: false,
 			cell: ({ row }) => (
-				<Button
+				<DoubleClickButton
+					doubleClickMsDuration={CONFIRM_CLICK_MS}
 					type="button"
-					size="sm"
-					variant="outline-secondary"
+					size="xs"
+					variant="outline-destructive"
+					feedbackContent="Click again"
 					disabled={unavailable || row.original.thresholdAction === "pending"}
 					aria-label={`Delete warning: ${row.original.reason}`}
-					onClick={() => deleteMutation.mutate(row.original.id)}
+					onDoubleClick={() => deleteMutation.mutate(row.original.id)}
 				>
 					Delete
-				</Button>
+				</DoubleClickButton>
 			),
 		},
 	];
@@ -169,9 +199,9 @@ export default function GuildWarningManagerPanel({
 						<h2
 							ref={panelHeading}
 							tabIndex={-1}
-							className="scroll-mt-24 text-lg font-semibold focus-visible:ring-2 focus-visible:ring-ring"
+							className="scroll-mt-24 flex items-center gap-1 text-lg font-semibold focus-visible:ring-2 focus-visible:ring-ring"
 						>
-							Manage warnings
+							Manage warnings <GuildSectionLink id="warnings" label="warnings" />
 						</h2>
 						<p className="mt-1 text-sm text-muted-foreground">
 							Review a member's history and manage individual warnings.
@@ -198,7 +228,7 @@ export default function GuildWarningManagerPanel({
 						<FiUser className="size-6 text-muted-foreground" aria-hidden="true" />
 						<p className="mt-3 font-medium">Select a member to review their warnings</p>
 						<p className="mt-1 text-sm text-muted-foreground">
-							Search above or select a warning count in the list below.
+							Search above or use Review history in the table below.
 						</p>
 					</div>
 				) : (
@@ -222,18 +252,7 @@ export default function GuildWarningManagerPanel({
 						{selectedMember && (
 							<>
 								<div className="flex flex-wrap items-center gap-3 border-y border-border py-4">
-									<Avatar
-										name={selectedMember.displayName}
-										image={selectedMember.avatarUrl}
-										size="md"
-										aria-hidden="true"
-									/>
-									<div className="min-w-0">
-										<h3 className="truncate font-semibold">{selectedMember.displayName}</h3>
-										<p className="truncate text-sm text-muted-foreground">
-											@{selectedMember.username}
-										</p>
-									</div>
+									<UserDisplay user={selectedMember} size="md" />
 									<span className="ml-auto inline-flex items-center gap-2 rounded-md bg-accent px-3 py-2 font-medium text-primary">
 										<FiAlertCircle aria-hidden="true" />
 										{selectedMember.warningCount} warning(s)

@@ -28,6 +28,7 @@ import {
 	FiSliders,
 	FiTag,
 	FiTrash2,
+	FiUserCheck,
 } from "react-icons/fi";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -49,6 +50,7 @@ import GuildRolesPanel from "@jappan/components/panel/GuildRolesPanel";
 import GuildServicePreferencesPanel from "@jappan/components/panel/GuildServicePreferencesPanel";
 import GuildVoiceRegionLockManagerPanel from "@jappan/components/panel/GuildVoiceRegionLockManagerPanel";
 import GuildWarningManagerPanel from "@jappan/components/panel/GuildWarningManagerPanel";
+import GuildUserAccessPanel from "@jappan/components/panel/GuildUserAccessPanel";
 import GuildSectionLink from "@jappan/components/panel/GuildSectionLink";
 import GuildOverviewPanel from "@jappan/components/panel/GuildOverviewPanel";
 import BotPermissionsPanel from "@jappan/components/panel/BotPermissionsPanel";
@@ -59,10 +61,11 @@ import useDocumentTitle, { formatTitle } from "@jappan/helpers/useDocumentTitle"
 import { CONFIRM_CLICK_MS } from "@jappan/helpers/confirmClick";
 
 const guildSections = [
-	{ id: "guild-overview", label: "Overview", icon: FiHome },
+	{ id: "overview", label: "Overview", icon: FiHome },
 	{ id: "admin-actions", label: "Admin actions", icon: FiSettings },
-	{ id: "guild-channels", label: "Channels", icon: FiHash },
-	{ id: "guild-roles", label: "Roles", icon: FiTag },
+	{ id: "channels", label: "Channels", icon: FiHash },
+	{ id: "roles", label: "Roles", icon: FiTag },
+	{ id: "evaluate-user", label: "Evaluate user", icon: FiUserCheck },
 	{ id: "service-preferences", label: "Service Preferences", icon: FiSliders },
 	{ id: "warnings", label: "Warnings", icon: FiAlertCircle },
 	{ id: "voice-region-locks", label: "Voice region locks", icon: FiGlobe },
@@ -331,7 +334,9 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 												})),
 											]}
 										/>
-										{selectedChannelId && <CopyIdButton id={selectedChannelId} label="Channel ID" />}
+										{selectedChannelId && (
+											<CopyIdButton id={selectedChannelId} label="Channel ID" />
+										)}
 									</div>
 								</div>
 								<div>
@@ -436,7 +441,9 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 											{inviteMutation.data.channel?.name ?? "Unknown"}
 											{inviteMutation.data.channel && (
 												<span className="ml-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
-													<span className="break-all">({inviteMutation.data.channel.id})</span>
+													<span className="break-all">
+														({inviteMutation.data.channel.id})
+													</span>
 													<CopyIdButton
 														id={inviteMutation.data.channel.id}
 														label="Channel ID"
@@ -476,7 +483,12 @@ function GuildActions({ guild }: { guild: AdminGuildDetails }) {
 									</div>
 									<div>
 										<dt className="text-muted-foreground">Inviter</dt>
-										<dd>{inviteMutation.data.inviter?.username ?? "Unknown"}</dd>
+										<dd>
+											{inviteMutation.data.inviter?.displayName ??
+												(inviteMutation.data.inviter
+													? `@${inviteMutation.data.inviter.username}`
+													: "Unknown")}
+										</dd>
 									</div>
 								</dl>
 							</div>
@@ -591,18 +603,31 @@ function GuildDetails({ guild }: { guild: AdminGuildDetails }) {
 	const [section, setSection] = useState(readSectionFromHash);
 
 	useEffect(() => {
-		const handleHashChange = () => setSection(readSectionFromHash());
-		window.addEventListener("hashchange", handleHashChange);
-		return () => window.removeEventListener("hashchange", handleHashChange);
+		const syncSectionFromUrl = () => {
+			const nextSection = readSectionFromHash();
+			setSection(nextSection);
+			if (nextSection === "evaluate-user" || nextSection === "warnings") return;
+			const url = new URL(window.location.href);
+			if (!url.search) return;
+			url.search = "";
+			window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+		};
+		window.addEventListener("hashchange", syncSectionFromUrl);
+		window.addEventListener("popstate", syncSectionFromUrl);
+		syncSectionFromUrl();
+		return () => {
+			window.removeEventListener("hashchange", syncSectionFromUrl);
+			window.removeEventListener("popstate", syncSectionFromUrl);
+		};
 	}, []);
 
 	const changeSection = (value: string) => {
 		setSection(value);
-		window.history.replaceState(
-			window.history.state,
-			"",
-			`${window.location.pathname}${window.location.search}#${value}`,
-		);
+		const url = new URL(window.location.href);
+		url.search = "";
+		url.hash = "";
+		url.hash = value;
+		window.history.pushState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
 	};
 
 	return (
@@ -617,17 +642,25 @@ function GuildDetails({ guild }: { guild: AdminGuildDetails }) {
 					</TabsTab>
 				))}
 			</TabsList>
-			<TabsPanel value="guild-overview" keepMounted>
+			<TabsPanel value="overview" keepMounted>
 				<GuildOverviewPanel guild={guild} />
 			</TabsPanel>
 			<TabsPanel value="admin-actions" keepMounted>
 				<GuildActions key={guild.id} guild={guild} />
 			</TabsPanel>
-			<TabsPanel value="guild-channels" keepMounted>
+			<TabsPanel value="channels" keepMounted>
 				<GuildChannelsPanel guild={guild} />
 			</TabsPanel>
-			<TabsPanel value="guild-roles" keepMounted>
+			<TabsPanel value="roles" keepMounted>
 				<GuildRolesPanel guild={guild} />
+			</TabsPanel>
+			<TabsPanel value="evaluate-user" keepMounted>
+				<GuildUserAccessPanel
+					key={guild.id}
+					guildId={guild.id}
+					active={section === "evaluate-user"}
+					isActiveMember={guild.isActiveMember}
+				/>
 			</TabsPanel>
 			<TabsPanel value="service-preferences" keepMounted>
 				<GuildServicePreferencesPanel guild={guild} active={section === "service-preferences"} />
@@ -704,7 +737,7 @@ export default function AdminViewGuild() {
 			<ErrorPage
 				status={errorStatus ? String(errorStatus) : "Guild error"}
 				title="Could not load guild details"
-				message="Could not load guild details. Check your access and try again."
+				message={"Could not load guild details.\nCheck your access and try again."}
 				actions={
 					<>
 						<Button onClick={() => void guildQuery.refetch()}>Retry</Button>

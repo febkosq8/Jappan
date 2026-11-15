@@ -122,9 +122,9 @@ export async function listAdminGuildRoles(guildId: string) {
 	const botMember = guild.members.me ?? (await guild.members.fetchMe());
 	const canManageRoles = botMember.permissions.has(PermissionFlagsBits.ManageRoles);
 	const fetched = await guild.roles.fetch();
-	const guildRoles = [...fetched.values()]
-		.filter((role) => role.id !== guild.id)
-		.sort((first, second) => second.position - first.position || first.id.localeCompare(second.id));
+	const guildRoles = [...fetched.values()].sort(
+		(first, second) => second.position - first.position || first.id.localeCompare(second.id),
+	);
 	const roles = guildRoles.map((role) => getGuildRoleSummary({ role, botMember, canManageRoles }));
 	return { status: "ok", roles } as const;
 }
@@ -141,6 +141,7 @@ function getGuildRoleSummary({
 	return {
 		id: role.id,
 		name: role.name,
+		color: role.color === 0 ? null : role.hexColor,
 		position: role.position,
 		assignable: canAssignRole(role, botMember, canManageRoles),
 	};
@@ -152,7 +153,7 @@ export async function getAdminGuildRoleDetails(guildId: string, roleId: string) 
 	const { guild } = adminGuild;
 
 	const role = await guild.roles.fetch(roleId, { force: true });
-	if (!role || role.id === guild.id) return { status: "not_found" } as const;
+	if (!role) return { status: "not_found" } as const;
 
 	const botMember = guild.members.me ?? (await guild.members.fetchMe());
 	const canManageRoles = botMember.permissions.has(PermissionFlagsBits.ManageRoles);
@@ -163,7 +164,6 @@ export async function getAdminGuildRoleDetails(guildId: string, roleId: string) 
 			...getGuildRoleSummary({ role, botMember, canManageRoles }),
 			managed: role.managed,
 			isBotRole: role.tags?.botId === botMember.id,
-			color: role.color === 0 ? null : role.hexColor,
 			iconUrl: role.iconURL({ size: 64 }),
 			unicodeEmoji: role.unicodeEmoji,
 			permissions: role.permissions.toArray(),

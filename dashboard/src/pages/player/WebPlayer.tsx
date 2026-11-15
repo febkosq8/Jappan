@@ -383,21 +383,13 @@ export default function WebPlayer() {
 						<div className="grid gap-x-8 gap-y-4 sm:grid-cols-[auto_minmax(0,1fr)_auto_auto]">
 							<div className="min-w-0">
 								<p className="text-sm font-semibold text-muted-foreground">Owner</p>
-								<UserDisplay
-									name={session.owner.username}
-									avatarUrl={session.owner.avatarUrl}
-									showId={false}
-								/>
+								<UserDisplay user={session.owner} showId={false} />
 							</div>
 							<div className="min-w-0">
 								<p className="text-sm font-semibold text-muted-foreground">Last change</p>
 								{session.lastChangedBy ? (
 									<div className="min-w-0">
-										<UserDisplay
-											name={session.lastChangedBy.username}
-											avatarUrl={session.lastChangedBy.avatarUrl}
-											showId={false}
-										/>
+										<UserDisplay user={session.lastChangedBy} showId={false} />
 										<div className="ml-12">
 											<p className="text-xs text-muted-foreground">
 												via {session.lastChangedBy.source === "web" ? "Web Player" : "Discord"}{" "}
