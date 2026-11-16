@@ -10,7 +10,13 @@ import { apiUserSchema } from "../schemas.js";
 const tags = ["Admin Direct Messages"];
 const security = [{ sessionBearer: [] }];
 const middleware = [requireDatabase, requireDiscord, requireSession, requireAdmin];
-const conversationSchema = z.object({ user: apiUserSchema, lastReceivedAt: z.string() });
+const conversationSchema = z.object({
+	user: apiUserSchema,
+	lastReceivedAt: z.string(),
+	unread: z.boolean(),
+	lastReadAt: z.string().nullable(),
+	lastReadBy: z.object({ id: z.string(), username: z.string() }).nullable(),
+});
 const userIdSchema = z.string().regex(/^\d{17,20}$/u);
 const conversationListQuerySchema = listQuerySchema
 	.pick({ page: true, perPageLimit: true })

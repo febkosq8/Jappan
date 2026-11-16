@@ -2,7 +2,8 @@ import { Avatar, Menu, ThemeSwitcher } from "@febkosq8/arc";
 import { Link, useLocation } from "react-router-dom";
 
 import { isAdminSession, useSessionQuery } from "@jappan/handlers/auth";
-import AdminMenu from "./header/AdminMenu";
+import useDirectMessageInbox from "@jappan/handlers/useDirectMessageInbox";
+import AdminMenu, { InboxBadge } from "./header/AdminMenu";
 import AuthHeaderControls from "./header/AuthMenu";
 import GuildMenu from "./header/GuildMenu";
 
@@ -40,6 +41,7 @@ export default function Header() {
 	const isHomePage = location.pathname === "/";
 	const isCommandsPage = location.pathname === "/commands";
 	const isAdmin = !isError && isAdminSession(session);
+	const inbox = useDirectMessageInbox(isAdmin);
 	const isAuthenticated = !isError && !!session;
 	const currentPage = isHomePage ? "Home" : isCommandsPage ? "Commands" : "Pages";
 	const mobilePage = getMobilePage({
@@ -71,11 +73,18 @@ export default function Header() {
 				</a>
 				<div className="flex shrink-0 items-center gap-1">
 					<nav aria-label="Main navigation" className="flex items-center gap-1 sm:hidden">
-						<Menu buttonText={mobilePage}>
+						<Menu
+							buttonText={
+								<>
+									{mobilePage}
+									{isAdmin && <InboxBadge inbox={inbox} />}
+								</>
+							}
+						>
 							{homeItem}
 							{commandsItem}
 							<GuildMenu asSubmenu />
-							{isAdmin && <AdminMenu asSubmenu />}
+							{isAdmin && <AdminMenu asSubmenu inbox={inbox} />}
 						</Menu>
 					</nav>
 					<nav aria-label="Main navigation" className="hidden items-center gap-1 sm:flex">
@@ -84,7 +93,7 @@ export default function Header() {
 							{commandsItem}
 						</Menu>
 						<GuildMenu />
-						{isAdmin && <AdminMenu />}
+						{isAdmin && <AdminMenu inbox={inbox} />}
 					</nav>
 					<AuthHeaderControls />
 					<ThemeSwitcher variant="toggle" />

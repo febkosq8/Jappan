@@ -187,8 +187,17 @@ WebSocket subscribes to the selected conversation, provides the bot identity,
 and carries all message history, updates and replies; reconnecting refreshes
 that conversation. The conversation list accepts a user ID filter to resolve
 deep links without fetching message history over HTTP. Data operations require
-a bot administrator and a subscription to that conversation. Records are
-scoped to the connected bot; message content remains on Discord.
+a bot administrator; message operations also require a subscription to that
+conversation. Records are scoped to the connected bot; message content remains
+on Discord.
+An admin-only inbox subscription updates unread conversation badges throughout
+the dashboard. Read state is shared: viewing the bottom of the latest messages
+in a visible tab records the reader and the incoming-message snapshot captured
+before loading history. A later incoming message remains unread even if an
+older read acknowledgement arrives late.
+Conversations discovered before read tracking have no read record and are not
+counted as unread until a new message arrives. Badges update only while the
+dashboard is open; there are no offline notifications.
 
 ## FebGoServe compatibility
 

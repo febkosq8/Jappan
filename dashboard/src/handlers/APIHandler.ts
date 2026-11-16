@@ -55,11 +55,20 @@ export interface AdminDirectMessage {
 	stickers: { name: string; url: string }[];
 }
 
-export type AdminDirectMessageConversations = PaginatedListResponse<{ user: User; lastReceivedAt: string }>;
+export interface AdminDirectMessageConversation {
+	user: User;
+	lastReceivedAt: string;
+	unread: boolean;
+	lastReadAt: string | null;
+	lastReadBy: { id: string; username: string } | null;
+}
+
+export type AdminDirectMessageConversations = PaginatedListResponse<AdminDirectMessageConversation>;
 
 export interface AdminDirectMessagePage {
 	messages: AdminDirectMessage[];
 	nextBefore: string | null;
+	lastReceivedMessageId: string | null;
 }
 
 export interface BotStatus {

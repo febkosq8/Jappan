@@ -46,6 +46,10 @@ export interface ClientToServerEvents {
 	"purge-job:unsubscribe": (payload: unknown, ack?: WebsocketAck) => void;
 	"direct-messages:subscribe": (payload: unknown, ack?: WebsocketAck<{ bot: DirectMessageBot }>) => void;
 	"direct-messages:unsubscribe": (payload: unknown, ack?: WebsocketAck) => void;
+	"direct-messages:inbox-subscribe": (ack?: WebsocketAck<{ unreadCount: number }>) => void;
+	"direct-messages:inbox-unsubscribe": (ack?: WebsocketAck) => void;
+	"direct-messages:unread-count": (ack?: WebsocketAck<{ unreadCount: number }>) => void;
+	"direct-messages:read": (payload: unknown, ack?: WebsocketAck) => void;
 	"direct-messages:history": (payload: unknown, ack?: WebsocketAck<{ page: DirectMessagePage }>) => void;
 	"direct-messages:send": (payload: unknown, ack?: WebsocketAck<{ message: DirectMessage }>) => void;
 }
@@ -68,6 +72,8 @@ export interface ServerToClientEvents {
 	/** The user can no longer view the job. */
 	"purge-job:revoked": (payload: { readonly jobId: string; readonly status: number; readonly error: string }) => void;
 	"direct-messages:changed": (payload: { readonly userId: string }) => void;
+	"direct-messages:inbox-changed": (payload: { readonly userId: string }) => void;
+	"direct-messages:inbox-revoked": (payload: { readonly status: number; readonly error: string }) => void;
 	"direct-messages:revoked": (payload: {
 		readonly userId: string;
 		readonly status: number;

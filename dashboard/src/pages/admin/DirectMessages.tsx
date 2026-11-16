@@ -1,7 +1,7 @@
 import { Button, Card, DateHandler, Input, Tag } from "@febkosq8/arc";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import { useLayoutEffect, useRef, useState, type SubmitEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type SubmitEvent } from "react";
 import { FiLoader, FiMessageSquare, FiRefreshCw, FiSend, FiWifi, FiWifiOff } from "react-icons/fi";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa6";
 import { useSearchParams } from "react-router-dom";
@@ -12,15 +12,17 @@ import UserDisplay from "@jappan/components/display/UserDisplay";
 import ErrorPage from "@jappan/components/ErrorPage";
 import ExternalTextLink from "@jappan/components/ExternalTextLink";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
-import APIHandler, { type User } from "@jappan/handlers/APIHandler";
+import APIHandler, { type AdminDirectMessageConversation } from "@jappan/handlers/APIHandler";
 import useDirectMessageWebsocket from "@jappan/handlers/useDirectMessageWebsocket";
 import {
 	fetchDirectMessageHistory,
 	getWebsocket,
+	markDirectMessageRead,
 	sendDirectMessage,
 	WebsocketRequestError,
 } from "@jappan/handlers/websocket";
 import useDocumentTitle, { formatTitle } from "@jappan/helpers/useDocumentTitle";
+import { toast } from "sonner";
 
 const CONVERSATIONS_PER_PAGE = 30;
 
@@ -111,6 +113,28 @@ function websocketAccessStatus(error: unknown): 401 | 403 | undefined {
 	return undefined;
 }
 
+function ReadStatus({ conversation }: { conversation: AdminDirectMessageConversation }) {
+	return (
+		<div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+			{conversation.unread && (
+				<Tag variant="primary" size="xs">
+					Unread
+				</Tag>
+			)}
+			{conversation.lastReadBy && conversation.lastReadAt ? (
+				<>
+					<span className="min-w-0 break-words">Last read by @{conversation.lastReadBy.username}</span>
+					<time dateTime={conversation.lastReadAt}>
+						{DateHandler.getDateTime(new Date(conversation.lastReadAt).getTime())}
+					</time>
+				</>
+			) : (
+				<span>No read record</span>
+			)}
+		</div>
+	);
+}
+
 export default function DirectMessages() {
 	useDocumentTitle(formatTitle("Direct messages", "Admin"));
 	const queryClient = useQueryClient();
@@ -120,6 +144,8 @@ export default function DirectMessages() {
 	const [draft, setDraft] = useState("");
 	const [socketAccessError, setSocketAccessError] = useState<401 | 403 | null>(null);
 	const [conversationUnavailable, setConversationUnavailable] = useState(false);
+	const [documentVisible, setDocumentVisible] = useState(() => document.visibilityState === "visible");
+	const [bottomScrollVersion, setBottomScrollVersion] = useState(0);
 	const [backgroundSendErrors, setBackgroundSendErrors] = useState<
 		{ userId: string; content: string; error: unknown }[]
 	>([]);
@@ -148,7 +174,7 @@ export default function DirectMessages() {
 				perPageLimit: 1,
 				userId: selectedUserId,
 			});
-			return result.items[0]?.user ?? null;
+			return result.items[0] ?? null;
 		},
 		enabled: validUserId,
 		staleTime: Infinity,
@@ -157,7 +183,7 @@ export default function DirectMessages() {
 		refetchOnMount: false,
 		retry: false,
 	});
-	const selectedUser = selectedConversation.data ?? null;
+	const selectedUser = selectedConversation.data?.user ?? null;
 	const messageKey = ["admin", "direct-messages", "messages", selectedUser?.id, before];
 	const { status: websocketStatus, bot } = useDirectMessageWebsocket({
 		userId: selectedUser?.id ?? "",
@@ -214,7 +240,17 @@ export default function DirectMessages() {
 			}
 		},
 	});
+	const read = useMutation({
+		mutationFn: ({ userId, messageId }: { userId: string; messageId: string | null; selectionVersion: number }) =>
+			markDirectMessageRead({ socket: conversationSocket(), userId, messageId }),
+		onError: (_error, { userId, selectionVersion }) => {
+			if (currentUserIdRef.current !== userId || selectionVersionRef.current !== selectionVersion) {
+				toast.error("Could not mark the previous conversation as read.");
+			}
+		},
+	});
 	const resetSend = send.reset;
+	const resetRead = read.reset;
 	useLayoutEffect(() => {
 		currentUserIdRef.current = selectedUserId;
 		selectionVersionRef.current++;
@@ -223,7 +259,52 @@ export default function DirectMessages() {
 		setDraft("");
 		setConversationUnavailable(false);
 		resetSend();
-	}, [selectedUserId, resetSend]);
+		resetRead();
+	}, [selectedUserId, resetSend, resetRead]);
+
+	useEffect(() => {
+		const onVisibilityChange = () => setDocumentVisible(document.visibilityState === "visible");
+		document.addEventListener("visibilitychange", onVisibilityChange);
+		return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+	}, []);
+
+	const markRead = read.mutate;
+	useEffect(() => {
+		if (
+			!documentVisible ||
+			!selectedUser ||
+			before ||
+			websocketStatus !== "connected" ||
+			conversationUnavailable ||
+			!messages.isSuccess ||
+			messages.isFetching
+		)
+			return;
+		const page = messages.data;
+		const list = messagesListRef.current;
+		if (
+			page &&
+			(page.messages.length === 0 || (list && list.scrollHeight - list.scrollTop - list.clientHeight <= 2))
+		) {
+			markRead({
+				userId: selectedUser.id,
+				messageId: page.lastReceivedMessageId,
+				selectionVersion: selectionVersionRef.current,
+			});
+		}
+	}, [
+		before,
+		bottomScrollVersion,
+		conversationUnavailable,
+		documentVisible,
+		markRead,
+		messages.data,
+		messages.dataUpdatedAt,
+		messages.isFetching,
+		messages.isSuccess,
+		selectedUser,
+		websocketStatus,
+	]);
 
 	useLayoutEffect(() => {
 		if (
@@ -245,7 +326,8 @@ export default function DirectMessages() {
 		accessErrorStatus(conversations.error) ??
 		accessErrorStatus(selectedConversation.error) ??
 		websocketAccessStatus(messages.error) ??
-		websocketAccessStatus(send.error);
+		websocketAccessStatus(send.error) ??
+		websocketAccessStatus(read.error);
 	if (accessStatus) return <AccessRedirect status={accessStatus} />;
 
 	const connectionDescription = conversationUnavailable
@@ -255,9 +337,11 @@ export default function DirectMessages() {
 			: websocketStatus === "connecting"
 				? "Connecting to the live conversation…"
 				: "Live conversation disconnected. Reconnecting…";
+	const replyDisabled = send.isPending || websocketStatus !== "connected" || conversationUnavailable;
 
-	function selectUser(user: User) {
-		queryClient.setQueryData(["admin", "direct-messages", "conversation", user.id], user);
+	function selectUser(conversation: AdminDirectMessageConversation) {
+		const { user } = conversation;
+		queryClient.setQueryData(["admin", "direct-messages", "conversation", user.id], conversation);
 		if (selectedUserId === user.id) {
 			scrollOnOpenRef.current = true;
 			setCursors([]);
@@ -283,7 +367,7 @@ export default function DirectMessages() {
 
 	function submit(event: SubmitEvent<HTMLFormElement>) {
 		event.preventDefault();
-		if (!selectedUser || !draft.trim() || send.isPending || websocketStatus !== "connected") return;
+		if (!selectedUser || !draft.trim() || replyDisabled) return;
 		send.mutate({ userId: selectedUser.id, content: draft, selectionVersion: selectionVersionRef.current });
 	}
 
@@ -295,11 +379,11 @@ export default function DirectMessages() {
 					Bot administrators can read and reply to direct messages. History is fetched from Discord.
 				</p>
 			</header>
-			<div className="mt-6 grid gap-4 md:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
+			<div className="mt-6 grid gap-4 md:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]">
 				<Card hoverable={false} className="flex min-w-0 flex-col rounded-md border-border p-5 sm:p-6">
 					<Card.Content className="flex flex-1 flex-col justify-start p-0!">
 						<div className="flex flex-wrap items-center justify-between gap-3">
-							<h2 className="flex items-center gap-2 text-lg font-semibold">
+							<h2 className="flex items-center gap-2 text-xl font-semibold">
 								<FiMessageSquare className="size-5 text-primary" aria-hidden="true" />
 								Conversations
 							</h2>
@@ -315,7 +399,7 @@ export default function DirectMessages() {
 								<FiRefreshCw className="size-4 group-hover/refetch:animate-spin" aria-hidden="true" />
 							</Button>
 						</div>
-						<p className="mt-1 text-sm text-muted-foreground">
+						<p className="mt-1 text-base text-muted-foreground">
 							Conversations appear when the bot receives a direct message.
 						</p>
 						{conversations.isPending ? (
@@ -342,43 +426,49 @@ export default function DirectMessages() {
 						) : conversations.data.items.length === 0 ? (
 							<p className="mt-4 text-sm text-muted-foreground">No conversations found.</p>
 						) : (
-							<ul className="mt-4 max-h-120 space-y-2 overflow-y-auto">
-								{conversations.data.items.map(({ user, lastReceivedAt }) => (
-									<li key={user.id}>
-										<Card hoverable={false} className="rounded-md border-border p-0">
-											<Button
-												type="button"
-												variant="ghost"
-												aria-label={`Open conversation with ${user.displayName ?? user.username} (@${user.username})`}
-												aria-describedby={`conversation-received-${user.id}`}
-												aria-pressed={selectedUserId === user.id}
-												disabled={send.isPending}
-												onClick={() => selectUser(user)}
-												className="peer absolute inset-0 h-full w-full border border-transparent p-0 aria-pressed:bg-accent"
-											/>
-											<div className="pointer-events-none relative min-w-0 p-3 peer-hover:text-primary peer-aria-pressed:text-primary [&_a]:pointer-events-auto [&_button]:pointer-events-auto [&_p]:flex-wrap [&_p>span]:min-w-0 [&_p>span]:shrink [&_p>span]:break-all">
-												<UserDisplay user={user} size="xl" />
-												<div
-													id={`conversation-received-${user.id}`}
-													className="mt-2 flex flex-wrap items-center justify-between gap-1 text-xs text-muted-foreground"
-												>
-													Received
-													<Tag
-														variant="secondary"
-														size="xs"
-														className="ml-auto max-w-full font-normal"
+							<ul className="mt-4 max-h-160 space-y-3 overflow-y-auto pr-2">
+								{conversations.data.items.map((conversation) => {
+									const { user, lastReceivedAt } = conversation;
+									return (
+										<li key={user.id}>
+											<Card hoverable={false} className="rounded-md border-border p-0">
+												<Button
+													type="button"
+													variant="ghost"
+													aria-label={`Open conversation with ${user.displayName ?? user.username} (@${user.username})`}
+													aria-describedby={`conversation-received-${user.id} conversation-read-${user.id}`}
+													aria-pressed={selectedUserId === user.id}
+													disabled={send.isPending}
+													onClick={() => selectUser(conversation)}
+													className="peer absolute inset-0 h-full w-full border border-transparent p-0 aria-pressed:bg-accent"
+												/>
+												<div className="pointer-events-none relative min-w-0 p-4 peer-hover:text-primary peer-aria-pressed:text-primary [&_a]:pointer-events-auto [&_button]:pointer-events-auto [&_p]:flex-wrap [&_p>span]:min-w-0 [&_p>span]:shrink [&_p>span]:break-all">
+													<UserDisplay user={user} size="xl" />
+													<div
+														id={`conversation-received-${user.id}`}
+														className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground"
 													>
-														<time dateTime={lastReceivedAt}>
-															{DateHandler.getDateTime(
-																new Date(lastReceivedAt).getTime(),
-															)}
-														</time>
-													</Tag>
+														Received
+														<Tag
+															variant="secondary"
+															size="sm"
+															className="ml-auto max-w-full font-normal"
+														>
+															<time dateTime={lastReceivedAt}>
+																{DateHandler.getDateTime(
+																	new Date(lastReceivedAt).getTime(),
+																)}
+															</time>
+														</Tag>
+													</div>
+													<div id={`conversation-read-${user.id}`} className="mt-3">
+														<ReadStatus conversation={conversation} />
+													</div>
 												</div>
-											</div>
-										</Card>
-									</li>
-								))}
+											</Card>
+										</li>
+									);
+								})}
 							</ul>
 						)}
 						<div className="mt-auto pt-4">
@@ -564,6 +654,33 @@ export default function DirectMessages() {
 														: "Reconnecting"}
 										</Tag>
 									</div>
+									<div className="mt-2">
+										<ReadStatus conversation={selectedConversation.data} />
+									</div>
+									{read.isError && (
+										<div className="mt-3">
+											<ErrorPage
+												variant="inline"
+												status={errorStatus(read.error)}
+												title="Could not mark conversation as read"
+												message={errorMessage(
+													read.error,
+													"Could not mark this conversation as read.",
+												)}
+												actions={
+													<Button
+														type="button"
+														variant="outline-primary"
+														onClick={() => {
+															if (read.variables) read.mutate(read.variables);
+														}}
+													>
+														Retry
+													</Button>
+												}
+											/>
+										</div>
+									)}
 								</div>
 								<Card hoverable={false} className="mt-4 min-w-0 rounded-md border-border p-3">
 									{conversationUnavailable ? (
@@ -636,6 +753,11 @@ export default function DirectMessages() {
 													ref={messagesListRef}
 													className="mt-4 max-h-120 space-y-3 overflow-y-auto pr-3"
 													aria-label="Messages"
+													onScroll={(event) => {
+														const list = event.currentTarget;
+														if (list.scrollHeight - list.scrollTop - list.clientHeight <= 2)
+															setBottomScrollVersion((version) => version + 1);
+													}}
 												>
 													{messages.data.messages.map((message) => (
 														<li
@@ -771,7 +893,7 @@ export default function DirectMessages() {
 										className="min-h-24! w-full"
 										maxLength={2000}
 										value={draft}
-										disabled={send.isPending}
+										disabled={replyDisabled}
 										onChange={(event) => setDraft(event.target.value)}
 									/>
 									<div className="flex items-center justify-between gap-2">
@@ -779,9 +901,7 @@ export default function DirectMessages() {
 										<Button
 											type="submit"
 											className="gap-2"
-											disabled={
-												!draft.trim() || send.isPending || websocketStatus !== "connected"
-											}
+											disabled={!draft.trim() || replyDisabled}
 										>
 											<FiSend aria-hidden="true" />
 											{send.isPending ? "Sending..." : "Send message"}

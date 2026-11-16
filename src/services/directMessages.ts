@@ -1,4 +1,5 @@
 import { ChannelType, type Message } from "discord.js";
+import mongoose from "mongoose";
 
 import { getClient } from "../bot.js";
 import { toApiUser } from "../helpers/apiUser.js";
@@ -6,7 +7,7 @@ import { createPaginatedList } from "../helpers/list.js";
 import DirectMessageConversationModel from "../models/directMessageConversation.js";
 import { logger } from "./logger.js";
 
-type DirectMessageChange = { botUserId: string; userId: string };
+type DirectMessageChange = { botUserId: string; userId: string; kind: "message" | "read" };
 const MESSAGES_PER_PAGE = 25;
 const listeners = new Set<(change: DirectMessageChange) => void>();
 
@@ -83,10 +84,50 @@ export async function listDirectMessageConversations({
 					avatarUrl: user.displayAvatarURL({ size: 64 }),
 				}),
 				lastReceivedAt: conversation.lastReceivedAt.toISOString(),
+				unread:
+					BigInt(conversation.lastReceivedMessageId?.toString() ?? "0") >
+					BigInt(conversation.lastReadMessageId?.toString() ?? "0"),
+				lastReadAt: conversation.lastReadAt?.toISOString() ?? null,
+				lastReadBy: conversation.lastReadBy
+					? { id: conversation.lastReadBy.id, username: conversation.lastReadBy.username }
+					: null,
 			};
 		}),
 	);
 	return createPaginatedList({ items, total, page, perPageLimit });
+}
+
+export async function getUnreadDirectMessageCount(): Promise<number> {
+	return DirectMessageConversationModel.countDocuments({
+		botUserId: getDirectMessageBotUserId(),
+		$expr: {
+			$gt: [{ $ifNull: ["$lastReceivedMessageId", 0] }, { $ifNull: ["$lastReadMessageId", 0] }],
+		},
+	}).exec();
+}
+
+export async function markDirectMessageRead({
+	userId,
+	messageId,
+	reader,
+}: {
+	userId: string;
+	messageId: string | null;
+	reader: { id: string; username: string };
+}): Promise<void> {
+	const botUserId = getDirectMessageBotUserId();
+	const seen = messageId === null ? null : mongoose.Types.Decimal128.fromString(messageId);
+	const result = await DirectMessageConversationModel.updateOne(
+		{
+			botUserId,
+			userId,
+			// A newer incoming message must remain unread.
+			lastReceivedMessageId: seen,
+			...(seen && { $or: [{ lastReadMessageId: null }, { lastReadMessageId: { $lte: seen } }] }),
+		},
+		{ $set: { lastReadMessageId: seen, lastReadAt: new Date(), lastReadBy: reader } },
+	);
+	if (result.modifiedCount > 0) notifyDirectMessageChanged({ botUserId, userId, kind: "read" });
 }
 
 async function getConversationChannel(userId: string) {
@@ -100,17 +141,19 @@ async function getConversationChannel(userId: string) {
 	if (channel.id !== conversation.channelId) {
 		throw new Error("Stored direct message channel does not match the user's Discord channel");
 	}
-	return channel;
+	return { channel, lastReceivedMessageId: conversation.lastReceivedMessageId?.toString() ?? null };
 }
 
 export async function getDirectMessagePage({ userId, before }: { userId: string; before?: string | undefined }) {
-	const channel = await getConversationChannel(userId);
-	if (!channel) return null;
+	const conversation = await getConversationChannel(userId);
+	if (!conversation) return null;
+	const { channel, lastReceivedMessageId } = conversation;
 	const messages = await channel.messages.fetch({ limit: MESSAGES_PER_PAGE + 1, ...(before && { before }) });
 	const page = [...messages.values()].slice(0, MESSAGES_PER_PAGE).reverse();
 	return {
 		messages: page.map(serializeMessage),
 		nextBefore: messages.size > MESSAGES_PER_PAGE ? (page[0]?.id ?? null) : null,
+		lastReceivedMessageId,
 	};
 }
 
@@ -118,10 +161,11 @@ export type DirectMessagePage = NonNullable<Awaited<ReturnType<typeof getDirectM
 
 export async function sendDirectMessage({ userId, content }: { userId: string; content: string }) {
 	const botUserId = getDirectMessageBotUserId();
-	const channel = await getConversationChannel(userId);
-	if (!channel) return null;
+	const conversation = await getConversationChannel(userId);
+	if (!conversation) return null;
+	const { channel } = conversation;
 	const message = await channel.send({ content, allowedMentions: { parse: [] } });
-	notifyDirectMessageChanged({ botUserId, userId });
+	notifyDirectMessageChanged({ botUserId, userId, kind: "message" });
 	return serializeMessage(message);
 }
 
@@ -139,11 +183,14 @@ export async function recordDirectMessage(message: Message): Promise<void> {
 			{ botUserId, userId: message.author.id },
 			{
 				$set: { channelId: message.channelId },
-				$max: { lastReceivedAt: message.createdAt },
+				$max: {
+					lastReceivedAt: message.createdAt,
+					lastReceivedMessageId: mongoose.Types.Decimal128.fromString(message.id),
+				},
 			},
 			{ upsert: true },
 		);
-		notifyDirectMessageChanged({ botUserId, userId: message.author.id });
+		notifyDirectMessageChanged({ botUserId, userId: message.author.id, kind: "message" });
 	} catch (error: unknown) {
 		logger.error("DISCORD", "Failed to record direct message conversation", {
 			userId: message.author.id,
@@ -164,7 +211,7 @@ export async function notifyDirectMessageChannelChanged(
 			botUserId,
 			channelId: message.channelId,
 		}).lean();
-		if (conversation) notifyDirectMessageChanged({ botUserId, userId: conversation.userId });
+		if (conversation) notifyDirectMessageChanged({ botUserId, userId: conversation.userId, kind: "message" });
 	} catch (error: unknown) {
 		logger.error("DISCORD", "Failed to update direct message subscribers", { channelId: message.channelId, error });
 	}

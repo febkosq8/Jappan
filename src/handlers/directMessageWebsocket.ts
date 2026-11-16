@@ -9,10 +9,18 @@ import {
 	type WebsocketSocket,
 } from "../helpers/websocket.js";
 import { isDatabaseConnected } from "../services/database.js";
-import { getDirectMessagePage, sendDirectMessage } from "../services/directMessages.js";
 import {
+	getDirectMessagePage,
+	getUnreadDirectMessageCount,
+	markDirectMessageRead,
+	sendDirectMessage,
+} from "../services/directMessages.js";
+import {
+	isDirectMessageInboxSubscriber,
 	isDirectMessageSubscriber,
+	subscribeToDirectMessageInbox,
 	subscribeToDirectMessages,
+	unsubscribeFromDirectMessageInbox,
 	unsubscribeFromDirectMessages,
 } from "../services/directMessageWebsocket.js";
 import { logger } from "../services/logger.js";
@@ -21,6 +29,7 @@ const snowflake = z.string().regex(/^\d{17,20}$/u);
 const conversationSchema = z.strictObject({ userId: snowflake });
 const historySchema = z.strictObject({ userId: snowflake, before: snowflake.optional() });
 const sendSchema = z.strictObject({ userId: snowflake, content: z.string().trim().min(1).max(2000) });
+const readSchema = z.strictObject({ userId: snowflake, messageId: snowflake.nullable() });
 type Failure = Extract<WebsocketResult, { ok: false }>;
 const invalidPayload: Failure = { ok: false, status: 400, error: "Invalid direct message request" };
 const notFound: Failure = { ok: false, status: 404, error: "Conversation not found" };
@@ -77,6 +86,69 @@ export function registerDirectMessageSocketHandlers(socket: WebsocketSocket): vo
 		return result;
 	}
 
+	socket.on("direct-messages:inbox-subscribe", (ack) => {
+		void respond({
+			socket,
+			event: "direct-messages:inbox-subscribe",
+			ack,
+			work: () =>
+				transition<{ unreadCount: number }>(async () => {
+					if (!(await subscribeToDirectMessageInbox(socket))) {
+						await unsubscribeFromDirectMessageInbox(socket);
+						return { ok: false, status: 403, error: "Bot administrator access required" };
+					}
+					const unreadCount = await getUnreadDirectMessageCount();
+					if (!socket.data.user.isAdmin) {
+						await unsubscribeFromDirectMessageInbox(socket);
+						return { ok: false, status: 403, error: "Bot administrator access required" };
+					}
+					return { ok: true, unreadCount };
+				}),
+		});
+	});
+	socket.on("direct-messages:inbox-unsubscribe", (ack) => {
+		void respond({
+			socket,
+			event: "direct-messages:inbox-unsubscribe",
+			ack,
+			allowCleanup: true,
+			work: () =>
+				transition(async () => {
+					await unsubscribeFromDirectMessageInbox(socket);
+					return { ok: true };
+				}),
+		});
+	});
+	socket.on("direct-messages:unread-count", (ack) => {
+		void respond({
+			socket,
+			event: "direct-messages:unread-count",
+			ack,
+			work: async () => {
+				if (!isDirectMessageInboxSubscriber(socket))
+					return { ok: false, status: 403, error: "Subscribe to the inbox first" };
+				const unreadCount = await getUnreadDirectMessageCount();
+				if (!socket.data.user.isAdmin)
+					return { ok: false, status: 403, error: "Bot administrator access required" };
+				return { ok: true, unreadCount };
+			},
+		});
+	});
+	socket.on("direct-messages:read", (payload, ack) => {
+		void respond({
+			socket,
+			event: "direct-messages:read",
+			ack,
+			work: async () => {
+				const parsed = readSchema.safeParse(payload);
+				if (!parsed.success) return invalidPayload;
+				if (!isDirectMessageSubscriber({ socket, userId: parsed.data.userId }))
+					return { ok: false, status: 403, error: "Open the conversation first" };
+				await markDirectMessageRead({ ...parsed.data, reader: socket.data.user });
+				return { ok: true };
+			},
+		});
+	});
 	socket.on("direct-messages:subscribe", (payload, ack) => {
 		void respond({
 			socket,
