@@ -14,6 +14,13 @@ export interface DirectMessageBot {
 /** Path the Socket.IO server is mounted on, under the same API prefix as the HTTP routes. */
 export const WEBSOCKET_PATH = "/api/v1/websocket";
 
+export const WEBSOCKET_ROOM_PREFIX = {
+	player: "player:",
+	purgeJob: "purge-job:",
+	directMessages: "direct-messages:",
+	directMessageInbox: "direct-messages-inbox:",
+} as const;
+
 /** Events one connection may send per window; a slow typist or a button-masher stays well under it. */
 const RATE_LIMIT_MAX_EVENTS = 40;
 const RATE_LIMIT_WINDOW_MS = 10_000;

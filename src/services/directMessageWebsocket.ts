@@ -1,10 +1,10 @@
-import type { WebsocketServer, WebsocketSocket } from "../helpers/websocket.js";
+import { WEBSOCKET_ROOM_PREFIX, type WebsocketServer, type WebsocketSocket } from "../helpers/websocket.js";
 import DirectMessageConversationModel from "../models/directMessageConversation.js";
 import { getDirectMessageBotUserId, notifyAdminsOfDirectMessage, onDirectMessageChanged } from "./directMessages.js";
 import { logger } from "./logger.js";
 
-const ROOM_PREFIX = "direct-messages:";
-const INBOX_ROOM_PREFIX = "direct-messages-inbox:";
+const ROOM_PREFIX = WEBSOCKET_ROOM_PREFIX.directMessages;
+const INBOX_ROOM_PREFIX = WEBSOCKET_ROOM_PREFIX.directMessageInbox;
 let server: WebsocketServer | undefined;
 let stopListening: (() => void) | undefined;
 

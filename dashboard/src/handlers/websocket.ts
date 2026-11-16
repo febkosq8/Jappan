@@ -97,7 +97,6 @@ export function acquireWebsocket(feature: WebsocketFeature): WebsocketClient {
 		// The session cookie authenticates the handshake
 		withCredentials: true,
 		autoConnect: false,
-		auth: (callback) => callback({ features: [...holders.keys()] }),
 	});
 	const shouldConnect = holders.size === 0;
 	holders.set(feature, (holders.get(feature) ?? 0) + 1);

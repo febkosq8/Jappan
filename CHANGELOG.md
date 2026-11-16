@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Restricted dashboard user-data updates to the Discord sign-in flow and documented the session endpoint's rate-limit response.
-- Included active feature information in WebSocket connection logs.
+- Logged WebSocket feature-room joins and departures, including disconnects and access revocations.
 
 ## [2.1.5] - 2026-11-15
 

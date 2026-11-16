@@ -1,5 +1,10 @@
 import { formatUser } from "../helpers/discord.js";
-import type { WebsocketResult, WebsocketServer, WebsocketSocket } from "../helpers/websocket.js";
+import {
+	WEBSOCKET_ROOM_PREFIX,
+	type WebsocketResult,
+	type WebsocketServer,
+	type WebsocketSocket,
+} from "../helpers/websocket.js";
 import {
 	authorizePurgeMessageJob,
 	getPurgeMessageJob,
@@ -9,7 +14,7 @@ import {
 } from "./purgeMessageJobs.js";
 import { logger } from "./logger.js";
 
-const ROOM_PREFIX = "purge-job:";
+const ROOM_PREFIX = WEBSOCKET_ROOM_PREFIX.purgeJob;
 const ACCESS_REFRESH_INTERVAL_MS = 30_000;
 
 let websocketServer: WebsocketServer | undefined;
