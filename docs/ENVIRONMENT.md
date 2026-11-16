@@ -33,7 +33,8 @@ Copy [`.env.example`](../.env.example) to `.env`. `DISCORD_TOKEN`, `DB_URL`, `AU
 Boolean settings are enabled only by the exact value `true`; other values are treated as disabled.
 
 When no administrator has the direct messages page connected, incoming bot DMs trigger a notification to each
-`ADMIN_USER_IDS` account. The notification links to the conversation on `BOT_WEBSITE`; delivery failures are logged.
+`ADMIN_USER_IDS` account other than the sender. The notification links to the conversation on `BOT_WEBSITE`;
+delivery failures are logged.
 
 The dashboard uses `VITE_API_URL` at build time when set; otherwise it uses
 `http://localhost:8875` in development and `https://api-jappan.febkosq8.me` in production.

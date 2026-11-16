@@ -176,18 +176,20 @@ export async function notifyAdminsOfDirectMessage(sender: { id: string; username
 		.setTimestamp();
 	const components = [createDashboardLinkActionRow({ url: url.href, label: "Open conversation" })];
 	await Promise.all(
-		[...new Set(config.ADMIN_USER_IDS)].map(async (adminId) => {
-			try {
-				const admin = await getClient().users.fetch(adminId);
-				await admin.send({ embeds: [embed], components, allowedMentions: { parse: [] } });
-			} catch (error: unknown) {
-				logger.error("DISCORD", "Failed to notify admin of direct message", {
-					adminId,
-					userId: sender.id,
-					error,
-				});
-			}
-		}),
+		[...new Set(config.ADMIN_USER_IDS)]
+			.filter((adminId) => adminId !== sender.id)
+			.map(async (adminId) => {
+				try {
+					const admin = await getClient().users.fetch(adminId);
+					await admin.send({ embeds: [embed], components, allowedMentions: { parse: [] } });
+				} catch (error: unknown) {
+					logger.error("DISCORD", "Failed to notify admin of direct message", {
+						adminId,
+						userId: sender.id,
+						error,
+					});
+				}
+			}),
 	);
 }
 
