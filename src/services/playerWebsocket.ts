@@ -1,7 +1,12 @@
-import { formatGuild, formatUser } from "../helpers/discord.js";
+import { formatGuild } from "../helpers/discord.js";
 import { closeDisconnectedQueue, isQueueDisconnected, type PlayerQueue } from "../helpers/player.js";
 import { getPlayerSessionState, type PlayerSessionState } from "../helpers/playerSessionState.js";
-import type { WebsocketResult, WebsocketServer, WebsocketSocket } from "../helpers/websocket.js";
+import {
+	WEBSOCKET_ROOM_PREFIX,
+	type WebsocketResult,
+	type WebsocketServer,
+	type WebsocketSocket,
+} from "../helpers/websocket.js";
 import { logger } from "./logger.js";
 import {
 	isUserInPlayerVoiceChannel,
@@ -16,7 +21,7 @@ const BROADCAST_DELAY_MS = 75;
 /** Subscribers get a fresh state this often even when nothing changed, to correct drift and re-check access. */
 const STATE_REFRESH_INTERVAL_MS = 30_000;
 
-const ROOM_PREFIX = "player:";
+const ROOM_PREFIX = WEBSOCKET_ROOM_PREFIX.player;
 
 let websocketServer: WebsocketServer | undefined;
 let refreshTimer: NodeJS.Timeout | undefined;
@@ -198,12 +203,6 @@ export async function subscribeToPlayerSession({
 		}
 		subscribedQueues.set(sessionId, queue);
 		await socket.join(room);
-		logger.info("WEBSOCKET", "Client subscribed to player session", {
-			socket: socket.id,
-			session: sessionId,
-			guild: formatGuild(queue.guild),
-			user: formatUser(result.actor),
-		});
 		broadcastPlayerState(queue, socket);
 		return {
 			ok: true,

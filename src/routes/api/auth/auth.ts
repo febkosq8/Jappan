@@ -57,6 +57,16 @@ export default defineExternalRouter("/api/v1", router, [
 					.nullable(),
 			},
 			401: { description: "Session refresh failed" },
+			429: {
+				description: "Rate limit exceeded",
+				schema: z.object({ message: z.string() }),
+				headers: {
+					"X-Retry-After": {
+						description: "Seconds to wait before retrying",
+						schema: z.string(),
+					},
+				},
+			},
 			500: { description: "Session lookup failed" },
 			503: { description: "Authentication unavailable", schema: z.object({ error: z.string() }) },
 		},

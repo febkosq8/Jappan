@@ -27,6 +27,7 @@ function getMobilePage({
 	const isGuildsPage = pathname === "/guilds" || pathname.startsWith("/guild/");
 
 	if (isAdmin && pathname === "/admin/bot") return "Manage Bot";
+	if (isAdmin && pathname === "/admin/direct-messages") return "Direct messages";
 	if (isAuthenticated && (isPlayerPage || isPlaylistPage || isLeaderboardsPage || isGuildsPage)) return "Dashboard";
 	if (isAdmin && isAdminGuildsPage) return "Dashboard";
 

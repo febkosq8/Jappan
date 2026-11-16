@@ -9,6 +9,7 @@ export default function AdminMenu({ asSubmenu = false }: AdminMenuProps) {
 	const { pathname } = useLocation();
 	const isGuildsPage = pathname === "/admin/guilds" || pathname.startsWith("/admin/guild/");
 	const isViewBotPage = pathname === "/admin/bot";
+	const isDirectMessagesPage = pathname === "/admin/direct-messages";
 
 	const items = (
 		<>
@@ -23,6 +24,11 @@ export default function AdminMenu({ asSubmenu = false }: AdminMenuProps) {
 				<Menu.Item asChild nativeButton={false} active={isViewBotPage}>
 					<Link to="/admin/bot" aria-current={isViewBotPage ? "page" : undefined}>
 						Manage Bot
+					</Link>
+				</Menu.Item>
+				<Menu.Item asChild nativeButton={false} active={isDirectMessagesPage}>
+					<Link to="/admin/direct-messages" aria-current={isDirectMessagesPage ? "page" : undefined}>
+						Direct messages
 					</Link>
 				</Menu.Item>
 			</Menu.Sub>

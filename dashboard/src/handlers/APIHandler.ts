@@ -45,6 +45,32 @@ export interface AdminBotPlayerSession {
 
 export type AdminBotAdministrator = User;
 
+export interface AdminDirectMessage {
+	id: string;
+	content: string;
+	author: User;
+	createdTimestampMs: number;
+	attachments: { name: string; url: string }[];
+	embeds: { title: string | null; description: string | null; fields: { name: string; value: string }[] }[];
+	stickers: { name: string; url: string }[];
+}
+
+export interface AdminDirectMessageConversation {
+	user: User;
+	lastReceivedAt: string;
+	unread: boolean;
+	lastReadAt: string | null;
+	lastReadBy: { id: string; username: string } | null;
+}
+
+export type AdminDirectMessageConversations = PaginatedListResponse<AdminDirectMessageConversation>;
+
+export interface AdminDirectMessagePage {
+	messages: AdminDirectMessage[];
+	nextBefore: string | null;
+	lastReceivedMessageId: string | null;
+}
+
 export interface BotStatus {
 	botName: string;
 	botAvatarUrl: string;

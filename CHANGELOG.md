@@ -5,6 +5,19 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.6] - 2026-11-16
+
+### Added
+
+- Added an admin direct-message inbox to read and reply to the bot's conversations, with live updates, pagination, shared unread tracking, reader attribution, and direct conversation links.
+- Added Discord notifications to configured admins when a message arrives and no admin has the inbox open; the sender is excluded and the notification links to the conversation.
+- Added rate limiting for authentication requests and logging for account creation, sign-in, and sign-out.
+
+### Changed
+
+- Restricted dashboard user-data updates to the Discord sign-in flow and documented the session endpoint's rate-limit response.
+- Logged WebSocket feature-room joins and departures, including disconnects and access revocations.
+
 ## [2.1.5] - 2026-11-15
 
 ### Added

@@ -32,7 +32,7 @@ export default function usePurgeMessageJobWebsocket({
 
 	useEffect(() => {
 		if (!enabled || jobId === "") return;
-		const client = acquireWebsocket();
+		const client = acquireWebsocket("purge-job");
 		let retryTimer: number | undefined;
 		let active = true;
 		setStatus("connecting");
@@ -96,7 +96,7 @@ export default function usePurgeMessageJobWebsocket({
 			if (client.connected) {
 				getWebsocket()?.emit("purge-job:unsubscribe", { jobId }, () => undefined);
 			}
-			releaseWebsocket();
+			releaseWebsocket("purge-job");
 		};
 	}, [jobId, enabled]);
 

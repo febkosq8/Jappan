@@ -1,9 +1,10 @@
 import { betterAuth } from "better-auth";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
-import { APIError } from "better-auth/api";
+import { APIError, createAuthMiddleware } from "better-auth/api";
 import { bearer } from "better-auth/plugins";
 import mongoose from "mongoose";
 
+import { formatUser } from "../helpers/discord.js";
 import AuthAccountModel from "../models/authAccount.js";
 import AuthSessionModel from "../models/authSession.js";
 import AuthUserModel from "../models/authUser.js";
@@ -42,7 +43,30 @@ function createAuth() {
 		trustedOrigins: [...config.ALLOWED_ORIGINS],
 		onAPIError: { errorURL: new URL("/auth/error", config.BOT_WEBSITE).href },
 		database: mongodbAdapter(DatabaseManager.getDatabaseInstance()),
+		rateLimit: {
+			enabled: true,
+			storage: "database",
+			window: 60,
+			max: 60,
+			customRules: {
+				"/sign-in/social": { window: 60, max: 3 },
+				"/callback/*": { window: 60, max: 10 },
+				"/get-session": { window: 60, max: 30 },
+			},
+		},
 		plugins: [bearer()],
+		hooks: {
+			after: createAuthMiddleware(async (ctx) => {
+				if (ctx.path === "/callback/:id" && ctx.context.newSession) {
+					logger.info("AUTH", "User signed in", {
+						user: formatUser({
+							id: ctx.context.newSession.user.id,
+							username: ctx.context.newSession.user.username ?? ctx.context.newSession.user.name,
+						}),
+					});
+				}
+			}),
+		},
 		socialProviders: {
 			discord: {
 				clientId: config.AUTH_DISCORD_CLIENT_ID,
@@ -84,11 +108,22 @@ function createAuth() {
 		},
 		databaseHooks: {
 			user: {
+				create: {
+					after: async (user, context) => {
+						if (context?.path !== "/callback/:id") return;
+						logger.info("AUTH", "User created", {
+							user: formatUser({
+								id: user.id,
+								username: typeof user.username === "string" ? user.username : user.name,
+							}),
+						});
+					},
+				},
 				update: {
 					before: async (user, context) => {
-						if (("username" in user || "discordAccountId" in user) && context?.path !== "/callback/:id") {
+						if (context?.path !== "/callback/:id") {
 							throw new APIError("FORBIDDEN", {
-								message: "Discord usernames can only be updated by Discord",
+								message: "User data can only be updated by Discord",
 							});
 						}
 					},
@@ -139,6 +174,9 @@ function createAuth() {
 				},
 				delete: {
 					after: async (session, context) => {
+						if (context?.path === "/sign-out") {
+							logger.info("AUTH", "User signed out", { userId: session.userId });
+						}
 						notifySessionsEnded({ userId: session.userId });
 						if (context?.path !== "/sign-out") return;
 						await AuthSessionModel.deleteMany({ userId: new mongoose.Types.ObjectId(session.userId) });

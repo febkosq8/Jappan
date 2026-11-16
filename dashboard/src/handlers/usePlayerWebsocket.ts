@@ -50,7 +50,7 @@ export default function usePlayerWebsocket({
 		if (!enabled || sessionId === "") {
 			return;
 		}
-		const client = acquireWebsocket();
+		const client = acquireWebsocket("player");
 		let retryTimer: number | undefined;
 		let active = true;
 		let replaced = false;
@@ -152,7 +152,7 @@ export default function usePlayerWebsocket({
 			if (client.connected) {
 				client.emit("player:unsubscribe", { sessionId }, () => undefined);
 			}
-			releaseWebsocket();
+			releaseWebsocket("player");
 		};
 	}, [sessionId, enabled]);
 
