@@ -114,6 +114,13 @@ function websocketAccessStatus(error: unknown): 401 | 403 | undefined {
 }
 
 function ReadStatus({ conversation }: { conversation: AdminDirectMessageConversation }) {
+	const readerLink = conversation.lastReadBy && (
+		<ExternalTextLink
+			href={`https://discord.com/users/${encodeURIComponent(conversation.lastReadBy.id)}`}
+			text={`@${conversation.lastReadBy.username}`}
+		/>
+	);
+
 	return (
 		<div className="flex min-w-0 items-start justify-between gap-2 text-sm text-muted-foreground">
 			<div className="flex shrink-0 flex-col items-start gap-1">
@@ -125,14 +132,9 @@ function ReadStatus({ conversation }: { conversation: AdminDirectMessageConversa
 				)}
 			</div>
 			<div className="flex min-w-0 flex-col items-end gap-1 text-right">
-				{conversation.lastReadBy && conversation.lastReadAt ? (
+				{readerLink && conversation.lastReadAt ? (
 					<>
-						<span className="max-w-full wrap-anywhere">
-							<ExternalTextLink
-								href={`https://discord.com/users/${encodeURIComponent(conversation.lastReadBy.id)}`}
-								text={`@${conversation.lastReadBy.username}`}
-							/>
-						</span>
+						<span className="max-w-full wrap-anywhere">{readerLink}</span>
 						<time className="max-w-full wrap-anywhere" dateTime={conversation.lastReadAt}>
 							{DateHandler.getDateTime(new Date(conversation.lastReadAt).getTime())}
 						</time>
@@ -625,24 +627,21 @@ export default function DirectMessages() {
 										<FiMessageSquare className="size-5 text-primary" aria-hidden="true" />
 										Conversation
 									</h2>
-									<div className="ml-auto flex min-w-0 max-w-full items-center gap-3">
-										<ReadStatus conversation={selectedConversation.data} />
-										<Button
-											type="button"
-											size="icon-sm"
-											variant="outline-primary"
-											className="group/refetch shrink-0"
-											aria-label="Refresh messages"
-											title="Refresh messages"
-											disabled={websocketStatus !== "connected" || conversationUnavailable}
-											onClick={() => void messages.refetch()}
-										>
-											<FiRefreshCw
-												className="size-4 group-hover/refetch:animate-spin"
-												aria-hidden="true"
-											/>
-										</Button>
-									</div>
+									<Button
+										type="button"
+										size="icon-sm"
+										variant="outline-primary"
+										className="group/refetch"
+										aria-label="Refresh messages"
+										title="Refresh messages"
+										disabled={websocketStatus !== "connected" || conversationUnavailable}
+										onClick={() => void messages.refetch()}
+									>
+										<FiRefreshCw
+											className="size-4 group-hover/refetch:animate-spin"
+											aria-hidden="true"
+										/>
+									</Button>
 								</div>
 								<div className="flex flex-wrap items-center justify-between gap-3">
 									<UserDisplay user={selectedUser} size="xl" />
@@ -785,8 +784,8 @@ export default function DirectMessages() {
 															key={message.id}
 															className={`rounded-md border p-3 ${
 																message.author.id === bot?.id
-																	? "border-primary/60"
-																	: "border-border"
+																	? "border-primary/70"
+																	: "border-warning/80"
 															}`}
 														>
 															<div className="flex flex-wrap items-center justify-between gap-2">
