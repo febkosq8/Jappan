@@ -27,7 +27,7 @@ export function registerWebsocketHandlers(server: WebsocketServer): void {
 		const feature = featureRoomPrefixes.find(([prefix]) => room.startsWith(prefix))?.[1];
 		if (!feature) return;
 		const socket = server.sockets.sockets.get(socketId);
-		logger.info("WEBSOCKET", `Client ${action} feature room`, {
+		logger.info("WEBSOCKET", `Client ${action} room`, {
 			feature,
 			room,
 			socket: socketId,
