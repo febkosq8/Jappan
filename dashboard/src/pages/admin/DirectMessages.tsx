@@ -7,6 +7,7 @@ import { FaChevronLeft, FaChevronRight } from "react-icons/fa6";
 import { useSearchParams } from "react-router-dom";
 
 import { AccessRedirect, accessErrorStatus } from "@jappan/components/AuthRoute";
+import CopyIdButton from "@jappan/components/display/CopyIdButton";
 import UserDisplay from "@jappan/components/display/UserDisplay";
 import ErrorPage from "@jappan/components/ErrorPage";
 import ExternalTextLink from "@jappan/components/ExternalTextLink";
@@ -651,6 +652,12 @@ export default function DirectMessages() {
 																	size="md"
 																	showId={false}
 																/>
+																<div className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+																	<span className="min-w-0 break-all">
+																		Message ID: {message.id}
+																	</span>
+																	<CopyIdButton id={message.id} label="Message ID" />
+																</div>
 																<time
 																	className="text-xs text-muted-foreground"
 																	dateTime={new Date(
