@@ -11,7 +11,10 @@ const tags = ["Admin Direct Messages"];
 const security = [{ sessionBearer: [] }];
 const middleware = [requireDatabase, requireDiscord, requireSession, requireAdmin];
 const conversationSchema = z.object({ user: apiUserSchema, lastReceivedAt: z.string() });
-const conversationListQuerySchema = listQuerySchema.pick({ page: true, perPageLimit: true });
+const userIdSchema = z.string().regex(/^\d{17,20}$/u);
+const conversationListQuerySchema = listQuerySchema
+	.pick({ page: true, perPageLimit: true })
+	.extend({ userId: userIdSchema.optional() });
 const responses = {
 	400: { description: "Invalid request", schema: errorResponseSchema },
 	401: { description: "Authentication required", schema: errorResponseSchema },
@@ -29,9 +32,10 @@ export default defineRouter("/direct-messages", [
 		summary: "List discovered direct message conversations",
 		errorMessage: "Failed to list direct message conversations",
 		security,
-		parameters: listQueryParameters(conversationSchema).filter(
-			({ name }) => name === "page" || name === "perPageLimit",
-		),
+		parameters: [
+			...listQueryParameters(conversationSchema).filter(({ name }) => name === "page" || name === "perPageLimit"),
+			{ name: "userId", in: "query", schema: userIdSchema, description: "Filter by conversation user ID" },
+		],
 		responses: {
 			...responses,
 			200: {

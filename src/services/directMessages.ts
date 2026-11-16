@@ -7,6 +7,7 @@ import DirectMessageConversationModel from "../models/directMessageConversation.
 import { logger } from "./logger.js";
 
 type DirectMessageChange = { botUserId: string; userId: string };
+const MESSAGES_PER_PAGE = 25;
 const listeners = new Set<(change: DirectMessageChange) => void>();
 
 export function onDirectMessageChanged(listener: (change: DirectMessageChange) => void): () => void {
@@ -53,8 +54,16 @@ function serializeMessage(message: Message) {
 
 export type DirectMessage = ReturnType<typeof serializeMessage>;
 
-export async function listDirectMessageConversations({ page, perPageLimit }: { page: number; perPageLimit: number }) {
-	const filter = { botUserId: getDirectMessageBotUserId() };
+export async function listDirectMessageConversations({
+	page,
+	perPageLimit,
+	userId,
+}: {
+	page: number;
+	perPageLimit: number;
+	userId?: string | undefined;
+}) {
+	const filter = { botUserId: getDirectMessageBotUserId(), ...(userId ? { userId } : {}) };
 	const [conversations, total] = await Promise.all([
 		DirectMessageConversationModel.find(filter)
 			.sort({ lastReceivedAt: -1, userId: 1 })
@@ -97,11 +106,11 @@ async function getConversationChannel(userId: string) {
 export async function getDirectMessagePage({ userId, before }: { userId: string; before?: string | undefined }) {
 	const channel = await getConversationChannel(userId);
 	if (!channel) return null;
-	const messages = await channel.messages.fetch({ limit: 51, ...(before && { before }) });
-	const page = [...messages.values()].slice(0, 50).reverse();
+	const messages = await channel.messages.fetch({ limit: MESSAGES_PER_PAGE + 1, ...(before && { before }) });
+	const page = [...messages.values()].slice(0, MESSAGES_PER_PAGE).reverse();
 	return {
 		messages: page.map(serializeMessage),
-		nextBefore: messages.size > 50 ? (page[0]?.id ?? null) : null,
+		nextBefore: messages.size > MESSAGES_PER_PAGE ? (page[0]?.id ?? null) : null,
 	};
 }
 

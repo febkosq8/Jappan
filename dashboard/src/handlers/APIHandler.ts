@@ -720,12 +720,17 @@ class APIHandler {
 		return data;
 	}
 
-	static async getAdminDirectMessageConversations(
-		page: number,
-		perPageLimit: number,
-	): Promise<AdminDirectMessageConversations> {
+	static async getAdminDirectMessageConversations({
+		page,
+		perPageLimit,
+		userId,
+	}: {
+		page: number;
+		perPageLimit: number;
+		userId?: string;
+	}): Promise<AdminDirectMessageConversations> {
 		const { data } = await apiClient.get<AdminDirectMessageConversations>("/api/v1/admin/direct-messages", {
-			params: { page, perPageLimit },
+			params: { page, perPageLimit, ...(userId ? { userId } : {}) },
 			withCredentials: true,
 		});
 		return data;

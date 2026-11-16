@@ -32,7 +32,10 @@ export default function useDirectMessageWebsocket({
 	});
 
 	useEffect(() => {
-		if (!enabled || !userId) return;
+		if (!enabled || !userId) {
+			setConnection({ userId: "", status: "connecting", bot: null });
+			return;
+		}
 		const client = acquireWebsocket("direct-messages");
 		let active = true;
 		let subscribed = false;

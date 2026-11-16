@@ -185,9 +185,10 @@ It accepts the WebSocket transport only.
 The admin inbox loads its conversation list over HTTP. The authenticated
 WebSocket subscribes to the selected conversation, provides the bot identity,
 and carries all message history, updates and replies; reconnecting refreshes
-that conversation. Data operations require a bot administrator and a
-subscription to that conversation. Records are scoped to the connected bot;
-message content remains on Discord.
+that conversation. The conversation list accepts a user ID filter to resolve
+deep links without fetching message history over HTTP. Data operations require
+a bot administrator and a subscription to that conversation. Records are
+scoped to the connected bot; message content remains on Discord.
 
 ## FebGoServe compatibility
 

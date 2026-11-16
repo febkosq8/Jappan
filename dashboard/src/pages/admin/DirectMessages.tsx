@@ -2,17 +2,9 @@ import { Button, Card, DateHandler, Input, Tag } from "@febkosq8/arc";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { useLayoutEffect, useRef, useState, type SubmitEvent } from "react";
-import {
-	FiChevronLeft,
-	FiChevronRight,
-	FiLoader,
-	FiMessageSquare,
-	FiRefreshCw,
-	FiSend,
-	FiWifi,
-	FiWifiOff,
-} from "react-icons/fi";
+import { FiLoader, FiMessageSquare, FiRefreshCw, FiSend, FiWifi, FiWifiOff } from "react-icons/fi";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa6";
+import { useSearchParams } from "react-router-dom";
 
 import { AccessRedirect, accessErrorStatus } from "@jappan/components/AuthRoute";
 import UserDisplay from "@jappan/components/display/UserDisplay";
@@ -30,6 +22,68 @@ import {
 import useDocumentTitle, { formatTitle } from "@jappan/helpers/useDocumentTitle";
 
 const CONVERSATIONS_PER_PAGE = 30;
+
+type PaginationAction = {
+	label: string;
+	ariaLabel: string;
+	disabled: boolean;
+	onClick: () => void;
+};
+
+function InboxPagination({
+	label,
+	count,
+	page,
+	previous,
+	next,
+}: {
+	label: string;
+	count: string;
+	page: number;
+	previous: PaginationAction;
+	next: PaginationAction;
+}) {
+	return (
+		<nav aria-label={label} className="flex w-full flex-wrap items-center justify-center gap-1">
+			<Button
+				type="button"
+				size="sm"
+				variant="outline-secondary"
+				className="h-10 gap-1 px-1.5 sm:h-8 sm:px-2"
+				aria-label={previous.ariaLabel}
+				title={previous.ariaLabel}
+				disabled={previous.disabled}
+				onClick={previous.onClick}
+			>
+				<FaChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
+				{previous.label}
+			</Button>
+			<span aria-hidden="true" className="px-1 text-muted-foreground">
+				·
+			</span>
+			<span className="text-center text-xs font-medium">
+				<span className="text-foreground">{count}</span>
+				<span className="block text-muted-foreground">Page {page}</span>
+			</span>
+			<span aria-hidden="true" className="px-1 text-muted-foreground">
+				·
+			</span>
+			<Button
+				type="button"
+				size="sm"
+				variant="outline-secondary"
+				className="h-10 gap-1 px-1.5 sm:h-8 sm:px-2"
+				aria-label={next.ariaLabel}
+				title={next.ariaLabel}
+				disabled={next.disabled}
+				onClick={next.onClick}
+			>
+				{next.label}
+				<FaChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+			</Button>
+		</nav>
+	);
+}
 
 function errorMessage(error: unknown, fallback: string): string {
 	if (error instanceof WebsocketRequestError) return error.message;
@@ -59,25 +113,51 @@ function websocketAccessStatus(error: unknown): 401 | 403 | undefined {
 export default function DirectMessages() {
 	useDocumentTitle(formatTitle("Direct messages", "Admin"));
 	const queryClient = useQueryClient();
+	const [searchParams, setSearchParams] = useSearchParams();
 	const [page, setPage] = useState(1);
-	const [selectedUser, setSelectedUser] = useState<User | null>(null);
 	const [cursors, setCursors] = useState<string[]>([]);
 	const [draft, setDraft] = useState("");
 	const [socketAccessError, setSocketAccessError] = useState<401 | 403 | null>(null);
 	const [conversationUnavailable, setConversationUnavailable] = useState(false);
+	const [backgroundSendErrors, setBackgroundSendErrors] = useState<
+		{ userId: string; content: string; error: unknown }[]
+	>([]);
 	const messagesListRef = useRef<HTMLOListElement>(null);
 	const scrollOnOpenRef = useRef(false);
+	const selectedUserId = searchParams.get("userId");
+	const validUserId = selectedUserId !== null && /^\d{17,20}$/u.test(selectedUserId);
+	const currentUserIdRef = useRef(selectedUserId);
+	const selectionVersionRef = useRef(0);
 	const before = cursors[cursors.length - 1];
 	const conversationKey = ["admin", "direct-messages", "conversations", page];
-	const messageKey = ["admin", "direct-messages", "messages", selectedUser?.id, before];
 	const conversations = useQuery({
 		queryKey: conversationKey,
-		queryFn: () => APIHandler.getAdminDirectMessageConversations(page, CONVERSATIONS_PER_PAGE),
+		queryFn: () => APIHandler.getAdminDirectMessageConversations({ page, perPageLimit: CONVERSATIONS_PER_PAGE }),
 		refetchOnWindowFocus: false,
 		refetchOnReconnect: false,
 		refetchOnMount: false,
 		retry: false,
 	});
+	const selectedConversation = useQuery({
+		queryKey: ["admin", "direct-messages", "conversation", selectedUserId],
+		queryFn: async () => {
+			if (!selectedUserId || !validUserId) throw new Error("Invalid conversation user ID");
+			const result = await APIHandler.getAdminDirectMessageConversations({
+				page: 1,
+				perPageLimit: 1,
+				userId: selectedUserId,
+			});
+			return result.items[0]?.user ?? null;
+		},
+		enabled: validUserId,
+		staleTime: Infinity,
+		refetchOnWindowFocus: false,
+		refetchOnReconnect: false,
+		refetchOnMount: false,
+		retry: false,
+	});
+	const selectedUser = selectedConversation.data ?? null;
+	const messageKey = ["admin", "direct-messages", "messages", selectedUser?.id, before];
 	const { status: websocketStatus, bot } = useDirectMessageWebsocket({
 		userId: selectedUser?.id ?? "",
 		enabled: selectedUser !== null && socketAccessError === null && !conversationUnavailable,
@@ -114,18 +194,36 @@ export default function DirectMessages() {
 		retry: false,
 	});
 	const send = useMutation({
-		mutationFn: ({ userId, content }: { userId: string; content: string }) =>
+		mutationFn: ({ userId, content }: { userId: string; content: string; selectionVersion: number }) =>
 			sendDirectMessage({ socket: conversationSocket(), userId, content }),
-		onSuccess: async (_message, { userId }) => {
-			setDraft("");
-			setCursors([]);
+		onSuccess: async (_message, { userId, selectionVersion }) => {
+			if (currentUserIdRef.current === userId && selectionVersionRef.current === selectionVersion) {
+				setDraft("");
+				setCursors([]);
+			}
 			await queryClient.invalidateQueries({
 				queryKey: ["admin", "direct-messages", "messages", userId, undefined],
 				exact: true,
 				refetchType: "all",
 			});
 		},
+		onError: (error, { userId, content, selectionVersion }) => {
+			if (currentUserIdRef.current !== userId || selectionVersionRef.current !== selectionVersion) {
+				setBackgroundSendErrors((previous) => [...previous, { userId, content, error }]);
+			}
+		},
 	});
+	const resetSend = send.reset;
+	useLayoutEffect(() => {
+		currentUserIdRef.current = selectedUserId;
+		selectionVersionRef.current++;
+		scrollOnOpenRef.current = selectedUserId !== null;
+		setCursors([]);
+		setDraft("");
+		setConversationUnavailable(false);
+		resetSend();
+	}, [selectedUserId, resetSend]);
+
 	useLayoutEffect(() => {
 		if (
 			!scrollOnOpenRef.current ||
@@ -142,7 +240,9 @@ export default function DirectMessages() {
 
 	const accessStatus =
 		socketAccessError ??
+		backgroundSendErrors.map(({ error }) => websocketAccessStatus(error)).find((status) => status !== undefined) ??
 		accessErrorStatus(conversations.error) ??
+		accessErrorStatus(selectedConversation.error) ??
 		websocketAccessStatus(messages.error) ??
 		websocketAccessStatus(send.error);
 	if (accessStatus) return <AccessRedirect status={accessStatus} />;
@@ -156,18 +256,34 @@ export default function DirectMessages() {
 				: "Live conversation disconnected. Reconnecting…";
 
 	function selectUser(user: User) {
-		scrollOnOpenRef.current = true;
-		setSelectedUser(user);
-		setCursors([]);
-		setDraft("");
-		setConversationUnavailable(false);
-		send.reset();
+		queryClient.setQueryData(["admin", "direct-messages", "conversation", user.id], user);
+		if (selectedUserId === user.id) {
+			scrollOnOpenRef.current = true;
+			setCursors([]);
+			setDraft("");
+			setConversationUnavailable(false);
+			resetSend();
+			return;
+		}
+		setSearchParams((current) => {
+			const next = new URLSearchParams(current);
+			next.set("userId", user.id);
+			return next;
+		});
+	}
+
+	function clearSelection() {
+		setSearchParams((current) => {
+			const next = new URLSearchParams(current);
+			next.delete("userId");
+			return next;
+		});
 	}
 
 	function submit(event: SubmitEvent<HTMLFormElement>) {
 		event.preventDefault();
 		if (!selectedUser || !draft.trim() || send.isPending || websocketStatus !== "connected") return;
-		send.mutate({ userId: selectedUser.id, content: draft });
+		send.mutate({ userId: selectedUser.id, content: draft, selectionVersion: selectionVersionRef.current });
 	}
 
 	return (
@@ -179,8 +295,8 @@ export default function DirectMessages() {
 				</p>
 			</header>
 			<div className="mt-6 grid gap-4 md:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
-				<Card hoverable={false} className="min-w-0 rounded-md border-border p-5 sm:p-6">
-					<Card.Content className="p-0!">
+				<Card hoverable={false} className="flex min-w-0 flex-col rounded-md border-border p-5 sm:p-6">
+					<Card.Content className="flex flex-1 flex-col justify-start p-0!">
 						<div className="flex flex-wrap items-center justify-between gap-3">
 							<h2 className="flex items-center gap-2 text-lg font-semibold">
 								<FiMessageSquare className="size-5 text-primary" aria-hidden="true" />
@@ -234,7 +350,7 @@ export default function DirectMessages() {
 												variant="ghost"
 												aria-label={`Open conversation with ${user.displayName ?? user.username} (@${user.username})`}
 												aria-describedby={`conversation-received-${user.id}`}
-												aria-pressed={selectedUser?.id === user.id}
+												aria-pressed={selectedUserId === user.id}
 												disabled={send.isPending}
 												onClick={() => selectUser(user)}
 												className="peer absolute inset-0 h-full w-full border border-transparent p-0 aria-pressed:bg-accent"
@@ -264,36 +380,72 @@ export default function DirectMessages() {
 								))}
 							</ul>
 						)}
-						<div className="mt-4 flex items-center justify-between gap-2 border-t border-border pt-4">
-							<Button
-								type="button"
-								size="sm"
-								variant="outline-primary"
-								className="gap-1"
-								disabled={page === 1}
-								onClick={() => setPage(page - 1)}
-							>
-								<FiChevronLeft aria-hidden="true" />
-								Previous
-							</Button>
-							<span className="text-sm text-muted-foreground">Page {page}</span>
-							<Button
-								type="button"
-								size="sm"
-								variant="outline-primary"
-								className="gap-1"
-								disabled={!conversations.data || page >= conversations.data.pagination.totalPages}
-								onClick={() => setPage(page + 1)}
-							>
-								Next
-								<FiChevronRight aria-hidden="true" />
-							</Button>
+						<div className="mt-auto pt-4">
+							<div className="border-t border-border pt-4">
+								<InboxPagination
+									label="Conversation pagination"
+									count={
+										conversations.data
+											? `${conversations.data.pagination.total} ${
+													conversations.data.pagination.total === 1
+														? "conversation"
+														: "conversations"
+												}`
+											: conversations.isPending
+												? "Loading…"
+												: "Count unavailable"
+									}
+									page={page}
+									previous={{
+										label: "Previous",
+										ariaLabel: "Previous conversations",
+										disabled: page === 1,
+										onClick: () => setPage(page - 1),
+									}}
+									next={{
+										label: "Next",
+										ariaLabel: "Next conversations",
+										disabled:
+											!conversations.data || page >= conversations.data.pagination.totalPages,
+										onClick: () => setPage(page + 1),
+									}}
+								/>
+							</div>
 						</div>
 					</Card.Content>
 				</Card>
 				<Card hoverable={false} className="min-w-0 rounded-md border-border p-5 sm:p-6">
 					<Card.Content className="p-0!">
-						{!selectedUser ? (
+						{backgroundSendErrors.map(({ userId, content, error }, index) => (
+							<div key={index} className="mb-4">
+								<ErrorPage
+									variant="inline"
+									status={errorStatus(error)}
+									title="Could not send message"
+									message={
+										<>
+											<p>Conversation user: {userId}</p>
+											<p>{errorMessage(error, "Could not send the message.")}</p>
+											<p className="mt-2 whitespace-pre-wrap break-all">{content}</p>
+										</>
+									}
+									actions={
+										<Button
+											type="button"
+											variant="outline-primary"
+											onClick={() =>
+												setBackgroundSendErrors((previous) =>
+													previous.filter((_, errorIndex) => errorIndex !== index),
+												)
+											}
+										>
+											Dismiss
+										</Button>
+									}
+								/>
+							</div>
+						))}
+						{selectedUserId === null ? (
 							<div className="flex min-h-48 flex-col items-center justify-center text-center">
 								<span className="flex size-10 items-center justify-center rounded-md bg-primary/10 text-primary">
 									<FiMessageSquare className="size-5" aria-hidden="true" />
@@ -303,30 +455,83 @@ export default function DirectMessages() {
 									Choose a conversation to read messages and reply as the bot.
 								</p>
 							</div>
+						) : !validUserId ? (
+							<ErrorPage
+								variant="inline"
+								status="400"
+								title="Invalid conversation"
+								message="The conversation user ID in this link is invalid."
+								actions={
+									<Button type="button" variant="outline-primary" onClick={clearSelection}>
+										Clear selection
+									</Button>
+								}
+							/>
+						) : selectedConversation.isPending ? (
+							<LoadingIndicator label="Loading conversation" />
+						) : selectedConversation.isError ? (
+							<ErrorPage
+								variant="inline"
+								status={errorStatus(selectedConversation.error)}
+								title="Could not load conversation"
+								message={errorMessage(selectedConversation.error, "Could not load the conversation.")}
+								actions={
+									<Button
+										type="button"
+										variant="outline-primary"
+										onClick={() => void selectedConversation.refetch()}
+									>
+										Retry
+									</Button>
+								}
+							/>
+						) : !selectedUser ? (
+							<ErrorPage
+								variant="inline"
+								status="404"
+								title="Conversation unavailable"
+								message="This conversation is no longer available."
+								actions={
+									<>
+										<Button
+											type="button"
+											variant="outline-primary"
+											onClick={() => void selectedConversation.refetch()}
+										>
+											Retry
+										</Button>
+										<Button type="button" variant="outline-secondary" onClick={clearSelection}>
+											Clear selection
+										</Button>
+									</>
+								}
+							/>
 						) : (
 							<>
-								<h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
-									<FiMessageSquare className="size-5 text-primary" aria-hidden="true" />
-									Conversation
-								</h2>
+								<div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+									<h2 className="flex items-center gap-2 text-lg font-semibold">
+										<FiMessageSquare className="size-5 text-primary" aria-hidden="true" />
+										Conversation
+									</h2>
+									<Button
+										type="button"
+										size="icon-sm"
+										variant="outline-primary"
+										className="group/refetch"
+										aria-label="Refresh messages"
+										title="Refresh messages"
+										disabled={websocketStatus !== "connected" || conversationUnavailable}
+										onClick={() => void messages.refetch()}
+									>
+										<FiRefreshCw
+											className="size-4 group-hover/refetch:animate-spin"
+											aria-hidden="true"
+										/>
+									</Button>
+								</div>
 								<div className="flex flex-wrap items-center justify-between gap-3">
 									<UserDisplay user={selectedUser} size="xl" />
 									<div className="ml-auto flex shrink-0 items-center gap-2">
-										<Button
-											type="button"
-											size="icon-sm"
-											variant="outline-primary"
-											className="group/refetch"
-											aria-label="Refresh messages"
-											title="Refresh messages"
-											disabled={websocketStatus !== "connected" || conversationUnavailable}
-											onClick={() => void messages.refetch()}
-										>
-											<FiRefreshCw
-												className="size-4 group-hover/refetch:animate-spin"
-												aria-hidden="true"
-											/>
-										</Button>
 										<Tag
 											role="status"
 											variant={
@@ -398,55 +603,29 @@ export default function DirectMessages() {
 										/>
 									) : (
 										<>
-											<nav
-												aria-label="Message pagination"
-												className="flex w-full items-center justify-between gap-1 sm:justify-center"
-											>
-												<Button
-													type="button"
-													size="icon-md"
-													variant="outline-secondary"
-													className="h-10 w-10 sm:h-8 sm:w-8"
-													aria-label="Newer messages"
-													title="Newer messages"
-													disabled={cursors.length === 0 || websocketStatus !== "connected"}
-													onClick={() => setCursors(cursors.slice(0, -1))}
-												>
-													<FaChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
-												</Button>
-												<span aria-hidden="true" className="px-1 text-muted-foreground">
-													·
-												</span>
-												<span className="text-center text-xs font-medium">
-													<span className="text-foreground">
-														{messages.data.messages.length}{" "}
-														{messages.data.messages.length === 1 ? "message" : "messages"}
-													</span>
-													<span className="block text-muted-foreground">
-														Page {cursors.length + 1}
-													</span>
-												</span>
-												<span aria-hidden="true" className="px-1 text-muted-foreground">
-													·
-												</span>
-												<Button
-													type="button"
-													size="icon-md"
-													variant="outline-secondary"
-													className="h-10 w-10 sm:h-8 sm:w-8"
-													aria-label="Older messages"
-													title="Older messages"
-													disabled={
-														!messages.data.nextBefore || websocketStatus !== "connected"
-													}
-													onClick={() => {
+											<InboxPagination
+												label="Message pagination"
+												count={`${messages.data.messages.length} ${
+													messages.data.messages.length === 1 ? "message" : "messages"
+												}`}
+												page={cursors.length + 1}
+												previous={{
+													label: "Newer",
+													ariaLabel: "Newer messages",
+													disabled: cursors.length === 0 || websocketStatus !== "connected",
+													onClick: () => setCursors(cursors.slice(0, -1)),
+												}}
+												next={{
+													label: "Older",
+													ariaLabel: "Older messages",
+													disabled:
+														!messages.data.nextBefore || websocketStatus !== "connected",
+													onClick: () => {
 														if (messages.data.nextBefore)
 															setCursors([...cursors, messages.data.nextBefore]);
-													}}
-												>
-													<FaChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
-												</Button>
-											</nav>
+													},
+												}}
+											/>
 											{messages.data.messages.length === 0 ? (
 												<p className="mt-4 text-sm text-muted-foreground">
 													No messages in this page.
@@ -557,7 +736,7 @@ export default function DirectMessages() {
 								<form onSubmit={submit} className="mt-4 space-y-2 border-t border-border pt-4">
 									<div className="flex flex-wrap items-center gap-2">
 										<label htmlFor="direct-message-reply" className="font-medium">
-											{bot || !conversationUnavailable ? "Reply as" : "Reply"}
+											{bot || !conversationUnavailable ? "Replying as" : "Reply"}
 										</label>
 										{bot ? (
 											<UserDisplay
@@ -580,7 +759,8 @@ export default function DirectMessages() {
 									<Input
 										as="textarea"
 										id="direct-message-reply"
-										aria-label={bot ? `Reply as ${bot.name}` : "Reply"}
+										aria-label={bot ? `Replying as ${bot.name}` : "Reply"}
+										placeholder="Write the message to send"
 										className="min-h-24! w-full"
 										maxLength={2000}
 										value={draft}
