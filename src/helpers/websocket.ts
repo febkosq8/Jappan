@@ -46,9 +46,8 @@ export interface ClientToServerEvents {
 	"purge-job:unsubscribe": (payload: unknown, ack?: WebsocketAck) => void;
 	"direct-messages:subscribe": (payload: unknown, ack?: WebsocketAck<{ bot: DirectMessageBot }>) => void;
 	"direct-messages:unsubscribe": (payload: unknown, ack?: WebsocketAck) => void;
-	"direct-messages:inbox-subscribe": (ack?: WebsocketAck<{ unreadCount: number }>) => void;
+	"direct-messages:inbox-subscribe": (ack?: WebsocketAck) => void;
 	"direct-messages:inbox-unsubscribe": (ack?: WebsocketAck) => void;
-	"direct-messages:unread-count": (ack?: WebsocketAck<{ unreadCount: number }>) => void;
 	"direct-messages:conversations": (
 		payload: unknown,
 		ack?: WebsocketAck<{ conversations: Awaited<ReturnType<typeof listDirectMessageConversations>> }>,

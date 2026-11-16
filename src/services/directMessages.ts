@@ -1,13 +1,18 @@
-import { ChannelType, type Message } from "discord.js";
+import { ChannelType, EmbedBuilder, type Message } from "discord.js";
 import mongoose from "mongoose";
 
 import { getClient } from "../bot.js";
 import { toApiUser } from "../helpers/apiUser.js";
+import { createDashboardLinkActionRow } from "../helpers/dashboard.js";
+import { formatUserMention } from "../helpers/discord.js";
 import { createPaginatedList } from "../helpers/list.js";
 import DirectMessageConversationModel from "../models/directMessageConversation.js";
+import { getConfig } from "./config.js";
 import { logger } from "./logger.js";
 
-type DirectMessageChange = { botUserId: string; userId: string; kind: "message" | "read" };
+type DirectMessageChange = { botUserId: string; userId: string } & (
+	{ kind: "message" | "read" } | { kind: "received"; sender: { id: string; username: string } }
+);
 const MESSAGES_PER_PAGE = 25;
 const listeners = new Set<(change: DirectMessageChange) => void>();
 
@@ -97,15 +102,6 @@ export async function listDirectMessageConversations({
 	return createPaginatedList({ items, total, page, perPageLimit });
 }
 
-export async function getUnreadDirectMessageCount(): Promise<number> {
-	return DirectMessageConversationModel.countDocuments({
-		botUserId: getDirectMessageBotUserId(),
-		$expr: {
-			$gt: [{ $ifNull: ["$lastReceivedMessageId", 0] }, { $ifNull: ["$lastReadMessageId", 0] }],
-		},
-	}).exec();
-}
-
 export async function markDirectMessageRead({
 	userId,
 	messageId,
@@ -169,6 +165,32 @@ export async function sendDirectMessage({ userId, content }: { userId: string; c
 	return serializeMessage(message);
 }
 
+export async function notifyAdminsOfDirectMessage(sender: { id: string; username: string }): Promise<void> {
+	const config = getConfig();
+	const url = new URL("/admin/direct-messages", config.BOT_WEBSITE);
+	url.searchParams.set("userId", sender.id);
+	const embed = new EmbedBuilder()
+		.setAuthor({ name: config.BOT_NAME, iconURL: config.BOT_PFP, url: config.BOT_WEBSITE })
+		.setTitle("New direct message")
+		.setDescription(`${config.BOT_NAME} received a direct message from ${formatUserMention(sender)}.`)
+		.setTimestamp();
+	const components = [createDashboardLinkActionRow({ url: url.href, label: "Open conversation" })];
+	await Promise.all(
+		[...new Set(config.ADMIN_USER_IDS)].map(async (adminId) => {
+			try {
+				const admin = await getClient().users.fetch(adminId);
+				await admin.send({ embeds: [embed], components, allowedMentions: { parse: [] } });
+			} catch (error: unknown) {
+				logger.error("DISCORD", "Failed to notify admin of direct message", {
+					adminId,
+					userId: sender.id,
+					error,
+				});
+			}
+		}),
+	);
+}
+
 export async function recordDirectMessage(message: Message): Promise<void> {
 	if (message.channel.type !== ChannelType.DM) return;
 
@@ -190,7 +212,12 @@ export async function recordDirectMessage(message: Message): Promise<void> {
 			},
 			{ upsert: true },
 		);
-		notifyDirectMessageChanged({ botUserId, userId: message.author.id, kind: "message" });
+		notifyDirectMessageChanged({
+			botUserId,
+			userId: message.author.id,
+			kind: "received",
+			sender: { id: message.author.id, username: message.author.username },
+		});
 	} catch (error: unknown) {
 		logger.error("DISCORD", "Failed to record direct message conversation", {
 			userId: message.author.id,

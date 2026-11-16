@@ -12,7 +12,7 @@ import ErrorPage from "@jappan/components/ErrorPage";
 import ExternalTextLink from "@jappan/components/ExternalTextLink";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import type { AdminDirectMessageConversation } from "@jappan/handlers/APIHandler";
-import type { InboxConnection } from "@jappan/handlers/useDirectMessageInbox";
+import useDirectMessageInbox from "@jappan/handlers/useDirectMessageInbox";
 import useDirectMessageWebsocket from "@jappan/handlers/useDirectMessageWebsocket";
 import {
 	fetchDirectMessageConversations,
@@ -126,14 +126,7 @@ function ReadStatus({ conversation }: { conversation: AdminDirectMessageConversa
 
 	return (
 		<div className="flex min-w-0 items-start justify-between gap-2 text-sm text-muted-foreground">
-			<div className="flex shrink-0 flex-col items-start gap-1">
-				<span>Last read by</span>
-				{conversation.unread && (
-					<Tag variant="primary" size="xs">
-						Unread
-					</Tag>
-				)}
-			</div>
+			<span className="shrink-0">Last read by</span>
 			<div className="flex min-w-0 flex-col items-end gap-1 text-right">
 				{readerLink && conversation.lastReadAt ? (
 					<>
@@ -150,8 +143,9 @@ function ReadStatus({ conversation }: { conversation: AdminDirectMessageConversa
 	);
 }
 
-export default function DirectMessages({ inbox }: { inbox: InboxConnection }) {
+export default function DirectMessages() {
 	useDocumentTitle(formatTitle("Direct messages", "Admin"));
+	const inbox = useDirectMessageInbox();
 	const queryClient = useQueryClient();
 	const [searchParams, setSearchParams] = useSearchParams();
 	const [page, setPage] = useState(1);
@@ -512,14 +506,27 @@ export default function DirectMessages({ inbox }: { inbox: InboxConnection }) {
 													type="button"
 													variant="ghost"
 													aria-label={`Open conversation with ${user.displayName ?? user.username} (@${user.username})`}
-													aria-describedby={`conversation-received-${user.id} conversation-read-${user.id}`}
+													aria-describedby={`conversation-received-${user.id} conversation-read-${user.id}${conversation.unread ? ` conversation-unread-${user.id}` : ""}`}
 													aria-pressed={selectedUserId === user.id}
 													disabled={send.isPending}
 													onClick={() => selectUser(conversation)}
 													className="peer absolute inset-0 h-full w-full border border-transparent p-0 aria-pressed:bg-accent"
 												/>
 												<div className="pointer-events-none relative min-w-0 p-4 peer-hover:text-primary peer-aria-pressed:text-primary [&_a]:pointer-events-auto [&_button]:pointer-events-auto [&_p]:flex-wrap [&_p>span]:min-w-0 [&_p>span]:shrink [&_p>span]:break-all">
-													<UserDisplay user={user} size="xl" />
+													<div className="flex flex-wrap items-start justify-between gap-2">
+														<div className="min-w-0 flex-1">
+															<UserDisplay user={user} size="xl" />
+														</div>
+														{conversation.unread && (
+															<Tag
+																id={`conversation-unread-${user.id}`}
+																variant="primary"
+																size="xs"
+															>
+																Unread
+															</Tag>
+														)}
+													</div>
 													<Card
 														hoverable={false}
 														className="mt-3 min-w-0 rounded-md border-border bg-muted/30 p-3 shadow-none"

@@ -12,7 +12,6 @@ import {
 import { isDatabaseConnected } from "../services/database.js";
 import {
 	getDirectMessagePage,
-	getUnreadDirectMessageCount,
 	listDirectMessageConversations,
 	markDirectMessageRead,
 	sendDirectMessage,
@@ -99,17 +98,12 @@ export function registerDirectMessageSocketHandlers(socket: WebsocketSocket): vo
 			event: "direct-messages:inbox-subscribe",
 			ack,
 			work: () =>
-				transition<{ unreadCount: number }>(async () => {
+				transition<Record<never, never>>(async () => {
 					if (!(await subscribeToDirectMessageInbox(socket))) {
 						await unsubscribeFromDirectMessageInbox(socket);
 						return { ok: false, status: 403, error: "Bot administrator access required" };
 					}
-					const unreadCount = await getUnreadDirectMessageCount();
-					if (!socket.data.user.isAdmin) {
-						await unsubscribeFromDirectMessageInbox(socket);
-						return { ok: false, status: 403, error: "Bot administrator access required" };
-					}
-					return { ok: true, unreadCount };
+					return { ok: true };
 				}),
 		});
 	});
@@ -124,21 +118,6 @@ export function registerDirectMessageSocketHandlers(socket: WebsocketSocket): vo
 					await unsubscribeFromDirectMessageInbox(socket);
 					return { ok: true };
 				}),
-		});
-	});
-	socket.on("direct-messages:unread-count", (ack) => {
-		void respond({
-			socket,
-			event: "direct-messages:unread-count",
-			ack,
-			work: async () => {
-				if (!isDirectMessageInboxSubscriber(socket))
-					return { ok: false, status: 403, error: "Subscribe to the inbox first" };
-				const unreadCount = await getUnreadDirectMessageCount();
-				if (!socket.data.user.isAdmin)
-					return { ok: false, status: 403, error: "Bot administrator access required" };
-				return { ok: true, unreadCount };
-			},
 		});
 	});
 	socket.on("direct-messages:conversations", (payload, ack) => {

@@ -15,8 +15,7 @@ import WebPlayer from "@jappan/pages/player/WebPlayer";
 import PlaylistManager from "@jappan/pages/PlaylistManager";
 import PurgeMessageJob from "@jappan/pages/PurgeMessageJob";
 import WrongPage from "@jappan/pages/WrongPage";
-import { isAdminSession, SIGN_OUT_FLASH_KEY, useSessionQuery } from "@jappan/handlers/auth";
-import useDirectMessageInbox from "@jappan/handlers/useDirectMessageInbox";
+import { SIGN_OUT_FLASH_KEY } from "@jappan/handlers/auth";
 import { updateHashOnScroll } from "@febkosq8/arc";
 import { useEffect, useRef } from "react";
 import { Navigate, Route, Routes, useLocation, useParams } from "react-router-dom";
@@ -32,9 +31,6 @@ function LeaderboardRedirect() {
 function App() {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const location = useLocation();
-	const { data: session, isError } = useSessionQuery();
-	const inbox = useDirectMessageInbox(!isError && isAdminSession(session));
-
 	useEffect(() => {
 		const container = containerRef.current;
 		if (!container || location.pathname !== "/") {
@@ -61,7 +57,7 @@ function App() {
 
 	return (
 		<div ref={containerRef} className="h-dvh overflow-y-auto scroll-smooth bg-background text-foreground">
-			<Header inbox={inbox} />
+			<Header />
 			<Routes>
 				<Route path="/auth/error" element={<AuthError />} />
 				<Route path="/" element={<Home />} />
@@ -76,7 +72,7 @@ function App() {
 						<Route path="/admin/leaderboard" element={<Navigate to="/leaderboards" replace />} />
 						<Route path="/admin/leaderboard/:guildId" element={<LeaderboardRedirect />} />
 						<Route path="/admin/bot" element={<ManageBot />} />
-						<Route path="/admin/direct-messages" element={<DirectMessages inbox={inbox} />} />
+						<Route path="/admin/direct-messages" element={<DirectMessages />} />
 					</Route>
 					<Route path="/playlists" element={<PlaylistManager />} />
 					<Route path="/guilds" element={<UserListGuilds />} />

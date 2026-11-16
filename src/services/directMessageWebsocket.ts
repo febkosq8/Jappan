@@ -1,6 +1,6 @@
 import type { WebsocketServer, WebsocketSocket } from "../helpers/websocket.js";
 import DirectMessageConversationModel from "../models/directMessageConversation.js";
-import { getDirectMessageBotUserId, onDirectMessageChanged } from "./directMessages.js";
+import { getDirectMessageBotUserId, notifyAdminsOfDirectMessage, onDirectMessageChanged } from "./directMessages.js";
 import { logger } from "./logger.js";
 
 const ROOM_PREFIX = "direct-messages:";
@@ -65,10 +65,24 @@ export async function unsubscribeFromDirectMessages({
 
 export function startDirectMessageWebsocket(websocketServer: WebsocketServer): void {
 	server = websocketServer;
-	stopListening ??= onDirectMessageChanged(({ botUserId, userId, kind }) => {
+	stopListening ??= onDirectMessageChanged((change) => {
+		const { botUserId, userId, kind } = change;
 		const activeServer = server;
 		if (!activeServer) return;
 		const inboxSocketIds = activeServer.sockets.adapter.rooms.get(inboxRoom(botUserId));
+		if (kind === "received") {
+			const pageOpen = inboxSocketIds
+				? [...inboxSocketIds].some((id) => {
+						const socket = activeServer.sockets.sockets.get(id);
+						return socket?.connected && socket.data.user.isAdmin;
+					})
+				: false;
+			if (!pageOpen) {
+				void notifyAdminsOfDirectMessage(change.sender).catch((error: unknown) => {
+					logger.error("DISCORD", "Failed to notify admins of direct message", { userId, error });
+				});
+			}
+		}
 		if (inboxSocketIds) {
 			for (const id of inboxSocketIds) {
 				const socket = activeServer.sockets.sockets.get(id);
@@ -86,7 +100,7 @@ export function startDirectMessageWebsocket(websocketServer: WebsocketServer): v
 				socket.emit("direct-messages:inbox-changed", { userId });
 			}
 		}
-		if (kind !== "message") return;
+		if (kind !== "message" && kind !== "received") return;
 		const socketIds = activeServer.sockets.adapter.rooms.get(room(botUserId, userId));
 		if (!socketIds) return;
 		for (const id of socketIds) {

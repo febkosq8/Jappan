@@ -2,8 +2,7 @@ import { Avatar, Menu, ThemeSwitcher } from "@febkosq8/arc";
 import { Link, useLocation } from "react-router-dom";
 
 import { isAdminSession, useSessionQuery } from "@jappan/handlers/auth";
-import type { InboxStatus } from "@jappan/handlers/useDirectMessageInbox";
-import AdminMenu, { InboxBadge } from "./header/AdminMenu";
+import AdminMenu from "./header/AdminMenu";
 import AuthHeaderControls from "./header/AuthMenu";
 import GuildMenu from "./header/GuildMenu";
 
@@ -35,7 +34,7 @@ function getMobilePage({
 	return currentPage;
 }
 
-export default function Header({ inbox }: { inbox: InboxStatus }) {
+export default function Header() {
 	const { data: session, isError } = useSessionQuery();
 	const location = useLocation();
 	const isHomePage = location.pathname === "/";
@@ -72,18 +71,11 @@ export default function Header({ inbox }: { inbox: InboxStatus }) {
 				</a>
 				<div className="flex shrink-0 items-center gap-1">
 					<nav aria-label="Main navigation" className="flex items-center gap-1 sm:hidden">
-						<Menu
-							buttonText={
-								<>
-									{mobilePage}
-									{isAdmin && <InboxBadge inbox={inbox} />}
-								</>
-							}
-						>
+						<Menu buttonText={mobilePage}>
 							{homeItem}
 							{commandsItem}
 							<GuildMenu asSubmenu />
-							{isAdmin && <AdminMenu asSubmenu inbox={inbox} />}
+							{isAdmin && <AdminMenu asSubmenu />}
 						</Menu>
 					</nav>
 					<nav aria-label="Main navigation" className="hidden items-center gap-1 sm:flex">
@@ -92,7 +84,7 @@ export default function Header({ inbox }: { inbox: InboxStatus }) {
 							{commandsItem}
 						</Menu>
 						<GuildMenu />
-						{isAdmin && <AdminMenu inbox={inbox} />}
+						{isAdmin && <AdminMenu />}
 					</nav>
 					<AuthHeaderControls />
 					<ThemeSwitcher variant="toggle" />

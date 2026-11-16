@@ -54,9 +54,8 @@ interface ClientToServerEvents {
 	"purge-job:unsubscribe": (payload: { jobId: string }, ack: Ack) => void;
 	"direct-messages:subscribe": (payload: { userId: string }, ack: Ack<{ bot: DirectMessageBot }>) => void;
 	"direct-messages:unsubscribe": (payload: { userId: string }, ack: Ack) => void;
-	"direct-messages:inbox-subscribe": (ack: Ack<{ unreadCount: number }>) => void;
+	"direct-messages:inbox-subscribe": (ack: Ack) => void;
 	"direct-messages:inbox-unsubscribe": (ack: Ack) => void;
-	"direct-messages:unread-count": (ack: Ack<{ unreadCount: number }>) => void;
 	"direct-messages:conversations": (
 		payload: { page: number; perPageLimit: number; userId?: string },
 		ack: Ack<{ conversations: AdminDirectMessageConversations }>,
@@ -217,26 +216,14 @@ export async function subscribeToPurgeMessageJob({
 
 const directMessageUnavailable = "Not connected to the conversation. Reconnecting…";
 
-export async function subscribeToDirectMessageInbox(socket: WebsocketClient): Promise<number> {
-	const result = await request({
+export async function subscribeToDirectMessageInbox(socket: WebsocketClient): Promise<void> {
+	await request({
 		socket,
 		event: "direct-messages:inbox-subscribe",
 		unavailableMessage: "Not connected to the inbox. Reconnecting…",
 		timeoutMessage: "The inbox did not answer in time.",
 		run: () => socket.timeout(REQUEST_TIMEOUT_MS).emitWithAck("direct-messages:inbox-subscribe"),
 	});
-	return result.unreadCount;
-}
-
-export async function fetchDirectMessageUnreadCount(socket: WebsocketClient): Promise<number> {
-	const result = await request({
-		socket,
-		event: "direct-messages:unread-count",
-		unavailableMessage: "Not connected to the inbox. Reconnecting…",
-		timeoutMessage: "The inbox did not answer in time.",
-		run: () => socket.timeout(REQUEST_TIMEOUT_MS).emitWithAck("direct-messages:unread-count"),
-	});
-	return result.unreadCount;
 }
 
 export async function fetchDirectMessageConversations({

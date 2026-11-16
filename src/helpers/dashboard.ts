@@ -28,7 +28,7 @@ interface CreateDashboardLinkActionRowOptions {
 	label: string;
 }
 
-function createDashboardLinkActionRow({ url, label }: CreateDashboardLinkActionRowOptions) {
+export function createDashboardLinkActionRow({ url, label }: CreateDashboardLinkActionRowOptions) {
 	return new ActionRowBuilder<ButtonBuilder>().addComponents(
 		new ButtonBuilder().setLabel(label).setStyle(ButtonStyle.Link).setURL(url),
 	);
