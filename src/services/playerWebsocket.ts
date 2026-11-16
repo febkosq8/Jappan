@@ -1,4 +1,4 @@
-import { formatGuild, formatUser } from "../helpers/discord.js";
+import { formatGuild } from "../helpers/discord.js";
 import { closeDisconnectedQueue, isQueueDisconnected, type PlayerQueue } from "../helpers/player.js";
 import { getPlayerSessionState, type PlayerSessionState } from "../helpers/playerSessionState.js";
 import type { WebsocketResult, WebsocketServer, WebsocketSocket } from "../helpers/websocket.js";
@@ -198,12 +198,6 @@ export async function subscribeToPlayerSession({
 		}
 		subscribedQueues.set(sessionId, queue);
 		await socket.join(room);
-		logger.info("WEBSOCKET", "Client subscribed to player session", {
-			socket: socket.id,
-			session: sessionId,
-			guild: formatGuild(queue.guild),
-			user: formatUser(result.actor),
-		});
 		broadcastPlayerState(queue, socket);
 		return {
 			ok: true,

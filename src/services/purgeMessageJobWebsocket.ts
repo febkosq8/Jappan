@@ -76,11 +76,6 @@ export async function subscribeToPurgeMessageJob({
 	} else {
 		await socket.leave(getRoom(jobId));
 	}
-	logger.info("WEBSOCKET", "Client subscribed to message purge job", {
-		socket: socket.id,
-		jobId,
-		user: formatUser(socket.data.user),
-	});
 	return { ok: true, state };
 }
 

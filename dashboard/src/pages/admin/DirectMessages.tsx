@@ -1,7 +1,18 @@
-import { Avatar, Button, Card, DateHandler, Input } from "@febkosq8/arc";
+import { Button, Card, DateHandler, Input, Tag } from "@febkosq8/arc";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { useState, type SubmitEvent } from "react";
+import {
+	FiChevronLeft,
+	FiChevronRight,
+	FiLoader,
+	FiMessageSquare,
+	FiRefreshCw,
+	FiSend,
+	FiWifi,
+	FiWifiOff,
+} from "react-icons/fi";
+import { FaChevronLeft, FaChevronRight } from "react-icons/fa6";
 
 import { AccessRedirect, accessErrorStatus } from "@jappan/components/AuthRoute";
 import UserDisplay from "@jappan/components/display/UserDisplay";
@@ -10,13 +21,14 @@ import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import APIHandler, { type User } from "@jappan/handlers/APIHandler";
 import useDirectMessageWebsocket from "@jappan/handlers/useDirectMessageWebsocket";
 import {
-	fetchDirectMessageConversations,
 	fetchDirectMessageHistory,
 	getWebsocket,
 	sendDirectMessage,
 	WebsocketRequestError,
 } from "@jappan/handlers/websocket";
 import useDocumentTitle, { formatTitle } from "@jappan/helpers/useDocumentTitle";
+
+const CONVERSATIONS_PER_PAGE = 30;
 
 function errorMessage(error: unknown, fallback: string): string {
 	if (error instanceof WebsocketRequestError) return error.message;
@@ -26,10 +38,15 @@ function errorMessage(error: unknown, fallback: string): string {
 	return fallback;
 }
 
-function inboxSocket() {
+function conversationSocket() {
 	const socket = getWebsocket();
-	if (!socket?.connected) throw new WebsocketRequestError(503, "Not connected to the inbox. Reconnecting…");
+	if (!socket?.connected) throw new WebsocketRequestError(503, "Not connected to the conversation. Reconnecting…");
 	return socket;
+}
+
+function websocketAccessStatus(error: unknown): 401 | 403 | undefined {
+	if (error instanceof WebsocketRequestError && (error.status === 401 || error.status === 403)) return error.status;
+	return undefined;
 }
 
 export default function DirectMessages() {
@@ -40,66 +57,86 @@ export default function DirectMessages() {
 	const [cursors, setCursors] = useState<string[]>([]);
 	const [draft, setDraft] = useState("");
 	const [socketAccessError, setSocketAccessError] = useState<401 | 403 | null>(null);
+	const [conversationUnavailable, setConversationUnavailable] = useState(false);
 	const before = cursors[cursors.length - 1];
 	const conversationKey = ["admin", "direct-messages", "conversations", page];
 	const messageKey = ["admin", "direct-messages", "messages", selectedUser?.id, before];
 	const conversations = useQuery({
 		queryKey: conversationKey,
-		queryFn: () =>
-			page === 1 && !queryClient.getQueryData(conversationKey)
-				? APIHandler.getAdminDirectMessageConversations(page)
-				: fetchDirectMessageConversations(inboxSocket(), page),
+		queryFn: () => APIHandler.getAdminDirectMessageConversations(page, CONVERSATIONS_PER_PAGE),
 		refetchOnWindowFocus: false,
 		refetchOnReconnect: false,
 		refetchOnMount: false,
 		retry: false,
+	});
+	const { status: websocketStatus, bot } = useDirectMessageWebsocket({
+		userId: selectedUser?.id ?? "",
+		enabled: selectedUser !== null && socketAccessError === null && !conversationUnavailable,
+		onSubscribed: () => {
+			void queryClient.invalidateQueries({
+				queryKey: ["admin", "direct-messages", "messages", selectedUser?.id],
+				refetchType: "none",
+			});
+		},
+		onChange: async () => {
+			if (selectedUser && before) {
+				await queryClient.invalidateQueries({
+					queryKey: ["admin", "direct-messages", "messages", selectedUser.id, undefined],
+					exact: true,
+					refetchType: "all",
+				});
+			}
+			await queryClient.invalidateQueries({ queryKey: messageKey, exact: true });
+		},
+		onAccessProblem: setSocketAccessError,
+		onUnavailable: () => setConversationUnavailable(true),
 	});
 	const messages = useQuery({
 		queryKey: messageKey,
 		queryFn: () => {
 			if (!selectedUser) throw new Error("No conversation selected");
-			if (!before && !queryClient.getQueryData(messageKey)) {
-				return APIHandler.getAdminDirectMessages(selectedUser.id);
-			}
-			return fetchDirectMessageHistory({ socket: inboxSocket(), userId: selectedUser.id, before });
+			return fetchDirectMessageHistory({ socket: conversationSocket(), userId: selectedUser.id, before });
 		},
-		enabled: selectedUser !== null,
+		enabled: selectedUser !== null && websocketStatus === "connected" && !conversationUnavailable,
+		staleTime: Infinity,
 		refetchOnWindowFocus: false,
 		refetchOnReconnect: false,
 		refetchOnMount: false,
 		retry: false,
 	});
-	const websocketStatus = useDirectMessageWebsocket({
-		enabled: conversations.data !== undefined && socketAccessError === null,
-		onChange: async (userIds) => {
-			const refreshes = [queryClient.invalidateQueries({ queryKey: conversationKey, exact: true })];
-			if (selectedUser && (!userIds || userIds.includes(selectedUser.id))) {
-				refreshes.push(queryClient.invalidateQueries({ queryKey: messageKey, exact: true }));
-			}
-			await Promise.all(refreshes);
-		},
-		onAccessProblem: setSocketAccessError,
-	});
 	const send = useMutation({
 		mutationFn: ({ userId, content }: { userId: string; content: string }) =>
-			sendDirectMessage({ socket: inboxSocket(), userId, content }),
+			sendDirectMessage({ socket: conversationSocket(), userId, content }),
 		onSuccess: async (_message, { userId }) => {
 			setDraft("");
 			setCursors([]);
-			await queryClient.invalidateQueries({ queryKey: ["admin", "direct-messages", "messages", userId] });
+			await queryClient.invalidateQueries({
+				queryKey: ["admin", "direct-messages", "messages", userId, undefined],
+				exact: true,
+				refetchType: "all",
+			});
 		},
 	});
 	const accessStatus =
 		socketAccessError ??
 		accessErrorStatus(conversations.error) ??
-		accessErrorStatus(messages.error) ??
-		accessErrorStatus(send.error);
+		websocketAccessStatus(messages.error) ??
+		websocketAccessStatus(send.error);
 	if (accessStatus) return <AccessRedirect status={accessStatus} />;
+
+	const connectionDescription = conversationUnavailable
+		? "This conversation is no longer available."
+		: websocketStatus === "connected"
+			? "Live conversation connected."
+			: websocketStatus === "connecting"
+				? "Connecting to the live conversation…"
+				: "Live conversation disconnected. Reconnecting…";
 
 	function selectUser(user: User) {
 		setSelectedUser(user);
 		setCursors([]);
 		setDraft("");
+		setConversationUnavailable(false);
 		send.reset();
 	}
 
@@ -111,145 +148,270 @@ export default function DirectMessages() {
 
 	return (
 		<main className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6">
-			<h1 className="text-3xl font-bold tracking-tight typography-heading-2">Admin - Direct messages</h1>
-			<p className="mt-2 text-sm text-muted-foreground">
-				Only bot administrators can access this inbox. Conversations appear when the bot receives a DM after
-				this feature is enabled. Message history is fetched from Discord, not stored in Jappan.
-			</p>
-			<p role="status" className="mt-2 text-sm text-muted-foreground">
-				{websocketStatus === "connected"
-					? "Live inbox connected."
-					: websocketStatus === "connecting"
-						? "Connecting to the live inbox…"
-						: "Live inbox disconnected. Reconnecting…"}
-			</p>
+			<header>
+				<h1 className="typography-heading-2 text-3xl font-bold tracking-tight">Direct messages</h1>
+				<p className="mt-1 text-muted-foreground">
+					Bot administrators can read and reply to direct messages. History is fetched from Discord.
+				</p>
+			</header>
 			<div className="mt-6 grid gap-4 md:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
-				<Card hoverable={false} className="min-w-0 rounded-md border-border">
-					<Card.Content className="p-3!">
-						<h2 className="mb-3 text-xl font-bold">Conversations</h2>
+				<Card hoverable={false} className="min-w-0 rounded-md border-border p-5 sm:p-6">
+					<Card.Content className="p-0!">
+						<div className="flex flex-wrap items-center justify-between gap-3">
+							<h2 className="flex items-center gap-2 text-lg font-semibold">
+								<FiMessageSquare className="size-5 text-primary" aria-hidden="true" />
+								Conversations
+							</h2>
+							<Button
+								type="button"
+								size="icon-sm"
+								variant="outline-primary"
+								className="group/refetch"
+								aria-label="Refresh conversations"
+								title="Refresh conversations"
+								onClick={() => void conversations.refetch()}
+							>
+								<FiRefreshCw className="size-4 group-hover/refetch:animate-spin" aria-hidden="true" />
+							</Button>
+						</div>
+						<p className="mt-1 text-sm text-muted-foreground">
+							Conversations appear when the bot receives a direct message.
+						</p>
 						{conversations.isPending ? (
 							<LoadingIndicator label="Loading conversations" />
 						) : conversations.isError ? (
-							<div role="alert" className="space-y-2">
-								<p>{errorMessage(conversations.error, "Could not load conversations.")}</p>
-								<Button type="button" size="sm" onClick={() => void conversations.refetch()}>
+							<div role="alert" className="mt-4 flex flex-wrap items-center gap-2">
+								<p className="text-sm text-destructive">
+									{errorMessage(conversations.error, "Could not load conversations.")}
+								</p>
+								<Button
+									type="button"
+									size="sm"
+									variant="outline-primary"
+									onClick={() => void conversations.refetch()}
+								>
 									Retry
 								</Button>
 							</div>
 						) : conversations.data.items.length === 0 ? (
-							<p className="text-sm text-muted-foreground">No conversations found.</p>
+							<p className="mt-4 text-sm text-muted-foreground">No conversations found.</p>
 						) : (
-							<ul className="space-y-1">
+							<ul className="mt-4 max-h-120 space-y-2 overflow-y-auto">
 								{conversations.data.items.map(({ user, lastReceivedAt }) => (
 									<li key={user.id}>
-										<Button
-											type="button"
-											variant="ghost"
-											aria-pressed={selectedUser?.id === user.id}
-											disabled={send.isPending}
-											onClick={() => selectUser(user)}
-											className="h-auto w-full flex-col items-start border border-transparent p-2 text-left hover:text-primary aria-pressed:bg-accent aria-pressed:text-primary"
-										>
-											<span className="flex min-w-0 items-center gap-2">
-												<Avatar
-													name={user.displayName ?? user.username}
-													image={user.avatarUrl}
-													size="sm"
-													aria-hidden="true"
-												/>
-												<span className="min-w-0 truncate">
-													{user.displayName ?? user.username}
-												</span>
-											</span>
-											<span className="mt-1 block text-xs text-muted-foreground">
-												Received {DateHandler.getDateTime(new Date(lastReceivedAt).getTime())}
-											</span>
-										</Button>
+										<Card hoverable={false} className="rounded-md border-border p-0">
+											<Button
+												type="button"
+												variant="ghost"
+												aria-label={`Open conversation with ${user.displayName ?? user.username} (@${user.username})`}
+												aria-describedby={`conversation-received-${user.id}`}
+												aria-pressed={selectedUser?.id === user.id}
+												disabled={send.isPending}
+												onClick={() => selectUser(user)}
+												className="peer absolute inset-0 h-full w-full border border-transparent p-0 aria-pressed:bg-accent"
+											/>
+											<div className="pointer-events-none relative min-w-0 p-3 peer-hover:text-primary peer-aria-pressed:text-primary [&_a]:pointer-events-auto [&_button]:pointer-events-auto [&_p]:flex-wrap [&_p>span]:min-w-0 [&_p>span]:shrink [&_p>span]:break-all">
+												<UserDisplay user={user} size="xl" />
+												<div
+													id={`conversation-received-${user.id}`}
+													className="mt-2 flex flex-wrap items-center justify-between gap-1 text-xs text-muted-foreground"
+												>
+													Received
+													<Tag
+														variant="secondary"
+														size="xs"
+														className="ml-auto max-w-full font-normal"
+													>
+														<time dateTime={lastReceivedAt}>
+															{DateHandler.getDateTime(
+																new Date(lastReceivedAt).getTime(),
+															)}
+														</time>
+													</Tag>
+												</div>
+											</div>
+										</Card>
 									</li>
 								))}
 							</ul>
 						)}
-						<div className="mt-3 flex items-center justify-between gap-2">
+						<div className="mt-4 flex items-center justify-between gap-2 border-t border-border pt-4">
 							<Button
 								type="button"
 								size="sm"
 								variant="outline-primary"
-								disabled={page === 1 || websocketStatus !== "connected"}
+								className="gap-1"
+								disabled={page === 1}
 								onClick={() => setPage(page - 1)}
 							>
+								<FiChevronLeft aria-hidden="true" />
 								Previous
 							</Button>
-							<span className="text-sm">Page {page}</span>
+							<span className="text-sm text-muted-foreground">Page {page}</span>
 							<Button
 								type="button"
 								size="sm"
 								variant="outline-primary"
-								disabled={!conversations.data?.hasMore || websocketStatus !== "connected"}
+								className="gap-1"
+								disabled={!conversations.data || page >= conversations.data.pagination.totalPages}
 								onClick={() => setPage(page + 1)}
 							>
 								Next
+								<FiChevronRight aria-hidden="true" />
 							</Button>
 						</div>
 					</Card.Content>
 				</Card>
-				<Card hoverable={false} className="min-w-0 rounded-md border-border">
-					<Card.Content className="p-3!">
+				<Card hoverable={false} className="min-w-0 rounded-md border-border p-5 sm:p-6">
+					<Card.Content className="p-0!">
 						{!selectedUser ? (
-							<p className="text-muted-foreground">Select a conversation to read and reply.</p>
+							<div className="flex min-h-48 flex-col items-center justify-center text-center">
+								<span className="flex size-10 items-center justify-center rounded-md bg-primary/10 text-primary">
+									<FiMessageSquare className="size-5" aria-hidden="true" />
+								</span>
+								<h2 className="mt-3 text-lg font-semibold">Select a conversation</h2>
+								<p className="mt-1 text-sm text-muted-foreground">
+									Choose a conversation to read messages and reply as the bot.
+								</p>
+							</div>
 						) : (
 							<>
-								<h2 className="mb-3 text-xl font-bold">Conversation</h2>
-								<UserDisplay user={selectedUser} size="sm" />
-								{messages.isPending ? (
-									<LoadingIndicator label="Loading messages" />
+								<div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+									<h2 className="flex items-center gap-2 text-lg font-semibold">
+										<FiMessageSquare className="size-5 text-primary" aria-hidden="true" />
+										Conversation
+									</h2>
+									<div className="flex flex-wrap items-center justify-end gap-2">
+										<Tag
+											role="status"
+											variant={
+												conversationUnavailable
+													? "destructive"
+													: websocketStatus === "connected"
+														? "success"
+														: websocketStatus === "connecting"
+															? "secondary"
+															: "warning"
+											}
+											size="xs"
+											title={connectionDescription}
+											aria-label={connectionDescription}
+										>
+											{conversationUnavailable || websocketStatus === "disconnected" ? (
+												<FiWifiOff className="mr-1 size-3" aria-hidden="true" />
+											) : websocketStatus === "connecting" ? (
+												<FiLoader className="mr-1 size-3 animate-spin" aria-hidden="true" />
+											) : (
+												<FiWifi className="mr-1 size-3" aria-hidden="true" />
+											)}
+											{conversationUnavailable
+												? "Unavailable"
+												: websocketStatus === "connected"
+													? "Connected"
+													: websocketStatus === "connecting"
+														? "Connecting"
+														: "Reconnecting"}
+										</Tag>
+										<Button
+											type="button"
+											size="icon-sm"
+											variant="outline-primary"
+											className="group/refetch"
+											aria-label="Refresh messages"
+											title="Refresh messages"
+											disabled={websocketStatus !== "connected" || conversationUnavailable}
+											onClick={() => void messages.refetch()}
+										>
+											<FiRefreshCw
+												className="size-4 group-hover/refetch:animate-spin"
+												aria-hidden="true"
+											/>
+										</Button>
+									</div>
+								</div>
+								<UserDisplay user={selectedUser} size="xl" />
+								{conversationUnavailable ? (
+									<p role="alert" className="mt-4 text-sm text-destructive">
+										This conversation is no longer available.
+									</p>
+								) : messages.isPending ? (
+									<LoadingIndicator
+										label={
+											websocketStatus === "connected" ? "Loading messages" : connectionDescription
+										}
+									/>
 								) : messages.isError ? (
-									<div role="alert" className="mt-4 space-y-2">
-										<p>{errorMessage(messages.error, "Could not load messages from Discord.")}</p>
-										<Button type="button" size="sm" onClick={() => void messages.refetch()}>
+									<div role="alert" className="mt-4 flex flex-wrap items-center gap-2">
+										<p className="text-sm text-destructive">
+											{errorMessage(messages.error, "Could not load messages from Discord.")}
+										</p>
+										<Button
+											type="button"
+											size="sm"
+											variant="outline-primary"
+											disabled={websocketStatus !== "connected"}
+											onClick={() => void messages.refetch()}
+										>
 											Retry
 										</Button>
 									</div>
 								) : (
 									<>
-										<div className="mt-4 flex flex-wrap gap-2">
+										<nav
+											aria-label="Message pagination"
+											className="mt-4 flex w-full items-center justify-between gap-1 sm:justify-center"
+										>
 											<Button
 												type="button"
-												size="sm"
-												variant="outline-primary"
+												size="icon-md"
+												variant="outline-secondary"
+												className="h-10 w-10 sm:h-8 sm:w-8"
+												aria-label="Newer messages"
+												title="Newer messages"
+												disabled={cursors.length === 0 || websocketStatus !== "connected"}
+												onClick={() => setCursors(cursors.slice(0, -1))}
+											>
+												<FaChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
+											</Button>
+											<span aria-hidden="true" className="px-1 text-muted-foreground">
+												·
+											</span>
+											<span className="text-center text-xs font-medium">
+												<span className="text-foreground">
+													{messages.data.messages.length}{" "}
+													{messages.data.messages.length === 1 ? "message" : "messages"} on
+													this page
+												</span>
+												<span className="block text-muted-foreground">
+													Page {cursors.length + 1}
+												</span>
+											</span>
+											<span aria-hidden="true" className="px-1 text-muted-foreground">
+												·
+											</span>
+											<Button
+												type="button"
+												size="icon-md"
+												variant="outline-secondary"
+												className="h-10 w-10 sm:h-8 sm:w-8"
+												aria-label="Older messages"
+												title="Older messages"
 												disabled={!messages.data.nextBefore || websocketStatus !== "connected"}
 												onClick={() => {
 													if (messages.data.nextBefore)
 														setCursors([...cursors, messages.data.nextBefore]);
 												}}
 											>
-												Older messages
+												<FaChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
 											</Button>
-											<Button
-												type="button"
-												size="sm"
-												variant="outline-primary"
-												disabled={cursors.length === 0 || websocketStatus !== "connected"}
-												onClick={() => setCursors(cursors.slice(0, -1))}
-											>
-												Newer messages
-											</Button>
-											<Button
-												type="button"
-												size="sm"
-												variant="outline-primary"
-												disabled={websocketStatus !== "connected"}
-												onClick={() => void messages.refetch()}
-											>
-												Refresh
-											</Button>
-										</div>
+										</nav>
 										{messages.data.messages.length === 0 ? (
 											<p className="mt-4 text-sm text-muted-foreground">
 												No messages in this page.
 											</p>
 										) : (
 											<ol
-												className="mt-4 max-h-120 space-y-3 overflow-y-auto"
+												className="mt-4 max-h-120 space-y-3 overflow-y-auto pr-3"
 												aria-label="Messages"
 											>
 												{messages.data.messages.map((message) => (
@@ -257,10 +419,12 @@ export default function DirectMessages() {
 														key={message.id}
 														className="rounded-md border border-border p-3"
 													>
-														<div className="flex flex-wrap items-baseline justify-between gap-2">
-															<span className="font-medium">
-																{message.author.displayName ?? message.author.username}
-															</span>
+														<div className="flex flex-wrap items-center justify-between gap-2">
+															<UserDisplay
+																user={message.author}
+																size="md"
+																showId={false}
+															/>
 															<time
 																className="text-xs text-muted-foreground"
 																dateTime={new Date(
@@ -276,10 +440,26 @@ export default function DirectMessages() {
 															</p>
 														)}
 														{message.embeds.map((embed, index) => (
-															<div
+															<Card
 																key={index}
-																className="mt-2 rounded-md border border-border p-2 text-sm"
+																hoverable={false}
+																className="mt-2 rounded-md border-transparent bg-muted/30 p-3 text-sm shadow-none"
 															>
+																<svg
+																	aria-hidden="true"
+																	className="pointer-events-none absolute inset-0 h-full w-full text-border"
+																>
+																	<rect
+																		x="0.5"
+																		y="0.5"
+																		width="calc(100% - 1px)"
+																		height="calc(100% - 1px)"
+																		rx="var(--radius-md)"
+																		fill="none"
+																		stroke="currentColor"
+																		strokeDasharray="8 4"
+																	/>
+																</svg>
 																{embed.title && (
 																	<p className="font-medium">{embed.title}</p>
 																)}
@@ -297,7 +477,7 @@ export default function DirectMessages() {
 																		<p>{field.value}</p>
 																	</div>
 																))}
-															</div>
+															</Card>
 														))}
 														{message.attachments.map((attachment) => (
 															<p key={attachment.url} className="mt-1 break-all text-sm">
@@ -321,13 +501,23 @@ export default function DirectMessages() {
 										)}
 									</>
 								)}
-								<form onSubmit={submit} className="mt-4 space-y-2">
+								<form onSubmit={submit} className="mt-4 space-y-2 border-t border-border pt-4">
 									<label htmlFor="direct-message-reply" className="block font-medium">
-										Reply as the bot
+										{bot ? "Reply as" : "Reply"}
 									</label>
+									{bot && (
+										<UserDisplay
+											name={bot.name}
+											avatarUrl={bot.avatarUrl}
+											size="xs"
+											showId={false}
+											id={bot.id}
+										/>
+									)}
 									<Input
 										as="textarea"
 										id="direct-message-reply"
+										aria-label={bot ? `Reply as ${bot.name}` : "Reply"}
 										className="min-h-24! w-full"
 										maxLength={2000}
 										value={draft}
@@ -338,10 +528,12 @@ export default function DirectMessages() {
 										<span className="text-xs text-muted-foreground">{draft.length}/2000</span>
 										<Button
 											type="submit"
+											className="gap-2"
 											disabled={
 												!draft.trim() || send.isPending || websocketStatus !== "connected"
 											}
 										>
+											<FiSend aria-hidden="true" />
 											{send.isPending ? "Sending..." : "Send message"}
 										</Button>
 									</div>

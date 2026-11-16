@@ -6,7 +6,6 @@ import {
 	type PlayerSession,
 	type PlayerSuggestion,
 	type AdminDirectMessage,
-	type AdminDirectMessageConversations,
 	type AdminDirectMessagePage,
 } from "./APIHandler";
 
@@ -20,6 +19,12 @@ type WebsocketResult<Data extends object = Record<never, never>> =
 
 type Ack<Data extends object = Record<never, never>> = (result: WebsocketResult<Data>) => void;
 
+export interface DirectMessageBot {
+	id: string;
+	name: string;
+	avatarUrl: string;
+}
+
 interface ServerToClientEvents {
 	"player:state": (state: PlayerSession) => void;
 	"player:ended": (payload: { sessionId: string }) => void;
@@ -28,7 +33,7 @@ interface ServerToClientEvents {
 	"purge-job:state": (state: PurgeMessageJobState) => void;
 	"purge-job:revoked": (payload: { jobId: string; status: number; error: string }) => void;
 	"direct-messages:changed": (payload: { userId: string }) => void;
-	"direct-messages:revoked": (payload: { status: number; error: string }) => void;
+	"direct-messages:revoked": (payload: { userId: string; status: number; error: string }) => void;
 }
 
 interface ClientToServerEvents {
@@ -44,12 +49,8 @@ interface ClientToServerEvents {
 	) => void;
 	"purge-job:subscribe": (payload: { jobId: string }, ack: Ack<{ state: PurgeMessageJobState }>) => void;
 	"purge-job:unsubscribe": (payload: { jobId: string }, ack: Ack) => void;
-	"direct-messages:subscribe": (payload: Record<string, never>, ack: Ack) => void;
-	"direct-messages:unsubscribe": (payload: Record<string, never>, ack: Ack) => void;
-	"direct-messages:list": (
-		payload: { page: number },
-		ack: Ack<{ conversations: AdminDirectMessageConversations }>,
-	) => void;
+	"direct-messages:subscribe": (payload: { userId: string }, ack: Ack<{ bot: DirectMessageBot }>) => void;
+	"direct-messages:unsubscribe": (payload: { userId: string }, ack: Ack) => void;
 	"direct-messages:history": (
 		payload: { userId: string; before?: string },
 		ack: Ack<{ page: AdminDirectMessagePage }>,
@@ -61,6 +62,7 @@ interface ClientToServerEvents {
 }
 
 export type WebsocketClient = Socket<ServerToClientEvents, ClientToServerEvents>;
+type WebsocketFeature = "player" | "purge-job" | "direct-messages";
 
 /** A request the server refused, or one that could not be sent. `status` follows the HTTP status codes. */
 export class WebsocketRequestError extends Error {
@@ -74,10 +76,10 @@ export class WebsocketRequestError extends Error {
 }
 
 let client: WebsocketClient | undefined;
-let holders = 0;
+const holders = new Map<WebsocketFeature, number>();
 
 /** One connection is shared by everything on the page; it opens with the first user and closes with the last. */
-export function acquireWebsocket(): WebsocketClient {
+export function acquireWebsocket(feature: WebsocketFeature): WebsocketClient {
 	client ??= io(apiBaseURL, {
 		path: WEBSOCKET_PATH,
 		// Matches the server, which only accepts WebSocket
@@ -85,9 +87,11 @@ export function acquireWebsocket(): WebsocketClient {
 		// The session cookie authenticates the handshake
 		withCredentials: true,
 		autoConnect: false,
+		auth: (callback) => callback({ features: [...holders.keys()] }),
 	});
-	holders += 1;
-	if (holders === 1) {
+	const shouldConnect = holders.size === 0;
+	holders.set(feature, (holders.get(feature) ?? 0) + 1);
+	if (shouldConnect) {
 		client.connect();
 	}
 	return client;
@@ -95,12 +99,15 @@ export function acquireWebsocket(): WebsocketClient {
 
 /** The shared connection, or undefined while nothing on the page uses it. */
 export function getWebsocket(): WebsocketClient | undefined {
-	return holders > 0 ? client : undefined;
+	return holders.size > 0 ? client : undefined;
 }
 
-export function releaseWebsocket(): void {
-	holders = Math.max(0, holders - 1);
-	if (holders === 0) {
+export function releaseWebsocket(feature: WebsocketFeature): void {
+	const count = holders.get(feature);
+	if (count === undefined) throw new Error(`WebSocket feature ${feature} was not acquired`);
+	if (count === 1) holders.delete(feature);
+	else holders.set(feature, count - 1);
+	if (holders.size === 0) {
 		client?.disconnect();
 	}
 }
@@ -197,30 +204,17 @@ export async function subscribeToPurgeMessageJob({
 	return state;
 }
 
-const directMessageUnavailable = "Not connected to the inbox. Reconnecting…";
+const directMessageUnavailable = "Not connected to the conversation. Reconnecting…";
 
-export async function subscribeToDirectMessages(socket: WebsocketClient): Promise<void> {
-	await request({
+export async function subscribeToDirectMessages(socket: WebsocketClient, userId: string): Promise<DirectMessageBot> {
+	const { bot } = await request({
 		socket,
 		event: "direct-messages:subscribe",
 		unavailableMessage: directMessageUnavailable,
-		timeoutMessage: "The inbox did not answer in time.",
-		run: () => socket.timeout(REQUEST_TIMEOUT_MS).emitWithAck("direct-messages:subscribe", {}),
+		timeoutMessage: "The conversation did not answer in time.",
+		run: () => socket.timeout(REQUEST_TIMEOUT_MS).emitWithAck("direct-messages:subscribe", { userId }),
 	});
-}
-
-export async function fetchDirectMessageConversations(
-	socket: WebsocketClient,
-	page: number,
-): Promise<AdminDirectMessageConversations> {
-	const result = await request({
-		socket,
-		event: "direct-messages:list",
-		unavailableMessage: directMessageUnavailable,
-		timeoutMessage: "The inbox did not answer in time.",
-		run: () => socket.timeout(REQUEST_TIMEOUT_MS).emitWithAck("direct-messages:list", { page }),
-	});
-	return result.conversations;
+	return bot;
 }
 
 export async function fetchDirectMessageHistory({
@@ -236,7 +230,7 @@ export async function fetchDirectMessageHistory({
 		socket,
 		event: "direct-messages:history",
 		unavailableMessage: directMessageUnavailable,
-		timeoutMessage: "The inbox did not answer in time.",
+		timeoutMessage: "The conversation did not answer in time.",
 		run: () =>
 			socket.timeout(REQUEST_TIMEOUT_MS).emitWithAck("direct-messages:history", {
 				userId,

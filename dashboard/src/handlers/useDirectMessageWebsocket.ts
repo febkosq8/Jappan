@@ -1,31 +1,46 @@
 import { useEffect, useRef, useState } from "react";
 
-import { acquireWebsocket, releaseWebsocket, subscribeToDirectMessages, WebsocketRequestError } from "./websocket";
+import {
+	acquireWebsocket,
+	releaseWebsocket,
+	subscribeToDirectMessages,
+	WebsocketRequestError,
+	type DirectMessageBot,
+} from "./websocket";
 
 type Status = "connecting" | "connected" | "disconnected";
 type Callbacks = {
-	onChange: (userIds?: string[]) => Promise<void>;
+	onSubscribed: () => void;
+	onChange: () => Promise<void>;
 	onAccessProblem: (status: 401 | 403) => void;
+	onUnavailable: () => void;
 };
 
-export default function useDirectMessageWebsocket({ enabled, ...callbacks }: Callbacks & { enabled: boolean }) {
-	const [status, setStatus] = useState<Status>("connecting");
+export default function useDirectMessageWebsocket({
+	enabled,
+	userId,
+	...callbacks
+}: Callbacks & { enabled: boolean; userId: string }) {
+	const [connection, setConnection] = useState<{ userId: string; status: Status; bot: DirectMessageBot | null }>({
+		userId: "",
+		status: "connecting",
+		bot: null,
+	});
 	const callbacksRef = useRef(callbacks);
 	useEffect(() => {
 		callbacksRef.current = callbacks;
 	});
 
 	useEffect(() => {
-		if (!enabled) return;
-		const client = acquireWebsocket();
+		if (!enabled || !userId) return;
+		const client = acquireWebsocket("direct-messages");
 		let active = true;
 		let subscribed = false;
 		let retryTimer: number | undefined;
 		let refreshTimer: number | undefined;
 		let refreshing = false;
 		let pending = false;
-		let resyncAll = false;
-		const changedUsers = new Set<string>();
+		let subscriptionVersion = 0;
 
 		const refresh = async () => {
 			if (!active || !subscribed || refreshing) return;
@@ -33,62 +48,69 @@ export default function useDirectMessageWebsocket({ enabled, ...callbacks }: Cal
 			try {
 				while (active && subscribed && pending) {
 					pending = false;
-					const users = [...changedUsers];
-					changedUsers.clear();
-					const all = resyncAll;
-					resyncAll = false;
-					await callbacksRef.current.onChange(all ? undefined : users);
+					await callbacksRef.current.onChange();
 				}
 			} finally {
 				refreshing = false;
 			}
 		};
-		const scheduleRefresh = (userId?: string) => {
+		const scheduleRefresh = () => {
 			pending = true;
-			if (userId) changedUsers.add(userId);
-			else resyncAll = true;
 			window.clearTimeout(refreshTimer);
 			refreshTimer = window.setTimeout(() => void refresh(), 150);
 		};
 		const subscribe = () => {
 			if (!active) return;
+			const version = ++subscriptionVersion;
 			subscribed = false;
-			setStatus("connecting");
-			subscribeToDirectMessages(client)
-				.then(() => {
-					if (!active) return;
+			setConnection((previous) => ({
+				userId,
+				status: "connecting",
+				bot: previous.userId === userId ? previous.bot : null,
+			}));
+			subscribeToDirectMessages(client, userId)
+				.then((bot) => {
+					if (!active || version !== subscriptionVersion || !client.connected) return;
 					subscribed = true;
-					setStatus("connected");
-					scheduleRefresh();
+					callbacksRef.current.onSubscribed();
+					setConnection({ userId, status: "connected", bot });
 				})
 				.catch((error: unknown) => {
-					if (!active) return;
-					setStatus("disconnected");
+					if (!active || version !== subscriptionVersion) return;
+					setConnection((previous) => ({ ...previous, userId, status: "disconnected" }));
 					if (error instanceof WebsocketRequestError && (error.status === 401 || error.status === 403)) {
 						callbacksRef.current.onAccessProblem(error.status);
+					} else if (error instanceof WebsocketRequestError && error.status === 404) {
+						callbacksRef.current.onUnavailable();
 					} else if (client.connected) {
 						retryTimer = window.setTimeout(subscribe, 5000);
 					}
 				});
 		};
 		const onDisconnect = (reason: string) => {
+			subscriptionVersion++;
 			subscribed = false;
-			setStatus("disconnected");
+			setConnection((previous) => ({ ...previous, userId, status: "disconnected" }));
 			if (reason === "io server disconnect") retryTimer = window.setTimeout(() => client.connect(), 1000);
 		};
 		const onConnectError = (error: Error & { data?: { status?: number } }) => {
+			subscriptionVersion++;
 			subscribed = false;
-			setStatus("disconnected");
+			setConnection((previous) => ({ ...previous, userId, status: "disconnected" }));
 			if (error.data?.status === 401 || error.data?.status === 403) {
 				callbacksRef.current.onAccessProblem(error.data.status);
 			} else if (!client.active) {
 				retryTimer = window.setTimeout(() => client.connect(), 5000);
 			}
 		};
-		const onChanged = ({ userId }: { userId: string }) => scheduleRefresh(userId);
-		const onRevoked = ({ status: code }: { status: number }) => {
+		const onChanged = (payload: { userId: string }) => {
+			if (payload.userId === userId) scheduleRefresh();
+		};
+		const onRevoked = ({ userId: revokedUserId, status: code }: { userId: string; status: number }) => {
+			if (revokedUserId !== userId) return;
+			subscriptionVersion++;
 			subscribed = false;
-			setStatus("disconnected");
+			setConnection((previous) => ({ ...previous, userId, status: "disconnected" }));
 			if (code === 401 || code === 403) callbacksRef.current.onAccessProblem(code);
 		};
 		client.on("connect", subscribe);
@@ -106,10 +128,12 @@ export default function useDirectMessageWebsocket({ enabled, ...callbacks }: Cal
 			client.off("connect_error", onConnectError);
 			client.off("direct-messages:changed", onChanged);
 			client.off("direct-messages:revoked", onRevoked);
-			if (client.connected && subscribed) client.emit("direct-messages:unsubscribe", {}, () => undefined);
-			releaseWebsocket();
+			if (client.connected) client.emit("direct-messages:unsubscribe", { userId }, () => undefined);
+			releaseWebsocket("direct-messages");
 		};
-	}, [enabled]);
+	}, [enabled, userId]);
 
-	return status;
+	return connection.userId === userId
+		? { status: connection.status, bot: connection.bot }
+		: { status: "connecting" as const, bot: null };
 }

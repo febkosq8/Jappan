@@ -55,10 +55,7 @@ export interface AdminDirectMessage {
 	stickers: { name: string; url: string }[];
 }
 
-export interface AdminDirectMessageConversations {
-	items: { user: User; lastReceivedAt: string }[];
-	hasMore: boolean;
-}
+export type AdminDirectMessageConversations = PaginatedListResponse<{ user: User; lastReceivedAt: string }>;
 
 export interface AdminDirectMessagePage {
 	messages: AdminDirectMessage[];
@@ -723,19 +720,14 @@ class APIHandler {
 		return data;
 	}
 
-	static async getAdminDirectMessageConversations(page: number): Promise<AdminDirectMessageConversations> {
+	static async getAdminDirectMessageConversations(
+		page: number,
+		perPageLimit: number,
+	): Promise<AdminDirectMessageConversations> {
 		const { data } = await apiClient.get<AdminDirectMessageConversations>("/api/v1/admin/direct-messages", {
-			params: { page },
+			params: { page, perPageLimit },
 			withCredentials: true,
 		});
-		return data;
-	}
-
-	static async getAdminDirectMessages(userId: string, before?: string): Promise<AdminDirectMessagePage> {
-		const { data } = await apiClient.get<AdminDirectMessagePage>(
-			`/api/v1/admin/direct-messages/${encodeURIComponent(userId)}/messages`,
-			{ params: { before }, withCredentials: true },
-		);
 		return data;
 	}
 

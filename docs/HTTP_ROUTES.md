@@ -158,6 +158,9 @@ and is the only player HTTP route. Live updates and every control use a
 Socket.IO WebSocket server on the same port, mounted at `/api/v1/websocket`.
 It accepts the WebSocket transport only.
 
+- The dashboard shares a socket between features and reports its current
+  consumers at connection time for logging only; this client-provided metadata
+  is not used for authentication or authorization.
 - The handshake needs the same signed-in, active session cookie as the HTTP
   routes, and an `Origin` from `ALLOWED_ORIGINS`. Open sessions are checked
   again every minute and disconnected when the session ends.
@@ -179,11 +182,11 @@ It accepts the WebSocket transport only.
 
 ## Direct message inbox
 
-The admin inbox loads its initial conversation list and message history over
-HTTP. Afterwards, the authenticated WebSocket carries updates, history and
-replies; reconnecting refreshes the current view. Subscription and data
-operations require a bot administrator, and data operations also require an
-active subscription. Conversation records are scoped to the connected bot;
+The admin inbox loads its conversation list over HTTP. The authenticated
+WebSocket subscribes to the selected conversation, provides the bot identity,
+and carries all message history, updates and replies; reconnecting refreshes
+that conversation. Data operations require a bot administrator and a
+subscription to that conversation. Records are scoped to the connected bot;
 message content remains on Discord.
 
 ## FebGoServe compatibility

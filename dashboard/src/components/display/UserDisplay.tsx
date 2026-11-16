@@ -5,7 +5,7 @@ import CopyIdButton from "@jappan/components/display/CopyIdButton";
 import type { User } from "@jappan/handlers/APIHandler";
 
 type UserDisplayProps = {
-	size?: "sm" | "md" | "lg" | "xl";
+	size?: "xs" | "sm" | "md" | "lg" | "xl";
 	showId?: boolean;
 	linkUsername?: boolean;
 	keepFocusOnCopy?: boolean;

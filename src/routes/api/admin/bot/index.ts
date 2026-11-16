@@ -94,7 +94,7 @@ export default defineRouter("/bot", [
 			503: { description: "Discord bot is unavailable", schema: errorResponseSchema },
 			500: { description: "Failed to get bot administrators", schema: errorResponseSchema },
 		},
-		middleware: [requireSession, requireAdmin, requireDiscord],
+		middleware: [requireDiscord, requireSession, requireAdmin],
 		handler: async (request, response) => {
 			const query = parseListQuery(request.query, listQuerySchema, response);
 			if (!query) return;

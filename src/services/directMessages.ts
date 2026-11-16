@@ -2,6 +2,7 @@ import { ChannelType, type Message } from "discord.js";
 
 import { getClient } from "../bot.js";
 import { toApiUser } from "../helpers/apiUser.js";
+import { createPaginatedList } from "../helpers/list.js";
 import DirectMessageConversationModel from "../models/directMessageConversation.js";
 import { logger } from "./logger.js";
 
@@ -52,15 +53,18 @@ function serializeMessage(message: Message) {
 
 export type DirectMessage = ReturnType<typeof serializeMessage>;
 
-export async function listDirectMessageConversations(page: number) {
-	const limit = 30;
-	const conversations = await DirectMessageConversationModel.find({ botUserId: getDirectMessageBotUserId() })
-		.sort({ lastReceivedAt: -1, userId: 1 })
-		.skip((page - 1) * limit)
-		.limit(limit + 1)
-		.lean();
+export async function listDirectMessageConversations({ page, perPageLimit }: { page: number; perPageLimit: number }) {
+	const filter = { botUserId: getDirectMessageBotUserId() };
+	const [conversations, total] = await Promise.all([
+		DirectMessageConversationModel.find(filter)
+			.sort({ lastReceivedAt: -1, userId: 1 })
+			.skip(perPageLimit === 0 ? 0 : (page - 1) * perPageLimit)
+			.limit(perPageLimit)
+			.lean(),
+		DirectMessageConversationModel.countDocuments(filter).exec(),
+	]);
 	const items = await Promise.all(
-		conversations.slice(0, limit).map(async (conversation) => {
+		conversations.map(async (conversation) => {
 			const user = await getClient().users.fetch(conversation.userId);
 			return {
 				user: toApiUser({
@@ -73,10 +77,8 @@ export async function listDirectMessageConversations(page: number) {
 			};
 		}),
 	);
-	return { items, hasMore: conversations.length > limit };
+	return createPaginatedList({ items, total, page, perPageLimit });
 }
-
-export type DirectMessageConversations = Awaited<ReturnType<typeof listDirectMessageConversations>>;
 
 async function getConversationChannel(userId: string) {
 	const conversation = await DirectMessageConversationModel.findOne({

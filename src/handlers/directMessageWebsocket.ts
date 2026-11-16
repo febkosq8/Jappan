@@ -1,7 +1,7 @@
 import { DiscordAPIError } from "discord.js";
 import { z } from "zod";
 
-import { isBotConnected } from "../bot.js";
+import { getClient, isBotConnected } from "../bot.js";
 import {
 	consumeSocketRateLimit,
 	type WebsocketAck,
@@ -9,7 +9,7 @@ import {
 	type WebsocketSocket,
 } from "../helpers/websocket.js";
 import { isDatabaseConnected } from "../services/database.js";
-import { getDirectMessagePage, listDirectMessageConversations, sendDirectMessage } from "../services/directMessages.js";
+import { getDirectMessagePage, sendDirectMessage } from "../services/directMessages.js";
 import {
 	isDirectMessageSubscriber,
 	subscribeToDirectMessages,
@@ -18,8 +18,7 @@ import {
 import { logger } from "../services/logger.js";
 
 const snowflake = z.string().regex(/^\d{17,20}$/u);
-const emptySchema = z.strictObject({});
-const listSchema = z.strictObject({ page: z.number().int().min(1).max(100000) });
+const conversationSchema = z.strictObject({ userId: snowflake });
 const historySchema = z.strictObject({ userId: snowflake, before: snowflake.optional() });
 const sendSchema = z.strictObject({ userId: snowflake, content: z.string().trim().min(1).max(2000) });
 type Failure = Extract<WebsocketResult, { ok: false }>;
@@ -40,7 +39,7 @@ async function respond<Data extends object>({
 	allowCleanup?: boolean;
 }): Promise<void> {
 	let result: WebsocketResult<Data>;
-	if (consumeSocketRateLimit(socket)) {
+	if (!allowCleanup && consumeSocketRateLimit(socket)) {
 		result = { ok: false, status: 429, error: "Too many requests, slow down" };
 	} else if (!allowCleanup && !socket.data.user.isAdmin) {
 		result = { ok: false, status: 403, error: "Bot administrator access required" };
@@ -66,15 +65,42 @@ async function respond<Data extends object>({
 }
 
 export function registerDirectMessageSocketHandlers(socket: WebsocketSocket): void {
+	let subscriptionTransition = Promise.resolve();
+	function transition<Data extends object>(
+		work: () => Promise<WebsocketResult<Data>>,
+	): Promise<WebsocketResult<Data>> {
+		const result = subscriptionTransition.then(work);
+		subscriptionTransition = result.then(
+			() => undefined,
+			() => undefined,
+		);
+		return result;
+	}
+
 	socket.on("direct-messages:subscribe", (payload, ack) => {
 		void respond({
 			socket,
 			event: "direct-messages:subscribe",
 			ack,
 			work: async () => {
-				if (!emptySchema.safeParse(payload).success) return invalidPayload;
-				await subscribeToDirectMessages(socket);
-				return { ok: true };
+				const parsed = conversationSchema.safeParse(payload);
+				if (!parsed.success) return invalidPayload;
+				return transition(async () => {
+					if (!socket.data.user.isAdmin)
+						return { ok: false, status: 403, error: "Bot administrator access required" };
+					const bot = getClient().user;
+					if (!bot) throw new Error("Discord bot user is unavailable");
+					const subscribed = await subscribeToDirectMessages({ socket, userId: parsed.data.userId });
+					if (!socket.data.user.isAdmin) {
+						await unsubscribeFromDirectMessages({ socket, userId: parsed.data.userId });
+						return { ok: false, status: 403, error: "Bot administrator access required" };
+					}
+					if (!subscribed) return notFound;
+					return {
+						ok: true,
+						bot: { id: bot.id, name: bot.username, avatarUrl: bot.displayAvatarURL() },
+					};
+				});
 			},
 		});
 	});
@@ -85,23 +111,12 @@ export function registerDirectMessageSocketHandlers(socket: WebsocketSocket): vo
 			ack,
 			allowCleanup: true,
 			work: async () => {
-				if (!emptySchema.safeParse(payload).success) return invalidPayload;
-				await unsubscribeFromDirectMessages(socket);
-				return { ok: true };
-			},
-		});
-	});
-	socket.on("direct-messages:list", (payload, ack) => {
-		void respond({
-			socket,
-			event: "direct-messages:list",
-			ack,
-			work: async () => {
-				const parsed = listSchema.safeParse(payload);
+				const parsed = conversationSchema.safeParse(payload);
 				if (!parsed.success) return invalidPayload;
-				if (!isDirectMessageSubscriber(socket))
-					return { ok: false, status: 403, error: "Open the inbox first" };
-				return { ok: true, conversations: await listDirectMessageConversations(parsed.data.page) };
+				return transition(async () => {
+					await unsubscribeFromDirectMessages({ socket, userId: parsed.data.userId });
+					return { ok: true };
+				});
 			},
 		});
 	});
@@ -113,8 +128,8 @@ export function registerDirectMessageSocketHandlers(socket: WebsocketSocket): vo
 			work: async () => {
 				const parsed = historySchema.safeParse(payload);
 				if (!parsed.success) return invalidPayload;
-				if (!isDirectMessageSubscriber(socket))
-					return { ok: false, status: 403, error: "Open the inbox first" };
+				if (!isDirectMessageSubscriber({ socket, userId: parsed.data.userId }))
+					return { ok: false, status: 403, error: "Open the conversation first" };
 				const page = await getDirectMessagePage(parsed.data);
 				return page ? { ok: true, page } : notFound;
 			},
@@ -128,8 +143,8 @@ export function registerDirectMessageSocketHandlers(socket: WebsocketSocket): vo
 			work: async () => {
 				const parsed = sendSchema.safeParse(payload);
 				if (!parsed.success) return invalidPayload;
-				if (!isDirectMessageSubscriber(socket))
-					return { ok: false, status: 403, error: "Open the inbox first" };
+				if (!isDirectMessageSubscriber({ socket, userId: parsed.data.userId }))
+					return { ok: false, status: 403, error: "Open the conversation first" };
 				const message = await sendDirectMessage(parsed.data);
 				if (!message) return notFound;
 				logger.info("ADMIN", "Admin sent a bot direct message", {
