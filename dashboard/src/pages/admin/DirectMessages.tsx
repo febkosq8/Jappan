@@ -115,22 +115,32 @@ function websocketAccessStatus(error: unknown): 401 | 403 | undefined {
 
 function ReadStatus({ conversation }: { conversation: AdminDirectMessageConversation }) {
 	return (
-		<div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
-			{conversation.unread && (
-				<Tag variant="primary" size="xs">
-					Unread
-				</Tag>
-			)}
-			{conversation.lastReadBy && conversation.lastReadAt ? (
-				<>
-					<span className="min-w-0 break-words">Last read by @{conversation.lastReadBy.username}</span>
-					<time dateTime={conversation.lastReadAt}>
-						{DateHandler.getDateTime(new Date(conversation.lastReadAt).getTime())}
-					</time>
-				</>
-			) : (
-				<span>No read record</span>
-			)}
+		<div className="flex min-w-0 items-start justify-between gap-2 text-sm text-muted-foreground">
+			<div className="flex shrink-0 flex-col items-start gap-1">
+				<span>Last read by</span>
+				{conversation.unread && (
+					<Tag variant="primary" size="xs">
+						Unread
+					</Tag>
+				)}
+			</div>
+			<div className="flex min-w-0 flex-col items-end gap-1 text-right">
+				{conversation.lastReadBy && conversation.lastReadAt ? (
+					<>
+						<span className="max-w-full wrap-anywhere">
+							<ExternalTextLink
+								href={`https://discord.com/users/${encodeURIComponent(conversation.lastReadBy.id)}`}
+								text={`@${conversation.lastReadBy.username}`}
+							/>
+						</span>
+						<time className="max-w-full wrap-anywhere" dateTime={conversation.lastReadAt}>
+							{DateHandler.getDateTime(new Date(conversation.lastReadAt).getTime())}
+						</time>
+					</>
+				) : (
+					<span>No read record</span>
+				)}
+			</div>
 		</div>
 	);
 }
@@ -444,26 +454,37 @@ export default function DirectMessages() {
 												/>
 												<div className="pointer-events-none relative min-w-0 p-4 peer-hover:text-primary peer-aria-pressed:text-primary [&_a]:pointer-events-auto [&_button]:pointer-events-auto [&_p]:flex-wrap [&_p>span]:min-w-0 [&_p>span]:shrink [&_p>span]:break-all">
 													<UserDisplay user={user} size="xl" />
-													<div
-														id={`conversation-received-${user.id}`}
-														className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground"
+													<Card
+														hoverable={false}
+														className="mt-3 min-w-0 rounded-md border-border bg-muted/30 p-3 shadow-none"
 													>
-														Received
-														<Tag
-															variant="secondary"
-															size="sm"
-															className="ml-auto max-w-full font-normal"
+														<div
+															id={`conversation-received-${user.id}`}
+															className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground"
 														>
-															<time dateTime={lastReceivedAt}>
+															<span title="Last message received from this user">
+																Last message
+																<span className="sr-only">
+																	{" "}
+																	received from this user
+																</span>{" "}
+																at
+															</span>
+															<time className="ml-auto" dateTime={lastReceivedAt}>
 																{DateHandler.getDateTime(
 																	new Date(lastReceivedAt).getTime(),
 																)}
 															</time>
-														</Tag>
-													</div>
-													<div id={`conversation-read-${user.id}`} className="mt-3">
-														<ReadStatus conversation={conversation} />
-													</div>
+														</div>
+													</Card>
+													<Card
+														hoverable={false}
+														className="mt-2 min-w-0 rounded-md border-border bg-muted/30 p-3 shadow-none"
+													>
+														<div id={`conversation-read-${user.id}`}>
+															<ReadStatus conversation={conversation} />
+														</div>
+													</Card>
 												</div>
 											</Card>
 										</li>
@@ -604,21 +625,24 @@ export default function DirectMessages() {
 										<FiMessageSquare className="size-5 text-primary" aria-hidden="true" />
 										Conversation
 									</h2>
-									<Button
-										type="button"
-										size="icon-sm"
-										variant="outline-primary"
-										className="group/refetch"
-										aria-label="Refresh messages"
-										title="Refresh messages"
-										disabled={websocketStatus !== "connected" || conversationUnavailable}
-										onClick={() => void messages.refetch()}
-									>
-										<FiRefreshCw
-											className="size-4 group-hover/refetch:animate-spin"
-											aria-hidden="true"
-										/>
-									</Button>
+									<div className="ml-auto flex min-w-0 max-w-full items-center gap-3">
+										<ReadStatus conversation={selectedConversation.data} />
+										<Button
+											type="button"
+											size="icon-sm"
+											variant="outline-primary"
+											className="group/refetch shrink-0"
+											aria-label="Refresh messages"
+											title="Refresh messages"
+											disabled={websocketStatus !== "connected" || conversationUnavailable}
+											onClick={() => void messages.refetch()}
+										>
+											<FiRefreshCw
+												className="size-4 group-hover/refetch:animate-spin"
+												aria-hidden="true"
+											/>
+										</Button>
+									</div>
 								</div>
 								<div className="flex flex-wrap items-center justify-between gap-3">
 									<UserDisplay user={selectedUser} size="xl" />
@@ -653,9 +677,6 @@ export default function DirectMessages() {
 														? "Connecting"
 														: "Reconnecting"}
 										</Tag>
-									</div>
-									<div className="mt-2">
-										<ReadStatus conversation={selectedConversation.data} />
 									</div>
 									{read.isError && (
 										<div className="mt-3">

@@ -141,6 +141,7 @@ Boolean values are enabled only when their environment value is exactly `"true"`
 - Handle supported cases with positive checks, then use an explicit failure fallback for unsupported input.
 - Use a destructured options object for functions with three or more parameters.
 - Keep changes focused and avoid unrelated refactors.
+- Keep `docs/HTTP_ROUTES.md` focused on major, app-wide API design decisions. Do not update it for routine feature changes or enumerate endpoint-specific behavior and fields; use OpenAPI for route contracts.
 - Preserve public behavior unless an explicitly requested change allows an improvement.
 - Use structured logging with context instead of direct console output.
 - Do not commit changes automatically.
