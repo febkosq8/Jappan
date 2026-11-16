@@ -1,7 +1,7 @@
 import { Button, Card, DateHandler, Input, Tag } from "@febkosq8/arc";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import { useState, type SubmitEvent } from "react";
+import { useLayoutEffect, useRef, useState, type SubmitEvent } from "react";
 import {
 	FiChevronLeft,
 	FiChevronRight,
@@ -16,6 +16,7 @@ import { FaChevronLeft, FaChevronRight } from "react-icons/fa6";
 
 import { AccessRedirect, accessErrorStatus } from "@jappan/components/AuthRoute";
 import UserDisplay from "@jappan/components/display/UserDisplay";
+import ErrorPage from "@jappan/components/ErrorPage";
 import ExternalTextLink from "@jappan/components/ExternalTextLink";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
 import APIHandler, { type User } from "@jappan/handlers/APIHandler";
@@ -38,6 +39,12 @@ function errorMessage(error: unknown, fallback: string): string {
 	return fallback;
 }
 
+function errorStatus(error: unknown): string {
+	if (error instanceof WebsocketRequestError) return String(error.status);
+	if (axios.isAxiosError(error) && error.response?.status) return String(error.response.status);
+	return "Error";
+}
+
 function conversationSocket() {
 	const socket = getWebsocket();
 	if (!socket?.connected) throw new WebsocketRequestError(503, "Not connected to the conversation. Reconnecting…");
@@ -58,6 +65,8 @@ export default function DirectMessages() {
 	const [draft, setDraft] = useState("");
 	const [socketAccessError, setSocketAccessError] = useState<401 | 403 | null>(null);
 	const [conversationUnavailable, setConversationUnavailable] = useState(false);
+	const messagesListRef = useRef<HTMLOListElement>(null);
+	const scrollOnOpenRef = useRef(false);
 	const before = cursors[cursors.length - 1];
 	const conversationKey = ["admin", "direct-messages", "conversations", page];
 	const messageKey = ["admin", "direct-messages", "messages", selectedUser?.id, before];
@@ -117,6 +126,20 @@ export default function DirectMessages() {
 			});
 		},
 	});
+	useLayoutEffect(() => {
+		if (
+			!scrollOnOpenRef.current ||
+			cursors.length !== 0 ||
+			websocketStatus !== "connected" ||
+			!messages.isSuccess ||
+			messages.isFetching
+		)
+			return;
+		const list = messagesListRef.current;
+		if (list) list.scrollTop = list.scrollHeight;
+		scrollOnOpenRef.current = false;
+	}, [cursors.length, websocketStatus, messages.isSuccess, messages.isFetching, messages.data]);
+
 	const accessStatus =
 		socketAccessError ??
 		accessErrorStatus(conversations.error) ??
@@ -133,6 +156,7 @@ export default function DirectMessages() {
 				: "Live conversation disconnected. Reconnecting…";
 
 	function selectUser(user: User) {
+		scrollOnOpenRef.current = true;
 		setSelectedUser(user);
 		setCursors([]);
 		setDraft("");
@@ -180,18 +204,23 @@ export default function DirectMessages() {
 						{conversations.isPending ? (
 							<LoadingIndicator label="Loading conversations" />
 						) : conversations.isError ? (
-							<div role="alert" className="mt-4 flex flex-wrap items-center gap-2">
-								<p className="text-sm text-destructive">
-									{errorMessage(conversations.error, "Could not load conversations.")}
-								</p>
-								<Button
-									type="button"
-									size="sm"
-									variant="outline-primary"
-									onClick={() => void conversations.refetch()}
-								>
-									Retry
-								</Button>
+							<div className="mt-4">
+								<ErrorPage
+									variant="inline"
+									status={errorStatus(conversations.error)}
+									title="Could not load conversations"
+									message={errorMessage(conversations.error, "Could not load conversations.")}
+									actions={
+										<Button
+											type="button"
+											size="sm"
+											variant="outline-primary"
+											onClick={() => void conversations.refetch()}
+										>
+											Retry
+										</Button>
+									}
+								/>
 							</div>
 						) : conversations.data.items.length === 0 ? (
 							<p className="mt-4 text-sm text-muted-foreground">No conversations found.</p>
@@ -276,12 +305,28 @@ export default function DirectMessages() {
 							</div>
 						) : (
 							<>
-								<div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-									<h2 className="flex items-center gap-2 text-lg font-semibold">
-										<FiMessageSquare className="size-5 text-primary" aria-hidden="true" />
-										Conversation
-									</h2>
-									<div className="flex flex-wrap items-center justify-end gap-2">
+								<h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
+									<FiMessageSquare className="size-5 text-primary" aria-hidden="true" />
+									Conversation
+								</h2>
+								<div className="flex flex-wrap items-center justify-between gap-3">
+									<UserDisplay user={selectedUser} size="xl" />
+									<div className="ml-auto flex shrink-0 items-center gap-2">
+										<Button
+											type="button"
+											size="icon-sm"
+											variant="outline-primary"
+											className="group/refetch"
+											aria-label="Refresh messages"
+											title="Refresh messages"
+											disabled={websocketStatus !== "connected" || conversationUnavailable}
+											onClick={() => void messages.refetch()}
+										>
+											<FiRefreshCw
+												className="size-4 group-hover/refetch:animate-spin"
+												aria-hidden="true"
+											/>
+										</Button>
 										<Tag
 											role="status"
 											variant={
@@ -312,208 +357,226 @@ export default function DirectMessages() {
 														? "Connecting"
 														: "Reconnecting"}
 										</Tag>
-										<Button
-											type="button"
-											size="icon-sm"
-											variant="outline-primary"
-											className="group/refetch"
-											aria-label="Refresh messages"
-											title="Refresh messages"
-											disabled={websocketStatus !== "connected" || conversationUnavailable}
-											onClick={() => void messages.refetch()}
-										>
-											<FiRefreshCw
-												className="size-4 group-hover/refetch:animate-spin"
-												aria-hidden="true"
-											/>
-										</Button>
 									</div>
 								</div>
-								<UserDisplay user={selectedUser} size="xl" />
-								{conversationUnavailable ? (
-									<p role="alert" className="mt-4 text-sm text-destructive">
-										This conversation is no longer available.
-									</p>
-								) : messages.isPending ? (
-									<LoadingIndicator
-										label={
-											websocketStatus === "connected" ? "Loading messages" : connectionDescription
-										}
-									/>
-								) : messages.isError ? (
-									<div role="alert" className="mt-4 flex flex-wrap items-center gap-2">
-										<p className="text-sm text-destructive">
-											{errorMessage(messages.error, "Could not load messages from Discord.")}
-										</p>
-										<Button
-											type="button"
-											size="sm"
-											variant="outline-primary"
-											disabled={websocketStatus !== "connected"}
-											onClick={() => void messages.refetch()}
-										>
-											Retry
-										</Button>
-									</div>
-								) : (
-									<>
-										<nav
-											aria-label="Message pagination"
-											className="mt-4 flex w-full items-center justify-between gap-1 sm:justify-center"
-										>
-											<Button
-												type="button"
-												size="icon-md"
-												variant="outline-secondary"
-												className="h-10 w-10 sm:h-8 sm:w-8"
-												aria-label="Newer messages"
-												title="Newer messages"
-												disabled={cursors.length === 0 || websocketStatus !== "connected"}
-												onClick={() => setCursors(cursors.slice(0, -1))}
-											>
-												<FaChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
-											</Button>
-											<span aria-hidden="true" className="px-1 text-muted-foreground">
-												·
-											</span>
-											<span className="text-center text-xs font-medium">
-												<span className="text-foreground">
-													{messages.data.messages.length}{" "}
-													{messages.data.messages.length === 1 ? "message" : "messages"} on
-													this page
-												</span>
-												<span className="block text-muted-foreground">
-													Page {cursors.length + 1}
-												</span>
-											</span>
-											<span aria-hidden="true" className="px-1 text-muted-foreground">
-												·
-											</span>
-											<Button
-												type="button"
-												size="icon-md"
-												variant="outline-secondary"
-												className="h-10 w-10 sm:h-8 sm:w-8"
-												aria-label="Older messages"
-												title="Older messages"
-												disabled={!messages.data.nextBefore || websocketStatus !== "connected"}
-												onClick={() => {
-													if (messages.data.nextBefore)
-														setCursors([...cursors, messages.data.nextBefore]);
-												}}
-											>
-												<FaChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
-											</Button>
-										</nav>
-										{messages.data.messages.length === 0 ? (
-											<p className="mt-4 text-sm text-muted-foreground">
-												No messages in this page.
-											</p>
-										) : (
-											<ol
-												className="mt-4 max-h-120 space-y-3 overflow-y-auto pr-3"
-												aria-label="Messages"
-											>
-												{messages.data.messages.map((message) => (
-													<li
-														key={message.id}
-														className="rounded-md border border-border p-3"
-													>
-														<div className="flex flex-wrap items-center justify-between gap-2">
-															<UserDisplay
-																user={message.author}
-																size="md"
-																showId={false}
-															/>
-															<time
-																className="text-xs text-muted-foreground"
-																dateTime={new Date(
-																	message.createdTimestampMs,
-																).toISOString()}
-															>
-																{DateHandler.getDateTime(message.createdTimestampMs)}
-															</time>
-														</div>
-														{message.content && (
-															<p className="mt-1 whitespace-pre-wrap wrap-break-word">
-																{message.content}
-															</p>
-														)}
-														{message.embeds.map((embed, index) => (
-															<Card
-																key={index}
-																hoverable={false}
-																className="mt-2 rounded-md border-transparent bg-muted/30 p-3 text-sm shadow-none"
-															>
-																<svg
-																	aria-hidden="true"
-																	className="pointer-events-none absolute inset-0 h-full w-full text-border"
-																>
-																	<rect
-																		x="0.5"
-																		y="0.5"
-																		width="calc(100% - 1px)"
-																		height="calc(100% - 1px)"
-																		rx="var(--radius-md)"
-																		fill="none"
-																		stroke="currentColor"
-																		strokeDasharray="8 4"
-																	/>
-																</svg>
-																{embed.title && (
-																	<p className="font-medium">{embed.title}</p>
-																)}
-																{embed.description && (
-																	<p className="whitespace-pre-wrap wrap-break-word">
-																		{embed.description}
-																	</p>
-																)}
-																{embed.fields.map((field, fieldIndex) => (
-																	<div
-																		key={fieldIndex}
-																		className="mt-1 whitespace-pre-wrap wrap-break-word"
-																	>
-																		<strong>{field.name}</strong>
-																		<p>{field.value}</p>
-																	</div>
-																))}
-															</Card>
-														))}
-														{message.attachments.map((attachment) => (
-															<p key={attachment.url} className="mt-1 break-all text-sm">
-																<ExternalTextLink
-																	href={attachment.url}
-																	text={attachment.name}
-																/>
-															</p>
-														))}
-														{message.stickers.map((sticker) => (
-															<p key={sticker.url} className="mt-1 text-sm">
-																<ExternalTextLink
-																	href={sticker.url}
-																	text={`Sticker: ${sticker.name}`}
-																/>
-															</p>
-														))}
-													</li>
-												))}
-											</ol>
-										)}
-									</>
-								)}
-								<form onSubmit={submit} className="mt-4 space-y-2 border-t border-border pt-4">
-									<label htmlFor="direct-message-reply" className="block font-medium">
-										{bot ? "Reply as" : "Reply"}
-									</label>
-									{bot && (
-										<UserDisplay
-											name={bot.name}
-											avatarUrl={bot.avatarUrl}
-											size="xs"
-											showId={false}
-											id={bot.id}
+								<Card hoverable={false} className="mt-4 min-w-0 rounded-md border-border p-3">
+									{conversationUnavailable ? (
+										<ErrorPage
+											variant="inline"
+											status="404"
+											title="Conversation unavailable"
+											message="This conversation is no longer available."
 										/>
+									) : messages.isPending ? (
+										<LoadingIndicator
+											label={
+												websocketStatus === "connected"
+													? "Loading messages"
+													: connectionDescription
+											}
+										/>
+									) : messages.isError ? (
+										<ErrorPage
+											variant="inline"
+											status={errorStatus(messages.error)}
+											title="Could not load messages"
+											message={errorMessage(
+												messages.error,
+												"Could not load messages from Discord.",
+											)}
+											actions={
+												<Button
+													type="button"
+													size="sm"
+													variant="outline-primary"
+													disabled={websocketStatus !== "connected"}
+													onClick={() => void messages.refetch()}
+												>
+													Retry
+												</Button>
+											}
+										/>
+									) : (
+										<>
+											<nav
+												aria-label="Message pagination"
+												className="flex w-full items-center justify-between gap-1 sm:justify-center"
+											>
+												<Button
+													type="button"
+													size="icon-md"
+													variant="outline-secondary"
+													className="h-10 w-10 sm:h-8 sm:w-8"
+													aria-label="Newer messages"
+													title="Newer messages"
+													disabled={cursors.length === 0 || websocketStatus !== "connected"}
+													onClick={() => setCursors(cursors.slice(0, -1))}
+												>
+													<FaChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
+												</Button>
+												<span aria-hidden="true" className="px-1 text-muted-foreground">
+													·
+												</span>
+												<span className="text-center text-xs font-medium">
+													<span className="text-foreground">
+														{messages.data.messages.length}{" "}
+														{messages.data.messages.length === 1 ? "message" : "messages"}
+													</span>
+													<span className="block text-muted-foreground">
+														Page {cursors.length + 1}
+													</span>
+												</span>
+												<span aria-hidden="true" className="px-1 text-muted-foreground">
+													·
+												</span>
+												<Button
+													type="button"
+													size="icon-md"
+													variant="outline-secondary"
+													className="h-10 w-10 sm:h-8 sm:w-8"
+													aria-label="Older messages"
+													title="Older messages"
+													disabled={
+														!messages.data.nextBefore || websocketStatus !== "connected"
+													}
+													onClick={() => {
+														if (messages.data.nextBefore)
+															setCursors([...cursors, messages.data.nextBefore]);
+													}}
+												>
+													<FaChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+												</Button>
+											</nav>
+											{messages.data.messages.length === 0 ? (
+												<p className="mt-4 text-sm text-muted-foreground">
+													No messages in this page.
+												</p>
+											) : (
+												<ol
+													ref={messagesListRef}
+													className="mt-4 max-h-120 space-y-3 overflow-y-auto pr-3"
+													aria-label="Messages"
+												>
+													{messages.data.messages.map((message) => (
+														<li
+															key={message.id}
+															className={`rounded-md border p-3 ${
+																message.author.id === bot?.id
+																	? "border-primary/60"
+																	: "border-border"
+															}`}
+														>
+															<div className="flex flex-wrap items-center justify-between gap-2">
+																<UserDisplay
+																	user={message.author}
+																	size="md"
+																	showId={false}
+																/>
+																<time
+																	className="text-xs text-muted-foreground"
+																	dateTime={new Date(
+																		message.createdTimestampMs,
+																	).toISOString()}
+																>
+																	{DateHandler.getDateTime(
+																		message.createdTimestampMs,
+																	)}
+																</time>
+															</div>
+															{message.content && (
+																<p className="mt-1 whitespace-pre-wrap wrap-break-word">
+																	{message.content}
+																</p>
+															)}
+															{message.embeds.map((embed, index) => (
+																<Card
+																	key={index}
+																	hoverable={false}
+																	className="mt-2 rounded-md border-transparent bg-muted/30 p-3 text-sm shadow-none"
+																>
+																	<svg
+																		aria-hidden="true"
+																		className="pointer-events-none absolute inset-0 h-full w-full text-border"
+																	>
+																		<rect
+																			x="0.5"
+																			y="0.5"
+																			width="calc(100% - 1px)"
+																			height="calc(100% - 1px)"
+																			rx="var(--radius-md)"
+																			fill="none"
+																			stroke="currentColor"
+																			strokeDasharray="8 4"
+																		/>
+																	</svg>
+																	{embed.title && (
+																		<p className="font-medium">{embed.title}</p>
+																	)}
+																	{embed.description && (
+																		<p className="whitespace-pre-wrap wrap-break-word">
+																			{embed.description}
+																		</p>
+																	)}
+																	{embed.fields.map((field, fieldIndex) => (
+																		<div
+																			key={fieldIndex}
+																			className="mt-1 whitespace-pre-wrap wrap-break-word"
+																		>
+																			<strong>{field.name}</strong>
+																			<p>{field.value}</p>
+																		</div>
+																	))}
+																</Card>
+															))}
+															{message.attachments.map((attachment) => (
+																<p
+																	key={attachment.url}
+																	className="mt-1 break-all text-sm"
+																>
+																	<ExternalTextLink
+																		href={attachment.url}
+																		text={attachment.name}
+																	/>
+																</p>
+															))}
+															{message.stickers.map((sticker) => (
+																<p key={sticker.url} className="mt-1 text-sm">
+																	<ExternalTextLink
+																		href={sticker.url}
+																		text={`Sticker: ${sticker.name}`}
+																	/>
+																</p>
+															))}
+														</li>
+													))}
+												</ol>
+											)}
+										</>
 									)}
+								</Card>
+								<form onSubmit={submit} className="mt-4 space-y-2 border-t border-border pt-4">
+									<div className="flex flex-wrap items-center gap-2">
+										<label htmlFor="direct-message-reply" className="font-medium">
+											{bot || !conversationUnavailable ? "Reply as" : "Reply"}
+										</label>
+										{bot ? (
+											<UserDisplay
+												name={bot.name}
+												avatarUrl={bot.avatarUrl}
+												size="xs"
+												showId={false}
+												id={bot.id}
+											/>
+										) : !conversationUnavailable ? (
+											<LoadingIndicator
+												label="Loading bot identity"
+												inline
+												size={80}
+												columns={5}
+												rows={1}
+											/>
+										) : null}
+									</div>
 									<Input
 										as="textarea"
 										id="direct-message-reply"
@@ -538,9 +601,15 @@ export default function DirectMessages() {
 										</Button>
 									</div>
 									{send.isError && (
-										<p role="alert" className="text-sm text-destructive">
-											{errorMessage(send.error, "Could not send the message. Please try again.")}
-										</p>
+										<ErrorPage
+											variant="inline"
+											status={errorStatus(send.error)}
+											title="Could not send message"
+											message={errorMessage(
+												send.error,
+												"Could not send the message. Please try again.",
+											)}
+										/>
 									)}
 								</form>
 							</>
