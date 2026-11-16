@@ -2,7 +2,7 @@ import type { Server, Socket } from "socket.io";
 import type { AuthSession } from "../services/auth.js";
 import type { PurgeMessageJobState } from "../services/purgeMessageJobs.js";
 import type { PlayerWebUser } from "../services/playerAccess.js";
-import type { DirectMessage, DirectMessagePage } from "../services/directMessages.js";
+import type { DirectMessage, DirectMessagePage, listDirectMessageConversations } from "../services/directMessages.js";
 import type { PlayerSessionState } from "./playerSessionState.js";
 
 export interface DirectMessageBot {
@@ -49,6 +49,10 @@ export interface ClientToServerEvents {
 	"direct-messages:inbox-subscribe": (ack?: WebsocketAck<{ unreadCount: number }>) => void;
 	"direct-messages:inbox-unsubscribe": (ack?: WebsocketAck) => void;
 	"direct-messages:unread-count": (ack?: WebsocketAck<{ unreadCount: number }>) => void;
+	"direct-messages:conversations": (
+		payload: unknown,
+		ack?: WebsocketAck<{ conversations: Awaited<ReturnType<typeof listDirectMessageConversations>> }>,
+	) => void;
 	"direct-messages:read": (payload: unknown, ack?: WebsocketAck) => void;
 	"direct-messages:history": (payload: unknown, ack?: WebsocketAck<{ page: DirectMessagePage }>) => void;
 	"direct-messages:send": (payload: unknown, ack?: WebsocketAck<{ message: DirectMessage }>) => void;

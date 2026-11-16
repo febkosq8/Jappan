@@ -7,6 +7,7 @@ import {
 	type PlayerSuggestion,
 	type AdminDirectMessage,
 	type AdminDirectMessagePage,
+	type AdminDirectMessageConversations,
 } from "./APIHandler";
 
 /** Must match `WEBSOCKET_PATH` on the server. */
@@ -56,6 +57,10 @@ interface ClientToServerEvents {
 	"direct-messages:inbox-subscribe": (ack: Ack<{ unreadCount: number }>) => void;
 	"direct-messages:inbox-unsubscribe": (ack: Ack) => void;
 	"direct-messages:unread-count": (ack: Ack<{ unreadCount: number }>) => void;
+	"direct-messages:conversations": (
+		payload: { page: number; perPageLimit: number; userId?: string },
+		ack: Ack<{ conversations: AdminDirectMessageConversations }>,
+	) => void;
 	"direct-messages:read": (payload: { userId: string; messageId: string | null }, ack: Ack) => void;
 	"direct-messages:history": (
 		payload: { userId: string; before?: string },
@@ -232,6 +237,32 @@ export async function fetchDirectMessageUnreadCount(socket: WebsocketClient): Pr
 		run: () => socket.timeout(REQUEST_TIMEOUT_MS).emitWithAck("direct-messages:unread-count"),
 	});
 	return result.unreadCount;
+}
+
+export async function fetchDirectMessageConversations({
+	socket,
+	page,
+	perPageLimit,
+	userId,
+}: {
+	socket: WebsocketClient;
+	page: number;
+	perPageLimit: number;
+	userId?: string;
+}): Promise<AdminDirectMessageConversations> {
+	const result = await request({
+		socket,
+		event: "direct-messages:conversations",
+		unavailableMessage: "Not connected to the inbox. Reconnecting…",
+		timeoutMessage: "The inbox did not answer in time.",
+		run: () =>
+			socket.timeout(REQUEST_TIMEOUT_MS).emitWithAck("direct-messages:conversations", {
+				page,
+				perPageLimit,
+				...(userId ? { userId } : {}),
+			}),
+	});
+	return result.conversations;
 }
 
 export async function markDirectMessageRead({

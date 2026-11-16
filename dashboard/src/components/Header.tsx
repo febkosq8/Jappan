@@ -2,7 +2,7 @@ import { Avatar, Menu, ThemeSwitcher } from "@febkosq8/arc";
 import { Link, useLocation } from "react-router-dom";
 
 import { isAdminSession, useSessionQuery } from "@jappan/handlers/auth";
-import useDirectMessageInbox from "@jappan/handlers/useDirectMessageInbox";
+import type { InboxStatus } from "@jappan/handlers/useDirectMessageInbox";
 import AdminMenu, { InboxBadge } from "./header/AdminMenu";
 import AuthHeaderControls from "./header/AuthMenu";
 import GuildMenu from "./header/GuildMenu";
@@ -35,13 +35,12 @@ function getMobilePage({
 	return currentPage;
 }
 
-export default function Header() {
+export default function Header({ inbox }: { inbox: InboxStatus }) {
 	const { data: session, isError } = useSessionQuery();
 	const location = useLocation();
 	const isHomePage = location.pathname === "/";
 	const isCommandsPage = location.pathname === "/commands";
 	const isAdmin = !isError && isAdminSession(session);
-	const inbox = useDirectMessageInbox(isAdmin);
 	const isAuthenticated = !isError && !!session;
 	const currentPage = isHomePage ? "Home" : isCommandsPage ? "Commands" : "Pages";
 	const mobilePage = getMobilePage({

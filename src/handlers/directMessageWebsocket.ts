@@ -2,6 +2,7 @@ import { DiscordAPIError } from "discord.js";
 import { z } from "zod";
 
 import { getClient, isBotConnected } from "../bot.js";
+import { MAX_PER_PAGE_LIMIT } from "../helpers/list.js";
 import {
 	consumeSocketRateLimit,
 	type WebsocketAck,
@@ -12,6 +13,7 @@ import { isDatabaseConnected } from "../services/database.js";
 import {
 	getDirectMessagePage,
 	getUnreadDirectMessageCount,
+	listDirectMessageConversations,
 	markDirectMessageRead,
 	sendDirectMessage,
 } from "../services/directMessages.js";
@@ -30,6 +32,11 @@ const conversationSchema = z.strictObject({ userId: snowflake });
 const historySchema = z.strictObject({ userId: snowflake, before: snowflake.optional() });
 const sendSchema = z.strictObject({ userId: snowflake, content: z.string().trim().min(1).max(2000) });
 const readSchema = z.strictObject({ userId: snowflake, messageId: snowflake.nullable() });
+const listSchema = z.strictObject({
+	page: z.number().int().min(1).max(1_000_000),
+	perPageLimit: z.number().int().min(0).max(MAX_PER_PAGE_LIMIT),
+	userId: snowflake.optional(),
+});
 type Failure = Extract<WebsocketResult, { ok: false }>;
 const invalidPayload: Failure = { ok: false, status: 400, error: "Invalid direct message request" };
 const notFound: Failure = { ok: false, status: 404, error: "Conversation not found" };
@@ -131,6 +138,23 @@ export function registerDirectMessageSocketHandlers(socket: WebsocketSocket): vo
 				if (!socket.data.user.isAdmin)
 					return { ok: false, status: 403, error: "Bot administrator access required" };
 				return { ok: true, unreadCount };
+			},
+		});
+	});
+	socket.on("direct-messages:conversations", (payload, ack) => {
+		void respond({
+			socket,
+			event: "direct-messages:conversations",
+			ack,
+			work: async () => {
+				const parsed = listSchema.safeParse(payload);
+				if (!parsed.success) return invalidPayload;
+				if (!isDirectMessageInboxSubscriber(socket))
+					return { ok: false, status: 403, error: "Subscribe to the inbox first" };
+				const conversations = await listDirectMessageConversations(parsed.data);
+				if (!socket.data.user.isAdmin || !socket.connected || !isDirectMessageInboxSubscriber(socket))
+					return { ok: false, status: 403, error: "Inbox access is no longer available" };
+				return { ok: true, conversations };
 			},
 		});
 	});

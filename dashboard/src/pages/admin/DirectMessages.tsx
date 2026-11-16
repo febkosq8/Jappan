@@ -1,20 +1,21 @@
 import { Button, Card, DateHandler, Input, Tag } from "@febkosq8/arc";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import axios from "axios";
 import { useEffect, useLayoutEffect, useRef, useState, type SubmitEvent } from "react";
-import { FiLoader, FiMessageSquare, FiRefreshCw, FiSend, FiWifi, FiWifiOff } from "react-icons/fi";
-import { FaChevronLeft, FaChevronRight } from "react-icons/fa6";
+import { FiLoader, FiMessageSquare, FiSend, FiWifi, FiWifiOff } from "react-icons/fi";
+import { FaAnglesDown, FaAnglesUp, FaChevronLeft, FaChevronRight } from "react-icons/fa6";
 import { useSearchParams } from "react-router-dom";
 
-import { AccessRedirect, accessErrorStatus } from "@jappan/components/AuthRoute";
+import { AccessRedirect } from "@jappan/components/AuthRoute";
 import CopyIdButton from "@jappan/components/display/CopyIdButton";
 import UserDisplay from "@jappan/components/display/UserDisplay";
 import ErrorPage from "@jappan/components/ErrorPage";
 import ExternalTextLink from "@jappan/components/ExternalTextLink";
 import LoadingIndicator from "@jappan/components/LoadingIndicator";
-import APIHandler, { type AdminDirectMessageConversation } from "@jappan/handlers/APIHandler";
+import type { AdminDirectMessageConversation } from "@jappan/handlers/APIHandler";
+import type { InboxConnection } from "@jappan/handlers/useDirectMessageInbox";
 import useDirectMessageWebsocket from "@jappan/handlers/useDirectMessageWebsocket";
 import {
+	fetchDirectMessageConversations,
 	fetchDirectMessageHistory,
 	getWebsocket,
 	markDirectMessageRead,
@@ -90,21 +91,23 @@ function InboxPagination({
 
 function errorMessage(error: unknown, fallback: string): string {
 	if (error instanceof WebsocketRequestError) return error.message;
-	if (axios.isAxiosError<{ error?: string }>(error) && typeof error.response?.data?.error === "string") {
-		return error.response.data.error;
-	}
 	return fallback;
 }
 
 function errorStatus(error: unknown): string {
 	if (error instanceof WebsocketRequestError) return String(error.status);
-	if (axios.isAxiosError(error) && error.response?.status) return String(error.response.status);
 	return "Error";
 }
 
 function conversationSocket() {
 	const socket = getWebsocket();
 	if (!socket?.connected) throw new WebsocketRequestError(503, "Not connected to the conversation. Reconnecting…");
+	return socket;
+}
+
+function inboxSocket() {
+	const socket = getWebsocket();
+	if (!socket?.connected) throw new WebsocketRequestError(503, "Not connected to the inbox. Reconnecting…");
 	return socket;
 }
 
@@ -147,7 +150,7 @@ function ReadStatus({ conversation }: { conversation: AdminDirectMessageConversa
 	);
 }
 
-export default function DirectMessages() {
+export default function DirectMessages({ inbox }: { inbox: InboxConnection }) {
 	useDocumentTitle(formatTitle("Direct messages", "Admin"));
 	const queryClient = useQueryClient();
 	const [searchParams, setSearchParams] = useSearchParams();
@@ -171,7 +174,13 @@ export default function DirectMessages() {
 	const conversationKey = ["admin", "direct-messages", "conversations", page];
 	const conversations = useQuery({
 		queryKey: conversationKey,
-		queryFn: () => APIHandler.getAdminDirectMessageConversations({ page, perPageLimit: CONVERSATIONS_PER_PAGE }),
+		queryFn: () =>
+			fetchDirectMessageConversations({
+				socket: inboxSocket(),
+				page,
+				perPageLimit: CONVERSATIONS_PER_PAGE,
+			}),
+		enabled: inbox.status === "connected",
 		refetchOnWindowFocus: false,
 		refetchOnReconnect: false,
 		refetchOnMount: false,
@@ -181,14 +190,15 @@ export default function DirectMessages() {
 		queryKey: ["admin", "direct-messages", "conversation", selectedUserId],
 		queryFn: async () => {
 			if (!selectedUserId || !validUserId) throw new Error("Invalid conversation user ID");
-			const result = await APIHandler.getAdminDirectMessageConversations({
+			const result = await fetchDirectMessageConversations({
+				socket: inboxSocket(),
 				page: 1,
 				perPageLimit: 1,
 				userId: selectedUserId,
 			});
 			return result.items[0] ?? null;
 		},
-		enabled: validUserId,
+		enabled: validUserId && inbox.status === "connected",
 		staleTime: Infinity,
 		refetchOnWindowFocus: false,
 		refetchOnReconnect: false,
@@ -334,9 +344,10 @@ export default function DirectMessages() {
 
 	const accessStatus =
 		socketAccessError ??
+		(inbox.status === "error" ? websocketAccessStatus(inbox.error) : undefined) ??
 		backgroundSendErrors.map(({ error }) => websocketAccessStatus(error)).find((status) => status !== undefined) ??
-		accessErrorStatus(conversations.error) ??
-		accessErrorStatus(selectedConversation.error) ??
+		websocketAccessStatus(conversations.error) ??
+		websocketAccessStatus(selectedConversation.error) ??
 		websocketAccessStatus(messages.error) ??
 		websocketAccessStatus(send.error) ??
 		websocketAccessStatus(read.error);
@@ -349,6 +360,24 @@ export default function DirectMessages() {
 			: websocketStatus === "connecting"
 				? "Connecting to the live conversation…"
 				: "Live conversation disconnected. Reconnecting…";
+	const liveStatus =
+		inbox.status === "error"
+			? "unavailable"
+			: inbox.status === "connecting"
+				? "connecting"
+				: !selectedUser
+					? "connected"
+					: conversationUnavailable
+						? "unavailable"
+						: websocketStatus;
+	const liveDescription =
+		inbox.status === "error"
+			? "Inbox updates are unavailable."
+			: inbox.status === "connecting"
+				? "Connecting to inbox updates…"
+				: selectedUser
+					? connectionDescription
+					: "Live inbox connected.";
 	const replyDisabled = send.isPending || websocketStatus !== "connected" || conversationUnavailable;
 
 	function selectUser(conversation: AdminDirectMessageConversation) {
@@ -399,22 +428,57 @@ export default function DirectMessages() {
 								<FiMessageSquare className="size-5 text-primary" aria-hidden="true" />
 								Conversations
 							</h2>
-							<Button
-								type="button"
-								size="icon-sm"
-								variant="outline-primary"
-								className="group/refetch"
-								aria-label="Refresh conversations"
-								title="Refresh conversations"
-								onClick={() => void conversations.refetch()}
+							<Tag
+								role="status"
+								variant={
+									liveStatus === "unavailable"
+										? "destructive"
+										: liveStatus === "connected"
+											? "success"
+											: liveStatus === "connecting"
+												? "secondary"
+												: "warning"
+								}
+								size="xs"
+								title={liveDescription}
+								aria-label={liveDescription}
 							>
-								<FiRefreshCw className="size-4 group-hover/refetch:animate-spin" aria-hidden="true" />
-							</Button>
+								{liveStatus === "unavailable" || liveStatus === "disconnected" ? (
+									<FiWifiOff className="mr-1 size-3" aria-hidden="true" />
+								) : liveStatus === "connecting" ? (
+									<FiLoader className="mr-1 size-3 animate-spin" aria-hidden="true" />
+								) : (
+									<FiWifi className="mr-1 size-3" aria-hidden="true" />
+								)}
+								{liveStatus === "unavailable"
+									? "Unavailable"
+									: liveStatus === "connected"
+										? "Connected"
+										: liveStatus === "connecting"
+											? "Connecting"
+											: "Reconnecting"}
+							</Tag>
 						</div>
 						<p className="mt-1 text-base text-muted-foreground">
 							Conversations appear when the bot receives a direct message.
 						</p>
-						{conversations.isPending ? (
+						{inbox.status === "error" ? (
+							<div className="mt-4">
+								<ErrorPage
+									variant="inline"
+									status={errorStatus(inbox.error)}
+									title="Could not connect to the inbox"
+									message={errorMessage(inbox.error, "Could not connect to the inbox.")}
+									actions={
+										<Button type="button" size="sm" variant="outline-primary" onClick={inbox.retry}>
+											Retry
+										</Button>
+									}
+								/>
+							</div>
+						) : inbox.status === "connecting" ? (
+							<LoadingIndicator label="Connecting to the inbox" />
+						) : conversations.isPending ? (
 							<LoadingIndicator label="Loading conversations" />
 						) : conversations.isError ? (
 							<div className="mt-4">
@@ -499,28 +563,34 @@ export default function DirectMessages() {
 								<InboxPagination
 									label="Conversation pagination"
 									count={
-										conversations.data
-											? `${conversations.data.pagination.total} ${
-													conversations.data.pagination.total === 1
-														? "conversation"
-														: "conversations"
-												}`
-											: conversations.isPending
-												? "Loading…"
-												: "Count unavailable"
+										inbox.status === "error"
+											? "Count unavailable"
+											: inbox.status === "connecting"
+												? "Connecting…"
+												: conversations.data
+													? `${conversations.data.pagination.total} ${
+															conversations.data.pagination.total === 1
+																? "conversation"
+																: "conversations"
+														}`
+													: conversations.isPending
+														? "Loading…"
+														: "Count unavailable"
 									}
 									page={page}
 									previous={{
 										label: "Previous",
 										ariaLabel: "Previous conversations",
-										disabled: page === 1,
+										disabled: page === 1 || inbox.status !== "connected",
 										onClick: () => setPage(page - 1),
 									}}
 									next={{
 										label: "Next",
 										ariaLabel: "Next conversations",
 										disabled:
-											!conversations.data || page >= conversations.data.pagination.totalPages,
+											inbox.status !== "connected" ||
+											!conversations.data ||
+											page >= conversations.data.pagination.totalPages,
 										onClick: () => setPage(page + 1),
 									}}
 								/>
@@ -581,6 +651,18 @@ export default function DirectMessages() {
 									</Button>
 								}
 							/>
+						) : inbox.status === "error" && !selectedConversation.data ? (
+							<ErrorPage
+								variant="inline"
+								status={errorStatus(inbox.error)}
+								title="Could not connect to the inbox"
+								message={errorMessage(inbox.error, "Could not connect to the inbox.")}
+								actions={
+									<Button type="button" variant="outline-primary" onClick={inbox.retry}>
+										Retry
+									</Button>
+								}
+							/>
 						) : selectedConversation.isPending ? (
 							<LoadingIndicator label="Loading conversation" />
 						) : selectedConversation.isError ? (
@@ -593,6 +675,7 @@ export default function DirectMessages() {
 									<Button
 										type="button"
 										variant="outline-primary"
+										disabled={inbox.status !== "connected"}
 										onClick={() => void selectedConversation.refetch()}
 									>
 										Retry
@@ -627,56 +710,9 @@ export default function DirectMessages() {
 										<FiMessageSquare className="size-5 text-primary" aria-hidden="true" />
 										Conversation
 									</h2>
-									<Button
-										type="button"
-										size="icon-sm"
-										variant="outline-primary"
-										className="group/refetch"
-										aria-label="Refresh messages"
-										title="Refresh messages"
-										disabled={websocketStatus !== "connected" || conversationUnavailable}
-										onClick={() => void messages.refetch()}
-									>
-										<FiRefreshCw
-											className="size-4 group-hover/refetch:animate-spin"
-											aria-hidden="true"
-										/>
-									</Button>
 								</div>
 								<div className="flex flex-wrap items-center justify-between gap-3">
 									<UserDisplay user={selectedUser} size="xl" />
-									<div className="ml-auto flex shrink-0 items-center gap-2">
-										<Tag
-											role="status"
-											variant={
-												conversationUnavailable
-													? "destructive"
-													: websocketStatus === "connected"
-														? "success"
-														: websocketStatus === "connecting"
-															? "secondary"
-															: "warning"
-											}
-											size="xs"
-											title={connectionDescription}
-											aria-label={connectionDescription}
-										>
-											{conversationUnavailable || websocketStatus === "disconnected" ? (
-												<FiWifiOff className="mr-1 size-3" aria-hidden="true" />
-											) : websocketStatus === "connecting" ? (
-												<FiLoader className="mr-1 size-3 animate-spin" aria-hidden="true" />
-											) : (
-												<FiWifi className="mr-1 size-3" aria-hidden="true" />
-											)}
-											{conversationUnavailable
-												? "Unavailable"
-												: websocketStatus === "connected"
-													? "Connected"
-													: websocketStatus === "connecting"
-														? "Connecting"
-														: "Reconnecting"}
-										</Tag>
-									</div>
 									{read.isError && (
 										<div className="mt-3">
 											<ErrorPage
@@ -741,29 +777,71 @@ export default function DirectMessages() {
 										/>
 									) : (
 										<>
-											<InboxPagination
-												label="Message pagination"
-												count={`${messages.data.messages.length} ${
-													messages.data.messages.length === 1 ? "message" : "messages"
-												}`}
-												page={cursors.length + 1}
-												previous={{
-													label: "Newer",
-													ariaLabel: "Newer messages",
-													disabled: cursors.length === 0 || websocketStatus !== "connected",
-													onClick: () => setCursors(cursors.slice(0, -1)),
-												}}
-												next={{
-													label: "Older",
-													ariaLabel: "Older messages",
-													disabled:
-														!messages.data.nextBefore || websocketStatus !== "connected",
-													onClick: () => {
-														if (messages.data.nextBefore)
-															setCursors([...cursors, messages.data.nextBefore]);
-													},
-												}}
-											/>
+											<div className="flex flex-wrap items-center justify-end gap-2">
+												<div className="min-w-0 flex-1 basis-56">
+													<InboxPagination
+														label="Message pagination"
+														count={`${messages.data.messages.length} ${
+															messages.data.messages.length === 1 ? "message" : "messages"
+														}`}
+														page={cursors.length + 1}
+														previous={{
+															label: "Newer",
+															ariaLabel: "Newer messages",
+															disabled:
+																cursors.length === 0 || websocketStatus !== "connected",
+															onClick: () => setCursors(cursors.slice(0, -1)),
+														}}
+														next={{
+															label: "Older",
+															ariaLabel: "Older messages",
+															disabled:
+																!messages.data.nextBefore ||
+																websocketStatus !== "connected",
+															onClick: () => {
+																if (messages.data.nextBefore)
+																	setCursors([...cursors, messages.data.nextBefore]);
+															},
+														}}
+													/>
+												</div>
+												<div
+													className="flex shrink-0 items-center gap-2"
+													role="group"
+													aria-label="Scroll messages"
+												>
+													<Button
+														type="button"
+														size="icon-sm"
+														variant="outline-secondary"
+														className="pointer-coarse:min-h-10 pointer-coarse:min-w-10"
+														aria-label="Scroll to top of current message page"
+														title="Scroll to top of current message page"
+														disabled={messages.data.messages.length === 0}
+														onClick={() => {
+															if (messagesListRef.current)
+																messagesListRef.current.scrollTop = 0;
+														}}
+													>
+														<FaAnglesUp aria-hidden="true" />
+													</Button>
+													<Button
+														type="button"
+														size="icon-sm"
+														variant="outline-secondary"
+														className="pointer-coarse:min-h-10 pointer-coarse:min-w-10"
+														aria-label="Scroll to bottom of current message page"
+														title="Scroll to bottom of current message page"
+														disabled={messages.data.messages.length === 0}
+														onClick={() => {
+															const list = messagesListRef.current;
+															if (list) list.scrollTop = list.scrollHeight;
+														}}
+													>
+														<FaAnglesDown aria-hidden="true" />
+													</Button>
+												</div>
+											</div>
 											{messages.data.messages.length === 0 ? (
 												<p className="mt-4 text-sm text-muted-foreground">
 													No messages in this page.
@@ -784,7 +862,7 @@ export default function DirectMessages() {
 															key={message.id}
 															className={`rounded-md border p-3 ${
 																message.author.id === bot?.id
-																	? "border-primary/70"
+																	? "border-success/70"
 																	: "border-warning/80"
 															}`}
 														>
