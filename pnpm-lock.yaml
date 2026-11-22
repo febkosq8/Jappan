@@ -224,8 +224,8 @@ importers:
         specifier: 5.0.1
         version: 5.0.1
       mongoose:
-        specifier: 9.12.1
-        version: 9.12.1
+        specifier: 9.12.2
+        version: 9.12.2
       re2js:
         specifier: 2.10.0
         version: 2.10.0
@@ -2163,8 +2163,8 @@ packages:
       socks:
         optional: true
 
-  mongoose@9.12.1:
-    resolution: {integrity: sha512-wPw1NKurTDShT+kr/JJvhdwPKIJkxFJv5GEbv++QahN8snPR9Fp/BFg6nQbbCyUHBB8DexwwlCQW6SfBD99QCg==}
+  mongoose@9.12.2:
+    resolution: {integrity: sha512-SoWBAJGaC7UJ8SCmsVd34kDmiq/lvyeENVTHTjR1ez+vyfY/cu/K5/uCgIoXA6pYV5yMAHM72sWVe6XuYYEqeA==}
     engines: {node: '>=20.19.0'}
 
   mpath@0.9.0:
@@ -4352,7 +4352,7 @@ snapshots:
       bson: 7.3.4
       mongodb-connection-string-url: 7.0.2
 
-  mongoose@9.12.1:
+  mongoose@9.12.2:
     dependencies:
       '@standard-schema/spec': 1.1.0
       kareem: 3.4.1
